@@ -22,7 +22,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`flex items-center justify-center min-h-screen antialiased bg-gradient-to-br from-gray-900 via-gray-950 to-blue-900 text-gray-100 ${geistSans.variable} ${geistMono.variable}`}
+        className={`flex items-center justify-center min-h-screen antialiased bg-gradient-to-br from-blue-100 to-blue-200 text-black ${geistSans.variable} ${geistMono.variable}`}
       >
         {children}
       </body>

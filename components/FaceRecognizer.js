@@ -9,12 +9,14 @@ export default function FaceRecognizer({ labels }) {
   const canvasRef = useRef(null);
   const [message, setMessage] = useState("Loading models...");
   const [finished, setFinished] = useState(false);
+  const [detectedPerson, setDetectedPerson] = useState(null); // <-- add this
 
   const MODEL_URL = "/models"; // models folder in public
 
   const handleRetry = () => {
     setFinished(false);
     setMessage("Retrying detection...");
+    setDetectedPerson(null); // clear previous detected person
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext("2d");
       ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
@@ -24,7 +26,6 @@ export default function FaceRecognizer({ labels }) {
 
   useEffect(() => {
     let stream;
-    console.log(labels);
     const loadModels = async () => {
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -136,15 +137,24 @@ export default function FaceRecognizer({ labels }) {
       }).draw(canvas);
 
       setMessage(`Detected: ${label}`);
+
+      // Set the full detected person's details
+      if (label !== "Unknown") {
+        const person = labels.find((l) => l.name === label);
+        setDetectedPerson(person || null);
+      } else {
+        setDetectedPerson(null);
+      }
     } else {
       setMessage("No face detected ❌");
+      setDetectedPerson(null);
     }
 
     setFinished(true);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+    <div className="flex flex-col items-center justify-center mt-10 px-4">
       <h1 className="text-5xl sm:text-4xl font-bold text-blue-700 mb-8">
         Face Recognition
       </h1>
@@ -165,6 +175,20 @@ export default function FaceRecognizer({ labels }) {
       <div className="mt-6 text-xl sm:text-2xl font-bold text-blue-400 text-center drop-shadow-lg">
         {message}
       </div>
+
+      {detectedPerson && (
+        <div className="mt-4 text-lg sm:text-xl text-blue-600 text-center">
+          <p>
+            <strong>Name:</strong> {detectedPerson.name}
+          </p>
+          <p>
+            <strong>Roll No:</strong> {detectedPerson.rollNo}
+          </p>
+          <p>
+            <strong>Email:</strong> {detectedPerson.email}
+          </p>
+        </div>
+      )}
 
       {finished && (
         <Button
