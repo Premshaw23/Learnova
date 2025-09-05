@@ -169,25 +169,21 @@ export default function FaceRecognizer({ labels }) {
       </h1>
 
       <div className="relative w-[90vw] max-w-[720px] max-h-[500px] aspect-video border-2 border-blue-700 rounded-2xl shadow-2xl bg-transparent backdrop-blur-2xl">
-        <div className="w-full h-full rounded-2xl bg-gray-100 flex items-center justify-center">
-          <div className="relative w-[90vw] max-w-[720px] max-h-[500px] aspect-video border-2 border-blue-700 rounded-2xl shadow-2xl bg-transparent backdrop-blur-2xl">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              className="w-full h-full rounded-2xl object-cover"
-            />
-            <canvas
-              ref={canvasRef}
-              className="absolute top-0 left-0 w-full h-full rounded-2xl"
-            />
-          </div>
-        </div>
-
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          className="w-full h-full rounded-2xl object-cover"
+        />
+        <canvas
+          ref={canvasRef}
+          className="absolute top-0 left-0 w-full h-full rounded-2xl"
+        />
       </div>
-        <div className="mt-6 text-xl sm:text-2xl font-bold text-blue-400 text-center drop-shadow-lg">
-          {message}
-        </div>
+
+      <div className="mt-6 text-xl sm:text-2xl font-bold text-blue-400 text-center drop-shadow-lg">
+        {message}
+      </div>
 
       {detectedPerson && (
         <div className="mt-4 text-lg sm:text-xl text-blue-600 text-center">
