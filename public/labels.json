@@ -1,0 +1,36 @@
+[
+  {
+    "name": "anuj",
+    "rollNo": "102",
+    "email": "anuj@example.com",
+    "images": ["1.jpg"]
+  },
+  {
+    "name": "rohit",
+    "rollNo": "103",
+    "email": "rohit@example.com",
+    "images": ["1.jpg"]
+
+  },
+  {
+    "name": "pranav",
+    "rollNo": "104",
+    "email": "pranav@example.com",
+    "images": ["1.jpg"]
+
+  },
+  {
+    "name": "prashant",
+    "rollNo": "105",
+    "email": "prashant@example.com",
+    "images": ["1.jpg"]
+
+  },
+  {
+    "name": "prem",
+    "rollNo": "12333",
+    "email": "shprem27@gmail.com",
+    "images": ["1.jpg"]
+
+  }
+]

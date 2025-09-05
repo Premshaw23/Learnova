@@ -4,14 +4,13 @@ import React, { useEffect, useRef, useState } from "react";
 import * as faceapi from "face-api.js";
 import { Button } from "@/components/ui/button";
 
-export default function FaceRecognizer() {
+export default function FaceRecognizer({ labels }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [message, setMessage] = useState("Loading models...");
   const [finished, setFinished] = useState(false);
 
   const MODEL_URL = "/models"; // models folder in public
-  const labels = ["prem","anuj","rohit","pranav","prashant"]; // add more names here
 
   const handleRetry = () => {
     setFinished(false);
@@ -25,7 +24,7 @@ export default function FaceRecognizer() {
 
   useEffect(() => {
     let stream;
-
+    console.log(labels);
     const loadModels = async () => {
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -62,26 +61,39 @@ export default function FaceRecognizer() {
   }, []);
 
   const runDetection = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (
+      !videoRef.current ||
+      !canvasRef.current ||
+      !labels ||
+      labels.length === 0
+    )
+      return;
 
     const labeledFaceDescriptors = (
       await Promise.all(
-        labels.map(async (label) => {
+        labels.map(async (student) => {
           const descriptors = [];
-          for (let i = 1; i <= 2; i++) {
+          for (let i = 0; i < 1; i++) {
             try {
-              const img = await faceapi.fetchImage(`/labels/${label}/${i}.jpg`);
+              const img = await faceapi.fetchImage(
+                `/labels/${student.name}/${student.images[i]}`
+              );
               const detection = await faceapi
                 .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
                 .withFaceLandmarks()
                 .withFaceDescriptor();
               if (detection) descriptors.push(detection.descriptor);
             } catch {
-              console.warn(`Image not found: ${label}/${i}.jpg`);
+              console.warn(
+                `Image not found: ${student.name}/${student.images[i]}`
+              );
             }
           }
           if (descriptors.length > 0)
-            return new faceapi.LabeledFaceDescriptors(label, descriptors);
+            return new faceapi.LabeledFaceDescriptors(
+              student.name,
+              descriptors
+            );
           return null;
         })
       )
@@ -132,39 +144,37 @@ export default function FaceRecognizer() {
   };
 
   return (
-    <>
-      <div className="flex flex-col items-center justify-center min-h-screen px-4">
-        <h1 className="text-5xl sm:text-4xl font-bold text-blue-700 mb-8">
-          Face Recognition
-        </h1>
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <h1 className="text-5xl sm:text-4xl font-bold text-blue-700 mb-8">
+        Face Recognition
+      </h1>
 
-        <div className="relative w-[90vw] max-w-[720px] max-h-[500px] aspect-video border-2 border-blue-700 rounded-2xl shadow-2xl bg-transparent backdrop-blur-2xl">
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            className="w-full h-full rounded-2xl object-cover"
-          />
-          <canvas
-            ref={canvasRef}
-            className="absolute top-0 left-0 w-full h-full rounded-2xl"
-          />
-        </div>
-
-        <div className="mt-6 text-xl sm:text-2xl font-bold text-blue-400 text-center drop-shadow-lg">
-          {message}
-        </div>
-
-        {finished && (
-          <Button
-            variant="default"
-            className="mt-6 px-8 sm:px-10 py-3 sm:py-4 text-lg font-semibold shadow-md"
-            onClick={handleRetry}
-          >
-            Retry
-          </Button>
-        )}
+      <div className="relative w-[90vw] max-w-[720px] max-h-[500px] aspect-video border-2 border-blue-700 rounded-2xl shadow-2xl bg-transparent backdrop-blur-2xl">
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          className="w-full h-full rounded-2xl object-cover"
+        />
+        <canvas
+          ref={canvasRef}
+          className="absolute top-0 left-0 w-full h-full rounded-2xl"
+        />
       </div>
-    </>
+
+      <div className="mt-6 text-xl sm:text-2xl font-bold text-blue-400 text-center drop-shadow-lg">
+        {message}
+      </div>
+
+      {finished && (
+        <Button
+          variant="default"
+          className="mt-6 px-8 sm:px-10 py-3 sm:py-4 text-lg font-semibold shadow-md"
+          onClick={handleRetry}
+        >
+          Retry
+        </Button>
+      )}
+    </div>
   );
 }
