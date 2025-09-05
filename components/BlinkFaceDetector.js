@@ -11,7 +11,7 @@ export default function FaceRecognizer() {
   const [finished, setFinished] = useState(false);
 
   const MODEL_URL = "/models"; // models folder in public
-  const labels = ["prem", "rohit","pranav","prashant","anuj"]; // add more names here
+  const labels = ["prem","anuj","rohit","pranav","prashant"]; // add more names here
 
   const handleRetry = () => {
     setFinished(false);
