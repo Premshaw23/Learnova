@@ -1,5 +1,8 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import React from "react";
+import { Geist,Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,17 +17,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Face Recognition App",
-  description: "Next.js + FaceAPI + ShadCN UI Example",
+  title: "Learnova - Unlock Your Learning Potential",
+  description:
+    "Join thousands of learners on Learnova and discover courses that will transform your career and expand your knowledge.",
+  generator: "v0.app",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`flex items-center justify-center min-h-screen antialiased bg-gradient-to-br from-blue-100 to-blue-200 text-black ${geistSans.variable} ${geistMono.variable}`}
+        className={`font-sans ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <Suspense fallback={null}>{children}</Suspense>
       </body>
     </html>
   );
