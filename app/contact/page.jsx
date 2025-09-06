@@ -3,10 +3,22 @@
 import { Navbar } from '@/components/Navbar'
 import React from 'react'
 import Link from 'next/link';
-
+import { useState } from 'react';
 export default function Contact(){
+  const [form,setForm] = useState({Name: "",Email: "",Message: ""});
+  const handlechange = (e)=>{
+    setForm((currform)=>({
+      ...currform,[e.target.name]:[e.target.value],
+    }))
+  }
+
+
+
+
+  
   const handlesubmit=async (e)=>{
     e.preventDefault();
+    setForm({Name:"",Email:"",Message:""})
   }
   return (
     <div>
@@ -22,18 +34,23 @@ export default function Contact(){
         {/* Contact Form */}
         <form className="space-y-4" onSubmit={handlesubmit}>
           <div>
-            <label className="block text-gray-700 mb-1">Name</label>
+            <label className="block text-gray-700 mb-1"></label>
             <input
+               onChange={handlechange}
               type="text"
               placeholder="Your name"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              name='Name'
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" value={form.Name}
             />
           </div>
 
           <div>
             <label className="block text-gray-700 mb-1">Email</label>
             <input
+            value={form.Email}
+            onChange={handlechange}
               type="email"
+              name='Email'
               placeholder="you@example.com"
               className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
@@ -42,7 +59,10 @@ export default function Contact(){
           <div>
             <label className="block text-gray-700 mb-1">Message</label>
             <textarea
+            value={form.Message}
+            onChange={handlechange}
               rows="4"
+              name='Message'
               placeholder="Write your message here..."
               className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             ></textarea>
