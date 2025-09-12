@@ -8,15 +8,18 @@
     "start": "next start"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "face-api.js": "^0.22.2",
     "formidable": "^3.5.4",
+    "gsap": "^3.13.0",
     "lucide-react": "^0.542.0",
     "multer": "^2.0.2",
     "next": "15.5.2",
     "node-fetch": "^3.3.2",
+    "ogl": "^1.0.11",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwind-merge": "^3.3.1"

@@ -1,5 +1,7 @@
-"use client"
+"use client";
 import { Navbar } from "@/components/Navbar";
+import SplitText from "@/components/SplitText";
+import DarkVeil from "@/components/DarkVeil";
 import {
   Card,
   CardContent,
@@ -10,11 +12,49 @@ import {
 import { Target, Heart, Lightbulb, GraduationCap } from "lucide-react";
 
 export default function AboutPage() {
+  const handleAnimationComplete = ()=>{
+    console.log("animation completed ");
+  }
   return (
-    <div className="min-h-screen bg-background">
+     <>
+        <div className="fixed inset-0 -z-10">
+        <DarkVeil />
+        </div>
+    <div className="min-h-screen absolute z-50 top-0 w-full h-full ">
       <Navbar />
+      <section className="py-20 px-4 sm:px-6 lg:px-8 flex justify-center">
+      <SplitText
+          text="About "
+          className="text-2xl max-w-4xl mx-autotext-4xl md:text-5xl font-bold text-white mb-6 text-balance text-center"
+          delay={100}
+          duration={0.6}
+          ease="power3.out"
+          splitType="chars"
+          from={{ opacity: -1, y: 40 }}
+          to={{ opacity: 1, y: 0 }}
+          threshold={0.1}
+          rootMargin="-100px"
+          textAlign="center"
+          onLetterAnimationComplete={handleAnimationComplete}
+        />
+        <div className="w-5"></div>
+        <SplitText
+          text="Learnova"
+          className="text-2xl max-w-4xl text-accent mx-autotext-4xl md:text-5xl font-bold mb-6 text-balance text-center"
+          delay={200}
+          duration={0.5}
+          ease="power3.out"
+          splitType="chars"
+          from={{ opacity: 0, y: 40 }}
+          to={{ opacity: 1, y: 0 }}
+          threshold={0.1}
+          rootMargin="-100px"
+          textAlign="center"
+          onLetterAnimationComplete={handleAnimationComplete}
+        />
+        </section>
       {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-background to-muted">
+      {/* <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-background to-muted">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6 text-balance">
             About <span className="text-accent">Learnova</span>
@@ -25,30 +65,30 @@ export default function AboutPage() {
             institutions to focus on what matters most - student success.
           </p>
         </div>
-      </section>
+      </section> */}
 
       {/* Mission Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
                 Our Mission
               </h2>
-              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+              <p className="text-lg text-gray-100 mb-6 leading-relaxed">
                 At Learnova, we believe that effective educational
                 administration is the foundation of student success. Our
                 platform streamlines curriculum planning and attendance
                 tracking, giving educators more time to focus on teaching and
                 student engagement.
               </p>
-              <p className="text-lg text-muted-foreground leading-relaxed">
+              <p className="text-lg text-red-50 leading-relaxed">
                 We're committed to providing educational institutions with the
                 tools they need to operate efficiently, make data-driven
                 decisions, and create better learning outcomes for all students.
               </p>
             </div>
-            <div className="bg-gradient-to-br from-accent/20 to-accent/5 rounded-lg h-96 flex items-center justify-center">
+            <div className="bg-gradient-to-br from-accent/20 to-accent/5 rounded-lg h-96 flex items-center border border-purple-500 justify-center">
               <div className="text-center">
                 <GraduationCap className="h-24 w-24 text-accent mx-auto mb-4" />
                 <p className="text-lg font-semibold text-foreground">
@@ -64,10 +104,10 @@ export default function AboutPage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Our Core Values
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-gray-100 max-w-2xl mx-auto">
               These principles guide our development and shape the solutions we
               create for educational institutions.
             </p>
@@ -130,7 +170,7 @@ export default function AboutPage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-amber-50 mb-4">
               Meet Our Team
             </h2>
             <p className="text-lg text-muted-foreground">
@@ -233,5 +273,6 @@ export default function AboutPage() {
         </div>
       </section>
     </div>
+    </>
   );
 }
