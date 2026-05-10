@@ -25,6 +25,60 @@ export default function AuthForm({
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
+  const getPasswordStrength = (value) => {
+    const trimmedValue = value || "";
+    if (!trimmedValue) {
+      return {
+        label: "Weak",
+        colorClass: "bg-red-500",
+        fillCount: 0,
+        fillWidth: "0%",
+      };
+    }
+
+    let score = 0;
+    if (trimmedValue.length >= 8) score += 1;
+    if (/[A-Z]/.test(trimmedValue)) score += 1;
+    if (/[0-9]/.test(trimmedValue)) score += 1;
+    if (/[^A-Za-z0-9]/.test(trimmedValue)) score += 1;
+
+    if (score <= 1) {
+      return {
+        label: "Weak",
+        colorClass: "bg-red-500",
+        fillCount: 1,
+        fillWidth: "25%",
+      };
+    }
+
+    if (score === 2) {
+      return {
+        label: "Fair",
+        colorClass: "bg-orange-500",
+        fillCount: 2,
+        fillWidth: "50%",
+      };
+    }
+
+    if (score === 3) {
+      return {
+        label: "Strong",
+        colorClass: "bg-yellow-500",
+        fillCount: 3,
+        fillWidth: "75%",
+      };
+    }
+
+    return {
+      label: "Very Strong",
+      colorClass: "bg-green-500",
+      fillCount: 4,
+      fillWidth: "100%",
+    };
+  };
+
+  const passwordStrength = !isLogin ? getPasswordStrength(password) : null;
+
   const clearError = (field) => {
     if (errors[field]) {
       setErrors({ ...errors, [field]: "" });
@@ -195,6 +249,39 @@ export default function AuthForm({
             </div>
             {errors.password && (
               <p className="text-red-400 text-sm mt-1">{errors.password}</p>
+            )}
+            {!isLogin && passwordStrength && (
+              <div className="mt-3 space-y-2" aria-live="polite">
+                <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
+                  <span className="text-gray-300">Password strength</span>
+                  <span className="font-semibold text-gray-100">
+                    {passwordStrength.label}
+                  </span>
+                </div>
+                <div
+                  className="flex gap-2"
+                  role="meter"
+                  aria-label={`Password strength: ${passwordStrength.label}`}
+                  aria-valuemin={0}
+                  aria-valuemax={4}
+                  aria-valuenow={passwordStrength.fillCount}
+                >
+                  {[0, 1, 2, 3].map((segment) => (
+                    <div
+                      key={segment}
+                      className={`h-2 flex-1 rounded-full bg-gray-700 transition-colors duration-200 ${
+                        segment < passwordStrength.fillCount
+                          ? passwordStrength.colorClass
+                          : "bg-gray-700"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400">
+                  Uses length, uppercase letters, numbers, and special
+                  characters.
+                </p>
+              </div>
             )}
           </div>
 
