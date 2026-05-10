@@ -25,7 +25,7 @@ export default function AuthForm({
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
-  const getPasswordStrength = (value) => {
+  const getStrengthLevel = (value) => {
     const trimmedValue = value || "";
     if (!trimmedValue) {
       return {
@@ -77,7 +77,7 @@ export default function AuthForm({
     };
   };
 
-  const passwordStrength = !isLogin ? getPasswordStrength(password) : null;
+  const strengthLevel = !isLogin ? getStrengthLevel(password) : null;
 
   const clearError = (field) => {
     if (errors[field]) {
@@ -250,28 +250,28 @@ export default function AuthForm({
             {errors.password && (
               <p className="text-red-400 text-sm mt-1">{errors.password}</p>
             )}
-            {!isLogin && passwordStrength && (
+            {!isLogin && strengthLevel && (
               <div className="mt-3 space-y-2" aria-live="polite">
                 <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
-                  <span className="text-gray-300">Password strength</span>
+                  <span className="text-gray-300">Strength</span>
                   <span className="font-semibold text-gray-100">
-                    {passwordStrength.label}
+                    {strengthLevel.label}
                   </span>
                 </div>
                 <div
                   className="flex gap-2"
                   role="meter"
-                  aria-label={`Password strength: ${passwordStrength.label}`}
+                  aria-label={`Strength: ${strengthLevel.label}`}
                   aria-valuemin={0}
                   aria-valuemax={4}
-                  aria-valuenow={passwordStrength.fillCount}
+                  aria-valuenow={strengthLevel.fillCount}
                 >
                   {[0, 1, 2, 3].map((segment) => (
                     <div
                       key={segment}
                       className={`h-2 flex-1 rounded-full bg-gray-700 transition-colors duration-200 ${
-                        segment < passwordStrength.fillCount
-                          ? passwordStrength.colorClass
+                        segment < strengthLevel.fillCount
+                          ? strengthLevel.colorClass
                           : "bg-gray-700"
                       }`}
                     />
