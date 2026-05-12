@@ -252,5 +252,29 @@ Live at: **[https://learnova-web.vercel.app](https://learnova-web.vercel.app)**
 
 ## 📄 License
 
-This project is private and maintained by the Learnova team.  
-© 2024 Learnova. All rights reserved.
+This project is licensed under the **MIT License** — see [LICENSE](LICENSE) file for details.
+
+You are free to use, modify, and distribute this software commercially or personally, as long as you include the license and original copyright notice.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- How to report bugs
+- Feature request guidelines
+- Development setup instructions
+- Code style standards
+- Pull request process
+
+---
+
+## 📋 Code of Conduct
+
+Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
+
+---
+
+## 🔒 Security
+
+Found a security vulnerability? Please report it responsibly to **security@learnova.com** instead of opening a public issue. See [SECURITY.md](SECURITY.md) for details.

@@ -1,0 +1,53 @@
+name: CI - Build & Lint
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 📚 Install dependencies
+        run: npm ci
+
+      - name: 🔨 Build project
+        run: npm run build
+        env:
+          # Set dummy env vars for build (non-sensitive)
+          NEXT_PUBLIC_FIREBASE_API_KEY: dummy
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: dummy.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: dummy
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: dummy.appspot.com
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: 123456789
+          NEXT_PUBLIC_FIREBASE_APP_ID: 1:123456789:web:abcdefghijklmnop
+          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: G-DUMMY
+          MONGODB_URI: mongodb://localhost/dummy
+          MONGODB_DB: dummy
+          FIREBASE_PROJECT_ID: dummy
+          FIREBASE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC1\n-----END PRIVATE KEY-----"
+          FIREBASE_CLIENT_EMAIL: dummy@dummy.iam.gserviceaccount.com
+          BLOB_READ_WRITE_TOKEN: dummy_token
+          NEXT_PUBLIC_EMAILJS_SERVICE_ID: dummy
+          NEXT_PUBLIC_EMAILJS_TEMPLATE_ID: dummy
+          NEXT_PUBLIC_EMAILJS_USER_ID: dummy
+          NEXT_PUBLIC_GROQ_API_KEY: dummy
+
+      - name: ✅ Build successful
+        run: echo "✨ Build completed successfully!"

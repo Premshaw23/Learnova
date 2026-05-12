@@ -1,0 +1,43 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: 📚 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Check for secrets in files
+        run: |
+          if grep -r "MONGODB_URI\|firebase\|API_KEY" --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" app/ components/ 2>/dev/null | grep -v ".env"; then
+            echo "❌ Hardcoded secrets detected!"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"
+
+      - name: 🚫 Ensure .env.local not committed
+        run: |
+          if git ls-files | grep -q "\.env\.local"; then
+            echo "❌ .env.local is tracked in git!"
+            exit 1
+          fi
+          echo "✅ .env files properly ignored"
+
+      - name: 📋 Check file sizes
+        run: |
+          echo "📦 Largest files in project:"
+          find . -type f -not -path "./node_modules/*" -not -path "./.next/*" -not -path "./.git/*" | xargs du -h 2>/dev/null | sort -rh | head -10

@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import AttendanceValidation from "@/components/AttendanceValidation";
-import FaceRecognizer from "@/components/FaceRecognizer";
 import { Navbar } from "@/components/Navbar";
 import useLabels from "@/components/useLabels";
 import { useAuth } from "@/hooks/useAuth";
+
+const FaceRecognizer = dynamic(() => import("@/components/FaceRecognizer"), {
+  ssr: false,
+});
 
 const AttendancePage = () => {
   const { labels, loading: labelsLoading, error: labelsError } = useLabels();

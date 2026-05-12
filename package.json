@@ -1,7 +1,18 @@
 {
   "name": "learnova",
   "version": "1.0.0",
-  "private": true,
+  "description": "AI-Powered Smart Student Engagement & Attendance Platform",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Premshaw23/Learnova.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Premshaw23/Learnova/issues"
+  },
+  "homepage": "https://learnova-web.vercel.app",
+  "author": "Prem Shaw",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -36,7 +47,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "baseline-browser-mapping": "^2.9.15",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.8"
   }
