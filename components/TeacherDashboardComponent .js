@@ -243,9 +243,10 @@ const TeacherDashboard = () => {
       }
 
       const data = await response.json();
+      const payload = data.data ?? data;
 
       // Normalize data structure
-      const normalizedRequests = (data.exceptions || []).map((req) => ({
+      const normalizedRequests = (payload.exceptions || []).map((req) => ({
         id: req._id || req.id,
         studentName: req.studentName || req.student || "Unknown Student",
         studentId: req.studentId || req.rollNo || "",
@@ -291,9 +292,10 @@ const TeacherDashboard = () => {
         }
 
         const data = await response.json();
+        const payload = data.data ?? data;
 
         // Normalize data structure
-        const normalizedRequests = (data.exceptions || []).map((req) => ({
+        const normalizedRequests = (payload.exceptions || []).map((req) => ({
           id: req._id || req.id,
           studentName: req.studentName || req.student || "Unknown Student",
           studentId: req.studentId || req.rollNo || "",

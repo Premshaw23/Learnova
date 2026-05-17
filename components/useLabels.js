@@ -13,7 +13,10 @@ export default function useLabels() {
         const res = await fetch("/api/labels");
         if (!res.ok) throw new Error("Failed to fetch labels");
         const data = await res.json();
-        setLabels(data);
+        if (!data.success) {
+          throw new Error(data.error || "Failed to fetch labels");
+        }
+        setLabels(data.data?.labels ?? []);
       } catch (err) {
         console.error(err);
         setError(err.message);

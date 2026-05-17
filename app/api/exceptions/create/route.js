@@ -1,44 +1,40 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { jsonError, jsonSuccess } from "@/lib/api-response";
 
 export async function POST(request) {
   try {
-    // Get the authorization header
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
-    // Verify Firebase token
     const decodedToken = await verifyFirebaseToken(token);
 
     if (!decodedToken) {
-      return Response.json({ message: "Unauthorized" }, { status: 401 });
+      return jsonError("Unauthorized", 401);
     }
 
-    // Parse request body
     const body = await request.json();
-
-    // Connect to database
     const db = await connectDb();
 
     const exceptionData = {
       ...body,
       studentEmail: decodedToken.email,
-      status: "pending", // Default status
+      status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     const result = await db.collection("exceptions").insertOne(exceptionData);
 
-    return Response.json(
+    return jsonSuccess(
       {
-        message: "Exception request created successfully",
         id: result.insertedId,
+        message: "Exception request created successfully",
       },
-      { status: 201 }
+      201
     );
   } catch (error) {
     console.error("Exception creation error:", error);
-    return Response.json({ message: "Internal server error" }, { status: 500 });
+    return jsonError("Internal server error", 500);
   }
 }

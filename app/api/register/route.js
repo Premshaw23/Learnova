@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
-import { connectDb } from "@/lib/mongodb"; // your DB connection helper
+import { connectDb } from "@/lib/mongodb";
+import { jsonError, jsonSuccess } from "@/lib/api-response";
 
 export async function POST(req) {
   try {
@@ -11,13 +11,7 @@ export async function POST(req) {
     const file = formData.get("photo");
 
     if (!name || !rollNo || !email || !file) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Name, rollNo, email, and photo are required",
-        },
-        { status: 400 }
-      );
+      return jsonError("Name, rollNo, email, and photo are required", 400);
     }
 
     // Get DB
@@ -27,10 +21,7 @@ export async function POST(req) {
     // Check if user already registered
     const existingUser = await users.findOne({ rollNo });
     if (existingUser) {
-      return NextResponse.json(
-        { success: false, error: "User already registered with a photo" },
-        { status: 409 } // conflict
-      );
+      return jsonError("User already registered with a photo", 409);
     }
 
     // Convert file to buffer
@@ -56,16 +47,12 @@ export async function POST(req) {
     };
     await users.insertOne(user);
 
-    return NextResponse.json({
-      success: true,
+    return jsonSuccess({
       message: "User registered successfully",
-      userData: user,
+      user,
     });
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return jsonError(error.message || "Registration failed", 500);
   }
 }

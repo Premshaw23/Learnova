@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { Navbar } from "@/components/Navbar";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, Home } from "lucide-react";
+import { Home } from "lucide-react";
 import DarkVeil from "@/components/ui-block/DarkVeil";
+import { Navbar } from "@/components/Navbar";
 
 const PARTICLES_DATA = [
   { id: 1, left: 16, top: 22, delay: 0, duration: 10 },
@@ -37,9 +39,7 @@ export default function NotFound() {
       }
     };
 
-    window.addEventListener("mousemove", throttledMouseMove, {
-      passive: true,
-    });
+    window.addEventListener("mousemove", throttledMouseMove, { passive: true });
 
     return () => {
       window.removeEventListener("mousemove", throttledMouseMove);
@@ -58,14 +58,13 @@ export default function NotFound() {
 
   return (
     <>
+      <Navbar />
       <div className="fixed inset-0 -z-10">
         <DarkVeil />
-
         <div
           className="absolute h-96 w-96 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 blur-3xl"
           style={mouseOrbStyle}
         />
-
         <div className="absolute inset-0 overflow-hidden">
           {PARTICLES_DATA.map((particle) => (
             <div
@@ -105,19 +104,10 @@ export default function NotFound() {
 
       <style jsx>{`
         @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0px) rotate(0deg);
-            opacity: 0.3;
-          }
-          50% {
-            transform: translateY(-15px) rotate(90deg);
-            opacity: 0.8;
-          }
+          0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.3; }
+          50% { transform: translateY(-15px) rotate(90deg); opacity: 0.8; }
         }
-        .animate-float {
-          animation: float ease-in-out infinite;
-        }
+        .animate-float { animation: float ease-in-out infinite; }
       `}</style>
     </>
   );

@@ -94,6 +94,11 @@ export function Navbar() {
     };
   }, [isMenuOpen]);
 
+  useEffect(() => {
+    setIsMenuOpen(false);
+    setIsDropdownOpen(false);
+  }, [pathname]);
+
  
   const handleLogout = async () => {
   setIsDropdownOpen(false);
@@ -224,7 +229,7 @@ export function Navbar() {
             </Link>
 
             {/* Enhanced Desktop Navigation - FIXED: Removed inline animation styles */}
-            <div className="hidden lg:flex items-center space-x-1">
+            <div className="hidden md:flex items-center space-x-1">
               {navigationItems.map((item, index) => {
                 const isActive = pathname === item.href;
                 return (
@@ -411,7 +416,7 @@ export function Navbar() {
             </div>
 
             {/* Enhanced Mobile menu button with User Logo - FIXED: Changed breakpoint to sm:hidden */}
-            <div className="sm:hidden flex items-center space-x-3">
+            <div className="md:hidden flex items-center space-x-3">
               {isAuthenticated && (
                 <div className="relative">
                   <div className="w-9 h-9 relative">
@@ -462,12 +467,12 @@ export function Navbar() {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-49 lg:hidden animate-fadeIn"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-49 md:hidden animate-fadeIn"
             onClick={() => setIsMenuOpen(false)}
           />
 
           {/* Right Side Panel */}
-          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-gradient-to-br from-black/95 via-gray-900/95 to-black/95 backdrop-blur-2xl border-l border-white/20 z-52 lg:hidden shadow-2xl flex flex-col animate-slideInRight">
+          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-gradient-to-br from-black/95 via-gray-900/95 to-black/95 backdrop-blur-2xl border-l border-white/20 z-52 md:hidden shadow-2xl flex flex-col animate-slideInRight">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-white/10 flex-shrink-0">
               <div className="flex items-center space-x-3">

@@ -8,8 +8,15 @@ import {
   sendEmailVerification,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { createUserProfile, getErrorMessage } from "@/utils/authUtils";
+import {
+  createUserProfile,
+  getErrorMessage,
+  validatePasswordStrength,
+} from "@/utils/authUtils";
 import { ROLE_CONFIG } from "@/constants/userRoles";
+
+const FIREBASE_CONFIG_ERROR =
+  "Firebase is not configured. Please add your Firebase environment variables to .env.local and restart the development server.";
 
 /**
  * Authenticates a user using email and password credentials.
@@ -20,6 +27,10 @@ import { ROLE_CONFIG } from "@/constants/userRoles";
  */
 export const loginWithEmail = async (email, password, selectedRole) => {
   try {
+    if (!auth || !db) {
+      return { success: false, error: FIREBASE_CONFIG_ERROR };
+    }
+
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email.trim(),
@@ -87,6 +98,15 @@ export const signupWithEmail = async (
   additionalData
 ) => {
   try {
+    if (!auth || !db) {
+      return { success: false, error: FIREBASE_CONFIG_ERROR };
+    }
+
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return { success: false, error: passwordError };
+    }
+
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email.trim(),
@@ -128,6 +148,10 @@ export const loginWithGoogle = async (
   additionalData = {}
 ) => {
   try {
+    if (!auth || !db) {
+      return { success: false, error: FIREBASE_CONFIG_ERROR };
+    }
+
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
@@ -207,6 +231,10 @@ export const loginWithGoogle = async (
  */
 export const resetPassword = async (email) => {
   try {
+    if (!auth) {
+      return { success: false, error: FIREBASE_CONFIG_ERROR };
+    }
+
     await sendPasswordResetEmail(auth, email);
     return { success: true };
   } catch (err) {

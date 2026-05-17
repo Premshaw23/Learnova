@@ -53,7 +53,7 @@ export default function RegisterPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         // ✅ Check for HTTP success status first
-        setRegisteredUser(data.userData);
+        setRegisteredUser(data.data?.user ?? null);
         setName("");
         setRollNo("");
         setEmail(user?.email || ""); // ✅ Reset email to auth user's email

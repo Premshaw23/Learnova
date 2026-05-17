@@ -1,4 +1,5 @@
 import { connectDb } from "@/lib/mongodb";
+import { jsonError, jsonSuccess } from "@/lib/api-response";
 
 export async function POST(req) {
   try {
@@ -15,15 +16,9 @@ export async function POST(req) {
 
     await collection.insertOne(newConversation);
 
-    return new Response(
-      JSON.stringify({ success: true, data: newConversation }),
-      { status: 200 }
-    );
+    return jsonSuccess(newConversation);
   } catch (err) {
-    console.error("❌ Save Message Error:", err);
-    return new Response(
-      JSON.stringify({ success: false, error: err.message }),
-      { status: 500 }
-    );
+    console.error("Save Message Error:", err);
+    return jsonError(err.message || "Failed to save conversation", 500);
   }
 }

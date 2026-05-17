@@ -258,6 +258,21 @@ You are free to use, modify, and distribute this software commercially or person
 
 ---
 
+## 👥 Contributors
+
+Thank you to everyone who helps improve Learnova. Core contributors (see also the home page grid):
+
+| | Name | GitHub |
+|---|------|--------|
+| ![Premshaw23](https://github.com/Premshaw23.png?size=40) | Prem Shaw | [@Premshaw23](https://github.com/Premshaw23) |
+| ![prashantbhati](https://github.com/prashantbhati.png?size=40) | Prashant Bhati | [@prashantbhati](https://github.com/prashantbhati) |
+| ![polawarpranav](https://github.com/polawarpranav.png?size=40) | Polawar Pranav Shirish | [@polawarpranav](https://github.com/polawarpranav) |
+| ![abirghosh](https://github.com/abirghosh.png?size=40) | Abir Ghosh | [@abirghosh](https://github.com/abirghosh) |
+| ![anujramshrivastava](https://github.com/anujramshrivastava.png?size=40) | Anuj Ram Shrivastava | [@anujramshrivastava](https://github.com/anujramshrivastava) |
+| ![chandana-s](https://github.com/chandana-s.png?size=40) | Chandana S | [@chandana-s](https://github.com/chandana-s) |
+
+---
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
