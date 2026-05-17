@@ -1,12 +1,20 @@
-// app/admin/dashboard/page.jsx
 "use client";
-import SuperAdminDashboard from "@/components/AdminDashboard";
+
+import dynamic from "next/dynamic";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import RouteLoading from "@/components/RouteLoading";
+
+const SuperAdminDashboard = dynamic(
+  () => import("@/components/AdminDashboard"),
+  {
+    loading: () => <RouteLoading />,
+  }
+);
 
 export default function AdminDashboard() {
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
-      <SuperAdminDashboard/>
+      <SuperAdminDashboard />
     </ProtectedRoute>
   );
 }

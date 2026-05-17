@@ -1,9 +1,8 @@
 "use client";
 import { Navbar } from "@/components/Navbar";
 import { useMemo, useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import SplitText from "@/components/ui-block/SplitText";
-import DarkVeil from "@/components/ui-block/DarkVeil";
 import {
   Card,
   CardContent,
@@ -28,7 +27,23 @@ import {
 import Link from "next/link";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
-import LearnovaChatbot from "@/components/ChatBot";
+
+const DarkVeil = dynamic(() => import("@/components/ui-block/DarkVeil"), {
+  ssr: false,
+});
+
+const SplitText = dynamic(() => import("@/components/ui-block/SplitText"), {
+  ssr: false,
+  loading: () => (
+    <span className="text-4xl sm:text-5xl md:text-7xl font-bold text-white opacity-60">
+      …
+    </span>
+  ),
+});
+
+const LearnovaChatbot = dynamic(() => import("@/components/ChatBot"), {
+  ssr: false,
+});
 
 // Constants moved outside component for better performance
 const PARTICLES_DATA = [
@@ -664,6 +679,8 @@ export default function AboutPage() {
           </Reveal>
         </section>
       </div>
+
+      <LearnovaChatbot />
 
       <style jsx>{`
         @keyframes float {
