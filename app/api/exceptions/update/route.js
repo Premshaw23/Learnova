@@ -1,7 +1,7 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { ObjectId } from "mongodb";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { jsonError, jsonSuccess, jsonUnauthorized } from "@/lib/api-response";
 
 export async function PUT(request) {
   try {
@@ -11,7 +11,7 @@ export async function PUT(request) {
     const decodedToken = await verifyFirebaseToken(token);
 
     if (!decodedToken) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonUnauthorized();
     }
 
     const body = await request.json();
@@ -37,20 +37,14 @@ export async function PUT(request) {
     );
 
     if (result.matchedCount === 0) {
-      return Response.json({ error: "Exception not found" }, { status: 404 });
+      return jsonError("Exception not found", 404);
     }
 
-    return Response.json(
-      {
-        success: true,
-        data: {
-          message: "Exception updated successfully",
-        },
-      },
-      { status: 200 },
-    );
+    return jsonSuccess({
+      message: "Exception updated successfully",
+    });
   } catch (error) {
     console.error("Exception update error:", error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    return jsonError("Internal server error", 500);
   }
 }

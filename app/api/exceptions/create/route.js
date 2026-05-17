@@ -1,6 +1,6 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { jsonError, jsonSuccess, jsonUnauthorized } from "@/lib/api-response";
 
 export async function POST(request) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request) {
     const decodedToken = await verifyFirebaseToken(token);
 
     if (!decodedToken) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonUnauthorized();
     }
 
     const body = await request.json();
@@ -28,16 +28,13 @@ export async function POST(request) {
 
     return jsonSuccess(
       {
-        success: true,
-        data: {
-          id: result.insertedId,
-          message: "Exception request created successfully",
-        },
+        id: result.insertedId,
+        message: "Exception request created successfully",
       },
-      { status: 201 },
+      201,
     );
   } catch (error) {
     console.error("Exception creation error:", error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    return jsonError("Internal server error", 500);
   }
 }

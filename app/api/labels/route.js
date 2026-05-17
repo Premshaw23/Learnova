@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
+import { jsonError, jsonSuccess } from "@/lib/api-response";
 
 export async function GET() {
   try {
@@ -10,20 +10,9 @@ export async function GET() {
       .find({}, { projection: { _id: 0 } })
       .toArray();
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: allUsers,
-      },
-      { status: 200 },
-    );
+    return jsonSuccess(allUsers);
   } catch (err) {
-    console.error("❌ Error fetching labels:", err);
-    return NextResponse.json(
-      {
-        error: "Failed to fetch labels",
-      },
-      { status: 500 },
-    );
+    console.error("Error fetching labels:", err);
+    return jsonError("Failed to fetch labels", 500);
   }
 }
