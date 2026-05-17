@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: https://learnova-web.vercel.appsitemap.xml
+
+Sitemap: https://learnova-web.vercel.app/sitemap.xml
