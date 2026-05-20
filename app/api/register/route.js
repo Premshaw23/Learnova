@@ -2,6 +2,11 @@ import { put } from "@vercel/blob";
 import { randomUUID } from "crypto";
 import { connectDb } from "@/lib/mongodb";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
+
+export const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_ATTEMPTS = 5;
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -40,6 +45,34 @@ export async function POST(req) {
 
     if (!EMAIL_PATTERN.test(email)) {
       return jsonError("Invalid email address", 400);
+    }
+
+    // Rate Limiting Check
+    const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+    const now = Date.now();
+    if (!rateLimitMap.has(ip)) {
+      rateLimitMap.set(ip, []);
+    }
+    const attempts = rateLimitMap.get(ip).filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW);
+    attempts.push(now);
+    rateLimitMap.set(ip, attempts);
+
+    if (attempts.length > MAX_ATTEMPTS) {
+      console.warn(`[Rate Limit] Registration rate limit exceeded for IP: ${ip} at ${new Date(now).toISOString()}`);
+      return jsonError("Too many registration attempts. Please try again later.", 429);
+    }
+
+    // Token Authentication & Authorization Check
+    const authorization = req.headers.get("authorization");
+    const token = authorization?.split(" ")[1];
+    const decodedToken = await verifyFirebaseToken(token);
+
+    if (!decodedToken) {
+      return jsonError("Unauthorized", 401);
+    }
+
+    if (decodedToken.email !== email) {
+      return jsonError("Forbidden: You can only register using your authenticated email.", 403);
     }
 
     // Get DB
