@@ -1,33 +1,10 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { withSecurity } from "@/lib/security/middleware";
+import { groqSchema } from "@/lib/security/validation-schemas";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MAX_MESSAGE_LENGTH = 2000;
-
-// Rate limiting setup
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10; // max 10 requests per minute
-const rateLimitMap = new Map();
-
-const isRateLimited = (userId) => {
-  const now = Date.now();
-  if (!rateLimitMap.has(userId)) {
-    rateLimitMap.set(userId, [now]);
-    return false;
-  }
-
-  const timestamps = rateLimitMap.get(userId);
-  const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
-
-  if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
-    rateLimitMap.set(userId, validTimestamps);
-    return true;
-  }
-
-  validTimestamps.push(now);
-  rateLimitMap.set(userId, validTimestamps);
-  return false;
-};
 
 export async function POST(request) {
   try {
@@ -40,17 +17,19 @@ export async function POST(request) {
       return jsonError("Unauthorized", 401);
     }
 
-    // Rate limiting per authenticated user
-    if (isRateLimited(decodedToken.uid)) {
-      return jsonError("Too many requests. Please try again later.", 429);
-    }
+    // Apply rate limiting and validation
+    const securityResult = await withSecurity(request, {
+      rateLimitType: 'strict',
+      schema: groqSchema
+    });
+    if (securityResult instanceof Response) return securityResult;
 
     // Usage logging with user ID for audit/quota tracking
     console.log(`[nova-ai-quota-tracker] Paid Groq API request by User UID: ${decodedToken.uid} (${decodedToken.email}) at ${new Date().toISOString()}`);
 
-    const { message, userMessage } = await request.json();
-    const rawMessage = typeof message === "string" ? message : userMessage;
-    const trimmedMessage = rawMessage?.trim();
+    const { data: validatedData } = securityResult;
+    const { message } = validatedData;
+    const trimmedMessage = message?.trim();
 
     if (!trimmedMessage) {
       return jsonError("Message is required", 400);

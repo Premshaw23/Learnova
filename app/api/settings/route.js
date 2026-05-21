@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
+import { withSecurity } from "@/lib/security/middleware";
+import { settingsSchema } from "@/lib/security/validation-schemas";
+import { sanitizeString } from "@/lib/security/sanitizer";
 
 export async function PATCH(request) {
   try {
+    // Apply security middleware
+    const securityResult = await withSecurity(request, {
+      rateLimitType: 'default',
+      requireCSRF: true,
+      schema: settingsSchema
+    });
+    if (securityResult instanceof Response) return securityResult;
+
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
@@ -16,8 +27,18 @@ export async function PATCH(request) {
       );
     }
 
-    const body = await request.json();
-    const { userId: bodyUserId, ...settings } = body;
+    const { data } = securityResult || { data: await request.json() };
+    const { userId: bodyUserId, ...settings } = data;
+
+    // Sanitize settings values
+    const sanitizedSettings = {};
+    for (const [key, value] of Object.entries(settings)) {
+      if (typeof value === 'string') {
+        sanitizedSettings[key] = sanitizeString(value);
+      } else {
+        sanitizedSettings[key] = value;
+      }
+    }anitizedS
     
     let targetUserId = decodedToken.uid;
     let isOperatorAdmin = false;

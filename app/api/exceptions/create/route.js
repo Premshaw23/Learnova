@@ -1,6 +1,8 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { withSecurity } from "@/lib/security/middleware";
+import { exceptionCreateSchema } from "@/lib/security/validation-schemas";
 
 export async function POST(request) {
   try {
@@ -13,25 +15,22 @@ export async function POST(request) {
       return jsonError("Unauthorized", 401);
     }
 
-    const body = await request.json();
-    const { reason, details, date } = body;
+    const securityResult = await withSecurity(request, {
+      rateLimitType: 'default',
+      requireCSRF: true,
+      schema: exceptionCreateSchema
+    });
+    if (securityResult instanceof Response) return securityResult;
 
-    if (!reason || typeof reason !== "string" || reason.trim() === "") {
-      return jsonError("Reason is required and must be a string", 400);
-    }
-    if (!details || typeof details !== "string" || details.trim() === "") {
-      return jsonError("Details are required and must be a string", 400);
-    }
-    if (!date || typeof date !== "string" || date.trim() === "") {
-      return jsonError("Date is required and must be a string", 400);
-    }
+    const { data } = securityResult;
+    const { reason, details, date } = data;
 
     const db = await connectDb();
 
     const exceptionData = {
-      reason: reason.trim(),
-      details: details.trim(),
-      date: date.trim(),
+      reason,
+      details,
+      date,
       studentEmail: decodedToken.email,
       status: "pending",
       createdAt: new Date(),

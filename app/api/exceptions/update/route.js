@@ -2,6 +2,8 @@ import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 import { ObjectId } from "mongodb";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { withSecurity } from "@/lib/security/middleware";
+import { sanitizeString } from "@/lib/security/sanitizer";
 
 export async function PUT(request) {
   try {
@@ -26,6 +28,13 @@ export async function PUT(request) {
       return jsonError("Forbidden", 403);
     }
 
+    // Apply rate limiting and CSRF
+    const securityResult = await withSecurity(request, {
+      rateLimitType: 'default',
+      requireCSRF: true
+    });
+    if (securityResult instanceof Response) return securityResult;
+
     const body = await request.json();
     const { exceptionId, status, comments } = body;
 
@@ -35,12 +44,14 @@ export async function PUT(request) {
 
     const db = await connectDb();
 
+    const sanitizedComments = comments ? sanitizeString(comments) : null;
+
     const result = await db.collection("exceptions").updateOne(
       { _id: new ObjectId(exceptionId) },
       {
         $set: {
           status,
-          comments,
+          comments: sanitizedComments,
           reviewedBy: decodedToken.email,
           reviewedAt: new Date(),
           updatedAt: new Date(),

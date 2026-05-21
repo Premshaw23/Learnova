@@ -1,9 +1,14 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { withSecurity } from "@/lib/security/middleware";
 
 export async function GET(request) {
   try {
+    // Apply rate limiting
+    const securityResult = await withSecurity(request, { rateLimitType: 'default' });
+    if (securityResult instanceof Response) return securityResult;
+
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
