@@ -33,8 +33,11 @@ import {
   Smartphone,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 const LearnovaChatbot = () => {
+  const { user } = useAuthContext();
+  const hasApiKey = !!user;
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -276,30 +279,34 @@ const LearnovaChatbot = () => {
     }
 
     // AI integration via server-side Groq route
-    try {
-      const response = await fetch("/api/groq", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: userMessage }),
-      });
+    if (user) {
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch("/api/groq", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ message: userMessage }),
+        });
 
-      const payload = await response.json().catch((error) => {
-        console.error("Error:", error);
-        return { error: "Something went wrong" };
-      });
-      if (response.ok) {
-        const content = payload?.data?.message;
-        if (content) {
-          return content;
+        const payload = await response.json().catch((error) => {
+          console.error("Error:", error);
+          return { error: "Something went wrong" };
+        });
+        if (response.ok) {
+          const content = payload?.data?.message;
+          if (content) {
+            return content;
+          }
+        } else {
+          console.warn("Groq API route error:", payload);
         }
-      } else {
-        console.warn("Groq API route error:", payload);
+      } catch (err) {
+        console.error("Groq API route error:", err);
+        // Fall through to built-in responses
       }
-    } catch (err) {
-      console.error("Groq API route error:", err);
-      // Fall through to built-in responses
     }
 
     // Enhanced fallback responses
@@ -368,11 +375,14 @@ const LearnovaChatbot = () => {
 
   // Add this function in your component
   const saveToMongoDB = async (userMessage, botMessage) => {
+    if (!user) return;
     try {
+      const token = await user.getIdToken();
       const response = await fetch("/api/conversations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           userMessage: userMessage.text,
