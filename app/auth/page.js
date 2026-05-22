@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 // Components
 import { Navbar } from "@/components/Navbar";
@@ -24,19 +24,8 @@ import { validateForm, redirectBasedOnRole } from "@/utils/authUtils";
 import { USER_ROLES } from "@/constants/userRoles";
 
 export default function AuthPage() {
-  return (
-    <Suspense fallback={null}>
-      <AuthPageContent />
-    </Suspense>
-  );
-}
-
-function AuthPageContent() {
-  const searchParams = useSearchParams();
-  const mode = searchParams.get("mode");
-
-  const [showRoleSelection, setShowRoleSelection] = useState(true);
-  const [isLogin, setIsLogin] = useState(mode !== "signup");
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState("");
 
   // Form state
@@ -52,11 +41,6 @@ function AuthPageContent() {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
 
   const router = useRouter();
-
-  // Sync isLogin state when the URL query parameter changes
-  useEffect(() => {
-    setIsLogin(mode !== "signup");
-  }, [mode]);
 
   useEffect(() => {
     if (analytics) {
@@ -104,7 +88,7 @@ function AuthPageContent() {
 
     const { isValid, errors: validationErrors } = validateForm(
       formData,
-      isLogin,
+      isLogin
     );
 
     if (!isValid) {
@@ -122,8 +106,8 @@ function AuthPageContent() {
         result = await loginWithEmail(email, password, selectedRole);
       } else {
         result = await signupWithEmail(email, password, selectedRole, {
-          fullName,
-          instituteName,
+            fullName,
+            instituteName,
         });
       }
 
@@ -136,18 +120,15 @@ function AuthPageContent() {
         setShowRoleSelection(true);
         router.push("/profile");
       } else if (result.success) {
-        toast.success(
-          isLogin ? "Successfully logged in!" : "Account created successfully!",
-        );
+        toast.success(isLogin ? "Successfully logged in!" : "Account created successfully!");
         setShowRoleSelection(true);
         redirectBasedOnRole(result.userData.role, router);
       } else {
         toast.error(result.error || "Authentication failed. Please try again.");
-        setErrors({
-          submit: result.error || "Something went wrong. Please try again.",
-        });
+        setErrors({ submit: result.error || "Something went wrong. Please try again." });
       }
     } catch (err) {
+      console.error("Auth error:", err);
       toast.error("An unexpected error occurred. Please try again.");
       setErrors({ submit: "An unexpected error occurred. Please try again." });
     } finally {
@@ -156,10 +137,7 @@ function AuthPageContent() {
   };
 
   const handleGoogleLogin = async () => {
-    console.log("🔴 Google button clicked. Selected role:", selectedRole);
-
     if (!selectedRole) {
-      console.warn("⚠️ Google login attempted without role selection");
       setErrors({ role: "Please select your role first" });
       return;
     }
@@ -170,7 +148,6 @@ function AuthPageContent() {
       selectedRole === USER_ROLES.INSTITUTE &&
       !instituteName.trim()
     ) {
-      console.warn("⚠️ Google signup attempted for institute without name");
       setErrors({ instituteName: "Institute name is required" });
       return;
     }
@@ -179,23 +156,20 @@ function AuthPageContent() {
     setErrors({});
 
     try {
-      console.log("🟡 Calling loginWithGoogle service...");
       const result = await loginWithGoogle(selectedRole, isLogin, {
         fullName,
         instituteName,
       });
-      console.log("🟢 Google auth result:", result);
 
       if (result.success) {
-        console.log("✅ Google login successful, redirecting...");
         toast.success("Successfully logged in with Google!");
         redirectBasedOnRole(result.userData.role, router);
       } else {
-        console.error("❌ Google login failed:", result.error);
         toast.error(result.error || "Google authentication failed.");
         setErrors({ submit: result.error });
       }
     } catch (err) {
+      console.error("Google auth error:", err);
       toast.error("An unexpected error occurred. Please try again.");
       setErrors({ submit: "An unexpected error occurred. Please try again." });
     } finally {
@@ -221,15 +195,14 @@ function AuthPageContent() {
       const result = await resetPassword(emailToReset);
 
       if (result.success) {
-        toast.success(
-          "Password reset email sent! Check your inbox and spam folder.",
-        );
+        toast.success("Password reset email sent! Check your inbox and spam folder.");
         setShowForgotPassword(false);
         setForgotPasswordEmail("");
       } else {
         setErrors({ forgotEmail: result.error });
       }
     } catch (err) {
+      console.error("Password reset error:", err);
       setErrors({
         forgotEmail: "Failed to send reset email. Please try again.",
       });
@@ -245,11 +218,11 @@ function AuthPageContent() {
   };
 
   return (
-    <div className="min-h-screen pt-10 bg-background">
+    <div className="min-h-screen pt-24 lg:pt-32 bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       <Navbar />
 
       <div className="relative overflow-hidden">
-        <div className=" absolute inset-0 bg-gradient-to-r from-indigo-600/10 to-purple-600/10"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20"></div>
         <div className="relative min-h-[98vh] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
           {/* Role Selection Screen */}
           {showRoleSelection ? (

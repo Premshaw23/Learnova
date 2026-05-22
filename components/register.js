@@ -23,7 +23,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [photo, setPhoto] = useState(null);
   const [registeredUser, setRegisteredUser] = useState(null);
-  const [registeredUserImageUrl, setRegisteredUserImageUrl] = useState(null);
   const [error, setError] = useState(null);
   const [emailSuggestion, setEmailSuggestion] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,36 +32,7 @@ export default function RegisterPage() {
     if (user?.email) {
       setEmail(user.email);
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (!registeredUser?._id) return;
-
-    let cancelled = false;
-
-    const loadImage = async () => {
-      try {
-        const token = await user?.getIdToken();
-        const res = await fetch(`/api/images?id=${registeredUser._id}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-
-        if (!res.ok || cancelled) return;
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        if (!cancelled) setRegisteredUserImageUrl(url);
-      } catch {
-        // silently fail
-      }
-    };
-
-    loadImage();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [registeredUser]);
+  }, [user]); // Depend on 'user' to run when the auth state changes
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -193,12 +163,11 @@ setEmailSuggestion(null);
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <label htmlFor="fullName" className="flex items-center gap-2 text-slate-200 font-medium">
+                  <label className="flex items-center gap-2 text-slate-200 font-medium">
                     <User className="w-4 h-4 text-purple-400" />
                     Full Name
                   </label>
                   <input
-                    id="fullName"
                     type="text"
                     placeholder="Enter your full name"
                     value={name}
@@ -209,12 +178,11 @@ setEmailSuggestion(null);
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="rollNumber" className="flex items-center gap-2 text-slate-200 font-medium">
+                  <label className="flex items-center gap-2 text-slate-200 font-medium">
                     <Hash className="w-4 h-4 text-blue-400" />
                     Roll Number
                   </label>
                   <input
-                    id="rollNumber"
                     type="text"
                     placeholder="Enter your roll number"
                     value={rollNo}
@@ -226,12 +194,11 @@ setEmailSuggestion(null);
 
                 {/* Email (auto from auth, read-only) */}
                 <div className="space-y-2">
-                  <label htmlFor="emailAddress" className="flex items-center gap-2 text-slate-200 font-medium">
+                  <label className="flex items-center gap-2 text-slate-200 font-medium">
                     <Mail className="w-4 h-4 text-pink-400" />
                     Email Address
                   </label>
                   <input
-                    id="emailAddress"
                     type="email"
                     value={email}
                     readOnly // ✅ user cannot change
@@ -240,13 +207,12 @@ setEmailSuggestion(null);
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="profilePhoto" className="flex items-center gap-2 text-slate-200 font-medium">
+                  <label className="flex items-center gap-2 text-slate-200 font-medium">
                     <Upload className="w-4 h-4 text-green-400" />
                     Profile Photo
                   </label>
                   <div className="relative">
                     <input
-                      id="profilePhoto"
                       type="file"
                       accept="image/*"
                       onChange={(e) => setPhoto(e.target.files?.[0] || null)}
@@ -329,11 +295,14 @@ setEmailSuggestion(null);
                       </div>
                     </div>
 
-                    {registeredUser._id && registeredUserImageUrl && (
+                    {registeredUser.image && (
                       <div className="mt-6">
-                        <img
-                          src={registeredUserImageUrl}
+                        <NextImage
+                          src={registeredUser.image}
                           alt={`${registeredUser.name}'s photo`}
+                          width={400}
+                          height={400}
+                          unoptimized
                           className="w-full h-auto rounded-xl shadow-lg border border-white/10"
                         />
                       </div>

@@ -22,7 +22,7 @@ function getTodayKey() {
  * @returns {Promise<boolean>} True if the user has checked in today, false otherwise.
  * @example
  * const alreadyIn = await hasCheckedInToday('user_abc123');
- * if (alreadyIn) return true;
+ * if (alreadyIn) console.log('Already checked in today');
  */
 export async function hasCheckedInToday(userId) {
   if (!userId || !db) {
@@ -85,7 +85,7 @@ export async function recordAttendance({
     confidenceScore: confidenceScore ?? 0,
   });
 
-  const newRate = await recalculateAttendanceRate(userId);
+  await recalculateAttendanceRate(userId);
 
-  return { alreadyRecorded: false, newRate };
+  return { alreadyRecorded: false };
 }

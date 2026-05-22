@@ -1,5 +1,4 @@
 import React from "react";
-import SkeletonCard from "./SkeletonCard";
 
 /**
  * DashboardSkeleton
@@ -100,7 +99,14 @@ const DashboardSkeleton = () => {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   {[1, 2, 3, 4].map((i) => (
-                    <SkeletonCard key={i} variant="stat" />
+                    <div
+                      key={i}
+                      className={`rounded-xl p-4 border border-gray-700/30 bg-gray-800/40 ${shimmer}`}
+                    >
+                      <div className="h-7 w-12 rounded bg-gray-700/60 mb-2" />
+
+                      <div className="h-3 w-16 rounded bg-gray-700/40" />
+                    </div>
                   ))}
                 </div>
 
@@ -165,7 +171,10 @@ const DashboardSkeleton = () => {
 
                   <div className="space-y-3">
                     {[1, 2, 3].map((j) => (
-                      <SkeletonCard key={j} variant="list-item" />
+                      <div
+                        key={j}
+                        className={`h-16 rounded-xl bg-gray-800/50 border border-gray-700/50 ${shimmer}`}
+                      />
                     ))}
                   </div>
                 </div>

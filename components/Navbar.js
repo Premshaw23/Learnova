@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useTheme } from "next-themes";
 import {
   Menu,
   X,
@@ -20,9 +19,6 @@ import {
   Mail,
   Bell,
   UserCheck,
-  Sun,
-  Moon,
-  Keyboard,
 } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import Image from "next/image";
@@ -34,22 +30,23 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  
-const [notifications, setNotifications] = useState([]);
+  const {
+  notifications,
+  removeNotification,
+  markAsRead,
+  markAllAsRead,
+  addNotification,
+  } = useNotifications();
 
-const [unreadCount, setUnreadCount] = useState(0);
+  const unreadCount = notifications.filter(
+  (n) => !n.read
+  ).length;
 
   const { user, userProfile, signOut, isAuthenticated } =
     useAuthContext();
 
   const dropdownRef = useRef(null);
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-useEffect(() => {
-  setMounted(true);
-}, []);
 
   const scrollProgressValue = Number.isFinite(scrollProgress)
     ? scrollProgress
@@ -251,7 +248,6 @@ useEffect(() => {
   );
 
   const handleImageError = (e) => {
-
     const img = e.target;
 
     const fallback =
@@ -277,17 +273,19 @@ useEffect(() => {
       <nav
         className="fixed w-full top-0 left-0 right-0 z-[70] transition-all duration-300 ease-out"
         style={{
-         backgroundColor:
-         !mounted ? "rgba(255, 255, 255, 0.95)" : theme === "dark"
-         ? `rgba(0,0,0,${0.82 + scrollProgressValue * 0.12})`
-          : `rgba(255,255,255,${0.98})`,
-         backdropFilter: `blur(20px)`,
-         WebkitBackdropFilter: `blur(20px)`,
-        borderBottom:
-        !mounted ? "1px solid rgba(0, 0, 0, 0.08)" : theme === "dark"
-      ? `1px solid rgba(255,255,255,0.1)`
-      : `1px solid rgba(0,0,0,0.08)`,
-}}
+          backgroundColor: `rgba(0,0,0,${
+            scrollProgressValue * 0.4
+          })`,
+          backdropFilter: `blur(${
+            scrollProgressValue * 24
+          }px)`,
+          WebkitBackdropFilter: `blur(${
+            scrollProgressValue * 24
+          }px)`,
+          borderBottom: `1px solid rgba(255,255,255,${
+            scrollProgressValue * 0.1
+          })`,
+        }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="flex justify-between items-center h-16">
@@ -302,18 +300,18 @@ useEffect(() => {
               </div>
 
               <div>
-                <span className="text-xl font-bold text-gray-950 dark:text-white">
+                <span className="text-xl font-bold text-white">
                   Learnova
                 </span>
 
-                <p className="text-xs text-gray-600 dark:text-gray-300 uppercase">
+                <p className="text-xs text-white/50 uppercase">
                   Premium
                 </p>
               </div>
             </Link>
 
             {/* Desktop Nav */}
-            <div className="hidden sm:flex items-center space-x-2">
+            <div className="hidden md:flex items-center space-x-2">
         
               {navigationItems.map((item) => {
                 const isActive =
@@ -325,31 +323,19 @@ useEffect(() => {
                     href={item.href}
                     className={`px-4 py-2 rounded-lg transition-all duration-300 ${
                       isActive
-                        ? "bg-accent/20 text-gray-950 dark:text-white"
-                        : "text-gray-700 dark:text-gray-200 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10"
+                        ? "bg-accent/20 text-white"
+                        : "text-white/80 hover:text-white hover:bg-white/5"
                     }`}
                   >
                     {item.label}
                   </Link>
                 );
               })}
-              {/* Theme Toggle - visible to all users */}
-              {mounted && (
-                <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
-                >
-                  {theme === "dark" ? (
-                    <Sun className="h-5 w-5" />
-                  ) : (
-                    <Moon className="h-5 w-5" />
-                  )}
-                </button>
-              )}
+
               { isAuthenticated ? (
-                <div className="flex items-center space-x-2 sm:space-x-4 ml-2 sm:ml-6">
+                <div className="flex items-center space-x-2 md:space-x-4 ml-2 md:ml-6">
                 
-                  <Button asChild className="hidden sm:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
+                  <Button asChild className="hidden md:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
                     <Link href="/attendance">
                       <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <span className="relative flex items-center">
@@ -377,7 +363,9 @@ useEffect(() => {
                           !isNotificationOpen
                         )
                       }
-                      className="relative p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
+                      aria-label="Open notifications"
+                      aria-expanded={isNotificationOpen}
+                      className="relative p-2 rounded-xl text-white hover:bg-white/5"
                     >
                       <Bell className="h-5 w-5" />
 
@@ -389,9 +377,9 @@ useEffect(() => {
                     </button>
 
                     {isNotificationOpen && (
-                      <div className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl z-[52] overflow-hidden">
-                        <div className="p-4 border-b border-border flex justify-between items-center">
-                          <h3 className="text-foreground font-semibold">
+                      <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-[52] overflow-hidden">
+                        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                          <h3 className="text-white font-semibold">
                             Notifications
                           </h3>
 
@@ -407,34 +395,30 @@ useEffect(() => {
                             </button>
                           )}
                         </div>
-<div className="max-h-72 overflow-y-auto">
-  {notifications.length === 0 ? (
-    <div className="p-6 text-center">
-      <Bell className="h-10 w-10 mx-auto text-white/30 mb-3" />
-      <p className="text-white/50 text-sm">
-        No notifications available
-      </p>
-    </div>
-  ) : (
-    notifications.map((n) => (
-      <div
-        key={n.id}
-        onClick={() => markAsRead(n.id)}
-        className={`p-4 border-b border-white/5 cursor-pointer hover:bg-white/5 ${
-          !n.read ? "bg-accent/5" : ""
-        }`}
-      >
-        <p className="text-sm text-white">
-          {n.message}
-        </p>
 
-        <p className="text-xs text-white/40 mt-1">
-          {n.time}
-        </p>
-      </div>
-    ))
-  )}
-</div>
+                        <div className="max-h-72 overflow-y-auto">
+                          {notifications.map((n) => (
+                            <button
+                              key={n.id}
+                              onClick={() =>
+                              markAsRead(n.id)
+                          }
+                              className={`w-full text-left p-4 border-b border-white/5 cursor-pointer hover:bg-white/5 ${
+                                !n.read
+                                  ? "bg-accent/5"
+                                  : ""
+                              }`}
+                            >
+                              <p className="text-sm text-white">
+                                {n.message}
+                              </p>
+
+                              <p className="text-xs text-white/40 mt-1">
+                                {n.time}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -450,7 +434,9 @@ useEffect(() => {
                           !isDropdownOpen
                         )
                       }
-                      className="flex items-center space-x-3 p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
+                      aria-label="Open user menu"
+                      aria-expanded={isDropdownOpen}
+                      className="flex items-center space-x-3 p-2 rounded-xl text-white hover:bg-white/5"
                     >
                       <div className="relative w-10 h-10">
 
@@ -476,12 +462,12 @@ useEffect(() => {
                         )}
                       </div>
 
-                      <div className="hidden sm:block text-left">
+                      <div className="hidden md:block text-left">
                         <p className="text-sm font-medium">
                           {getUserDisplayName()}
                         </p>
 
-                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                        <p className="text-xs text-white/60">
                           {getUserRole()}
                         </p>
                       </div>
@@ -496,7 +482,7 @@ useEffect(() => {
                     </button>
 
                     {isDropdownOpen && (
-                      <div className="absolute right-0 mt-3 min-w-64 bg-background/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/20 py-2 z-[52]">
+                      <div className="absolute right-0 mt-3 min-w-64 bg-black/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/20 py-2 z-[100] overflow-hidden">
                         {userMenuItems.map(
                           (item) => (
                             <Link
@@ -507,7 +493,7 @@ useEffect(() => {
                                   false
                                 )
                               }
-                              className="flex items-center px-4 py-3 text-sm text-muted-foreground hover:bg-accent/10 hover:text-foreground"
+                              className="flex items-center px-4 py-3 text-sm text-white/80 hover:bg-white/5 hover:text-white"
                             >
                               <item.icon className="h-4 w-4 mr-3" />
 
@@ -516,7 +502,7 @@ useEffect(() => {
                           )
                         )}
 
-                        <hr className="my-2 border-border" />
+                        <hr className="my-2 border-white/10" />
 
                         <button
                           onClick={handleLogout}
@@ -530,7 +516,7 @@ useEffect(() => {
                   </div>
                 </div>
               ) : (
-                <div className="ml-2 sm:ml-6">
+                <div className="ml-2 md:ml-6">
                   <Button asChild className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
                     <Link href="/auth">
                       <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -545,14 +531,14 @@ useEffect(() => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="sm:hidden">
+            <div className="md:hidden">
               <Button
                 variant="ghost"
                 size="sm"
                 aria-label="Toggle Menu"
                 aria-expanded={isMenuOpen}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-gray-800 dark:text-gray-100 hover:text-accent hover:bg-accent/10 transition-all duration-300 hover:scale-110 relative group"
+                className="text-white hover:text-accent hover:bg-white/10 transition-all duration-300 hover:scale-110 relative group"
               >
                 {isMenuOpen ? (
                   <X className="h-7 w-7" />
@@ -568,16 +554,17 @@ useEffect(() => {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <>
-          <div
-            className="fixed inset-0 bg-background/60 backdrop-blur-sm z-[49] md:hidden"
+          <button
+            aria-label="Close mobile menu"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[49] md:hidden"
             onClick={() =>
               setIsMenuOpen(false)
             }
           />
 
-          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background text-foreground z-[52] md:hidden border-l border-border shadow-2xl transition-colors duration-300">
-            <div className="p-6 border-b border-border flex justify-between items-center">
-              <h2 className="text-foreground text-lg font-bold">
+          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-black z-[52] md:hidden border-l border-white/10 shadow-2xl">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center">
+              <h2 className="text-white text-lg font-bold">
                 Menu
               </h2>
 
@@ -588,7 +575,7 @@ useEffect(() => {
                 onClick={() =>
                   setIsMenuOpen(false)
                 }
-                className="bg-background"
+                className="text-white"
               >
                 <X className="h-6 w-6" />
               </Button>
@@ -596,7 +583,7 @@ useEffect(() => {
 
             {/* User Info Section */}
             {isAuthenticated && (
-              <div className="p-6 border-b border-border flex-shrink-0">
+              <div className="p-6 border-b border-white/10 flex-shrink-0">
                 <div className="flex items-center space-x-4 mb-4">
                   <div className="w-14 h-14 relative">
                     {getUserPhoto() && (
@@ -613,16 +600,16 @@ useEffect(() => {
                       className={`fallback-avatar absolute inset-0 w-14 h-14 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-lg ${getUserPhoto() ? "hidden" : "flex"
                         } `}
                     >
-                      <span className="text-lg font-bold bg-background">
+                      <span className="text-lg font-bold text-white">
                         {getUserInitials(getUserDisplayName())}
                       </span>
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-foreground font-semibold text-base truncate">
+                    <h3 className="text-white font-semibold text-base truncate">
                       {getUserDisplayName()}
                     </h3>
-                    <p className="text-muted-foreground text-sm truncate">
+                    <p className="text-white/60 text-sm truncate">
                       {user?.email || ""}
                     </p>
                     <div className="flex items-center mt-1">
@@ -636,13 +623,13 @@ useEffect(() => {
 
                 {/* Quick Actions */}
                 <div className="grid grid-cols-2 gap-3">
-                  <Button asChild className="w-full bg-gradient-to-r from-accent/90 to-blue-500/90 hover:from-accent hover:to-blue-600 text-foreground text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200">
+                  <Button asChild className="w-full bg-gradient-to-r from-accent/90 to-blue-500/90 hover:from-accent hover:to-blue-600 text-white text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200">
                     <Link href="/attendance" onClick={() => setIsMenuOpen(false)}>
                       <UserCheck className="h-4 w-4 mr-2" />
                       Attendance
                     </Link>
                   </Button>
-                  <Button asChild className="w-full bg-gradient-to-r from-purple-500/90 to-pink-500/90 hover:from-purple-600 hover:to-pink-600 text-foreground text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200">
+                  <Button asChild className="w-full bg-gradient-to-r from-purple-500/90 to-pink-500/90 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200">
                     <Link href="/notices" onClick={() => setIsMenuOpen(false)}>
                       <Bell className="h-4 w-4 mr-2" />
                       Notices
@@ -657,7 +644,7 @@ useEffect(() => {
               <div className="px-4 space-y-2">
                 {/* Main Navigation */}
                 <div className="mb-6">
-                  <h4 className="bg-background/60 text-xs font-semibold uppercase tracking-wider mb-3 px-2">
+                  <h4 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 px-2">
                     Navigation
                   </h4>
                   {navigationItems.map((item, index) => (
@@ -665,7 +652,7 @@ useEffect(() => {
                       key={item.href}
                       href={item.href}
                       onClick={() => setIsMenuOpen(false)}
-                      className={`flex items-center px-4 py-3 bg-background/80 hover:bg-background hover:bg-gradient-to-r hover:from-accent/10 hover:to-blue-500/10 transition-all duration-200 rounded-xl group animate-fadeIn-delay-${index}`}
+                      className={`flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-gradient-to-r hover:from-accent/10 hover:to-blue-500/10 transition-all duration-200 rounded-xl group animate-fadeIn-delay-${index}`}
                     >
                       <item.icon className="h-5 w-5 mr-4 group-hover:text-accent transition-colors duration-200" />
                       <span className="font-medium">{item.label}</span>
@@ -679,7 +666,7 @@ useEffect(() => {
                 {/* User Menu */}
                 {isAuthenticated ? (
                   <div className="mb-6">
-                    <h4 className="bg-background/60 text-xs font-semibold uppercase tracking-wider mb-3 px-2">
+                    <h4 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 px-2">
                       Account
                     </h4>
                     {userMenuItems.map((item) => (
@@ -687,7 +674,7 @@ useEffect(() => {
                         key={item.key}
                         href={item.href}
                         onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center px-4 py-3 bg-background/80 hover:bg-background hover:bg-gradient-to-r hover:from-accent/10 hover:to-blue-500/10 transition-all duration-200 rounded-xl group"
+                        className="flex items-center px-4 py-3 text-white/80 hover:text-white hover:bg-gradient-to-r hover:from-accent/10 hover:to-blue-500/10 transition-all duration-200 rounded-xl group"
                       >
                         <item.icon className="h-5 w-5 mr-4 group-hover:text-accent transition-colors duration-200" />
                         <span className="font-medium">{item.label}</span>
@@ -702,35 +689,25 @@ useEffect(() => {
             </div>
 
             {/* Bottom Section */}
-            <div className="p-6 border-t border-border space-y-4 flex-shrink-0">
+            <div className="p-6 border-t border-white/10 space-y-4 flex-shrink-0">
               {isAuthenticated ? (
                 <Button
-                  className="w-full bg-gradient-to-r from-red-500/80 to-red-600/80 hover:from-red-600 hover:to-red-700 bg-background font-medium shadow-lg hover:shadow-xl transition-all duration-300 group"
+                  className="w-full bg-gradient-to-r from-red-500/80 to-red-600/80 hover:from-red-600 hover:to-red-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 group"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4 mr-3 group-hover:scale-110 transition-transform duration-200" />
                   Sign Out
                 </Button>
               ) : (
-                <Button asChild className="w-full bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 z font-medium shadow-lg hover:shadow-xl transition-all duration-300 group">
-                  <Link href="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
+                <Button asChild className="w-full bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 group">
+                  <Link href="/auth" onClick={() => setIsMenuOpen(false)}>
                     <Sparkles className="h-4 w-4 mr-3 group-hover:animate-spin transition-all duration-300" />
                     Get Started
                   </Link>
                 </Button>
               )}
-              <div className="text-center space-y-3">
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
-                  }}
-                  className="inline-flex items-center gap-1.5 text-foreground/60 hover:text-accent transition-colors text-xs font-medium cursor-pointer"
-                >
-                  <Keyboard className="h-4 w-4 text-accent" />
-                  <span>Keyboard Shortcuts</span>
-                </button>
-                <p className="text-foreground/40 text-[10px]">
+              <div className="text-center">
+                <p className="text-white/40 text-xs">
                   © {new Date().getFullYear()} Learnova. All rights reserved.
                 </p>
               </div>
@@ -738,7 +715,6 @@ useEffect(() => {
           </div>
         </>
       )}
-
     </>
   );
 }

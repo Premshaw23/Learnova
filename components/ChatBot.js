@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useRef, useEffect } from "react";
-import { CONTACT_INFO } from '../constants/contact';
+import { CONTACT_INFO } from '../constants/contact'; // Note: Adjust path if needed
 
 import {
   Send,
@@ -49,10 +49,10 @@ const LearnovaChatbot = () => {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentCategory, setCurrentCategory] = useState("general");
-  const [hasApiKey, setHasApiKey] = useState(false);
 
   const messagesEndRef = useRef(null);
 
+  // Enhanced knowledge base with your platform features
   const learnovaKnowledge = {
     platform:
       "Learnova is a comprehensive Smart Student Engagement Ecosystem that combines attendance automation, smart curriculum activities, AI-powered personalization, and real-time communication for educational institutions.",
@@ -117,6 +117,7 @@ const LearnovaChatbot = () => {
     },
   };
 
+  // Enhanced suggested questions by category
   const suggestedQuestions = {
     general: [
       "What is Learnova and how does it work?",
@@ -168,10 +169,10 @@ const LearnovaChatbot = () => {
     setIsDarkMode(!isDarkMode);
   };
 
-  // FIX: Corrected try/catch structure — the fetch block was missing a closing brace
   const generateBotResponse = async (userMessage) => {
     const lowerMessage = userMessage.toLowerCase();
 
+    // Greeting responses
     if (
       lowerMessage.includes("hello") ||
       lowerMessage.includes("hi") ||
@@ -180,6 +181,7 @@ const LearnovaChatbot = () => {
       return "Hello! Welcome to Learnova - your Smart Student Engagement Ecosystem! I'm Nova, and I'm here to help you understand our platform's features:\n\n🎯 **Attendance Automation** - GPS + Time + Optional QR validation\n📚 **Smart Activities** - Turn idle hours into learning hours\n🔒 **Advanced Security** - Multi-factor authentication & encryption\n📊 **Analytics Dashboard** - Real-time insights for all stakeholders\n\nWhat aspect would you like to explore first?";
     }
 
+    // Attendance-related queries
     if (
       lowerMessage.includes("attendance") ||
       lowerMessage.includes("marking") ||
@@ -191,6 +193,7 @@ const LearnovaChatbot = () => {
         }\n• Works offline with auto-sync\n• Exception handling with teacher approval\n• Real-time transparency for parents\n\n**How it works:**\nPhone Verified → GPS + Time Check → Optional QR Scan → Offline Storage → Server Sync → Final Status\n\nWant to know more about any specific aspect?`;
     }
 
+    // Security queries
     if (
       lowerMessage.includes("security") ||
       lowerMessage.includes("privacy") ||
@@ -203,6 +206,7 @@ const LearnovaChatbot = () => {
         }\n• Anonymous analytics options\n• Right to data deletion\n• Secure data export/import\n\n**Compliance:** GDPR, FERPA, SOC 2, ISO 27001\n\nYour data security is our top priority. Need details about any specific security measure?`;
     }
 
+    // Activities and engagement
     if (
       lowerMessage.includes("activity") ||
       lowerMessage.includes("quiz") ||
@@ -217,6 +221,7 @@ const LearnovaChatbot = () => {
         }\n\nInterested in trying our demo activities?`;
     }
 
+    // Analytics and dashboards
     if (
       lowerMessage.includes("dashboard") ||
       lowerMessage.includes("analytics") ||
@@ -230,6 +235,7 @@ const LearnovaChatbot = () => {
         )}\n\n**Key Metrics:**\n• Attendance patterns and trends\n• Activity engagement rates\n• Learning progress tracking\n• Time utilization analysis\n• Performance predictions\n\n**Export Options:**\n• CSV, PDF, Excel formats\n• Scheduled automated reports\n• Custom report builder\n• API integrations\n\nWhich dashboard would you like to learn more about?`;
     }
 
+    // Technical specifications
     if (
       lowerMessage.includes("technical") ||
       lowerMessage.includes("technology") ||
@@ -239,6 +245,7 @@ const LearnovaChatbot = () => {
       return `⚙️ **Technical Specifications**\n\n**Frontend:** ${learnovaKnowledge.technology.frontend}\n**Backend:** ${learnovaKnowledge.technology.backend}\n**AI Engine:** ${learnovaKnowledge.technology.ai}\n**Security:** ${learnovaKnowledge.technology.security}\n**Deployment:** ${learnovaKnowledge.technology.deployment}\n\n**Key Technical Features:**\n• Progressive Web App (PWA)\n• Offline-first architecture\n• Cross-platform compatibility\n• Real-time synchronization\n• Scalable microservices\n• RESTful APIs with GraphQL\n\nNeed more details about any specific technology component?`;
     }
 
+    // Pricing and plans
     if (
       lowerMessage.includes("price") ||
       lowerMessage.includes("cost") ||
@@ -248,6 +255,7 @@ const LearnovaChatbot = () => {
       return `💰 **Learnova Pricing Plans**\n\n🆓 **Free Tier (Trial)**\n• Up to 50 students\n• Basic attendance tracking\n• Limited smart activities\n• Standard support\n\n🏫 **Institution Plan**\n• Unlimited students\n• Full feature access\n• Advanced analytics\n• Priority support\n• Custom integrations\n• Training included\n\n🏢 **Enterprise**\n• Multi-campus support\n• White-label options\n• Dedicated support team\n• Custom development\n• SLA guarantees\n\n**Contact our team for personalized pricing based on your institution size and requirements!**`;
     }
 
+    // Implementation and setup
     if (
       lowerMessage.includes("setup") ||
       lowerMessage.includes("implement") ||
@@ -257,6 +265,7 @@ const LearnovaChatbot = () => {
       return `🚀 **Getting Started with Learnova**\n\n**Quick Setup Process:**\n1️⃣ **Institution Registration** - Provide basic details\n2️⃣ **System Configuration** - Customize settings\n3️⃣ **User Import** - Bulk upload student/teacher data\n4️⃣ **Training Sessions** - Staff onboarding workshops\n5️⃣ **Pilot Testing** - Start with selected classes\n6️⃣ **Full Deployment** - Institution-wide rollout\n\n**Implementation Support:**\n• Dedicated onboarding manager\n• Technical training sessions\n• 24/7 support during transition\n• Data migration assistance\n• Custom integration support\n\n**Timeline:** Typically 2-4 weeks from signup to full deployment\n\nReady to schedule a demo?`;
     }
 
+    // Support and contact
     if (
       lowerMessage.includes("support") ||
       lowerMessage.includes("help") ||
@@ -266,7 +275,7 @@ const LearnovaChatbot = () => {
       return `🛟 **Support & Contact Information**\n\n📧 **Email:** ${contactInfo.email}\n📞 **Phone:** ${contactInfo.phone}\n🌐 **Website:** ${contactInfo.website}\n🎯 **Live Demo:** ${contactInfo.demo}\n\n**Support Options:**\n• 24/7 AI chatbot assistance\n• Live chat with technical team\n• Video call support sessions\n• Comprehensive documentation\n• Community forums\n• Training workshops\n\n**Response Times:**\n• General inquiries: Within 4 hours\n• Technical issues: Within 2 hours\n• Urgent/Critical: Within 30 minutes\n\nHow can I connect you with the right support channel?`;
     }
 
-    // FIX: Wrapped the entire fetch block in a proper try/catch with correct braces
+    // AI integration via server-side Groq route
     try {
       const response = await fetch("/api/groq", {
         method: "POST",
@@ -276,21 +285,21 @@ const LearnovaChatbot = () => {
         body: JSON.stringify({ message: userMessage }),
       });
 
-      const payload = await response.json().catch((error) => {
-        console.error("Error:", error);
-        return { error: "Something went wrong" };
-      });
-
+      const payload = await response.json().catch(() => ({}));
       if (response.ok) {
         const content = payload?.data?.message;
         if (content) {
           return content;
         }
+      } else {
+        console.warn("Groq API route error:", payload);
       }
     } catch (err) {
+      console.error("Groq API route error:", err);
       // Fall through to built-in responses
     }
 
+    // Enhanced fallback responses
     const fallbackResponses = [
       `That's a great question! While I focus on Learnova's core features like attendance automation, smart activities, and analytics, our expert team can provide detailed answers for specific technical questions.\n\n📧 **Email:** ${contactInfo.email}\n📞 **Phone:** ${contactInfo.phone}\n🎯 **Schedule Demo:** ${contactInfo.demo}\n\nMeanwhile, is there anything about our Smart Student Engagement Ecosystem I can help explain?`,
 
@@ -304,6 +313,7 @@ const LearnovaChatbot = () => {
     ];
   };
 
+  // Custom components for different themes
   const markdownComponents = {
     strong: ({ children }) => (
       <span
@@ -353,6 +363,7 @@ const LearnovaChatbot = () => {
     ),
   };
 
+  // Add this function in your component
   const saveToMongoDB = async (userMessage, botMessage) => {
     try {
       const response = await fetch("/api/conversations", {
@@ -369,8 +380,11 @@ const LearnovaChatbot = () => {
       if (!response.ok) {
         throw new Error("Failed to save conversation");
       }
+
+      const result = await response.json();
+      // console.log("✅ Saved to MongoDB:", result);
     } catch (error) {
-      // Silently handle save errors
+      console.error("❌ MongoDB Save Error:", error);
     }
   };
 
@@ -394,6 +408,7 @@ const LearnovaChatbot = () => {
     try {
       botResponse = await generateBotResponse(messageText);
     } catch (error) {
+      console.error("Error generating response:", error);
       botResponse = `I apologize for the technical difficulty. Our team is here to help you directly:\n\n📧 **Email:** ${contactInfo.email}\n📞 **Phone:** ${contactInfo.phone}\n🎯 **Live Demo:** ${contactInfo.demo}\n\nI can still help with basic questions about Learnova's features!`;
     }
 
@@ -407,6 +422,7 @@ const LearnovaChatbot = () => {
     setMessages((prev) => [...prev, botMessage]);
     setIsLoading(false);
 
+    // 🔥 ADD THIS LINE - Save to MongoDB
     await saveToMongoDB(userMessage, botMessage);
   };
 
@@ -499,7 +515,7 @@ const LearnovaChatbot = () => {
         } rounded-xl shadow-2xl transition-all duration-300 ${isMinimized ? "w-72 h-16" : "w-96 h-[660px]"
         } border ${themeClasses.border}`}
     >
-      {/* Header */}
+      {/* Enhanced Header */}
       <div
         className={`${themeClasses.header} text-white p-4 rounded-t-xl flex items-center justify-between`}
       >
@@ -593,7 +609,10 @@ const LearnovaChatbot = () => {
                       }`}
                   >
                     {message.isBot ? (
-                      <ReactMarkdown components={markdownComponents}>
+                      // Use in your ReactMarkdown
+                      <ReactMarkdown
+                        components={markdownComponents}
+                      >
                         {message.text}
                       </ReactMarkdown>
                     ) : (
@@ -612,7 +631,7 @@ const LearnovaChatbot = () => {
               </div>
             ))}
 
-            {/* Suggested Questions */}
+            {/* Enhanced Suggested Questions */}
             {messages.length === 1 && (
               <div className="space-y-4">
                 <div className="text-center">

@@ -19,15 +19,7 @@ function isUserTyping(target) {
 export function useKeyboardShortcuts({ onSearch, onHelp, onEscape } = {}) {
   const handleKeyDown = useCallback(
     (e) => {
-      const active = document.activeElement;
-      const isEditable =
-        active?.tagName === "INPUT" ||
-        active?.tagName === "TEXTAREA" ||
-        active?.tagName === "SELECT" ||
-        active?.isContentEditable ||
-        isUserTyping(e.target);
-
-      if (isEditable && e.key !== "Escape") return;
+      if (isUserTyping(e.target) && e.key !== "Escape") return;
 
       const isModifier = e.metaKey || e.ctrlKey;
 

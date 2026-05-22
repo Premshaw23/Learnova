@@ -1,13 +1,11 @@
 "use client";
 
-import { createContext, useState, useEffect, useRef } from "react";
+import { createContext, useState } from "react";
 
 export const NotificationContext = createContext();
 
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
-  // Keep timers so we can clear on unmount
-  const timersRef = useRef(new Map());
 
   const addNotification = (notification) => {
     const id = Date.now();
@@ -19,28 +17,15 @@ export function NotificationProvider({ children }) {
 
     setNotifications((prev) => [...prev, newNotification]);
 
-    // Auto-remove notification after 5s. Track timer so it can be cleared
-    // if the provider unmounts or the notification is removed early.
-    const timerId = setTimeout(() => {
+    setTimeout(() => {
       removeNotification(id);
-      // clean up timer map entry
-      timersRef.current.delete(id);
     }, 5000);
-
-    timersRef.current.set(id, timerId);
   };
 
   const removeNotification = (id) => {
     setNotifications((prev) =>
       prev.filter((notification) => notification.id !== id)
     );
-
-    // clear any pending timer for this notification
-    const t = timersRef.current.get(id);
-    if (t) {
-      clearTimeout(t);
-      timersRef.current.delete(id);
-    }
   };
 
   const clearNotifications = () => {
@@ -65,13 +50,6 @@ export function NotificationProvider({ children }) {
         }))
     );
   };
-  useEffect(() => {
-    return () => {
-      // clear any remaining timeouts when provider unmounts
-      timersRef.current.forEach((t) => clearTimeout(t));
-      timersRef.current.clear();
-    };
-  }, []);
 
   return (
     <NotificationContext.Provider

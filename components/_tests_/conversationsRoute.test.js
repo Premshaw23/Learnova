@@ -336,7 +336,7 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Internal server error");
+    expect(body.error).toBe("Database offline");
   });
 });
 

@@ -14,17 +14,17 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
  */
 
 export const logActivity = async (userId, activityData) => {
-  if (!userId) return;
+    if (!userId) return;
 
-  try {
-    await addDoc(collection(db, "activities"), {
-      userId,
-      title: activityData.title,
-      type: activityData.type || "course",
-      progress: activityData.progress || 0,
-      timestamp: serverTimestamp(),
-    });
-  } catch (error) {
-    // Error logging activity
-  }
+    try {
+        await addDoc(collection(db, "activities"), {
+            userId,
+            title: activityData.title,
+            type: activityData.type || "course",
+            progress: activityData.progress || 0,
+            timestamp: serverTimestamp(),
+        });
+    } catch (error) {
+        console.error("Error logging activity to Firestore:", error);
+    }
 };

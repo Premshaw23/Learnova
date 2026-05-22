@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -8,16 +7,11 @@ export async function GET(request) {
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
-    const authResult = await verifyFirebaseToken(token);
+    const decodedToken = await verifyFirebaseToken(token);
 
-    if (!authResult.valid) {
-      return jsonError(
-        { message: "Unauthorized", reason: authResult.reason },
-        401
-      );
+    if (!decodedToken) {
+      return jsonError("Unauthorized", 401);
     }
-
-    const decodedToken = authResult.decodedToken;
 
     // Fetch user profile
     const profile = await getUserProfile(decodedToken.uid);
@@ -27,34 +21,41 @@ export async function GET(request) {
     }
 
     // Restrict access
-    if (profile.role !== "admin" && profile.role !== "teacher") {
+    if (
+      profile.role !== "admin" &&
+      profile.role !== "teacher"
+    ) {
       return jsonError("Forbidden", 403);
     }
 
     const { searchParams } = new URL(request.url);
 
     // Pagination
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const page = Math.max(
+      1,
+      parseInt(searchParams.get("page") || "1", 10)
+    );
 
     const limit = Math.min(
       100,
-      Math.max(1, parseInt(searchParams.get("limit") || "20", 10)),
+      Math.max(
+        1,
+        parseInt(searchParams.get("limit") || "20", 10)
+      )
     );
 
     const skip = (page - 1) * limit;
 
-    // Search — escape metacharacters and cap length to prevent ReDoS
-    const rawSearch = searchParams.get("search") || "";
-    const search = escapeRegex(rawSearch);
+    // Search
+    const search = searchParams.get("search") || "";
 
-    // Sorting — validate against an explicit allowlist to prevent field-name injection
-    const sortBy = sanitizeSortField(
-      searchParams.get("sortBy"),
-      ALLOWED_SORT_FIELDS,
-      "createdAt"
-    );
+    // Sorting
+    const sortBy = searchParams.get("sortBy") || "createdAt";
 
-    const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+    const sortOrder =
+      searchParams.get("sortOrder") === "asc"
+        ? 1
+        : -1;
 
     const db = await connectDb();
     const collection = db.collection("exceptions");
@@ -109,9 +110,10 @@ export async function GET(request) {
           hasNextPage: page < totalPages,
         },
       },
-      200,
+      200
     );
   } catch (error) {
+    console.error("Exception fetch error:", error);
     return jsonError("Internal server error", 500);
   }
 }

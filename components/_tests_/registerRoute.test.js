@@ -249,7 +249,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Internal server error");
+    expect(body.error).toBe("Database write failed");
     expect(put).toHaveBeenCalled();
     expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
   });

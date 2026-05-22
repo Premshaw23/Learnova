@@ -7,6 +7,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   signOut,
+  
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import {
@@ -18,6 +19,24 @@ import { ROLE_CONFIG } from "@/constants/userRoles";
 
 const FIREBASE_CONFIG_ERROR =
   "Firebase is not configured. Please add your Firebase environment variables to .env.local and restart the development server.";
+
+/**
+ * Synchronizes the Firebase token with the secure HTTP-only session cookie.
+ */
+const syncSessionCookie = async (user) => {
+  if (user) {
+    try {
+      const idToken = await user.getIdToken();
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+    } catch (err) {
+      console.error("Failed to sync session cookie", err);
+    }
+  }
+};
 
 /**
  * Authenticates a user using email and password credentials.
@@ -35,7 +54,7 @@ export const loginWithEmail = async (email, password, selectedRole) => {
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email.trim(),
-      password,
+      password
     );
     const user = userCredential.user;
 
@@ -66,11 +85,14 @@ export const loginWithEmail = async (email, password, selectedRole) => {
         lastLogin: new Date(),
       });
 
+      await syncSessionCookie(user);
       return { success: true, userData };
     } else {
+      await syncSessionCookie(user);
       return { success: false, needsProfile: true };
     }
   } catch (err) {
+    console.error("Login error:", err);
     return {
       success: false,
       error:
@@ -95,7 +117,7 @@ export const signupWithEmail = async (
   email,
   password,
   selectedRole,
-  additionalData,
+  additionalData
 ) => {
   try {
     if (!auth || !db) {
@@ -110,7 +132,7 @@ export const signupWithEmail = async (
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email.trim(),
-      password,
+      password
     );
     const user = userCredential.user;
 
@@ -120,8 +142,10 @@ export const signupWithEmail = async (
     // Send verification email to new users
     await sendEmailVerification(user);
 
+    await syncSessionCookie(user);
     return { success: true, needsVerification: true };
   } catch (err) {
+    console.error("Signup error:", err);
     return {
       success: false,
       error:
@@ -144,15 +168,12 @@ export const signupWithEmail = async (
 export const loginWithGoogle = async (
   selectedRole,
   isLogin,
-  additionalData = {},
+  additionalData = {}
 ) => {
   try {
     if (!auth || !db) {
-      console.error("❌ Google Auth Failed: Firebase not initialized. Check console for details.");
       return { success: false, error: FIREBASE_CONFIG_ERROR };
     }
-
-    console.log("🔵 Starting Google OAuth flow for role:", selectedRole);
 
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(auth, provider);
@@ -188,6 +209,7 @@ export const loginWithGoogle = async (
         });
 
         // Email is already verified with Google
+        await syncSessionCookie(user);
         return { success: true, userData: { role: selectedRole } };
       }
     }
@@ -213,8 +235,10 @@ export const loginWithGoogle = async (
       });
     }
 
+    await syncSessionCookie(user);
     return { success: true, userData: userData || { role: selectedRole } };
   } catch (err) {
+    console.error("Google auth error:", err);
     return {
       success: false,
       error:
@@ -241,6 +265,7 @@ export const resetPassword = async (email) => {
     await sendPasswordResetEmail(auth, email);
     return { success: true };
   } catch (err) {
+    console.error("Password reset error:", err);
     return {
       success: false,
       error:

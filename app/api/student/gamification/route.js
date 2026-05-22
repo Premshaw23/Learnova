@@ -11,20 +11,17 @@ export async function GET(request) {
       return NextResponse.json({ error: "No token provided" }, { status: 401 });
     }
 
-    const authResult = await verifyFirebaseToken(token);
-
-    if (!authResult.valid) {
+    const decodedToken = await verifyFirebaseToken(token);
+    if (!decodedToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decodedToken = authResult.decodedToken;
 
     const db = await connectDb();
     const userId = decodedToken.uid;
 
     // Fetch student data
     const student = await db.collection("users").findOne({ firebaseUid: userId });
-
+    
     if (!student) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
@@ -37,7 +34,7 @@ export async function GET(request) {
       unlockedBadges: student.unlockedBadges || [],
     };
 
-    // If these fields don't exist, passively initialise them to avoid nulls on client
+    // If these fields don't exist, we can passively initialize them to avoid nulls on client
     if (student.totalXp === undefined) {
       await db.collection("users").updateOne(
         { firebaseUid: userId },
