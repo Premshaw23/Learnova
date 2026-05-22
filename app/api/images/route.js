@@ -26,14 +26,16 @@ export async function GET(request) {
       token = request.cookies.get("authToken")?.value;
     }
 
-    const decodedToken = await verifyFirebaseToken(token);
+    const authResult = await verifyFirebaseToken(token);
 
-    if (!decodedToken.valid) {
+    if (!authResult || authResult.valid === false) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
+
+    const decodedToken = authResult.decodedToken || authResult;
 
     const db = await connectDb();
     const users = db.collection("users");

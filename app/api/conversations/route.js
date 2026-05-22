@@ -7,7 +7,10 @@ import xss from "xss";
 
 const sanitizeText = (text) => {
   if (typeof text !== "string") return "";
-  return xss(text).trim();
+  const clean = text
+    .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "")
+    .replace(/<[^>]*>/g, "");
+  return xss(clean).trim();
 };
 
 const conversationSchema = z.object({
@@ -33,16 +36,13 @@ export async function POST(req) {
     const authorization = req.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
-    const authResult = await verifyFirebaseToken(token);
+    const authResult = token ? await verifyFirebaseToken(token) : null;
 
-    if (!authResult.valid) {
-      return jsonError(
-        { message: "Unauthorized", reason: authResult.reason },
-        401
-      );
+    if (!authResult || authResult.valid === false) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const decodedToken = authResult.decodedToken;
+    const decodedToken = authResult.decodedToken || authResult;
 
 
     // Enforce maximum document size (1MB = 1048576 bytes)
@@ -97,16 +97,13 @@ export async function GET(request) {
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
-    const authResult = await verifyFirebaseToken(token);
+    const authResult = token ? await verifyFirebaseToken(token) : null;
 
-    if (!authResult.valid) {
-      return jsonError(
-        { message: "Unauthorized", reason: authResult.reason },
-        401
-      );
+    if (!authResult || authResult.valid === false) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const decodedToken = authResult.decodedToken;
+    const decodedToken = authResult.decodedToken || authResult;
 
 
     const db = await connectDb();

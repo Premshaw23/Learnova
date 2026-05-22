@@ -30,22 +30,30 @@ export async function GET(request) {
     const token = authorization?.split(" ")[1];
 
     if (!token) {
-      return jsonError("Unauthorized: No token provided", 401);
+      return jsonError("Unauthorized", 401);
     }
 
     const authResult = await verifyFirebaseToken(token);
 
-    if (!authResult.valid) {
-      return jsonError(
-        { message: "Unauthorized", reason: authResult.reason },
-        401
-      );
+    if (!authResult || authResult.valid === false) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const decodedToken = authResult.decodedToken;
+    const decodedToken = authResult.decodedToken || authResult;
 
+    // 3. Parse search query parameter
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get("search") || "";
 
-    // 3. Fetch Data with Projection
+    const query = {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // 4. Fetch Data with Projection
     const db = await connectDb();
     const users = db.collection("users");
 

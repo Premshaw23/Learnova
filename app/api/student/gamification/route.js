@@ -11,11 +11,12 @@ export async function GET(request) {
       return NextResponse.json({ error: "No token provided" }, { status: 401 });
     }
 
-    const decodedToken = await verifyFirebaseToken(token);
-    if (!decodedToken) {
+    const authResult = await verifyFirebaseToken(token);
+    if (!authResult || authResult.valid === false) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const decodedToken = authResult.decodedToken || authResult;
     const db = await connectDb();
     const userId = decodedToken.uid;
 

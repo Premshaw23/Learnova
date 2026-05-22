@@ -31,14 +31,16 @@ jest.mock("@/lib/firebase-admin", () => ({
 describe("POST /api/register - Authentication, Rollback, and Validation Security Tests", () => {
   let mockFindOne;
   let mockInsertOne;
+  let mockFile;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    rateLimitMap.clear();
 
     if (rateLimitMap) {
       rateLimitMap.clear();
     }
+
+    mockFile = createMockFile("image/jpeg", 1024);
 
     verifyFirebaseToken.mockImplementation(async (token) => {
       if (!token || token === "invalid-token") return null;

@@ -23,6 +23,26 @@ jest.mock("@/lib/mongodb", () => ({
   connectDb: jest.fn(),
 }));
 
+jest.mock("mongodb", () => {
+  return {
+    ObjectId: Object.assign(
+      jest.fn().mockImplementation((id) => {
+        if (id === "invalid-object-id") {
+          throw new Error("Invalid ObjectId");
+        }
+        return {
+          toString: () => id,
+        };
+      }),
+      {
+        isValid: jest.fn().mockImplementation((id) => {
+          return id !== "invalid-object-id";
+        }),
+      }
+    ),
+  };
+});
+
 describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
   let mockUpdateOne;
 

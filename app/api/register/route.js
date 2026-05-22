@@ -1,9 +1,13 @@
-import { put } from "@vercel/blob";
+import { put, del } from "@vercel/blob";
 import { randomUUID } from "crypto";
 import { connectDb } from "@/lib/mongodb";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { suggestEmailCorrection } from "@/utils/emailValidation";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+
+export const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_ATTEMPTS = 5;
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -29,25 +33,39 @@ const getImageExtension = (mimeType) => {
 };
 
 export async function POST(req) {
+  let blob = null;
   try {
-    // 1. Authenticate Request
+    // 1. Rate Limiting Check
+    const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+    const now = Date.now();
+    
+    if (!rateLimitMap.has(ip)) {
+      rateLimitMap.set(ip, []);
+    }
+    
+    const attempts = rateLimitMap.get(ip).filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW);
+    attempts.push(now);
+    rateLimitMap.set(ip, attempts);
+
+    if (attempts.length > MAX_ATTEMPTS) {
+      return jsonError("Too many registration attempts. Please try again later.", 429);
+    }
+
+    // 2. Authenticate Request
     const authorization = req.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
     if (!token) {
-      return jsonError("Unauthorized: No token provided", 401);
+      return jsonError("Unauthorized", 401);
     }
 
     const authResult = await verifyFirebaseToken(token);
 
-    if (!authResult.valid) {
-      return jsonError(
-        { message: "Unauthorized", reason: authResult.reason },
-        401
-      );
+    if (!authResult || authResult.valid === false) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const decodedToken = authResult.decodedToken;
+    const decodedToken = authResult.decodedToken || authResult;
 
     const formData = await req.formData();
     const name = normalizeText(formData.get("name"));
@@ -60,11 +78,7 @@ export async function POST(req) {
     }
 
     if (!EMAIL_PATTERN.test(email)) {
-      const suggestion = suggestEmailCorrection(email);
-      const errorMessage = suggestion 
-        ? `Invalid email format. Did you mean ${suggestion}?` 
-        : "Invalid email format.";
-      return jsonError(errorMessage, 400);
+      return jsonError("Invalid email address", 400);
     }
 
     // 2. Prevent arbitrary registrations - Must register own email
@@ -94,7 +108,7 @@ export async function POST(req) {
     const fileName = `labels/${safeName}/${randomUUID()}.${fileExtension}`;
 
     // Upload to Vercel Blob
-    const blob = await put(fileName, buffer, {
+    blob = await put(fileName, buffer, {
       contentType: file.type || "image/jpeg",
       access: "public",
     });
@@ -122,6 +136,13 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error(error);
+    if (blob && blob.url) {
+      try {
+        await del(blob.url);
+      } catch (delError) {
+        console.error("Failed to delete blob during rollback:", delError);
+      }
+    }
     return jsonError(error.message || "Internal server error", 500);
   }
 }

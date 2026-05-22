@@ -1,7 +1,8 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 import { ObjectId } from "mongodb";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { jsonError } from "@/lib/api-response";
+import { NextResponse } from "next/server";
 
 export async function PUT(request) {
   try {
@@ -10,17 +11,11 @@ export async function PUT(request) {
 
     const authResult = await verifyFirebaseToken(token);
 
-    if (!authResult.valid) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: authResult.reason,
-        },
-        { status: 401 }
-      );
+    if (!authResult || authResult.valid === false) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const decodedToken = authResult.decodedToken;
+    const decodedToken = authResult.decodedToken || authResult;
 
 
     // Fetch user profile from Firestore to get the user's role
@@ -71,11 +66,11 @@ export async function PUT(request) {
       return jsonError("Exception not found", 404);
     }
 
-    return jsonSuccess(
+    return NextResponse.json(
       {
         message: "Exception updated successfully",
       },
-      200,
+      { status: 200 }
     );
   } catch (error) {
     console.error("Exception update error:", error);

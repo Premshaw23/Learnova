@@ -1,6 +1,7 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const settingsSchema = z.object({
@@ -77,12 +78,13 @@ export async function PATCH(request) {
   try {
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
+    const authResult = await verifyFirebaseToken(token);
 
-   const authResult = await verifyFirebaseToken(token);
-
-    if (!decodedToken) {
+    if (!authResult || authResult.valid === false) {
       return jsonError("Unauthorized", 401);
     }
+
+    const decodedToken = authResult.decodedToken || authResult;
 
     const body = await request.json();
     const parsed = settingsSchema.safeParse(body);
@@ -113,8 +115,13 @@ export async function PATCH(request) {
       { upsert: true }
     );
 
+    console.log(
+      `[Audit Log] Settings updated successfully for target user: ${targetUserId} by operator: ${decodedToken.uid} (Role: ${
+        isOperatorAdmin ? "admin" : "owner"
+      })`
+    );
 
-    return jsonSuccess({ message: "Settings saved successfully" }, 200);
+    return NextResponse.json({ message: "Settings saved successfully" }, { status: 200 });
   } catch (error) {
     console.error("Settings save error:", error);
     return jsonError("Failed to save settings", 500);

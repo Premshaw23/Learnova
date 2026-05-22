@@ -24,7 +24,7 @@ import {
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 
-import Navbar from "./Navbar";
+import { Navbar } from "./Navbar";
 import { useAuth } from "@/hooks/useAuth";
 
 import AttendanceChart from "./AttendanceChart";

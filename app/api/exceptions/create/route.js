@@ -9,17 +9,11 @@ export async function POST(request) {
 
     const authResult = await verifyFirebaseToken(token);
 
-    if (!authResult.valid) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: authResult.reason,
-        },
-        { status: 401 }
-      );
+    if (!authResult || authResult.valid === false) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const decodedToken = authResult.decodedToken;
+    const decodedToken = authResult.decodedToken || authResult;
 
 
     const body = await request.json();

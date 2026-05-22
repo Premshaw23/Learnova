@@ -89,14 +89,11 @@ export async function POST(request) {
 
     const authResult = await verifyFirebaseToken(token);
 
-    if (!authResult.valid) {
-      return jsonError(
-        { message: "Unauthorized", reason: authResult.reason },
-        401
-      );
+    if (!authResult || authResult.valid === false) {
+      return jsonError("Unauthorized", 401);
     }
 
-    const decodedToken = authResult.decodedToken;
+    const decodedToken = authResult.decodedToken || authResult;
 
 
     // Rate limiting per authenticated user (persisted across cold starts)
