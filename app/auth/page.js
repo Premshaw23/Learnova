@@ -192,6 +192,18 @@ export default function AuthPage() {
     setErrors({});
 
     try {
+      // Server-side rate limit check before triggering Firebase
+      const gateRes = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailToReset }),
+      });
+
+      if (gateRes.status === 429) {
+        setErrors({ forgotEmail: "Too many reset attempts. Please wait a moment and try again." });
+        return;
+      }
+
       const result = await resetPassword(emailToReset);
 
       if (result.success) {
