@@ -22,8 +22,7 @@ const CATEGORIES = [
 ];
 
 const SmartNoticeBoard = () => {
-  const { user, loading: authLoading } = useAuth();
-
+  const { user, userProfile, loading: authLoading } = useAuth();
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,6 +37,10 @@ const SmartNoticeBoard = () => {
   const [readNotices, setReadNotices] = useState(new Set());
 
   const userId = user?.uid || user?.id || "anonymous";
+
+  const getUserRole = () => {
+    return userProfile?.role || user?.role || "student";
+  };
 
   // Load notices + SSE
   useEffect(() => {
