@@ -79,4 +79,21 @@ describe("AuthForm", () => {
 
     expect(onSubmit).toHaveBeenCalled();
   });
+
+  test("renders password strength indicator during sign-up mode when password is typed", () => {
+    const { rerender } = render(
+      <AuthForm {...props} isLogin={false} password="" />
+    );
+
+    expect(screen.queryByText(/password strength:/i)).not.toBeInTheDocument();
+
+    rerender(<AuthForm {...props} isLogin={false} password="123" />);
+
+    expect(screen.getByText(/password strength:/i)).toBeInTheDocument();
+    expect(screen.getByText(/weak/i)).toBeInTheDocument();
+
+    rerender(<AuthForm {...props} isLogin={false} password="StrongPass123!" />);
+
+    expect(screen.getByText(/strong/i)).toBeInTheDocument();
+  });
 });

@@ -27,7 +27,6 @@ export default function useLabels(user) {
         }
         setLabels(Array.isArray(data.data) ? data.data : []);
       } catch (err) {
-        console.error(err);
         setError(err.message);
       } finally {
         setLoading(false);

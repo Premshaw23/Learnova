@@ -8,7 +8,10 @@ import {
   validatePassword,
   validateName,
 } from "./formValidation";
-
+/**
+ * Default password requirement validation message.
+ * @type {string}
+ */
 export const PASSWORD_REQUIREMENTS_MESSAGE =
   "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character.";
 
@@ -61,7 +64,7 @@ export const getErrorMessage = (errorCode) => {
     case "auth/too-many-requests":
       return "Too many failed attempts. Please try again later.";
     default:
-      return null;
+      return "Authentication failed. Please check your credentials and try again.";
   }
 };
 
@@ -97,7 +100,7 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
   }
 
   await setDoc(doc(db, "users", user.uid), userProfile);
-  
+
   // Initialize their empty dashboard stats
   await initializeUserStats(user.uid);
 
@@ -124,7 +127,9 @@ export const validateForm = (formData, isLogin) => {
     errors.email = emailValidation;
   }
 
-  const passwordValidation = isLogin ? validateRequired(password, "Password") : validatePassword(password);
+  const passwordValidation = isLogin
+    ? validateRequired(password, "Password")
+    : validatePassword(password);
   if (passwordValidation !== true) {
     errors.password = passwordValidation;
   }
@@ -136,7 +141,10 @@ export const validateForm = (formData, isLogin) => {
     }
 
     if (selectedRole === USER_ROLES.INSTITUTE) {
-      const instituteNameValidation = validateRequired(instituteName, "Institute name");
+      const instituteNameValidation = validateRequired(
+        instituteName,
+        "Institute name",
+      );
       if (instituteNameValidation !== true) {
         errors.instituteName = instituteNameValidation;
       }
@@ -174,7 +182,6 @@ export const redirectBasedOnRole = (role, router) => {
         router.push("/profile");
     }
   } catch (err) {
-    console.error("Navigation error:", err);
     throw new Error("Navigation failed. Please try refreshing the page.");
   }
 };

@@ -62,11 +62,10 @@ export default function EmailVerificationPage() {
     try {
       await sendEmailVerification(user);
       setMessage(
-        "Verification email sent! Please check your inbox and spam folder."
+        "Verification email sent! Please check your inbox and spam folder.",
       );
       setResendCooldown(60); // 60 second cooldown
     } catch (error) {
-      console.error("Error sending verification email:", error);
       setMessage("Failed to send verification email. Please try again.");
     } finally {
       setIsSending(false);
@@ -82,17 +81,18 @@ export default function EmailVerificationPage() {
     try {
       await reload(user);
       if (user.emailVerified) {
+        // Force refresh of the token so the cookie is updated with emailVerified: true
+        await user.getIdToken(true);
         setMessage("Email verified successfully! Redirecting...");
         setTimeout(() => {
           router.push("/profile");
         }, 2000);
       } else {
         setMessage(
-          "Email not verified yet. Please check your inbox and click the verification link."
+          "Email not verified yet. Please check your inbox and click the verification link.",
         );
       }
     } catch (error) {
-      console.error("Error checking verification:", error);
       setMessage("Failed to check verification status. Please try again.");
     } finally {
       setIsChecking(false);
@@ -104,7 +104,7 @@ export default function EmailVerificationPage() {
       await signOut(auth);
       router.push("/auth");
     } catch (error) {
-      console.error("Error signing out:", error);
+      // Silently handle sign out errors
     }
   };
 
@@ -164,9 +164,9 @@ export default function EmailVerificationPage() {
                     message.includes("successfully") || message.includes("sent")
                       ? "bg-green-900/50 border-green-700/50 text-green-300"
                       : message.includes("Failed") ||
-                        message.includes("not verified")
-                      ? "bg-yellow-900/50 border-yellow-700/50 text-yellow-300"
-                      : "bg-blue-900/50 border-blue-700/50 text-blue-300"
+                          message.includes("not verified")
+                        ? "bg-yellow-900/50 border-yellow-700/50 text-yellow-300"
+                        : "bg-blue-900/50 border-blue-700/50 text-blue-300"
                   }`}
                 >
                   <p className="text-sm">{message}</p>

@@ -18,15 +18,32 @@ const STRENGTH_LEVELS = [
  */
 export function getPasswordStrength(password = "") {
   if (!password) {
-    return { score: 0, ...STRENGTH_LEVELS[0] };
+    return { score: 0, label: "Weak", barClass: "bg-red-500", textClass: "text-red-400", widthClass: "w-0" };
   }
 
   let score = 0;
-  if (password.length >= 8) score += 1;
-  if (/[A-Z]/.test(password)) score += 1;
-  if (/\d/.test(password)) score += 1;
-  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
 
-  const level = STRENGTH_LEVELS[Math.max(0, Math.min(score, 3))];
-  return { score, ...level };
+  let label = "Weak";
+  let barClass = "bg-red-500";
+  let textClass = "text-red-400";
+  let widthClass = "w-1/3";
+
+  if (score >= 4) {
+    label = "Strong";
+    barClass = "bg-green-500";
+    textClass = "text-green-400";
+    widthClass = "w-full";
+  } else if (score >= 2) {
+    label = "Medium";
+    barClass = "bg-yellow-500";
+    textClass = "text-yellow-400";
+    widthClass = "w-2/3";
+  }
+
+  return { score, label, barClass, textClass, widthClass };
 }

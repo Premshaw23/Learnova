@@ -1,6 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useOptimistic } from "react";
+import { useTheme } from "next-themes";
+import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import {
   BookOpen,
@@ -22,6 +24,7 @@ import {
   Search,
   Gamepad2,
   Puzzle,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +32,7 @@ import { Navbar } from "@/components/Navbar";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/hooks/useAuth";
-import { logActivity } from "@/services/activityService";
+import { logActivity, getUserActivities, removeActivity } from "@/services/activityService";
 import { updateUserStat } from "@/services/statsService";
 
 // Reusable animation component
@@ -46,6 +49,10 @@ const Reveal = ({ children, className = "", delay = 0, y = 28 }) => (
 );
 
 export default function ActivityPage() {
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted ? theme === "dark" : true;
   const { user } = useAuth();
   const router = useRouter();
   const [scrollY, setScrollY] = useState(0);
@@ -53,6 +60,29 @@ export default function ActivityPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLevel, setSelectedLevel] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activities, setActivities] = useState([]);
+  
+  // React 19 Optimistic Hook
+  const [optimisticActivities, addOptimisticActivity] = useOptimistic(
+    activities,
+    (state, newActivity) => {
+      // Filter out if duplicate
+      if (state.some(a => a.title === newActivity.title)) return state;
+      return [newActivity, ...state];
+    }
+  );
+
+  useEffect(() => {
+    if (user?.uid) {
+      getUserActivities(user.uid).then(setActivities);
+    }
+  }, [user]);
+
+  const [stats, setStats] = useState({
+    games: 0,
+    students: 0,
+    rating: 0,
+  });
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -67,6 +97,38 @@ export default function ActivityPage() {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("mousemove", handleMouseMove);
     };
+  }, []);
+
+  useEffect(() => {
+    const duration = 2000;
+    const frameRate = 30;
+    const totalFrames = duration / frameRate;
+
+    let frame = 0;
+
+    const counter = setInterval(() => {
+      frame++;
+
+      const progress = frame / totalFrames;
+
+      setStats({
+        games: Math.floor(250 * progress),
+        students: Math.floor(50000 * progress),
+        rating: (4.7 * progress).toFixed(1),
+      });
+
+      if (frame >= totalFrames) {
+        clearInterval(counter);
+
+        setStats({
+          games: 250,
+          students: 50000,
+          rating: "4.7",
+        });
+      }
+    }, frameRate);
+
+    return () => clearInterval(counter);
   }, []);
 
   const categories = [
@@ -225,24 +287,43 @@ export default function ActivityPage() {
     return categoryMatch && levelMatch && searchMatch;
   });
 
-  const handleStartActivity = async (activity) => {
+  const handleEnrollActivity = async (activity) => {
     if (!user) {
-      router.push("/auth");
+      toast.error("Please login to enroll.");
       return;
     }
 
-    // Log the activity to the database
-    await logActivity(user.uid, {
+    if (activities.some(a => a.title === activity.title)) {
+      toast("You are already enrolled in this activity", { icon: "ℹ️" });
+      return;
+    }
+
+    const tempId = `temp-${Date.now()}`;
+    const newActivity = {
+      id: tempId,
       title: activity.title,
       type: activity.type || "course",
       progress: 0,
-    });
+      timestamp: new Date(),
+      saving: true // Optimistic flag
+    };
 
-    // Increment "Courses Enrolled" statistic
-    await updateUserStat(user.uid, "Courses Enrolled", 1);
+    // 1. Instant Optimistic Insertion
+    addOptimisticActivity(newActivity);
 
-    // Here add logic to actually open the quiz/game
-    alert(`Started ${activity.title}! Progress is now being tracked.`);
+    try {
+      // 2. Asynchronous Persistence
+      const dbId = await logActivity(user.uid, newActivity);
+      await updateUserStat(user.uid, "Courses Enrolled", 1);
+      
+      // 3. Seamless Reconciliation
+      setActivities(prev => [{ ...newActivity, id: dbId, saving: false }, ...prev]);
+      toast.success(`Enrolled in ${newActivity.title}`);
+    } catch (error) {
+      // 4. Automatic Rollback (Because setActivities wasn't called, the UI automatically reverts after the transition finishes)
+      toast.error("Failed to enroll. Please try again.");
+      console.error("Optimistic rollback:", error);
+    }
   };
 
   const getDifficultyColor = (difficulty) => {
@@ -261,8 +342,8 @@ export default function ActivityPage() {
   return (
     <>
       {/* Background Effects */}
-      <div className="fixed inset-0 -z-10">
-        <DarkVeil />
+      <div className="fixed inset-0 -z-10 bg-background">
+        {isDark && <DarkVeil />}
 
         {/* Mouse-following gradient orb */}
         <div
@@ -313,7 +394,7 @@ export default function ActivityPage() {
             </Reveal>
 
             <Reveal delay={0.2}>
-              <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+              <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
                 Learn Through{" "}
                 <span className="bg-gradient-to-r from-accent via-purple-400 to-pink-400 bg-clip-text text-transparent">
                   Play
@@ -322,7 +403,7 @@ export default function ActivityPage() {
             </Reveal>
 
             <Reveal delay={0.3}>
-              <p className="text-xl md:text-2xl text-gray-300 leading-relaxed max-w-3xl mx-auto mb-8">
+              <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-3xl mx-auto mb-8">
                 Discover engaging educational games and quizzes designed to make
                 learning{" "}
                 <span className="text-accent font-semibold">
@@ -336,19 +417,31 @@ export default function ActivityPage() {
             <Reveal delay={0.4}>
               <div className="flex flex-wrap justify-center gap-6">
                 {[
-                  { label: "Active Games", value: "250+", icon: Gamepad2 },
-                  { label: "Students Playing", value: "50K+", icon: Users },
-                  { label: "Avg Rating", value: "4.7", icon: Star },
+                  {
+                    label: "Active Games",
+                    value: `${stats.games}+`,
+                    icon: Gamepad2,
+                  },
+                  {
+                    label: "Students Playing",
+                    value: `${(stats.students / 1000).toFixed(0)}K+`,
+                    icon: Users,
+                  },
+                  {
+                    label: "Avg Rating",
+                    value: stats.rating,
+                    icon: Star,
+                  },
                 ].map((stat, index) => (
                   <div
                     key={index}
-                    className="flex items-center space-x-2 bg-black/30 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20"
+                    className="flex items-center space-x-2 bg-card backdrop-blur-sm rounded-full px-4 py-2 border border-border"
                   >
                     <stat.icon className="w-5 h-5 text-accent" />
-                    <span className="text-white font-semibold">
+                    <span className="text-foreground font-semibold">
                       {stat.value}
                     </span>
-                    <span className="text-gray-400 text-sm">{stat.label}</span>
+                    <span className="text-muted-foreground text-sm">{stat.label}</span>
                   </div>
                 ))}
               </div>
@@ -356,13 +449,75 @@ export default function ActivityPage() {
           </div>
         </section>
 
+        {/* My Recent Activities (Optimistic UI feed) */}
+        {user && optimisticActivities.length > 0 && (
+          <section className="px-4 sm:px-6 lg:px-8 mb-20">
+            <div className="max-w-7xl mx-auto">
+              <Reveal delay={0.1}>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-8">
+                  My Learning Journey
+                </h2>
+              </Reveal>
+              
+              <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory hide-scrollbar">
+                <AnimatePresence mode="popLayout">
+                  {optimisticActivities.map((activity) => (
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, scale: 0.8, x: -50 }}
+                      animate={{ 
+                        opacity: activity.saving ? 0.6 : 1, 
+                        scale: 1, x: 0 
+                      }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      key={activity.id}
+                      className="snap-start shrink-0 w-[300px]"
+                    >
+                      <Card className={`relative bg-card backdrop-blur-xl border border-border h-full overflow-hidden ${activity.saving ? "animate-pulse shadow-none border-dashed border-accent/50" : "shadow-lg shadow-accent/10"}`}>
+                        {/* Optimistic saving indicator */}
+                        {activity.saving && (
+                          <div className="absolute top-2 right-2 flex items-center gap-1 bg-accent/20 text-accent text-xs px-2 py-1 rounded-full backdrop-blur-md">
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <span>Saving...</span>
+                          </div>
+                        )}
+                        <CardHeader className="pb-4">
+                          <CardTitle className="text-foreground text-lg">{activity.title}</CardTitle>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-xs px-2 py-1 rounded-full font-medium bg-blue-600 text-white capitalize">{activity.type}</span>
+                            <span className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleDateString()}</span>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden mb-4">
+                            <div className="h-full bg-gradient-to-r from-accent to-purple-500 rounded-full" style={{ width: `${activity.progress}%` }} />
+                          </div>
+                          <Button 
+                            disabled={activity.saving}
+                            onClick={() => router.push(`/activity/${activity.id}`)}
+                            className="w-full bg-accent/10 hover:bg-accent/20 text-accent transition-all duration-300"
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            {activity.progress > 0 ? "Continue" : "Start Now"}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Featured Activities */}
         <section className="px-4 sm:px-6 lg:px-8 mb-20">
           <div className="max-w-7xl mx-auto">
             <Reveal delay={0.1}>
               <div className="flex items-center justify-between mb-12">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+                  <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
                     Featured Activities
                   </h2>
                   <p className="text-gray-400">
@@ -379,7 +534,7 @@ export default function ActivityPage() {
             <div className="grid lg:grid-cols-3 gap-8">
               {featuredActivities.map((activity, index) => (
                 <Reveal key={activity.id} delay={0.1 + index * 0.1}>
-                  <Card className="group bg-black/40 backdrop-blur-xl border-white/10 hover:border-accent/50 transition-all duration-700 hover:shadow-2xl hover:shadow-accent/25 overflow-hidden">
+                  <Card className="group bg-card backdrop-blur-xl border-border hover:border-accent/50 transition-all duration-700 hover:shadow-2xl hover:shadow-accent/25 overflow-hidden">
                     <div
                       className={`h-2 bg-gradient-to-r ${activity.gradient}`}
                     />
@@ -391,18 +546,18 @@ export default function ActivityPage() {
                         >
                           <activity.icon className="w-6 h-6 text-white" />
                         </div>
-                        <div className="flex items-center space-x-1 bg-black/50 px-2 py-1 rounded-full">
+                        <div className="flex items-center space-x-1 bg-muted px-2 py-1 rounded-full">
                           <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                          <span className="text-white font-medium text-sm">
+                          <span className="text-foreground font-medium text-sm">
                             {activity.rating}
                           </span>
                         </div>
                       </div>
 
-                      <CardTitle className="text-white text-xl group-hover:text-accent transition-colors duration-300">
+                      <CardTitle className="text-foreground text-xl group-hover:text-accent transition-colors duration-300">
                         {activity.title}
                       </CardTitle>
-                      <p className="text-gray-400 text-sm line-clamp-2">
+                      <p className="text-muted-foreground text-sm line-clamp-2">
                         {activity.description}
                       </p>
                     </CardHeader>
@@ -421,7 +576,7 @@ export default function ActivityPage() {
                         </div>
                         <span
                           className={`text-sm font-medium ${getDifficultyColor(
-                            activity.difficulty
+                            activity.difficulty,
                           )}`}
                         >
                           {activity.difficulty}
@@ -429,11 +584,11 @@ export default function ActivityPage() {
                       </div>
 
                       <Button
-                        onClick={() => handleStartActivity(activity)}
+                        onClick={() => handleEnrollActivity(activity)}
                         className={`w-full bg-gradient-to-r ${activity.gradient} hover:shadow-lg hover:shadow-accent/25 transition-all duration-300 group-hover:scale-[1.02]`}
                       >
-                        <Play className="w-4 h-4 mr-2" />
-                        Start {activity.type === "quiz" ? "Quiz" : "Game"}
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Enroll Now
                         <ChevronRight className="w-4 h-4 ml-2" />
                       </Button>
                     </CardContent>
@@ -448,13 +603,13 @@ export default function ActivityPage() {
         <section className="px-4 sm:px-6 lg:px-8 mb-16">
           <div className="max-w-7xl mx-auto">
             <Reveal delay={0.1}>
-              <div className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-white/10 hover:border-accent/20 transition-all duration-300">
+              <div className="bg-card backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-border hover:border-accent/20 transition-all duration-300">
                 <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-white flex items-center">
+                  <h3 className="text-xl font-semibold text-foreground flex items-center">
                     <Filter className="w-5 h-5 mr-3 text-accent" />
                     Filter Activities
                   </h3>
-                  <div className="w-full sm:w-auto flex items-center space-x-2 bg-black/30 rounded-full px-4 py-2 border border-white/10">
+                  <div className="w-full sm:w-auto flex items-center space-x-2 bg-background rounded-full px-4 py-2 border border-border">
                     <Search className="w-4 h-4 text-gray-400" />
                     <input
                       type="text"
@@ -470,7 +625,7 @@ export default function ActivityPage() {
                 <div className="grid md:grid-cols-2 gap-8">
                   {/* Category Filter */}
                   <div>
-                    <label className="text-sm font-semibold text-white mb-4 block">
+                    <label className="text-sm font-semibold text-foreground mb-4 block">
                       Subject Category
                     </label>
                     <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
@@ -478,10 +633,11 @@ export default function ActivityPage() {
                         <button
                           key={category.id}
                           onClick={() => setSelectedCategory(category.id)}
-                          className={`flex items-center justify-center px-3 py-2 min-h-[42px] text-xs sm:text-sm rounded-full whitespace-nowrap transition-all duration-300 ${selectedCategory === category.id
-                            ? "bg-gradient-to-r from-accent to-purple-500 text-white shadow-lg shadow-accent/25"
-                            : "bg-black/30 text-gray-300 hover:bg-black/50 hover:text-white border border-white/10"
-                            }`}
+                          className={`flex items-center justify-center px-3 py-2 min-h-[42px] text-xs sm:text-sm rounded-full whitespace-nowrap transition-all duration-300 ${
+                            selectedCategory === category.id
+                              ? "bg-gradient-to-r from-accent to-purple-500 text-white shadow-lg shadow-accent/25"
+                              : "bg-black/30 text-gray-300 hover:bg-black/50 hover:text-white border border-white/10"
+                          }`}
                         >
                           <category.icon className="w-4 h-4 mr-2" />
                           {category.label}
@@ -492,7 +648,7 @@ export default function ActivityPage() {
 
                   {/* Level Filter */}
                   <div>
-                    <label className="text-sm font-semibold text-white mb-4 block">
+                    <label className="text-sm font-semibold text-foreground mb-4 block">
                       Education Level
                     </label>
                     <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
@@ -500,10 +656,11 @@ export default function ActivityPage() {
                         <button
                           key={level.id}
                           onClick={() => setSelectedLevel(level.id)}
-                          className={`px-4 py-2 rounded-full transition-all duration-300 text-sm ${selectedLevel === level.id
-                            ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25"
-                            : "bg-black/30 text-gray-300 hover:bg-black/50 hover:text-white border border-white/10"
-                            }`}
+                          className={`px-4 py-2 rounded-full transition-all duration-300 text-sm ${
+                            selectedLevel === level.id
+                              ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25"
+                              : "bg-black/30 text-gray-300 hover:bg-black/50 hover:text-white border border-white/10"
+                          }`}
                         >
                           {level.label}
                         </button>
@@ -521,13 +678,14 @@ export default function ActivityPage() {
           <div className="max-w-7xl mx-auto">
             <Reveal delay={0.1}>
               <div className="mb-12">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
                   All Activities
                 </h2>
                 <p className="text-gray-400">
                   {filteredActivities.length} activities found
                   {selectedCategory !== "all" &&
-                    ` in ${categories.find((c) => c.id === selectedCategory)?.label
+                    ` in ${
+                      categories.find((c) => c.id === selectedCategory)?.label
                     }`}
                   {selectedLevel !== "all" &&
                     ` for ${levels.find((l) => l.id === selectedLevel)?.label}`}
@@ -538,7 +696,7 @@ export default function ActivityPage() {
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredActivities.map((activity, index) => (
                 <Reveal key={activity.id} delay={0.05 + index * 0.05}>
-                  <Card className="group bg-black/40 backdrop-blur-xl border-white/10 hover:border-accent/30 transition-all duration-500 hover:shadow-xl hover:shadow-accent/20">
+                  <Card className="group bg-card backdrop-blur-xl border-border hover:border-accent/30 transition-all duration-500 hover:shadow-xl hover:shadow-accent/20">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between mb-3">
                         <div
@@ -547,27 +705,28 @@ export default function ActivityPage() {
                           <activity.icon className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex items-center space-x-2 gap-2">
-                          <div className="flex items-center space-x-1 bg-black/50 px-2 py-1 rounded-full">
+                          <div className="flex items-center space-x-1 bg-muted px-2 py-1 rounded-full">
                             <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                            <span className="text-white text-xs font-medium">
+                            <span className="text-foreground text-xs font-medium">
                               {activity.rating}
                             </span>
                           </div>
                           <span
-                            className={`text-xs px-2 py-1 rounded-full font-medium ${activity.type === "quiz"
-                              ? "bg-blue-500/20 text-blue-300"
-                              : "bg-green-500/20 text-green-300"
-                              }`}
+                            className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              activity.type === "quiz"
+                                ? "bg-blue-600 text-white"
+                                : "bg-green-600 text-white"
+                          }`}
                           >
                             {activity.type}
                           </span>
                         </div>
                       </div>
 
-                      <CardTitle className="text-white text-lg group-hover:text-accent transition-colors duration-300">
+                      <CardTitle className="text-foreground text-lg group-hover:text-accent transition-colors duration-300">
                         {activity.title}
                       </CardTitle>
-                      <p className="text-gray-400 text-sm line-clamp-2">
+                      <p className="text-muted-foreground text-sm line-clamp-2">
                         {activity.description}
                       </p>
                     </CardHeader>
@@ -586,7 +745,7 @@ export default function ActivityPage() {
                         </div>
                         <span
                           className={`font-medium ${getDifficultyColor(
-                            activity.difficulty
+                            activity.difficulty,
                           )}`}
                         >
                           {activity.difficulty}
@@ -595,11 +754,11 @@ export default function ActivityPage() {
 
                       <Button
                         size="sm"
-                        onClick={() => handleStartActivity(activity)}
+                        onClick={() => handleEnrollActivity(activity)}
                         className={`w-full bg-gradient-to-r ${activity.gradient} hover:shadow-md transition-all duration-300 text-xs sm:text-sm`}
                       >
-                        <Play className="w-3 h-3 mr-2" />
-                        Play Now
+                        <Sparkles className="w-3 h-3 mr-2" />
+                        Enroll Now
                       </Button>
                     </CardContent>
                   </Card>
@@ -611,7 +770,7 @@ export default function ActivityPage() {
               <Reveal>
                 <div className="text-center py-16">
                   <Puzzle className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
                     No Activities Found
                   </h3>
                   <p className="text-gray-400 mb-6">
@@ -637,9 +796,9 @@ export default function ActivityPage() {
         <section className="px-4 sm:px-6 lg:px-8 pb-20">
           <div className="max-w-4xl mx-auto">
             <Reveal>
-              <div className="bg-gradient-to-br from-black/50 to-purple-900/30 rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
+              <div className="bg-card rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
                 <Trophy className="w-16 h-16 text-accent mx-auto mb-6" />
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 text-center">
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 text-center">
                   Ready to Level Up Your Learning?
                 </h2>
                 <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto text-center">
@@ -647,13 +806,13 @@ export default function ActivityPage() {
                   engaging through our interactive platform.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button className="bg-gradient-to-r from-accent to-purple-500 hover:shadow-xl hover:shadow-accent/25 transition-all duration-300 hover:scale-105 text-white font-semibold">
+                  <Button className="bg-gradient-to-r from-accent to-purple-500 hover:shadow-xl hover:shadow-accent/25 transition-all duration-300 hover:scale-105 text-foreground font-semibold">
                     <Sparkles className="w-5 h-5 mr-2" />
                     Start Playing Now
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-white/20 text-white bg-black/30 hover:bg-black/50 transition-all duration-300"
+                    className="border-border text-foreground bg-muted hover:bg-muted/80 transition-all duration-300"
                   >
                     View Leaderboards
                     <ChevronRight className="w-4 h-4 ml-2" />
