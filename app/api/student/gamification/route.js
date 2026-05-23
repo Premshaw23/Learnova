@@ -17,7 +17,7 @@ export async function GET(request) {
     }
 
     const db = await connectDb();
-    const userId = decodedToken.uid;
+    const userId = decodedToken.decodedToken.uid;
 
     // Fetch student data
     const student = await db.collection("users").findOne({ firebaseUid: userId });
