@@ -95,7 +95,7 @@ export const validateName = (value, fieldName = "Name") => {
 };
 
 /**
- * Validates a standard phone number format (bonus).
+ * Validates a standard phone number format.
  * @param {string} value - The phone number to validate.
  * @returns {boolean|string}
  */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Building2,
   Users,
@@ -39,36 +39,19 @@ const EngagementChart = dynamic(
 
 const SuperAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedInstitute, setSelectedInstitute] = useState("all");
   const [showCriticalAlert, setShowCriticalAlert] = useState(false);
   const [systemStatus, setSystemStatus] = useState("operational");
+
   useEffect(() => {
-  const loadingTimer = setTimeout(() => {
-    setLoading(false);
-  }, 1500);
+    const loadingTimer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
 
-  return () => clearTimeout(loadingTimer);
-}, []);
-
-if (error) {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
-      <div className="text-center text-white p-8">
-        <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Error Loading Dashboard</h2>
-        <p className="text-gray-400 mb-4">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="bg-red-500/20 text-red-400 px-6 py-3 rounded-xl hover:bg-red-500/30 transition-colors"
-        >
-          Retry
-        </button>
-      </div>
-    </div>
-  );
-}
+    return () => clearTimeout(loadingTimer);
+  }, []);
 
   // Platform-wide statistics
   const platformStats = {
@@ -148,8 +131,7 @@ if (error) {
     {
       id: 1,
       type: "security",
-      message:
-        "Multiple failed face recognition attempts detected - Delhi Technical University",
+      message: "Multiple failed face recognition attempts detected - Delhi Technical University",
       severity: "high",
       time: "10 mins ago",
     },
@@ -177,6 +159,28 @@ if (error) {
     exceptionHandling: { enabled: 38, total: 47, percentage: 81 },
     analyticsReports: { enabled: 35, total: 47, percentage: 74 },
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center text-white p-8">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-red-500/20 text-red-400 px-6 py-3 rounded-xl hover:bg-red-500/30 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
 
   const renderOverview = () => (
     <div className="space-y-6">
@@ -215,7 +219,7 @@ if (error) {
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-5 shadow-2xl hover:scale-105 transition-all duration-300">
+        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-xl border border-purple-500/33 rounded-2xl p-5 shadow-2xl hover:scale-105 transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
             <Users className="w-8 h-8 text-purple-400" />
             <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full border border-blue-500/30">
@@ -345,9 +349,7 @@ if (error) {
           </h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-300">
-                Face Recognition API
-              </span>
+              <span className="text-sm text-gray-300">Face Recognition API</span>
               <span className="text-sm font-medium text-green-400">120ms</span>
             </div>
             <div className="flex items-center justify-between">
@@ -396,7 +398,7 @@ if (error) {
           Critical Alerts
         </h3>
         <div className="space-y-2">
-          {criticalAlerts.map((alert) => (
+          ={criticalAlerts.map((alert) => (
             <div
               key={alert.id}
               className="flex items-center justify-between bg-black/40 backdrop-blur-xl p-3 rounded border border-red-500/20"
@@ -746,7 +748,6 @@ if (error) {
         Security & Compliance Center
       </h2>
 
-      {/* Security Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 backdrop-blur-xl border border-green-500/30 rounded-2xl p-5 shadow-2xl">
           <div className="flex items-center justify-between mb-3">
@@ -770,199 +771,79 @@ if (error) {
 
         <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-5 shadow-2xl">
           <div className="flex items-center justify-between mb-3">
-            <Camera className="w-8 h-8 text-purple-400" />
-            <span className="text-2xl font-bold text-purple-400">12</span>
+            <AlertTriangle className="w-8 h-8 text-purple-400" />
+            <span className="text-2xl font-bold text-purple-400">0</span>
           </div>
-          <h3 className="font-semibold text-white">Face Spoofing Detected</h3>
-          <p className="text-sm text-gray-300 mt-1">Blocked today</p>
-        </div>
-      </div>
-
-      {/* GPS Violations */}
-      <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
-          <MapPin className="w-5 h-5 text-gray-400" />
-          GPS Geofencing Violations
-        </h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-red-500/20 border border-red-500/30 rounded">
-            <div>
-              <div className="font-medium text-sm text-white">
-                Delhi Technical University - Room 301
-              </div>
-              <div className="text-xs text-gray-400">
-                15 attempts outside geofence radius
-              </div>
-            </div>
-            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
-              Investigate
-            </button>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-yellow-500/20 border border-yellow-500/30 rounded">
-            <div>
-              <div className="font-medium text-sm text-white">
-                Mumbai Institute - Building A
-              </div>
-              <div className="text-xs text-gray-400">
-                GPS spoofing detected - 3 devices
-              </div>
-            </div>
-            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
-              Investigate
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Compliance Audits */}
-      <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
-          <Shield className="w-5 h-5 text-gray-400" />
-          Compliance Audits
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-800/50">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium text-gray-400">
-                  Audit ID
-                </th>
-                <th className="px-4 py-2 text-left font-medium text-gray-400">
-                  Institute
-                </th>
-                <th className="px-4 py-2 text-left font-medium text-gray-400">
-                  Status
-                </th>
-                <th className="px-4 py-2 text-left font-medium text-gray-400">
-                  Date
-                </th>
-                <th className="px-4 py-2 text-left font-medium text-gray-400">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700/50">
-              <tr>
-                <td className="px-4 py-2 text-white">AUD-1024</td>
-                <td className="px-4 py-2 text-white">
-                  Delhi Technical University
-                </td>
-                <td className="px-4 py-2">
-                  <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs border border-green-500/30">
-                    Compliant
-                  </span>
-                </td>
-                <td className="px-4 py-2 text-gray-300">2025-09-20</td>
-                <td className="px-4 py-2">
-                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors">
-                    View Report
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-4 py-2 text-white">AUD-1025</td>
-                <td className="px-4 py-2 text-white">Mumbai Institute</td>
-                <td className="px-4 py-2">
-                  <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs border border-yellow-500/30">
-                    Pending
-                  </span>
-                </td>
-                <td className="px-4 py-2 text-gray-300">2025-09-21</td>
-                <td className="px-4 py-2">
-                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors">
-                    View Report
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <h3 className="font-semibold text-white">Active Breaches</h3>
+          <p className="text-sm text-gray-300 mt-1">System fully guarded</p>
         </div>
       </div>
     </div>
   );
 
-  if (loading) {
-  return <DashboardSkeleton />;
-}
-
   return (
-    <div className="min-h-screen p-6 space-y-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-16">
-      {/* Premium Glassy Top Bar */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 text-white">
       <Navbar />
-      <div className="bg-gradient-to-r from-gray-900/80 via-blue-900/70 to-purple-900/80 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl px-6 py-4 mb-4">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-md">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">
-                Learnova Admin Center
-              </h1>
-              <p className="text-xs text-gray-400">Super Admin Dashboard</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-5">
-            <div className="text-right">
-              <div className="text-white font-semibold text-lg">
-                {new Date().toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </div>
-              <div className="text-xs text-gray-400">
-                {new Date().toLocaleDateString()}
-              </div>
-            </div>
-            <button className="relative p-2.5 bg-gray-800/60 hover:bg-gray-700/60 rounded-xl border border-gray-600/40 transition-colors shadow-sm">
-              <AlertTriangle className="w-5 h-5 text-gray-300" />
-              {criticalAlerts.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md">
-                  {criticalAlerts.length}
-                </span>
-              )}
-            </button>
-            <div className="flex items-center gap-3 bg-gray-800/60 hover:bg-gray-700/60 rounded-xl px-3 py-2 border border-gray-600/40 shadow-sm cursor-pointer">
-              <div className="w-9 h-9 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-white" />
-              </div>
-              <div className="hidden sm:block">
-                <div className="text-white text-sm font-medium">
-                  Super Admin
-                </div>
-                <div className="text-xs text-gray-400">Platform Owner</div>
-              </div>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-4 border-b border-white/10 pb-2">
-        {["overview", "institutes", "monitoring", "security"].map((tab) => (
+      
+      <div className="flex">
+        {/* Sidebar Navigation */}
+        <aside className="w-64 min-h-[calc(100vh-4rem)] bg-black/20 backdrop-blur-xl border-r border-white/10 p-4 space-y-2">
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`capitalize px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
-              activeTab === tab
-                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
-                : "text-gray-300 hover:text-white hover:bg-gray-800/50"
+            onClick={() => setActiveTab("overview")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+              activeTab === "overview"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20"
+                : "text-gray-400 hover:bg-white/5 hover:text-white"
             }`}
           >
-            {tab}
+            <Activity className="w-4 h-4" />
+            Overview
           </button>
-        ))}
-      </div>
+          
+          <button
+            onClick={() => setActiveTab("institutes")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+              activeTab === "institutes"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20"
+                : "text-gray-400 hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            Institutes
+          </button>
 
-      {/* Content */}
-      <div className="mt-4">
-        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
+          <button
+            onClick={() => setActiveTab("monitoring")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+              activeTab === "monitoring"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20"
+                : "text-gray-400 hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            <Server className="w-4 h-4" />
+            System Monitoring
+          </button>
+
+          <button
+            onClick={() => setActiveTab("security")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+              activeTab === "security"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20"
+                : "text-gray-400 hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            Security Center
+          </button>
+        </aside>
+
+        {/* Main Content Viewport */}
+        <main className="flex-1 p-8 space-y-6 overflow-y-auto max-h-[calc(100vh-4rem)]">
           {activeTab === "overview" && renderOverview()}
           {activeTab === "institutes" && renderInstitutes()}
           {activeTab === "monitoring" && renderSystemMonitoring()}
           {activeTab === "security" && renderSecurityCenter()}
-        </div>
+        </main>
       </div>
     </div>
   );

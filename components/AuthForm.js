@@ -1,4 +1,5 @@
 "use client";
+
 import { useMemo, useState } from "react";
 import { Eye, EyeOff, Mail, Lock, Sparkles } from "lucide-react";
 import { ROLE_CONFIG, USER_ROLES } from "@/constants/userRoles";
@@ -13,15 +14,15 @@ import {
 export default function AuthForm({
   isLogin,
   selectedRole,
-  email,
+  email = "",
   setEmail,
-  password,
+  password = "",
   setPassword,
-  fullName,
+  fullName = "",
   setFullName,
-  instituteName,
+  instituteName = "",
   setInstituteName,
-  errors,
+  errors = {},
   setErrors,
   isLoading,
   onSubmit,
@@ -31,6 +32,8 @@ export default function AuthForm({
   onForgotPassword,
 }) {
   const [showPassword, setShowPassword] = useState(false);
+
+  // Computes password strength dynamically during sign-up
   const passwordStrength = useMemo(
     () => getPasswordStrength(password),
     [password]
@@ -61,14 +64,27 @@ export default function AuthForm({
     }
   };
 
+  // Helper to determine password meter styling based on score/strength
+  const getStrengthBarConfig = (score) => {
+    switch (score) {
+      case 0: return { width: "0%", color: "bg-gray-600" };
+      case 1: return { width: "25%", color: "bg-red-500" };
+      case 2: return { width: "50%", color: "bg-orange-500" };
+      case 3: return { width: "75%", color: "bg-yellow-500" };
+      case 4: return { width: "100%", color: "bg-green-500" };
+      default: return { width: "0%", color: "bg-gray-600" };
+    }
+  };
+
   return (
-    <div>
+    <div className="w-full max-w-md mx-auto">
       {/* Selected Role Display */}
       {selectedRole && ROLE_CONFIG[selectedRole] && (
-        <div className="mb-6">
+        <div className="mb-6 flex justify-center">
           <button
+            type="button"
             onClick={onRoleChange}
-            className="inline-flex items-center gap-3 p-4 bg-gray-800/70 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-200"
+            className="inline-flex w-full items-center gap-3 p-4 bg-gray-800/70 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-200"
           >
             {(() => {
               const config = ROLE_CONFIG[selectedRole];
@@ -76,16 +92,12 @@ export default function AuthForm({
               const IconComponent = config.icon;
               return (
                 <>
-                  <div
-                    className={`w-10 h-10 rounded-full bg-gradient-to-r ${config.color} p-2`}
-                  >
+                  <div className={`w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-r ${config.color} p-2`}>
                     <IconComponent className="w-6 h-6 text-white" />
                   </div>
                   <div className="text-left">
                     <h4 className="font-semibold text-white">{config.title}</h4>
-                    <p className="text-gray-400 text-sm">
-                      Click to change role
-                    </p>
+                    <p className="text-gray-400 text-sm">Click to change role</p>
                   </div>
                 </>
               );
@@ -99,14 +111,10 @@ export default function AuthForm({
           <h2 className="text-2xl font-bold text-white mb-2">
             {isLogin ? "Welcome Back" : "Create Account"}
           </h2>
-          <p className="text-gray-300">
+          <p className="text-gray-300 text-sm">
             {isLogin
-              ? `Sign in to your ${
-                  ROLE_CONFIG[selectedRole]?.title.toLowerCase() || "account"
-                }`
-              : `Create your ${
-                  ROLE_CONFIG[selectedRole]?.title.toLowerCase() || "account"
-                }`}
+              ? `Sign in to your ${ROLE_CONFIG[selectedRole]?.title?.toLowerCase() || "account"}`
+              : `Create your ${ROLE_CONFIG[selectedRole]?.title?.toLowerCase() || "account"}`}
           </p>
         </div>
 
@@ -120,10 +128,11 @@ export default function AuthForm({
           {!isLogin && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-200 mb-2">
+                <label htmlFor="fullName" className="block text-sm font-medium text-gray-200 mb-2">
                   Full Name
                 </label>
                 <input
+                  id="fullName"
                   type="text"
                   placeholder="Enter your full name"
                   value={fullName}
@@ -143,10 +152,11 @@ export default function AuthForm({
 
               {selectedRole === USER_ROLES.INSTITUTE && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-200 mb-2">
+                  <label htmlFor="instituteName" className="block text-sm font-medium text-gray-200 mb-2">
                     Institute Name
                   </label>
                   <input
+                    id="instituteName"
                     type="text"
                     placeholder="Enter your institute name"
                     value={instituteName}
@@ -156,15 +166,11 @@ export default function AuthForm({
                     }}
                     onBlur={(e) => validateField("instituteName", e.target.value)}
                     className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
-                      errors.instituteName
-                        ? "border-red-500/50"
-                        : "border-gray-600"
+                      errors.instituteName ? "border-red-500/50" : "border-gray-600"
                     }`}
                   />
                   {errors.instituteName && (
-                    <p className="text-red-400 text-sm mt-1">
-                      {errors.instituteName}
-                    </p>
+                    <p className="text-red-400 text-sm mt-1">{errors.instituteName}</p>
                   )}
                 </div>
               )}
@@ -172,12 +178,13 @@ export default function AuthForm({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-200 mb-2">
               Email Address
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
+                id="email"
                 type="email"
                 placeholder="Enter your email"
                 value={email}
@@ -197,12 +204,13 @@ export default function AuthForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-200 mb-2">
               Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
+                id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={password}
@@ -218,22 +226,37 @@ export default function AuthForm({
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 focus:outline-none"
               >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {errors.password && (
+
+            {/* Error Message handling vs Tooltip Helpers */}
+            {errors.password ? (
               <p className="text-red-400 text-sm mt-1">{errors.password}</p>
-            )}
-            {!isLogin && !errors.password && (
-              <p className="text-gray-400 text-xs mt-1">
-                Min 8 characters with upper, lower, number, and special character.
-              </p>
+            ) : (
+              !isLogin && (
+                <>
+                  {/* Dynamic Password Strength Indicator Bar */}
+                  {password.length > 0 && (
+                    <div className="mt-2">
+                      <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${getStrengthBarConfig(passwordStrength?.score).color}`}
+                          style={{ width: getStrengthBarConfig(passwordStrength?.score).width }}
+                        />
+                      </div>
+                      <p className="text-gray-400 text-xs mt-1">
+                        Strength: <span className="font-medium text-gray-300">{passwordStrength?.label || "Weak"}</span>
+                      </p>
+                    </div>
+                  )}
+                  <p className="text-gray-400 text-xs mt-1">
+                    Min 8 characters with upper, lower, number, and special character.
+                  </p>
+                </>
+              )
             )}
           </div>
 
@@ -242,7 +265,7 @@ export default function AuthForm({
               <button
                 type="button"
                 onClick={onForgotPassword}
-                className="text-sm text-indigo-400 hover:text-indigo-300 font-medium"
+                className="text-sm text-indigo-400 hover:text-indigo-300 font-medium focus:outline-none"
               >
                 Forgot password?
               </button>
@@ -257,11 +280,11 @@ export default function AuthForm({
             {isLoading ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Processing...
+                <span>Processing...</span>
               </>
             ) : (
               <>
-                {isLogin ? "Sign In" : "Create Account"}
+                <span>{isLogin ? "Sign In" : "Create Account"}</span>
                 <Sparkles className="w-5 h-5" />
               </>
             )}
@@ -274,18 +297,19 @@ export default function AuthForm({
               <div className="w-full border-t border-gray-600"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-800/70 text-gray-400">
+              <span className="px-2 bg-gray-800 text-gray-400">
                 Or continue with
               </span>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onGoogleLogin}
             disabled={isLoading}
             className="mt-4 w-full bg-gray-700/50 border border-gray-600 text-gray-200 py-3 px-4 rounded-xl font-medium hover:bg-gray-600/50 focus:ring-4 focus:ring-gray-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -303,16 +327,17 @@ export default function AuthForm({
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Continue with Google
+            <span>Continue with Google</span>
           </button>
         </div>
 
         <div className="mt-8 text-center">
-          <p className="text-gray-300">
+          <p className="text-gray-300 text-sm">
             {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
             <button
+              type="button"
               onClick={onToggleLogin}
-              className="text-indigo-400 hover:text-indigo-300 font-semibold"
+              className="text-indigo-400 hover:text-indigo-300 font-semibold focus:outline-none"
             >
               {isLogin ? "Sign Up" : "Sign In"}
             </button>

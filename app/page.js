@@ -1,4 +1,5 @@
 "use client";
+
 import { Navbar } from "@/components/Navbar";
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
@@ -149,20 +150,31 @@ const IMPACT_DATA = [
 ];
 
 // Reusable components
-const SectionBadge = ({
-  icon: Icon,
-  text,
-  gradient = "from-purple-500/20 to-pink-500/20",
-  borderColor = "purple-500/30",
-  textColor = "purple-300",
-}) => (
-  <div
-    className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${gradient} rounded-full border border-${borderColor} backdrop-blur-sm mb-6`}
-  >
-    <Icon className={`w-5 h-5 text-${textColor.split("-")[0]}-400 mr-2`} />
-    <span className={`text-${textColor} font-medium`}>{text}</span>
-  </div>
-);
+const SectionBadge = ({ icon: Icon, text, variant = "purple" }) => {
+  const styles = {
+    purple: {
+      gradient: "from-purple-500/20 to-pink-500/20",
+      border: "border-purple-500/30",
+      text: "text-purple-300",
+      iconColor: "text-purple-400"
+    },
+    accent: {
+      gradient: "from-accent/20 to-purple-500/20",
+      border: "border-accent/30",
+      text: "text-accent",
+      iconColor: "text-accent"
+    }
+  };
+
+  const currentStyle = styles[variant] || styles.purple;
+
+  return (
+    <div className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${currentStyle.gradient} rounded-full border ${currentStyle.border} backdrop-blur-sm mb-6`}>
+      <Icon className={`w-5 h-5 ${currentStyle.iconColor} mr-2`} />
+      <span className={`${currentStyle.text} font-medium`}>{text}</span>
+    </div>
+  );
+};
 
 const Reveal = ({ children, className = "", delay = 0, y = 28 }) => (
   <motion.div
@@ -176,12 +188,7 @@ const Reveal = ({ children, className = "", delay = 0, y = 28 }) => (
   </motion.div>
 );
 
-const ActionButton = ({
-  href,
-  variant = "primary",
-  children,
-  className = "",
-}) => {
+const ActionButton = ({ href, variant = "primary", children, className = "" }) => {
   const baseClasses =
     "group inline-flex items-center px-8 py-4 rounded-full font-semibold transition-all duration-500 hover:scale-[1.02]";
   const variants = {
@@ -191,7 +198,7 @@ const ActionButton = ({
       "bg-white/10 text-white border border-white/20 hover:bg-white/20",
   };
 
-  const contentClasses = `${baseClasses} ${variants[variant]} ${className}`;
+  const contentClasses = `${baseClasses} ${variants[variant] || variants.primary} ${className}`;
   if (href) {
     return (
       <Link href={href} className={contentClasses}>
@@ -210,7 +217,6 @@ export default function AboutPage() {
   const [scrollY, setScrollY] = useState(0);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  // Memoized mouse tracking with throttling
   const handleMouseMove = useCallback((e) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
   }, []);
@@ -220,19 +226,19 @@ export default function AboutPage() {
   }, []);
 
   const handleAnimationComplete = useCallback(() => {
+    // Intentional placeholder callback
   }, []);
 
   useEffect(() => {
-    // Throttled event listeners
-    let scrollTimeout;
-    let mouseTimeout;
+    let scrollTimeout = null;
+    let mouseTimeout = null;
 
     const throttledScroll = () => {
       if (!scrollTimeout) {
         scrollTimeout = setTimeout(() => {
           handleScroll();
           scrollTimeout = null;
-        }, 16); // ~60fps
+        }, 16);
       }
     };
 
@@ -241,7 +247,7 @@ export default function AboutPage() {
         mouseTimeout = setTimeout(() => {
           handleMouseMove(e);
           mouseTimeout = null;
-        }, 32); // ~30fps
+        }, 32);
       }
     };
 
@@ -262,7 +268,6 @@ export default function AboutPage() {
     }
   }, []);
 
-  // Memoized style calculations
   const mouseOrbStyle = useMemo(
     () => ({
       left: mousePosition.x - 192,
@@ -326,7 +331,7 @@ export default function AboutPage() {
           />
 
           <div className="max-w-4xl mx-auto text-center relative">
-            <SectionBadge icon={Sparkles} text="Introducing Learnova" />
+            <SectionBadge icon={Sparkles} text="Introducing Learnova" variant="purple" />
 
             <div className="flex flex-wrap justify-center items-center mb-8 text-center gap-x-6 gap-y-4">
               <SplitText
@@ -381,7 +386,7 @@ export default function AboutPage() {
           <div className="max-w-7xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <Reveal className="space-y-8">
-                <SectionBadge icon={Sparkles} text="Our Mission" />
+                <SectionBadge icon={Sparkles} text="Our Mission" variant="purple" />
 
                 <h2 className="text-2xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-accent bg-clip-text text-transparent">
                   Empowering Educational Excellence
@@ -411,7 +416,7 @@ export default function AboutPage() {
                 </div>
 
                 <ActionButton href="/activity">
-                  Learn More
+                  <span>Learn More</span>
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </ActionButton>
               </Reveal>
@@ -456,9 +461,7 @@ export default function AboutPage() {
               <SectionBadge
                 icon={Heart}
                 text="Our Values"
-                gradient="from-accent/20 to-purple-500/20"
-                borderColor="accent/30"
-                textColor="accent"
+                variant="accent"
               />
 
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
@@ -504,9 +507,7 @@ export default function AboutPage() {
               <SectionBadge
                 icon={Users}
                 text="Our Team"
-                gradient="from-emerald-500/20 to-teal-500/20"
-                borderColor="emerald-500/30"
-                textColor="emerald-400"
+                variant="purple"
               />
 
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
@@ -574,9 +575,7 @@ export default function AboutPage() {
               <SectionBadge
                 icon={TrendingUp}
                 text="Our Impact"
-                gradient="from-white/10 to-white/10"
-                borderColor="white/20"
-                textColor="white"
+                variant="accent"
               />
 
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
@@ -615,7 +614,7 @@ export default function AboutPage() {
         >
           <div className="max-w-7xl mx-auto relative">
             <Reveal className="text-center mb-16">
-              <SectionBadge icon={Sparkles} text="Our Impact" />
+              <SectionBadge icon={Sparkles} text="Our Impact" variant="purple" />
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
                 Transforming Education for Everyone
               </h2>
@@ -658,16 +657,19 @@ export default function AboutPage() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <ActionButton href="/auth">
-                  Get Started Today
+                  <span>Get Started Today</span>
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </ActionButton>
                 <ActionButton href="/contact" variant="secondary">
-                  Schedule Demo
+                  <span>Schedule Demo</span>
                 </ActionButton>
               </div>
             </div>
           </Reveal>
         </section>
+
+        {/* Learnova Chatbot Placement */}
+        <LearnovaChatbot />
       </div>
 
       <style jsx>{`
