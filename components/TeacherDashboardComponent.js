@@ -329,8 +329,13 @@ const TeacherDashboard = () => {
 
   // Fetch exception requests
   useEffect(() => {
+    if (!user) return;
+
+    let controller = new AbortController();
+
     const fetchExceptionRequests = async () => {
-      if (!user) return;
+      controller.abort();
+      controller = new AbortController();
 
       setIsLoadingRequests(true);
       setRequestsError(null);
@@ -338,9 +343,8 @@ const TeacherDashboard = () => {
       try {
         const token = await user.getIdToken();
         const response = await fetch("/api/exceptions/list", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -350,7 +354,6 @@ const TeacherDashboard = () => {
         const data = await response.json();
         const payload = data.data ?? data;
 
-        // Normalize data structure
         const normalizedRequests = (payload.exceptions || []).map((req) => ({
           id: req._id || req.id,
           studentName: req.studentName || req.student || "Unknown Student",
@@ -368,7 +371,10 @@ const TeacherDashboard = () => {
 
         setExceptionRequests(normalizedRequests);
       } catch (error) {
-        setRequestsError(error.message);
+        if (error.name !== "AbortError") {
+          console.error("Failed to fetch exception requests:", error);
+          setRequestsError(error.message);
+        }
       } finally {
         setIsLoadingRequests(false);
       }
@@ -376,9 +382,11 @@ const TeacherDashboard = () => {
 
     fetchExceptionRequests();
 
-    // Poll for updates every 30 seconds
     const interval = setInterval(fetchExceptionRequests, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      controller.abort();
+    };
   }, [user]);
 
   const handleExceptionRequest = async (id, action) => {
