@@ -17,6 +17,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import BackToTop from "@/components/BackToTop";
 import OfflineIndicator from "@/components/OfflineIndicator";
 
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

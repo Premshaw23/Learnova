@@ -14,11 +14,22 @@ const EAR_THRESHOLD = 0.25;
 const BLINK_COOLDOWN_MS = 300;
 const PROCESSING_INTERVAL_MS = 100; // ~10 FPS
 
+/**
+ * FaceRecognizer Component
+ * 
+ * Performs real-time camera stream capturing, TinyFaceDetector identification, 
+ * and liveness detection (blink checks) to record user attendance securely.
+ * 
+ * @param {Object} props - Component properties.
+ * @param {Object} props.authUser - The currently authenticated Firebase user.
+ * @returns {React.ReactElement} The webcam face recognition and liveness tracking interface.
+ */
 export default function FaceRecognizer({ authUser }) {
   const isMounted = useRef(true);
   const retryStreamRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const isSubmittingRef = useRef(false);
   const cachedDescriptorsRef = useRef(null);
   const faceMatcherRef = useRef(null);
   
@@ -49,6 +60,7 @@ export default function FaceRecognizer({ authUser }) {
   const labels = fetchedLabels;
 
   const handleRetry = async () => {
+    isSubmittingRef.current = false;
     try {
       if (retryStreamRef.current) {
         retryStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -196,6 +208,7 @@ export default function FaceRecognizer({ authUser }) {
             }
             return null;
           } catch (err) {
+            isSubmittingRef.current = false;
             console.error("Face descriptor error:", err);
             return null;
           }
@@ -361,15 +374,26 @@ export default function FaceRecognizer({ authUser }) {
     }
   };
 
+  /**
+   * Safe analytics page view logging. Wrapped in a try-catch block
+   * to prevent runtime crashes caused by client-side ad-blockers blocking Firebase Analytics.
+   */
   useEffect(() => {
     if (analytics) {
-      logEvent(analytics, "page_view", { page: "attendance" });
+      try {
+        logEvent(analytics, "page_view", { page: "attendance" });
+      } catch (err) {
+        console.warn("Analytics page_view logEvent was blocked or failed:", err);
+      }
     }
   }, []);
 
   useEffect(() => {
     const persistAttendance = async () => {
       if (!finished || !detectedPerson || !authUser?.uid || livenessState !== "AUTHENTICATED") {
+        return;
+      }
+      if (isSubmittingRef.current) {
         return;
       }
 
@@ -386,7 +410,7 @@ export default function FaceRecognizer({ authUser }) {
         setMessage("Face does not match signed-in account.");
         return;
       }
-
+      isSubmittingRef.current = true;
       setAttendanceState("saving");
 
       try {

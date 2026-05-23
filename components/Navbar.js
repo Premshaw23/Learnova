@@ -119,7 +119,7 @@ export function Navbar() {
                 </span>
                 <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-widest font-black mt-0.5 leading-none">
                   Premium
-                </p>
+                </span>
               </div>
             </Link>
 
@@ -152,7 +152,7 @@ export function Navbar() {
                   aria-label="Toggle theme"
                   className="p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
                 >
-                  {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </button>
               )}
 
@@ -271,8 +271,8 @@ export function Navbar() {
               </Button>
             )}
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </>
   );
 }

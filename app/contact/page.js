@@ -72,35 +72,49 @@ export default function Contact() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
-    setIsSubmitting(true);
-    setSubmitStatus(null);
+  e.preventDefault();
 
-    try {
-      await emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
-        { ...formData },
-        process.env.NEXT_PUBLIC_EMAILJS_USER_ID
-      );
+  if (!validateForm()) {
+    setSubmitStatus({
+      type: "error",
+      message: "Please fix the highlighted fields before submitting.",
+    });
+    return;
+  }
 
-      setSubmitStatus({
-        type: "success",
-        message: "Thank you! Your message has been sent successfully.",
-      });
-      setFormData({ name: "", email: "", company: "", message: "" });
-    } catch (error) {
-      setSubmitStatus({
-        type: "error",
-        message: "Sorry, something went wrong. Please try again later.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  setIsSubmitting(true);
+  setSubmitStatus(null);
+
+  try {
+    await emailjs.send(
+      process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
+      process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
+      { ...formData },
+      process.env.NEXT_PUBLIC_EMAILJS_USER_ID
+    );
+
+    setSubmitStatus({
+      type: "success",
+      message: "Thank you! Your message has been sent successfully.",
+    });
+
+    setFormData({
+      name: "",
+      email: "",
+      company: "",
+      message: "",
+    });
+
+    setErrors({});
+  } catch (error) {
+    setSubmitStatus({
+      type: "error",
+      message: "Sorry, something went wrong. Please try again later.",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const contactInfo = [
     {

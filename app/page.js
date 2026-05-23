@@ -1,5 +1,6 @@
 "use client";
 import { useTheme } from "next-themes";
+import { translations } from "@/constants/translations";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
@@ -202,7 +203,7 @@ const ActionButton = ({
     );
   }
   return (
-    <button className={contentClasses}>
+    <button className={`${contentClasses} focus:outline-none focus:ring-2 focus:ring-purple-500`}>
       {children}
     </button>
   );
@@ -210,6 +211,7 @@ const ActionButton = ({
 
 export default function AboutPage() {
   const { theme } = useTheme();
+  const [language, setLanguage] = useState("en");
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const isDark = mounted ? theme === "dark" : true;
@@ -317,6 +319,19 @@ export default function AboutPage() {
       <div className="min-h-screen relative z-50">
         <Navbar />
 
+        <div className="fixed top-24 right-6 z-[9999]">
+  <select
+    value={language}
+    onChange={(e) => setLanguage(e.target.value)}
+    className="bg-purple-600 text-white px-4 py-2 rounded-lg shadow-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-400"
+    aria-label="Select language"
+  >
+    <option value="en">English</option>
+    <option value="hi">Hindi</option>
+  </select>
+</div>
+
+        
         {/* Hero Section */}
         <section
           id="hero"
@@ -332,7 +347,7 @@ export default function AboutPage() {
           />
 
           <div className="max-w-4xl mx-auto text-center relative">
-            <SectionBadge icon={Sparkles} text="Introducing Learnova" />
+            <SectionBadge icon={Sparkles} text={translations[language].welcome} />
 
             <div className="flex flex-wrap justify-center items-center mb-8 text-center gap-x-6 gap-y-4">
               <SplitText
@@ -379,13 +394,13 @@ export default function AboutPage() {
           </div>
         </section>
         <div className="mt-8 flex justify-center">
-          <a
-            href="#mission"
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duration-300"
-          >
-            Explore More ↓
-          </a>
-        </div>
+  <a
+    href="#mission"
+    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duration-300"
+  >
+    {translations[language].explore}
+  </a>
+</div>
 
         {/* Mission Section */}
         <section
@@ -395,7 +410,7 @@ export default function AboutPage() {
           <div className="max-w-7xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <Reveal className="space-y-8">
-                <SectionBadge icon={Sparkles} text="Our Mission" />
+                <SectionBadge icon={Sparkles} text={translations[language].mission} />
 
                 <h2 className="text-2xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-accent bg-clip-text text-transparent">
                   Empowering Educational Excellence
@@ -417,7 +432,7 @@ export default function AboutPage() {
                     .
                   </p>
 
-                  <p className="md:text-lg text-gray-400 leading-relaxed">
+                  <p className="md:text-lg text-white leading-relaxed">
                     With Learnova, teachers can teach without distractions,
                     students can learn with purpose, and institutions can create
                     environments where every learner thrives.
@@ -469,7 +484,7 @@ export default function AboutPage() {
             <Reveal className="text-center mb-20">
               <SectionBadge
                 icon={Heart}
-                text="Our Values"
+                text={translations[language].values}
                 gradient="from-accent/20 to-purple-500/20"
                 borderClass="border-accent/30"
                 iconClass="text-accent"
@@ -519,7 +534,7 @@ export default function AboutPage() {
             <Reveal className="text-center mb-20">
               <SectionBadge
                 icon={Users}
-                text="Our Team"
+                text={translations[language].team}
                 gradient="from-emerald-500/20 to-teal-500/20"
                 borderClass="border-emerald-500/30"
                 iconClass="text-emerald-400"
@@ -590,7 +605,7 @@ export default function AboutPage() {
             <Reveal className="text-center mb-20">
               <SectionBadge
                 icon={TrendingUp}
-                text="Our Impact"
+                text={translations[language].impact}
                 gradient="from-white/10 to-white/10"
                 borderClass="border-white/20"
                 iconClass="text-white"
@@ -633,7 +648,7 @@ export default function AboutPage() {
         >
           <div className="max-w-7xl mx-auto relative">
             <Reveal className="text-center mb-16">
-              <SectionBadge icon={Sparkles} text="Our Impact" />
+              <SectionBadge icon={Sparkles} text={translations[language].impact} />
               <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
                 Transforming Education for Everyone
               </h2>

@@ -58,7 +58,7 @@ export default function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-muted-foreground transition-colors hover:text-purple-300"
+                    className="text-muted-foreground transition-colors hover:text-purple-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 rounded-md px-1.5 py-0.5"
                   >
                     {link.label}
                   </Link>
@@ -67,7 +67,7 @@ export default function Footer() {
               <li>
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"))}
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-purple-300 transition-colors text-left font-normal cursor-pointer"
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-purple-300 transition-colors text-left font-normal cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 rounded-md px-1.5 py-0.5"
                 >
                   <Keyboard className="h-4 w-4 text-purple-300" />
                   <span>Keyboard Shortcuts</span>
@@ -85,7 +85,7 @@ export default function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-muted-foreground transition-colors hover:text-purple-300"
+                    className="text-muted-foreground transition-colors hover:text-purple-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 rounded-md px-1.5 py-0.5"
                   >
                     {link.label}
                   </Link>
@@ -111,9 +111,9 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-4 border-t border-slate-800/80 pt-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-col gap-4 border-t border-slate-800/80 pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>(c) {currentYear} Learnova. All rights reserved.</p>
-          <div className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-slate-500">
+          <div className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-muted-foreground">
             <span className="text-purple-300/80">Trusted by educators</span>
             <span className="hidden h-1 w-1 rounded-full bg-slate-700 sm:inline-block" />
             <span>Built for modern classrooms</span>

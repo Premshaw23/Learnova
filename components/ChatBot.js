@@ -21,7 +21,6 @@ import {
   Mail,
   Phone,
   ExternalLink,
-  X,
 } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
@@ -91,31 +90,6 @@ const suggestedQuestions = {
   ],
 };
 
-const themeClasses = {
-  message: {
-    bot: "bg-white border border-slate-200 text-slate-800",
-
-    user:
-      "bg-gradient-to-r from-indigo-600 to-purple-600 text-white",
-
-    avatar: {
-      bot: "bg-slate-100 text-slate-700",
-
-      user:
-        "bg-gradient-to-r from-indigo-600 to-purple-600 text-white",
-    },
-  },
-
-  categoryButton:
-    "bg-slate-100 text-slate-700 hover:bg-slate-200",
-
-  categoryButtonActive:
-    "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md",
-
-  suggestion:
-    "bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-slate-700",
-};
-
 const markdownComponents = {
   p: ({ children }) => (
     <p className="text-sm leading-relaxed">
@@ -134,78 +108,6 @@ const markdownComponents = {
       {children}
     </code>
   ),
-};
-
-const MessageBubble = ({
-  message,
-}) => {
-  const isBot =
-    message.role === "assistant";
-
-  return (
-    <div
-      className={`flex ${
-        isBot
-          ? "justify-start"
-          : "justify-end"
-      }`}
-    >
-      <div
-        className={`flex items-end gap-2 max-w-[90%] sm:max-w-[75%] ${
-          isBot
-            ? "flex-row"
-            : "flex-row-reverse"
-        }`}
-      >
-        {/* Avatar */}
-        <div
-          className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-            isBot
-              ? themeClasses.message.avatar.bot
-              : themeClasses.message.avatar.user
-          }`}
-        >
-          {isBot ? (
-            <Bot size={16} />
-          ) : (
-            <User size={16} />
-          )}
-        </div>
-
-        {/* Bubble */}
-        <div
-          className={`px-4 py-3 rounded-2xl shadow-sm ${
-            isBot
-              ? themeClasses.message.bot
-              : themeClasses.message.user
-          }`}
-        >
-          {isBot ? (
-            <ReactMarkdown
-              components={
-                markdownComponents
-              }
-            >
-              {message.content}
-            </ReactMarkdown>
-          ) : (
-            <p className="text-sm whitespace-pre-wrap leading-relaxed">
-              {message.content}
-            </p>
-          )}
-
-          <p className="text-[11px] opacity-70 mt-2">
-            {new Date(
-              message.timestamp
-            ).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 const LearnovaChatbot = () => {
@@ -306,11 +208,8 @@ const LearnovaChatbot = () => {
 
         const userMessage = {
           id: Date.now(),
-
           role: "user",
-
           content: userQuery,
-
           timestamp:
             Date.now(),
         };
@@ -341,7 +240,6 @@ const LearnovaChatbot = () => {
 
               body: JSON.stringify({
                 message: userQuery,
-
                 category:
                   currentCategory,
               }),
@@ -428,67 +326,132 @@ const LearnovaChatbot = () => {
           </div>
         </div>
 
-        {hasApiKey ? (
-          <div className="flex items-center gap-1 text-xs text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">
-            <CheckCircle2 size={12} />
-            Live
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-100 px-3 py-1 rounded-full">
-            <AlertCircle size={12} />
-            Sandbox
-          </div>
-        )}
-      </header>
-
-      {/* Categories */}
-      <div className="px-4 py-3 bg-white border-b border-slate-200 overflow-x-auto">
-
-        <div className="flex gap-2 min-w-max">
-
-          {categories.map(
-            ({
-              id,
-              label,
-              icon: Icon,
-            }) => (
-              <button
-                key={id}
-                onClick={() =>
-                  setCurrentCategory(
-                    id
-                  )
-                }
-                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs transition-all ${
-                  currentCategory === id
-                    ? themeClasses.categoryButtonActive
-                    : themeClasses.categoryButton
-                }`}
-              >
-                <Icon size={13} />
-                {label}
-              </button>
-            )
+        {/* Environment Banner */}
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold">
+          {hasApiKey ? (
+            <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+              <CheckCircle2 size={13} />
+              Live Engine
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full">
+              <AlertCircle size={13} />
+              Sandbox Mode
+            </span>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Messages */}
-      <main className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      {/* Category Tabs */}
+      <nav className="flex items-center gap-2 px-6 py-3 bg-white border-b border-slate-100 overflow-x-auto">
+        {categories.map((cat) => {
+          const IconComponent = cat.icon;
 
-        {messages.map(
-          (message) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-            />
-          )
-        )}
+          const isSelected =
+            currentCategory === cat.id;
 
-        {/* Suggestions */}
-        {messages.length === 1 && (
-          <div className="space-y-2 pt-2">
+          return (
+            <button
+              key={cat.id}
+              onClick={() =>
+                setCurrentCategory(
+                  cat.id
+                )
+              }
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 ${
+                isSelected
+                  ? "bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
+              }`}
+            >
+              <IconComponent
+                size={15}
+                className={
+                  isSelected
+                    ? "text-indigo-600"
+                    : "text-slate-400"
+                }
+              />
 
+              {cat.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Main Chat Area */}
+      <main className="flex-1 overflow-y-auto p-6 space-y-6">
+
+        {/* Messages */}
+        {messages.map((msg, index) => {
+          const isUser =
+            msg.role === "user";
+
+          return (
+            <div
+              key={index}
+              className={`flex gap-3 max-w-[85%] ${
+                isUser
+                  ? "ml-auto flex-row-reverse"
+                  : "mr-auto"
+              }`}
+            >
+              <div
+                className={`p-2 h-9 w-9 rounded-lg flex items-center justify-center shrink-0 shadow-xs ${
+                  isUser
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white border border-slate-200 text-indigo-600"
+                }`}
+              >
+                {isUser ? (
+                  <User size={16} />
+                ) : (
+                  <Bot size={16} />
+                )}
+              </div>
+
+              <div
+                className={`px-4 py-3 rounded-2xl shadow-xs text-sm leading-relaxed ${
+                  isUser
+                    ? "bg-indigo-600 text-white rounded-tr-none"
+                    : "bg-white text-slate-800 border border-slate-100 rounded-tl-none"
+                }`}
+              >
+                {isUser ? (
+                  <p className="whitespace-pre-wrap">
+                    {msg.content}
+                  </p>
+                ) : (
+                  <ReactMarkdown
+                    components={
+                      markdownComponents
+                    }
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                )}
+
+                <p className="text-[11px] opacity-70 mt-2">
+                  {new Date(
+                    msg.timestamp
+                  ).toLocaleTimeString(
+                    [],
+                    {
+                      hour:
+                        "2-digit",
+                      minute:
+                        "2-digit",
+                    }
+                  )}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Suggested Questions */}
+        {messages.length <= 1 && (
+          <div className="space-y-3">
             <p className="text-sm text-slate-500">
               Suggested Questions
             </p>
@@ -507,7 +470,7 @@ const LearnovaChatbot = () => {
                       question
                     )
                   }
-                  className={`block w-full text-left text-sm px-4 py-3 rounded-xl transition-all ${themeClasses.suggestion}`}
+                  className="block w-full text-left text-sm px-4 py-3 rounded-xl transition-all bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-slate-700"
                 >
                   {question}
                 </button>
@@ -525,6 +488,7 @@ const LearnovaChatbot = () => {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 flex gap-1">
+
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"></span>
 
               <span
@@ -589,9 +553,17 @@ const LearnovaChatbot = () => {
           onSubmit={
             handleSendMessage
           }
-          className="flex items-end gap-2 bg-slate-100 border border-slate-200 rounded-2xl p-2"
+          className="relative flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all"
         >
+          <label
+            htmlFor="chatbot-message-input"
+            className="sr-only"
+          >
+            Type your message
+          </label>
+
           <textarea
+            id="chatbot-message-input"
             ref={textareaRef}
             rows={1}
             value={inputMessage}
@@ -623,10 +595,14 @@ const LearnovaChatbot = () => {
 
           <button
             type="submit"
-            disabled={!inputMessage.trim() || isLoading}
+            disabled={
+              !inputMessage.trim() ||
+              isLoading
+            }
             aria-label="Send message"
-            className={`p-2.5 rounded-lg transition-all ${
-              inputMessage.trim() && !isLoading
+            className={`p-2.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 ${
+              inputMessage.trim() &&
+              !isLoading
                 ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
                 : "bg-slate-100 text-slate-400 cursor-not-allowed"
             }`}
@@ -635,8 +611,8 @@ const LearnovaChatbot = () => {
           </button>
         </form>
 
-        <p className="text-[11px] text-center text-slate-400 mt-2">
-          Powered by Groq API
+        <p className="text-[11px] text-center text-slate-600 mt-2 font-medium">
+          Powered by Groq Cloud API Engine • Shift + Enter for new lines
         </p>
       </footer>
     </div>
