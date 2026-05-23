@@ -54,14 +54,27 @@ export const useAuth = () => {
             const profileData = userDoc.data();
             setUser(firebaseUser);
             setUserProfile(profileData);
+
+            // Sync auth token and role in cookies
+            const token = await firebaseUser.getIdToken();
+            setCookie("authToken", token, 7);
+            setCookie("userRole", profileData.role, 7);
           } else {
             // User exists in Auth but no profile in Firestore
             setUser(firebaseUser);
             setUserProfile(null);
+
+            // Clean up cookies if profile is missing
+            deleteCookie("authToken");
+            deleteCookie("userRole");
           }
         } else {
           setUser(null);
           setUserProfile(null);
+
+          // Clear auth cookies
+          deleteCookie("authToken");
+          deleteCookie("userRole");
 
           // Clear PWA caches on logout to prevent data leakage on shared devices
           if (typeof window !== "undefined" && "caches" in window) {
@@ -81,6 +94,8 @@ export const useAuth = () => {
         setError(err.message);
         setUser(null);
         setUserProfile(null);
+        deleteCookie("authToken");
+        deleteCookie("userRole");
       } finally {
         setLoading(false);
       }
@@ -98,6 +113,10 @@ export const useAuth = () => {
       await firebaseSignOut(auth);
       setUser(null);
       setUserProfile(null);
+
+      // Clear auth cookies
+      deleteCookie("authToken");
+      deleteCookie("userRole");
 
       // Clear all PWA caches to prevent cached API responses from persisting after logout
       if (typeof window !== "undefined" && "caches" in window) {

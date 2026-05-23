@@ -36,6 +36,9 @@ async function handleSync(request) {
   // even within the same batch.
   const processedUserDates = new Set();
 
+  const now = Date.now();
+  const MAX_OFFLINE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
+
   for (const record of records) {
     // Only allow users to sync their own records (unless they are admin, but attendance is usually self-submitted)
     if (record.userId !== decodedToken.uid) {
@@ -43,7 +46,15 @@ async function handleSync(request) {
       continue;
     }
 
-    const recordDate = record.date || new Date(record.queuedAt).toISOString().slice(0, 10);
+    // Validate timestamp: must be within the last 48 hours and not in the future (allowing 5 min clock skew)
+    if (record.queuedAt > now + 5 * 60 * 1000 || record.queuedAt < now - MAX_OFFLINE_WINDOW_MS) {
+      console.warn(`User ${decodedToken.uid} attempted to sync record with invalid queuedAt timestamp ${record.queuedAt}`);
+      successfulIds.push(record.id); // Acknowledge to clear from client DB and prevent endless retry loop
+      continue;
+    }
+
+    // Force date to match the validated queuedAt timestamp, ignoring any spoofed client date
+    const recordDate = new Date(record.queuedAt).toISOString().slice(0, 10);
     const userDateKey = `${record.userId}_${recordDate}`;
 
     if (processedUserDates.has(userDateKey)) {

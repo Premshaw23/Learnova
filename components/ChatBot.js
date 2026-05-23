@@ -623,15 +623,12 @@ const LearnovaChatbot = () => {
 
           <button
             type="submit"
-            disabled={
-              !inputMessage.trim() ||
-              isLoading
-            }
-            className={`p-3 rounded-xl transition-all ${
-              inputMessage.trim() &&
-              !isLoading
-                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-105"
-                : "bg-slate-300 text-slate-500 cursor-not-allowed"
+            disabled={!inputMessage.trim() || isLoading}
+            aria-label="Send message"
+            className={`p-2.5 rounded-lg transition-all ${
+              inputMessage.trim() && !isLoading
+                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+                : "bg-slate-100 text-slate-400 cursor-not-allowed"
             }`}
           >
             <Send size={16} />
