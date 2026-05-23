@@ -1,5 +1,6 @@
 import { POST } from "@/app/api/groq/route";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { connectDb } from "@/lib/mongodb";
 
 jest.mock("next/server", () => ({
   NextResponse: {
@@ -17,13 +18,21 @@ jest.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: jest.fn(),
 }));
 
+jest.mock("@/lib/mongodb", () => ({
+  connectDb: jest.fn(),
+}));
+
 global.fetch = jest.fn();
 
 describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout Tests", () => {
+  const originalEnv = { ...process.env };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env = { ...originalEnv };
     process.env.GROQ_API_KEY = "mock-groq-key";
   });
+
 
   const createMockRequest = (headers, bodyData) => {
     return {
@@ -169,5 +178,88 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     expect(response.status).toBe(504);
     expect(body.error).toBe("Gateway Timeout: Groq did not respond in time.");
     expect(global.fetch).toHaveBeenCalled();
+  });
+
+  test("enforces rate limits per authenticated user via MongoDB distributed rate limiter", async () => {
+    // 1. Enable MongoDB URI
+    process.env.MONGODB_URI = "mongodb://mock-uri";
+    
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-mongo-rate-limit-test", email: "user@example.com" });
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        choices: [{ message: { content: "AI response" } }],
+      }),
+    });
+
+    // Mock MongoDB database responses
+    let storedRequests = [];
+    const mockFindOneAndUpdate = jest.fn().mockImplementation(async (query, update) => {
+      if (update.$push && update.$push.requests) {
+        storedRequests.push(...update.$push.requests.$each);
+      }
+      return { requests: storedRequests };
+    });
+
+    connectDb.mockResolvedValue({
+      collection: jest.fn().mockReturnValue({
+        findOneAndUpdate: mockFindOneAndUpdate,
+        createIndex: jest.fn(),
+      }),
+    });
+
+    // Make 10 requests which is the max allowed
+    for (let i = 0; i < 10; i++) {
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        { message: `Request ${i}` }
+      );
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(mockFindOneAndUpdate).toHaveBeenCalled();
+    }
+
+    // The 11th request must be rate limited (429)
+    const req11 = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      { message: "Request 11" }
+    );
+    const response = await POST(req11);
+    const body = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(body.error).toBe("Too many requests. Please try again later.");
+  });
+
+  test("enforces in-memory rate limiting fallback when MongoDB is unavailable", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-mongo-down", email: "user@example.com" });
+
+    connectDb.mockRejectedValue(new Error("Connection refused"));
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        choices: [{ message: { content: "AI response" } }],
+      }),
+    });
+
+    for (let i = 0; i < 10; i++) {
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        { message: `Request ${i}` }
+      );
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+    }
+
+    const req11 = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      { message: "Request 11" }
+    );
+    const response = await POST(req11);
+    const body = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(body.error).toBe("Too many requests. Please try again later.");
   });
 });

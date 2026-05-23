@@ -5,7 +5,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 
 const TeacherDashboard = dynamic(
-  () => import("@/components/TeacherDashboardComponent "),
+  () => import("@/components/TeacherDashboardComponent"),
   { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 

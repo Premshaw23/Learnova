@@ -1,6 +1,10 @@
+// app/api/exceptions/list/route.js
+
 import { connectDb } from "@/lib/mongodb";
-import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { requireRole } from "@/lib/rbac";
+import { withErrorHandler } from "@/lib/error-handler";
+import { jsonSuccess } from "@/lib/api-response";
+import { escapeRegex, sanitizeSortField } from "@/utils/mongoUtils";
 
 export async function GET(request) {
   try {
@@ -13,17 +17,46 @@ export async function GET(request) {
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
-    const decodedToken = await verifyFirebaseToken(token);
+const ALLOWED_SORT_FIELDS = new Set([
+  "createdAt",
+  "updatedAt",
+  "status",
+  "date",
+  "studentEmail",
+  "reason",
+]);
 
-    if (!decodedToken) {
-      return jsonError("Unauthorized", 401);
+export const GET = withErrorHandler(async (request) => {
+  const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher", "student"]);
+
+    const { searchParams } = new URL(request.url);
+
+    // Pagination
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get("limit") || "10", 10))
+    );
+
+    // Search — escape metacharacters and cap length to prevent ReDoS
+    const rawSearch = searchParams.get("search") || "";
+    const search = escapeRegex(rawSearch);
+
+    // Sorting — validate against an explicit allowlist to prevent field-name injection
+    const sortBy = sanitizeSortField(
+      searchParams.get("sortBy"),
+      ALLOWED_SORT_FIELDS,
+      "createdAt"
+    );
+    const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+
+    // Validation
+    if (page < 1 || limit < 1) {
+      const { ValidationError } = require("@/lib/errors");
+      throw new ValidationError("Page and limit must be greater than 0");
     }
 
-    const profile = await getUserProfile(decodedToken.uid);
-
-    if (!profile) {
-      return jsonError("User profile not found", 404);
-    }
+    const skip = (page - 1) * limit;
 
     const db = await connectDb();
     const collection = db.collection("exceptions");
@@ -48,13 +81,16 @@ export async function GET(request) {
 
     const totalPages = Math.ceil(total / limit);
 
-    return jsonSuccess({
-      exceptions,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages,
+    return jsonSuccess(
+      {
+        exceptions,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+        },
       },
     }, 200);
   } catch (error) {

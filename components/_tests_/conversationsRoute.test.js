@@ -1,4 +1,4 @@
-import { POST } from "@/app/api/conversations/route";
+import { POST, GET } from "@/app/api/conversations/route";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 
@@ -210,3 +210,133 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     expect(body.data.userMessage).toBe("Hello World"); // <script> tag stripped
   });
 });
+
+describe("GET /api/conversations - History Retrieval Security and Performance Tests", () => {
+  let mockFind, mockSort, mockLimit, mockToArray;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockToArray = jest.fn();
+    mockLimit = jest.fn().mockReturnValue({ toArray: mockToArray });
+    mockSort = jest.fn().mockReturnValue({ limit: mockLimit });
+    mockFind = jest.fn().mockReturnValue({ sort: mockSort });
+
+    connectDb.mockResolvedValue({
+      collection: jest.fn().mockReturnValue({
+        find: mockFind,
+      }),
+    });
+  });
+
+  const createMockRequest = (headers) => {
+    return {
+      headers: {
+        get: (name) => headers[name.toLowerCase()] || null,
+      },
+    };
+  };
+
+  test("rejects unauthenticated request (no authorization header) with 401 Unauthorized", async () => {
+    verifyFirebaseToken.mockResolvedValue(null);
+
+    const req = createMockRequest({});
+
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("Unauthorized");
+    expect(connectDb).not.toHaveBeenCalled();
+  });
+
+  test("rejects request with invalid token with 401 Unauthorized", async () => {
+    verifyFirebaseToken.mockResolvedValue(null);
+
+    const req = createMockRequest({ authorization: "Bearer invalid-token" });
+
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("Unauthorized");
+    expect(connectDb).not.toHaveBeenCalled();
+  });
+
+  test("accepts request with valid token, retrieves user-specific history sorted chronologically and limited to 50 records", async () => {
+    const mockDecodedToken = {
+      uid: "user-123",
+      email: "user@example.com",
+    };
+    verifyFirebaseToken.mockResolvedValue(mockDecodedToken);
+
+    const dummyConversations = [
+      {
+        userId: "user-123",
+        userEmail: "user@example.com",
+        userMessage: "Hello",
+        botMessage: "Hi",
+        timestamp: new Date("2026-05-21T10:00:00Z"),
+      },
+      {
+        userId: "user-123",
+        userEmail: "user@example.com",
+        userMessage: "How are you?",
+        botMessage: "I'm great",
+        timestamp: new Date("2026-05-21T10:01:00Z"),
+      },
+    ];
+    mockToArray.mockResolvedValue(dummyConversations);
+
+    const req = createMockRequest({ authorization: "Bearer valid-token" });
+
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual(dummyConversations);
+
+    expect(mockFind).toHaveBeenCalledWith({ userId: "user-123" });
+    expect(mockSort).toHaveBeenCalledWith({ timestamp: 1 });
+    expect(mockLimit).toHaveBeenCalledWith(50);
+  });
+
+  test("returns empty array if user has no saved conversations", async () => {
+    const mockDecodedToken = {
+      uid: "user-456",
+      email: "newuser@example.com",
+    };
+    verifyFirebaseToken.mockResolvedValue(mockDecodedToken);
+    mockToArray.mockResolvedValue([]);
+
+    const req = createMockRequest({ authorization: "Bearer valid-token" });
+
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([]);
+    expect(mockFind).toHaveBeenCalledWith({ userId: "user-456" });
+  });
+
+  test("handles database connection/query errors gracefully returning 500", async () => {
+    const mockDecodedToken = {
+      uid: "user-123",
+      email: "user@example.com",
+    };
+    verifyFirebaseToken.mockResolvedValue(mockDecodedToken);
+
+    connectDb.mockRejectedValue(new Error("Database offline"));
+
+    const req = createMockRequest({ authorization: "Bearer valid-token" });
+
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toBe("Internal server error");
+  });
+});
+

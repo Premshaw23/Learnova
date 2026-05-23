@@ -1,6 +1,7 @@
 "use client";
+import { useTheme } from "next-themes";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
-import { useMemo, useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import SplitText from "@/components/ui-block/SplitText";
 import DarkVeil from "@/components/ui-block/DarkVeil";
@@ -148,21 +149,22 @@ const IMPACT_DATA = [
   },
 ];
 
-// Reusable components
+// ✅ UPDATED FIXED COMPONENT
 const SectionBadge = ({
   icon: Icon,
   text,
   gradient = "from-purple-500/20 to-pink-500/20",
-  borderColor = "purple-500/30",
+  borderClass = "border-purple-500/30", // 1. Pass the full class name string here
   textColor = "purple-300",
 }) => (
   <div
-    className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${gradient} rounded-full border border-${borderColor} backdrop-blur-sm mb-6`}
+    className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${gradient} rounded-full border ${borderClass} backdrop-blur-sm mb-6`} // 2. Drop the template literal concatenation
   >
     <Icon className={`w-5 h-5 text-${textColor.split("-")[0]}-400 mr-2`} />
     <span className={`text-${textColor} font-medium`}>{text}</span>
   </div>
 );
+
 
 const Reveal = ({ children, className = "", delay = 0, y = 28 }) => (
   <motion.div
@@ -186,9 +188,9 @@ const ActionButton = ({
     "group inline-flex items-center px-8 py-4 rounded-full font-semibold transition-all duration-500 hover:scale-[1.02]";
   const variants = {
     primary:
-      "bg-gradient-to-r from-accent to-purple-500 text-white hover:shadow-xl hover:shadow-accent/25",
+      "bg-gradient-to-r from-accent to-purple-500 text-black dark:text-white hover:shadow-xl hover:shadow-accent/25",
     secondary:
-      "bg-white/10 text-white border border-white/20 hover:bg-white/20",
+      "bg-white/10 text-black dark:text-white border border-white/20 hover:bg-white/20",
   };
 
   const contentClasses = `${baseClasses} ${variants[variant]} ${className}`;
@@ -207,6 +209,10 @@ const ActionButton = ({
 };
 
 export default function AboutPage() {
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted ? theme === "dark" : true;
   const [scrollY, setScrollY] = useState(0);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
@@ -282,8 +288,8 @@ export default function AboutPage() {
   return (
     <>
       {/* Background Effects */}
-      <div className="fixed inset-0 -z-10">
-        <DarkVeil />
+      <div className="fixed inset-0 -z-10 bg-background">
+        {isDark && <DarkVeil />}
 
         {/* Mouse-following gradient orb */}
         <div
@@ -331,7 +337,7 @@ export default function AboutPage() {
             <div className="flex flex-wrap justify-center items-center mb-8 text-center gap-x-6 gap-y-4">
               <SplitText
                 text="Transforming"
-                className="text-4xl sm:text-5xl md:text-7xl font-bold text-white text-balance"
+                className="text-4xl sm:text-5xl md:text-7xl font-bold text-black dark:text-white text-balance"
                 delay={0.05}
                 duration={0.8}
                 ease="power3.out"
@@ -359,7 +365,7 @@ export default function AboutPage() {
               />
             </div>
 
-            <h1 className="text-xl md:text-2xl text-gray-300 leading-relaxed max-w-3xl mx-auto font-normal">
+            <h1 className="text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-3xl mx-auto font-normal">
               The most advanced platform for{" "}
               <span className="text-accent font-semibold">
                 curriculum planning
@@ -372,6 +378,14 @@ export default function AboutPage() {
             </h1>
           </div>
         </section>
+        <div className="mt-8 flex justify-center">
+  <a
+    href="#mission"
+    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duration-300"
+  >
+    Explore More ↓
+  </a>
+</div>
 
         {/* Mission Section */}
         <section
@@ -388,7 +402,7 @@ export default function AboutPage() {
                 </h2>
 
                 <div className="space-y-6">
-                  <p className="md:text-lg text-gray-300 leading-relaxed">
+                  <p className="md:text-lg text-muted-foreground leading-relaxed">
                     At Learnova, our mission is to harness the power of{" "}
                     <span className="text-accent font-semibold">
                       technology
@@ -428,10 +442,10 @@ export default function AboutPage() {
 
                   <div className="text-center z-10">
                     <div className="relative mb-6">
-                      <GraduationCap className="h-24 w-24 text-white mx-auto group-hover:scale-110 transition-transform duration-700" />
+                      <GraduationCap className="h-24 w-24 text-black dark:text-white mx-auto group-hover:scale-110 transition-transform duration-700" />
                       <div className="absolute inset-0 bg-gradient-to-r from-accent/20 to-purple-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-700" />
                     </div>
-                    <p className="text-xl font-semibold text-white group-hover:text-accent transition-colors duration-500">
+                    <p className="text-xl font-semibold text-black dark:text-white group-hover:text-accent transition-colors duration-500">
                       Transforming Education
                     </p>
                     <p className="text-gray-400 mt-2">
@@ -460,11 +474,12 @@ export default function AboutPage() {
                 borderColor="accent/30"
                 textColor="accent"
               />
+              
 
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
                 Core Principles That Drive Us
               </h2>
-              <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                 Our core values reflect what makes Learnova authentic and
                 trustworthy for schools, teachers, parents, and students.
               </p>
@@ -473,7 +488,7 @@ export default function AboutPage() {
             <div className="grid md:grid-cols-3 gap-8 items-stretch">
               {VALUES_DATA.map((value, index) => (
                 <Reveal key={value.title} delay={index * 0.08}>
-                  <Card className="group bg-black/40 border-white/10 backdrop-blur-xl hover:border-accent/50 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl hover:shadow-accent/25">
+                  <Card className="group bg-white dark:bg-black/40 border-gray-200 dark:border-white/10 backdrop-blur-xl shadow-sm hover:shadow-lg hover:shadow-accent/10 hover:border-accent/50 transition-all duration-700 hover:scale-[1.02]">
                     <CardHeader className="text-center pb-4">
                       <div
                         className={`mx-auto w-20 h-20 bg-gradient-to-br ${value.gradient} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-105 transition-transform duration-500 relative overflow-hidden`}
@@ -481,12 +496,12 @@ export default function AboutPage() {
                         <value.icon className="h-10 w-10 text-white relative z-10" />
                         <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       </div>
-                      <CardTitle className="text-white text-xl group-hover:text-accent transition-colors duration-500">
+                      <CardTitle className="text-gray-950 dark:text-white text-xl group-hover:text-gray-950 dark:group-hover:text-accent transition-colors duration-500">
                         {value.title}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <CardDescription className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
+                      <CardDescription className="text-gray-600 dark:text-gray-300 leading-relaxed group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors duration-500">
                         {value.description}
                       </CardDescription>
                     </CardContent>
@@ -509,10 +524,10 @@ export default function AboutPage() {
                 textColor="emerald-400"
               />
 
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
                 Meet the Visionaries
               </h2>
-              <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                 The passionate educators and technologists driving Learnova's
                 innovation and success.
               </p>
@@ -521,8 +536,8 @@ export default function AboutPage() {
             <div className="grid md:grid-cols-3 gap-8">
               {TEAM_MEMBERS.map((member, index) => (
                 <Reveal key={member.name} delay={index * 0.08}>
-                  <Card className="group h-full flex flex-col bg-black/40 border-white/10 backdrop-blur-xl hover:border-accent/50 transition-all duration-700 hover:scale-[1.02]">
-                    <CardContent className="pt-8 text-center flex flex-col h-full">
+                  <Card className="group bg-white dark:bg-black/40 border-gray-200 dark:border-white/10 backdrop-blur-xl shadow-sm hover:shadow-lg hover:shadow-accent/10 hover:border-accent/50 transition-all duration-700 hover:scale-[1.02]">
+                    <CardContent className="pt-8 text-center">
                       <div className="relative mb-6">
                         <div
                           className={`w-28 h-28 bg-gradient-to-br ${member.color} rounded-full flex items-center justify-center mx-auto group-hover:scale-105 transition-transform duration-500 relative overflow-hidden`}
@@ -534,17 +549,17 @@ export default function AboutPage() {
                         </div>
 
                         <div className="absolute -top-2 -right-2 w-8 h-8 bg-accent/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-75 group-hover:scale-100">
-                          <Sparkles className="w-4 h-4 text-white" />
+                          <Sparkles className="w-4 h-4 text-black dark:text-white" />
                         </div>
                       </div>
 
-                      <h3 className="text-2xl font-semibold text-white mb-2 group-hover:text-accent transition-colors duration-500">
+                      <h3 className="text-2xl font-semibold text-gray-950 dark:text-white mb-2 group-hover:text-gray-950 dark:group-hover:text-accent transition-colors duration-500">
                         {member.name}
                       </h3>
                       <p className="text-accent font-medium mb-4 text-lg">
                         {member.role}
                       </p>
-                      <p className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors duration-500">
                         {member.description}
                       </p>
                     </CardContent>
@@ -579,10 +594,10 @@ export default function AboutPage() {
                 textColor="white"
               />
 
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
                 Transforming Education Globally
               </h2>
-              <p className="text-xl text-white/80 max-w-3xl mx-auto">
+              <p className="text-xl text-black dark:text-white/80 max-w-3xl mx-auto">
                 Measurable results that demonstrate our commitment to
                 educational excellence and institutional success.
               </p>
@@ -594,10 +609,10 @@ export default function AboutPage() {
                   <div className="group text-center">
                     <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-accent/40 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl">
                       <stat.icon className="w-12 h-12 text-accent mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
-                      <div className="text-4xl md:text-5xl font-bold text-white mb-3 group-hover:text-accent transition-colors duration-500">
+                      <div className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-3 group-hover:text-accent transition-colors duration-500">
                         {stat.number}
                       </div>
-                      <p className="text-white/80 font-medium text-lg group-hover:text-white transition-colors duration-500">
+                      <p className="text-black dark:text-white/80 font-medium text-lg group-hover:text-black dark:text-white transition-colors duration-500">
                         {stat.label}
                       </p>
                     </div>
@@ -616,10 +631,10 @@ export default function AboutPage() {
           <div className="max-w-7xl mx-auto relative">
             <Reveal className="text-center mb-16">
               <SectionBadge icon={Sparkles} text="Our Impact" />
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
                 Transforming Education for Everyone
               </h2>
-              <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                 Learnova empowers teachers, students, institutions, and parents
                 with meaningful outcomes.
               </p>
@@ -628,12 +643,12 @@ export default function AboutPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
               {IMPACT_DATA.map((impact, index) => (
                 <Reveal key={impact.title} delay={index * 0.08}>
-                  <div className="group h-full flex flex-col bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-accent/40 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl hover:shadow-accent/25 text-center">
+                  <div className="bg-black rounded-3xl p-8 flex flex-col justify-center items-center text-center h-full min-h-[260px] border border-white/10">
                     <impact.icon className="w-12 h-12 text-accent mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
-                    <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-accent transition-colors duration-500">
+                    <h3 className="text-xl font-semibold text-black dark:text-white mb-3 group-hover:text-accent transition-colors duration-500">
                       {impact.title}
                     </h3>
-                    <p className="text-gray-300 leading-relaxed text-sm group-hover:text-gray-200 transition-colors duration-500">
+                    <p className="text-muted-foreground leading-relaxed text-sm group-hover:text-foreground transition-colors duration-500">
                       {impact.description}
                     </p>
                   </div>
@@ -646,18 +661,18 @@ export default function AboutPage() {
         {/* CTA Section */}
         <section id="get-started" className="py-20 px-4 sm:px-6 lg:px-8">
           <Reveal className="max-w-4xl mx-auto text-center">
-            <div className="bg-gradient-to-br from-black/50 to-purple-900/30 rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+            <div className="bg-gradient-to-br dark:from-black/50 to-purple-900/30 rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
+              <h2 className="text-3xl md:text-4xl font-bold text-black dark:text-white mb-6">
                 Ready to Transform Your Institution?
               </h2>
-              <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
+              <p className=" text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
                 Join hundreds of educational institutions that trust Learnova to
                 streamline their administrative processes and improve student
                 outcomes.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <ActionButton href="/auth">
+                <ActionButton href="/auth?mode=signup">
                   Get Started Today
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </ActionButton>

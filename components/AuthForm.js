@@ -68,7 +68,7 @@ export default function AuthForm({
         <div className="mb-6">
           <button
             onClick={onRoleChange}
-            className="inline-flex items-center gap-3 p-4 bg-gray-800/70 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-200"
+            className="inline-flex items-center gap-3 p-4 bg-card backdrop-blur-sm rounded-xl border border-border hover:border-indigo-500/50 transition-all duration-200"
           >
             {(() => {
               const config = ROLE_CONFIG[selectedRole];
@@ -83,7 +83,7 @@ export default function AuthForm({
                   </div>
                   <div className="text-left">
                     <h4 className="font-semibold text-white">{config.title}</h4>
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                       Click to change role
                     </p>
                   </div>
@@ -94,12 +94,12 @@ export default function AuthForm({
         </div>
       )}
 
-      <div className="bg-gray-800/70 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-700/50 p-8">
+      <div className="bg-card backdrop-blur-xl rounded-2xl shadow-2xl border border-border p-8">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             {isLogin ? "Welcome Back" : "Create Account"}
           </h2>
-          <p className="text-gray-300">
+          <p className="text-muted-foreground">
             {isLogin
               ? `Sign in to your ${
                   ROLE_CONFIG[selectedRole]?.title.toLowerCase() || "account"
@@ -120,7 +120,7 @@ export default function AuthForm({
           {!isLogin && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-200 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Full Name
                 </label>
                 <input
@@ -132,8 +132,8 @@ export default function AuthForm({
                     clearError("fullName");
                   }}
                   onBlur={(e) => validateField("fullName", e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
-                    errors.fullName ? "border-red-500/50" : "border-gray-600"
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+                    errors.fullName ? "border-red-500/50" : "border-border"
                   }`}
                 />
                 {errors.fullName && (
@@ -143,7 +143,7 @@ export default function AuthForm({
 
               {selectedRole === USER_ROLES.INSTITUTE && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-200 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Institute Name
                   </label>
                   <input
@@ -155,10 +155,10 @@ export default function AuthForm({
                       clearError("instituteName");
                     }}
                     onBlur={(e) => validateField("instituteName", e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
+                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
                       errors.instituteName
                         ? "border-red-500/50"
-                        : "border-gray-600"
+                        : "border-border"
                     }`}
                   />
                   {errors.instituteName && (
@@ -172,7 +172,7 @@ export default function AuthForm({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Email Address
             </label>
             <div className="relative">
@@ -186,8 +186,8 @@ export default function AuthForm({
                   clearError("email");
                 }}
                 onBlur={(e) => validateField("email", e.target.value)}
-                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
-                  errors.email ? "border-red-500/50" : "border-gray-600"
+                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+                  errors.email ? "border-red-500/50" : "border-border"
                 }`}
               />
             </div>
@@ -197,7 +197,7 @@ export default function AuthForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-200 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Password
             </label>
             <div className="relative">
@@ -211,14 +211,14 @@ export default function AuthForm({
                   clearError("password");
                 }}
                 onBlur={(e) => validateField("password", e.target.value)}
-                className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
-                  errors.password ? "border-red-500/50" : "border-gray-600"
+                className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+                  errors.password ? "border-red-500/50" : "border-border"
                 }`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover: text-muted-foreground"
               >
                 {showPassword ? (
                   <EyeOff className="w-5 h-5" />
@@ -234,6 +234,34 @@ export default function AuthForm({
               <p className="text-gray-400 text-xs mt-1">
                 Min 8 characters with upper, lower, number, and special character.
               </p>
+            )}
+            {!isLogin && password && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-400 font-medium">Password Strength:</span>
+                  <span
+                    data-testid="password-strength-label"
+                    className={`font-semibold transition-colors duration-300 ${passwordStrength.textClass}`}
+                  >
+                    {passwordStrength.label}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 h-1.5 w-full bg-gray-700/30 rounded-full overflow-hidden">
+                  {[0, 1, 2, 3].map((index) => {
+                    const activeSegments = Math.min(passwordStrength.score + 1, 4);
+                    const isFilled = index < activeSegments;
+                    return (
+                      <div
+                        key={index}
+                        data-testid={`password-strength-bar-${index}`}
+                        className={`h-full rounded-full transition-all duration-500 ease-out ${
+                          isFilled ? passwordStrength.barClass : "bg-gray-700/50"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
 
@@ -271,19 +299,20 @@ export default function AuthForm({
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-600"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-800/70 text-gray-400">
+              <span className="px-2 bg-card text-muted-foreground">
                 Or continue with
               </span>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onGoogleLogin}
             disabled={isLoading}
-            className="mt-4 w-full bg-gray-700/50 border border-gray-600 text-gray-200 py-3 px-4 rounded-xl font-medium hover:bg-gray-600/50 focus:ring-4 focus:ring-gray-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            className="mt-4 w-full bg-muted border border-border text-foreground py-3 px-4 rounded-xl font-medium hover:bg-muted/80 focus:ring-4 focus:ring-gray-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -308,7 +337,7 @@ export default function AuthForm({
         </div>
 
         <div className="mt-8 text-center">
-          <p className="text-gray-300">
+          <p className="text-muted-foreground">
             {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
             <button
               onClick={onToggleLogin}

@@ -179,4 +179,19 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
       expect.stringContaining("[Audit Log] Settings updated successfully for target user: victim-user-123 by operator: admin-789 (Role: admin)")
     );
   });
+
+  test("rejects request with unrecognized fields with 400 Bad Request", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      { nonexistentField: "should not be allowed" }
+    );
+    const response = await PATCH(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("Bad Request");
+    expect(mockUpdateOne).not.toHaveBeenCalled();
+  });
 });
