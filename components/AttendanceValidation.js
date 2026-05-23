@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from 'react-hot-toast'; // or whatever toast library you're using
 import { useAuth } from "@/hooks/useAuth";
+import { auth } from "@/lib/firebaseConfig";
 import {
   AlertCircle,
   MapPin,
@@ -50,7 +51,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
           doc(db, "attendance_settings", "current_settings")
         );
         if (settingsDoc.exists()) {
-          const settingsData = settingsDoc.data();
+          const { passcode: _unused, ...settingsData } = settingsDoc.data();
           setSettings(settingsData);
           checkTimeValidity(settingsData.timeWindow);
         } else {
@@ -187,15 +188,33 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     requestLocation();
   };
 
-  const validatePasscode = () => {
-    if (!settings) return;
-    if (passcode === settings.passcode) {
-      setPasscodeError("");
-      setCurrentStep(3);
-    } else {
-      setPasscodeError(
-        "Invalid passcode. Please contact your teacher for the correct code."
-      );
+  const validatePasscode = async () => {
+    if (!passcode.trim()) return;
+    setIsLoading(true);
+    setPasscodeError("");
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch("/api/attendance/validate-passcode", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ passcode }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setCurrentStep(3);
+      } else {
+        setPasscodeError(
+          "Invalid passcode. Please contact your teacher for the correct code."
+        );
+      }
+    } catch (error) {
+      console.error("Passcode validation error:", error);
+      setPasscodeError("Failed to validate passcode. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
