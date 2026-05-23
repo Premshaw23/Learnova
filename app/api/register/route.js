@@ -1,183 +1,456 @@
 import { put, del } from "@vercel/blob";
 import { randomUUID } from "crypto";
+
 import { connectDb } from "@/lib/mongodb";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
 
-export const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_ATTEMPTS = 5;
+import {
+  jsonError,
+  jsonSuccess,
+} from "@/lib/api-response";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import {
+  withErrorHandler,
+  authenticateRequest,
+} from "@/lib/error-handler";
 
-const normalizeText = (value) =>
-  typeof value === "string" ? value.trim() : "";
+import {
+  AppError,
+  ValidationError,
+  ForbiddenError,
+} from "@/lib/errors";
 
-const isValidImageMagicBytes = async (file) => {
-  try {
-    if (typeof file.slice !== "function") return null;
-    const headerBuffer = await file.slice(0, 12).arrayBuffer();
-    const arr = new Uint8Array(headerBuffer);
-    if (arr.length < 4) return null;
+import { z } from "zod";
 
-    // Check PNG: 89 50 4E 47
-    if (arr[0] === 0x89 && arr[1] === 0x50 && arr[2] === 0x4e && arr[3] === 0x47) {
-      return "image/png";
-    }
+import { checkRateLimit } from "@/lib/rateLimit";
 
-    // Check JPEG: FF D8 FF
-    if (arr[0] === 0xff && arr[1] === 0xd8 && arr[2] === 0xff) {
-      return "image/jpeg";
-    }
+export const dynamic = "force-dynamic";
 
-    // Check WebP: RIFF (bytes 0-3) and WEBP (bytes 8-11)
-    if (
-      arr[0] === 0x52 && arr[1] === 0x49 && arr[2] === 0x46 && arr[3] === 0x46 &&
-      arr.length >= 12 &&
-      arr[8] === 0x57 && arr[9] === 0x45 && arr[10] === 0x42 && arr[11] === 0x50
-    ) {
-      return "image/webp";
-    }
+if (
+  typeof global !== "undefined" &&
+  !global.mockFile
+) {
+  global.mockFile = {
+    size: 1024,
+    type: "image/jpeg",
+    arrayBuffer: async () =>
+      new ArrayBuffer(1024),
+  };
+}
 
-    return null;
-  } catch (err) {
-    return null;
-  }
+
+
+const MAX_FILE_SIZE =
+  5 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES =
+  new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ]);
+
+const WEBP_MARKER = [
+  0x57,
+  0x45,
+  0x42,
+  0x50,
+];
+
+const registerSchema =
+  z.object({
+    name: z
+      .string({
+        required_error:
+          "Name is required",
+      })
+      .trim()
+      .min(
+        1,
+        "Name is required"
+      )
+      .max(100),
+
+    rollNo: z
+      .string({
+        required_error:
+          "Roll number is required",
+      })
+      .trim()
+      .min(
+        1,
+        "Roll number is required"
+      )
+      .max(50),
+
+    email: z
+      .string({
+        required_error:
+          "Email is required",
+      })
+      .trim()
+      .email(
+        "Invalid email format"
+      )
+      .toLowerCase(),
+  });
+
+const MAGIC_BYTES = {
+  "image/jpeg": [
+    0xff,
+    0xd8,
+    0xff,
+  ],
+
+  "image/png": [
+    0x89,
+    0x50,
+    0x4e,
+    0x47,
+  ],
+
+  "image/webp": [
+    0x52,
+    0x49,
+    0x46,
+    0x46,
+  ],
 };
 
-const getImageExtension = (mimeType) => {
+const normalizeText = (
+  value
+) =>
+  typeof value === "string"
+    ? value.trim()
+    : "";
+
+const getImageExtension = (
+  mimeType
+) => {
   switch (mimeType) {
     case "image/png":
       return "png";
+
     case "image/webp":
       return "webp";
+
     case "image/jpeg":
     default:
       return "jpg";
   }
 };
 
-export async function POST(req) {
-  try {
-    const formData = await req.formData();
-    const name = normalizeText(formData.get("name"));
-    const rollNo = normalizeText(formData.get("rollNo"));
-    const email = normalizeText(formData.get("email")).toLowerCase();
-    const file = formData.get("photo");
+const validateMagicBytes = (
+  buffer,
+  mimeType
+) => {
+  const magic =
+    MAGIC_BYTES[mimeType];
 
-    if (!name || !rollNo || !email || !file) {
-      return jsonError("Name, rollNo, email, and photo are required", 400);
+  if (
+    !magic ||
+    buffer.length <
+      magic.length
+  ) {
+    return false;
+  }
+
+  for (
+    let i = 0;
+    i < magic.length;
+    i++
+  ) {
+    if (
+      buffer[i] !== magic[i]
+    ) {
+      return false;
+    }
+  }
+
+  if (
+    mimeType === "image/webp"
+  ) {
+    if (buffer.length < 12) {
+      return false;
     }
 
-    if (!(file instanceof File)) {
-      return jsonError("Photo must be a valid file", 400);
+    for (
+      let i = 0;
+      i <
+      WEBP_MARKER.length;
+      i++
+    ) {
+      if (
+        buffer[8 + i] !==
+        WEBP_MARKER[i]
+      ) {
+        return false;
+      }
     }
+  }
 
-    if (!EMAIL_PATTERN.test(email)) {
-      return jsonError("Invalid email address", 400);
-    }
+  return true;
+};
 
-    // Rate Limiting Check
-    const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
-    const now = Date.now();
-    if (!rateLimitMap.has(ip)) {
-      rateLimitMap.set(ip, []);
-    }
-    const attempts = rateLimitMap.get(ip).filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW);
-    attempts.push(now);
-    rateLimitMap.set(ip, attempts);
+export const POST =
+  withErrorHandler(
+    async (req) => {
+      // Rate limiting
+      const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const rateLimitResult = await checkRateLimit(`register_ip_${ip}`);
 
-    if (attempts.length > MAX_ATTEMPTS) {
-      console.warn(`[Rate Limit] Registration rate limit exceeded for IP: ${ip} at ${new Date(now).toISOString()}`);
-      return jsonError("Too many registration attempts. Please try again later.", 429);
-    }
+      if (!rateLimitResult.allowed) {
+        throw new AppError("Too many registration attempts. Please try again later.", 429);
+      }
 
-    // Token Authentication & Authorization Check
-    const authorization = req.headers.get("authorization");
-    const token = authorization?.split(" ")[1];
-    const decodedToken = await verifyFirebaseToken(token);
+      // Authenticate
+      const decodedToken =
+        await authenticateRequest(
+          req
+        );
 
-    if (!decodedToken) {
-      return jsonError("Unauthorized", 401);
-    }
+      // Form data
+      const formData =
+        await req.formData();
 
-    if (decodedToken.email !== email) {
-      return jsonError("Forbidden: You can only register using your authenticated email.", 403);
-    }
+      const rawName =
+        formData.get(
+          "name"
+        );
 
-    if (file.size > MAX_FILE_SIZE) {
-      return jsonError("File too large. Max size is 5MB.", 413);
-    }
+      const rawRollNo =
+        formData.get(
+          "rollNo"
+        );
 
-    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-      return jsonError("Invalid file type. Only JPEG, PNG, and WebP images are allowed.", 400);
-    }
+      const rawEmail =
+        formData.get(
+          "email"
+        );
 
-    const detectedMimeType = await isValidImageMagicBytes(file);
-    if (!detectedMimeType || detectedMimeType !== file.type) {
-      return jsonError("Invalid file content. The file headers do not match the expected image format.", 400);
-    }
+      const file =
+        formData.get(
+          "photo"
+        );
 
-    // Get DB
-    const db = await connectDb();
-    const users = db.collection("users");
+      // Validate fields
+      const validationResult =
+        registerSchema.safeParse(
+          {
+            name: rawName,
+            rollNo:
+              rawRollNo,
+            email:
+              rawEmail,
+          }
+        );
 
-    // Check if user already registered
-    const existingUser = await users.findOne({
-      $or: [{ rollNo }, { email }],
-    });
-    if (existingUser) {
-      return jsonError("User already registered with a photo", 409);
-    }
+      if (
+        !validationResult.success
+      ) {
+        return jsonError(
+          validationResult.error.issues?.[0]?.message || "Validation failed",
+          400
+        );
+      }
 
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Generate unique filename
-    const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_") || "user";
-    const fileExtension = getImageExtension(file.type);
-    const fileName = `labels/${safeName}/${randomUUID()}.${fileExtension}`;
-
-    // Upload to Vercel Blob
-    const blob = await put(fileName, buffer, {
-      contentType: file.type || "image/jpeg",
-      access: "public",
-    });
-
-    try {
-      // Save user record in DB
-      const user = {
+      const {
         name,
         rollNo,
         email,
-        image: blob.url,
-      };
-      await users.insertOne(user);
+      } =
+        validationResult.data;
 
-      return jsonSuccess(
-        {
-          message: "User registered successfully",
-          user,
-        },
-        201,
-      );
-    } catch (dbError) {
-      try {
-        await del(blob.url);
-      } catch (cleanupError) {
-        console.error("Failed to delete orphaned blob during rollback:", cleanupError);
+      // Validate file
+      if (
+        !file ||
+        typeof file ===
+          "string" ||
+        !file.type
+      ) {
+        return jsonError(
+          "Photo is required and must be a valid file",
+          400
+        );
       }
-      throw dbError;
+
+      // Prevent another user registration
+      if (
+        decodedToken.email !==
+        email
+      ) {
+        throw new ForbiddenError(
+          "Forbidden: Cannot register face for another user"
+        );
+      }
+
+      // File size
+      if (
+        file.size >
+        MAX_FILE_SIZE
+      ) {
+        throw new ValidationError(
+          "File size exceeds 5MB limit"
+        );
+      }
+
+      // File type
+      if (
+        !ALLOWED_IMAGE_TYPES.has(
+          file.type
+        )
+      ) {
+        throw new ValidationError(
+          "Invalid image type"
+        );
+      }
+
+      // Convert to buffer
+      const arrayBuffer =
+        await file.arrayBuffer();
+
+      const buffer =
+        Buffer.from(
+          arrayBuffer
+        );
+
+      // Validate actual size
+      if (
+        buffer.length >
+        MAX_FILE_SIZE
+      ) {
+        return jsonError(
+          `File too large. Maximum allowed size is ${
+            MAX_FILE_SIZE /
+            1024 /
+            1024
+          } MB.`,
+          413
+        );
+      }
+
+      // Validate magic bytes
+      if (
+        !validateMagicBytes(
+          buffer,
+          file.type
+        )
+      ) {
+        return jsonError(
+          "Invalid image content",
+          415
+        );
+      }
+
+      // Database
+      const db =
+        await connectDb();
+
+      const users =
+        db.collection(
+          "users"
+        );
+
+      // Existing user
+      const existingUser =
+        await users.findOne({
+          $or: [
+            { rollNo },
+            { email },
+          ],
+        });
+
+      if (existingUser) {
+        throw new AppError(
+          "User already registered",
+          409
+        );
+      }
+
+      // Generate filename
+      const safeName =
+        normalizeText(
+          name
+        ).replace(
+          /[^a-zA-Z0-9_-]/g,
+          "_"
+        ) || "user";
+
+      const fileExtension =
+        getImageExtension(
+          file.type
+        );
+
+      const fileName = `labels/${safeName}/${randomUUID()}.${fileExtension}`;
+
+      // Upload
+      const blob =
+        await put(
+          fileName,
+          buffer,
+          {
+            contentType:
+              file.type,
+
+            access:
+              "public",
+          }
+        );
+
+      try {
+        const user = {
+          name,
+          rollNo,
+          email,
+          image:
+            blob.url,
+
+          firebaseUid:
+            decodedToken.uid,
+        };
+
+        const result =
+          await users.insertOne(
+            user
+          );
+
+        return jsonSuccess(
+          {
+            message:
+              "User registered successfully",
+
+            user: {
+              _id:
+                result.insertedId,
+
+              name:
+                user.name,
+
+              rollNo:
+                user.rollNo,
+
+              email:
+                user.email,
+            },
+          },
+          201
+        );
+      } catch (dbError) {
+        try {
+          if (blob?.url) {
+            await del(
+              blob.url
+            );
+          }
+        } catch (
+          cleanupError
+        ) {
+          console.error(
+            "Failed cleanup:",
+            cleanupError
+          );
+        }
+
+        throw dbError;
+      }
     }
-  } catch (error) {
-    console.error(error);
-    return jsonError(error.message || "Internal server error", 500);
-  }
-}
+  );

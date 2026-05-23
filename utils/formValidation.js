@@ -86,9 +86,9 @@ export const validateName = (value, fieldName = "Name") => {
     return `${fieldName} must be at least 2 characters`;
   }
 
-  const nameRegex = /^[a-zA-Z\s]+$/;
+  const nameRegex = /^[\p{L}\s\-']+$/u;
   if (!nameRegex.test(trimmed)) {
-    return `${fieldName} must only contain letters and spaces`;
+    return `${fieldName} must only contain letters, spaces, hyphens, and apostrophes`;
   }
 
   return true;

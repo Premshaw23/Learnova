@@ -106,9 +106,9 @@ export default function AuthForm({
         </div>
       )}
 
-      <div className="bg-gray-800/70 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-700/50 p-8">
+      <div className="bg-card backdrop-blur-xl rounded-2xl shadow-2xl border border-border p-8 min-h-[620px] flex flex-col justify-between transition-all duration-300">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             {isLogin ? "Welcome Back" : "Create Account"}
           </h2>
           <p className="text-gray-300 text-sm">
@@ -137,12 +137,16 @@ export default function AuthForm({
                   placeholder="Enter your full name"
                   value={fullName}
                   onChange={(e) => {
-                    setFullName(e.target.value);
-                    clearError("fullName");
+                    const value = e.target.value;
+                    setFullName(value);
+
+                    if (errors.fullName) {
+                      validateField("fullName", value);
+                    }
                   }}
                   onBlur={(e) => validateField("fullName", e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
-                    errors.fullName ? "border-red-500/50" : "border-gray-600"
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+                    errors.fullName ? "border-red-500/50" : "border-border"
                   }`}
                 />
                 {errors.fullName && (
@@ -160,9 +164,13 @@ export default function AuthForm({
                     type="text"
                     placeholder="Enter your institute name"
                     value={instituteName}
-                    onChange={(e) => {
-                      setInstituteName(e.target.value);
-                      clearError("instituteName");
+                   onChange={(e) => {
+                      const value = e.target.value;
+                      setInstituteName(value);
+
+                      if (errors.instituteName) {
+                        validateField("instituteName", value);
+                      }
                     }}
                     onBlur={(e) => validateField("instituteName", e.target.value)}
                     className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
@@ -189,12 +197,16 @@ export default function AuthForm({
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => {
-                  setEmail(e.target.value);
-                  clearError("email");
+                  const value = e.target.value;
+                  setEmail(value);
+
+                  if (errors.email) {
+                    validateField("email", value);
+                  }
                 }}
                 onBlur={(e) => validateField("email", e.target.value)}
-                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
-                  errors.email ? "border-red-500/50" : "border-gray-600"
+                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+                  errors.email ? "border-red-500/50" : "border-border"
                 }`}
               />
             </div>
@@ -215,12 +227,16 @@ export default function AuthForm({
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => {
-                  setPassword(e.target.value);
-                  clearError("password");
+                  const value = e.target.value;
+                  setPassword(value);
+
+                  if (errors.password) {
+                    validateField("password", value);
+                  }
                 }}
                 onBlur={(e) => validateField("password", e.target.value)}
-                className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-700/50 text-white placeholder-gray-400 ${
-                  errors.password ? "border-red-500/50" : "border-gray-600"
+                className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+                  errors.password ? "border-red-500/50" : "border-border"
                 }`}
               />
               <button
@@ -258,6 +274,64 @@ export default function AuthForm({
                 </>
               )
             )}
+            {!isLogin && (
+              <div className="mt-3 space-y-1.5 text-xs bg-slate-950/20 p-3 rounded-lg border border-border/50">
+                <p className="font-semibold text-slate-400 mb-1">Password Requirements:</p>
+                <div className="flex items-center gap-2">
+                  <span className={password.length >= 8 ? "text-green-400" : "text-gray-400"}>
+                    {password.length >= 8 ? "✓" : "○"} 8+ characters
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={/[A-Z]/.test(password) ? "text-green-400" : "text-gray-400"}>
+                    {/[A-Z]/.test(password) ? "✓" : "○"} At least one uppercase letter
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={/[a-z]/.test(password) ? "text-green-400" : "text-gray-400"}>
+                    {/[a-z]/.test(password) ? "✓" : "○"} At least one lowercase letter
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={/\d/.test(password) ? "text-green-400" : "text-gray-400"}>
+                    {/\d/.test(password) ? "✓" : "○"} At least one number
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={/[^A-Za-z0-9]/.test(password) ? "text-green-400" : "text-gray-400"}>
+                    {/[^A-Za-z0-9]/.test(password) ? "✓" : "○"} At least one special character
+                  </span>
+                </div>
+              </div>
+            )}
+            {!isLogin && password && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-400 font-medium">Password Strength:</span>
+                  <span
+                    data-testid="password-strength-label"
+                    className={`font-semibold transition-colors duration-300 ${passwordStrength.textClass}`}
+                  >
+                    {passwordStrength.label}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 h-1.5 w-full bg-gray-700/30 rounded-full overflow-hidden">
+                  {[0, 1, 2, 3].map((index) => {
+                    const activeSegments = Math.min(passwordStrength.score + 1, 4);
+                    const isFilled = index < activeSegments;
+                    return (
+                      <div
+                        key={index}
+                        data-testid={`password-strength-bar-${index}`}
+                        className={`h-full rounded-full transition-all duration-500 ease-out ${
+                          isFilled ? passwordStrength.barClass : "bg-gray-700/50"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {isLogin && (
@@ -294,7 +368,7 @@ export default function AuthForm({
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-600"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-gray-800 text-gray-400">
@@ -307,7 +381,7 @@ export default function AuthForm({
             type="button"
             onClick={onGoogleLogin}
             disabled={isLoading}
-            className="mt-4 w-full bg-gray-700/50 border border-gray-600 text-gray-200 py-3 px-4 rounded-xl font-medium hover:bg-gray-600/50 focus:ring-4 focus:ring-gray-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            className="mt-4 w-full bg-muted border border-border text-foreground py-3 px-4 rounded-xl font-medium hover:bg-muted/80 focus:ring-4 focus:ring-gray-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
               <path

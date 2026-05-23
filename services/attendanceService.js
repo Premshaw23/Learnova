@@ -1,15 +1,19 @@
 import {
   collection,
-  addDoc,
+  setDoc,
+  doc,
   getDocs,
   query,
   serverTimestamp,
   where,
+  limit,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebaseConfig";
 
 import { recalculateAttendanceRate } from "./statsService";
+import { saveToOutbox } from "@/lib/offlineStore";
+import { registerBackgroundSync } from "@/lib/syncService";
 
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -21,22 +25,24 @@ function getTodayKey() {
  * @returns {Promise<boolean>} True if the user has checked in today, false otherwise.
  * @example
  * const alreadyIn = await hasCheckedInToday('user_abc123');
- * if (alreadyIn) console.log('Already checked in today');
+ * if (alreadyIn) return true;
  */
 export async function hasCheckedInToday(userId) {
   if (!userId || !db) {
     return false;
   }
-
-  const attendanceQuery = query(
-    collection(db, "attendance_records"),
-    where("userId", "==", userId)
-  );
-
-  const snapshot = await getDocs(attendanceQuery);
   const today = getTodayKey();
 
-  return snapshot.docs.some((docSnap) => docSnap.data().date === today);
+  const attendanceQuery = query(
+  collection(db, "attendance_records"),
+  where("userId", "==", userId),
+  where("date", "==", today),
+  limit(1)
+);
+
+const snapshot = await getDocs(attendanceQuery);
+
+return !snapshot.empty;
 }
 
 /**
@@ -51,10 +57,10 @@ export async function hasCheckedInToday(userId) {
  * @throws {Error} If userId or db is unavailable.
  * @example
  * const result = await recordAttendance({
- *   userId: 'user_abc123',
- *   studentName: 'Alice Smith',
- *   email: 'alice@example.com',
- *   confidenceScore: 0.97,
+ * userId: 'user_abc123',
+ * studentName: 'Alice Smith',
+ * email: 'alice@example.com',
+ * confidenceScore: 0.97,
  * });
  * // { alreadyRecorded: false }
  */
@@ -72,17 +78,36 @@ export async function recordAttendance({
     return { alreadyRecorded: true };
   }
 
-  await addDoc(collection(db, "attendance_records"), {
+  const todayKey = getTodayKey();
+
+  // INTERCEPT OFFLINE SUBMISSIONS
+  if (typeof window !== "undefined" && !navigator.onLine) {
+    console.warn("Device is offline. Queuing attendance locally.");
+    await saveToOutbox({
+      userId,
+      studentName,
+      email,
+      confidenceScore: confidenceScore ?? 0,
+      date: todayKey,
+    });
+    
+    // Attempt to register Background Sync for later flush
+    await registerBackgroundSync();
+
+    return { alreadyRecorded: false, newRate: null, queuedOffline: true };
+  }
+
+  await setDoc(doc(db, "attendance_records", `${userId}_${todayKey}`), {
     userId,
     studentName,
     email,
     timestamp: serverTimestamp(),
-    date: getTodayKey(),
+    date: todayKey,
     status: "present",
     confidenceScore: confidenceScore ?? 0,
   });
 
-  await recalculateAttendanceRate(userId);
+  const newRate = await recalculateAttendanceRate(userId);
 
-  return { alreadyRecorded: false };
+  return { alreadyRecorded: false, newRate };
 }

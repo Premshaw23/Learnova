@@ -1,62 +1,110 @@
+// app/api/exceptions/list/route.js
+
 import { connectDb } from "@/lib/mongodb";
-import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { requireRole } from "@/lib/rbac";
+import { withErrorHandler } from "@/lib/error-handler";
+import { jsonSuccess } from "@/lib/api-response";
+import { escapeRegex, sanitizeSortField } from "@/utils/mongoUtils";
 
-export async function GET(request) {
-  try {
-    const authorization = request.headers.get("authorization");
-    const token = authorization?.split(" ")[1];
+// Forces Next.js to treat this as a runtime API instead of trying to statically compile it during npm run build
+export const dynamic = "force-dynamic";
 
-    const decodedToken = await verifyFirebaseToken(token);
+const ALLOWED_SORT_FIELDS = new Set([
+  "createdAt",
+  "updatedAt",
+  "status",
+  "date",
+  "studentEmail",
+  "reason",
+]);
 
-    if (!decodedToken) {
-      return jsonError("Unauthorized", 401);
+export const GET = withErrorHandler(async (request) => {
+  const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher", "student"]);
+
+    const { searchParams } = new URL(request.url);
+
+    // Pagination
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get("limit") || "10", 10))
+    );
+
+    // Search — escape metacharacters and cap length to prevent ReDoS
+    const rawSearch = searchParams.get("search") || "";
+    const search = escapeRegex(rawSearch);
+
+    // Sorting — validate against an explicit allowlist to prevent field-name injection
+    const sortBy = sanitizeSortField(
+      searchParams.get("sortBy"),
+      ALLOWED_SORT_FIELDS,
+      "createdAt"
+    );
+    const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+
+    // Validation
+    if (page < 1 || limit < 1) {
+      const { ValidationError } = require("@/lib/errors");
+      throw new ValidationError("Page and limit must be greater than 0");
     }
 
-    const profile = await getUserProfile(decodedToken.uid);
-
-    if (!profile) {
-      return jsonError("User profile not found", 404);
-    }
+    const skip = (page - 1) * limit;
 
     const db = await connectDb();
     const collection = db.collection("exceptions");
-    const query = { status: "pending" };
 
-    // Fetch total document count under query
+    // Base query
+    const query = {
+      status: "pending",
+    };
+
+    // Role-based filtering
+    if (profile.role === "student") {
+      query.studentEmail = decodedToken.email;
+    }
+
+    // Search filter
+    if (search) {
+      query.$or = [
+        {
+          reason: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+        {
+          studentEmail: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+      ];
+    }
+
+    // Total count
     const total = await collection.countDocuments(query);
 
-    let exceptions;
-
-    if (profile.role === "admin" || profile.role === "teacher") {
-      exceptions = await db
-        .collection("exceptions")
-        .find({ status: "pending" })
-        .sort({ createdAt: -1 })
-        .toArray();
-    } else if (profile.role === "student") {
-      exceptions = await db
-        .collection("exceptions")
-        .find({ status: "pending", studentEmail: decodedToken.email })
-        .sort({ createdAt: -1 })
-        .toArray();
-    } else {
-      return jsonError("Forbidden", 403);
-    }
+    // Fetch data
+    const exceptions = await collection
+      .find(query)
+      .sort({ [sortBy]: sortOrder })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
 
     const totalPages = Math.ceil(total / limit);
 
-    return jsonSuccess({
-      exceptions,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages,
+    return jsonSuccess(
+      {
+        exceptions,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+        },
       },
-    }, 200);
-  } catch (error) {
-    console.error("Exception fetch error:", error);
-    return jsonError("Internal server error", 500);
-  }
-}
+      200
+    );
+});

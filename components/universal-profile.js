@@ -3,8 +3,20 @@
 import { useState, useRef, useEffect } from "react";
 import { analytics, db } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
+import { updateProfile } from "firebase/auth";
 import Image from "next/image";
-import { doc, getDoc, collection, query, where, getDocs, orderBy, limit  } from "firebase/firestore";
+import toast from "react-hot-toast";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+  updateDoc,
+} from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
   User,
@@ -45,11 +57,19 @@ export default function UniversalProfile() {
   const { user, loading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (user?.photoURL) {
+      setAvatarUrl(user.photoURL);
+    }
+  }, [user]);
 
   // Role state fetched from Firestore
   const [role, setRole] = useState("student");
-  const [userData,setUserData] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -60,10 +80,17 @@ export default function UniversalProfile() {
         if (userSnap.exists()) {
           const data = userSnap.data();
           setUserData(data); //to save the full profile data
-          setRole(data.role || "student"); 
+          setRole(data.role || "student");
+        }
+
+        // Fetch dashboard statistics from the userStats collection
+        const statsRef = doc(db, "userStats", user.uid);
+        const statsSnap = await getDoc(statsRef);
+        if (statsSnap.exists()) {
+          setStats(statsSnap.data());
         }
       } catch (error) {
-        console.error("Error fetching user role:", error);
+        // Silently handle error fetching user data / stats
       }
     };
     fetchUserData();
@@ -95,8 +122,59 @@ export default function UniversalProfile() {
     fileInputRef.current?.click();
   };
 
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_SIZE) {
+      toast.error("File size exceeds the 5MB limit. Please select a smaller file.");
+      e.target.value = "";
+      return;
+    }
+
+    const loadingToast = toast.loading("Uploading profile picture...");
+
+    try {
+      const token = await user.getIdToken();
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/images", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to upload image");
+      }
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        // Update Firebase Auth profile
+        await updateProfile(user, { photoURL: data.url });
+
+        // Update Firestore profile
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, { photoURL: data.url });
+
+        // Update local state
+        setAvatarUrl(data.url);
+        toast.success("Profile picture updated successfully!", { id: loadingToast });
+      } else {
+        throw new Error(data.error || "Upload failed");
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to update profile picture.", { id: loadingToast });
+    }
+  };
+
   const getUserPhoto = () => {
-    return user?.photoURL || null;
+    return avatarUrl || user?.photoURL || null;
   };
 
   const getUserInitials = (name) => {
@@ -117,15 +195,17 @@ export default function UniversalProfile() {
 
   const getMemberSince = () => {
     if (!userData?.createdAt) return "Just joined";
-   
+
     //converting firestore timstamp to JS Dates
-    const date = userData.createdAt?.toDate ? userData.createdAt.toDate() : new Date(userData.createdAt);
+    const date = userData.createdAt?.toDate
+      ? userData.createdAt.toDate()
+      : new Date(userData.createdAt);
 
     return new Intl.DateTimeFormat("en-US", {
       month: "long",
       year: "numeric",
     }).format(date);
-  }
+  };
 
   const getRoleConfig = () => {
     const configs = {
@@ -451,9 +531,9 @@ export default function UniversalProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Navbar />
-        <div className="text-center text-white pt-20">
+        <div className="text-center text-foreground pt-20">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Checking authentication...</p>
         </div>
@@ -462,9 +542,9 @@ export default function UniversalProfile() {
   }
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Navbar />
-        <div className="text-center text-white pt-20">
+        <div className="text-center text-foreground pt-20">
           <div className="w-16 h-16 bg-gradient-to-r from-accent to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <User className="w-8 h-8" />
           </div>
@@ -540,6 +620,7 @@ export default function UniversalProfile() {
                 ref={fileInputRef}
                 className="hidden"
                 accept="image/*"
+                onChange={handleFileChange}
               />
             </div>
 
@@ -689,9 +770,15 @@ export default function UniversalProfile() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
           {roleConfig.stats.map((stat, index) => {
             // Retrieve dynamic stat value from database if available, else default to "0"
-            const realValue = stats && stats[stat.label] !== undefined ? stats[stat.label] : "0";
+            const realValue =
+              stats && stats[stat.label] !== undefined
+                ? stats[stat.label]
+                : "0";
             // Retrieve dynamic change indicator if available, else show default fallback
-            const realChange = stats && stats[`${stat.label}_change`] !== undefined ? stats[`${stat.label}_change`] : "New";
+            const realChange =
+              stats && stats[`${stat.label}_change`] !== undefined
+                ? stats[`${stat.label}_change`]
+                : "New";
 
             return (
               <div
@@ -798,8 +885,8 @@ export default function UniversalProfile() {
                                 item.type === "course"
                                   ? "bg-blue-400"
                                   : item.type === "achievement"
-                                  ? "bg-yellow-400"
-                                  : "bg-green-400"
+                                    ? "bg-yellow-400"
+                                    : "bg-green-400"
                               }`}
                             />
                             <div>
@@ -811,7 +898,7 @@ export default function UniversalProfile() {
                               </p>
                             </div>
                           </div>
-                          
+
                           {/* Render progress bar only if progress property is available */}
                           {item.progress !== undefined && (
                             <div className="flex items-center space-x-3">
@@ -835,7 +922,9 @@ export default function UniversalProfile() {
                     ) : (
                       // Display fallback state when user has no recent activity
                       <div className="text-center p-6 bg-white/5 rounded-xl border border-white/10">
-                        <p className="text-white/60">No recent activity yet. Start exploring courses!</p>
+                        <p className="text-white/60">
+                          No recent activity yet. Start exploring courses!
+                        </p>
                       </div>
                     )}
                   </div>

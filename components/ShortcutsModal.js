@@ -29,21 +29,23 @@ export default function ShortcutsModal({ isOpen, onClose }) {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   const isMac =
     typeof navigator !== "undefined" && /Mac/i.test(navigator.platform);
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+      className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 transition-all duration-300 ease-out ${
+        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      }`}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="keyboard shortcuts"
     >
       <div
-        className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md p-6"
+        className={`bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md p-6 transition-all duration-300 ease-out transform ${
+          isOpen ? "scale-100 opacity-100" : "scale-95 opacity-0"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">

@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useState, useEffect } from "react";
 import { Navbar } from "./Navbar";
 import Image from "next/image";
@@ -54,16 +55,19 @@ import {
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
+import SkeletonCard from "@/components/ui/SkeletonCard";
+import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
+import { db } from "@/lib/firebaseConfig";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
-  { ssr: false, loading: () => <ChartSkeleton variant="chart" /> }
+  { ssr: false, loading: () => <ChartSkeleton variant="chart" /> },
 );
 const EngagementChart = dynamic(
   () => import("@/components/charts/EngagementChart"),
-  { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> }
+  { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> },
 );
-
 
 const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -73,12 +77,71 @@ const TeacherDashboard = () => {
   const [passcodeGenerated, setPasscodeGenerated] = useState(false);
   const { user } = useAuth();
   const [attendanceStats, setAttendanceStats] = useState({
-    totalStudents: 45,
-    presentToday: 38,
-    absentToday: 7,
-    lateToday: 3,
-    averageAttendance: 84.2,
+    totalStudents: 0,
+    presentToday: 0,
+    absentToday: 0,
+    lateToday: 0,
+    averageAttendance: 0,
   });
+const fetchTodayAttendanceStats = async () => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const attendanceQuery = query(
+      collection(db, "attendance_records"),
+      where("date", "==", today),
+    );
+
+    const snapshot = await getDocs(attendanceQuery);
+
+    const records = snapshot.docs.map((doc) =>
+      doc.data(),
+    );
+
+    const presentToday = records.filter(
+      (r) =>
+        r.status === "present" ||
+        !r.status,
+    ).length;
+
+    const lateToday = records.filter(
+      (r) => r.status === "late",
+    ).length;
+
+    const absentToday = records.filter(
+      (r) => r.status === "absent",
+    ).length;
+
+    const totalStudents = records.length;
+
+    const averageAttendance =
+      totalStudents > 0
+        ? Math.round(
+            ((presentToday + lateToday) /
+              totalStudents) *
+              1000,
+          ) / 10
+        : 0;
+
+    setAttendanceStats({
+      totalStudents,
+      presentToday,
+      absentToday,
+      lateToday,
+      averageAttendance,
+    });
+  } catch (err) {
+    console.error(
+      "Failed to fetch today's attendance stats:",
+      err,
+    );
+  }
+};
+
+useEffect(() => {
+  fetchTodayAttendanceStats();
+}, []);
+    
   const [todayClasses, setTodayClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
   const [attendanceRequests, setAttendanceRequests] = useState([]);
@@ -278,7 +341,6 @@ const TeacherDashboard = () => {
       setAllRequests(normalizedRequests);
       setShowAllRequestsModal(true);
     } catch (error) {
-      console.error("Failed to fetch all exception requests:", error);
       setRequestsError(error.message);
     } finally {
       setIsLoadingRequests(false);
@@ -326,7 +388,6 @@ const TeacherDashboard = () => {
 
         setExceptionRequests(normalizedRequests);
       } catch (error) {
-        console.error("Failed to fetch exception requests:", error);
         setRequestsError(error.message);
       } finally {
         setIsLoadingRequests(false);
@@ -375,22 +436,20 @@ const TeacherDashboard = () => {
                 reviewedAt: new Date().toISOString(),
                 reviewedBy: user.displayName || user.email,
               }
-            : req
-        )
+            : req,
+        ),
       );
     } catch (error) {
-      console.error("Failed to update exception request:", error);
-      alert("Failed to update request. Please try again.");
+      toast.error("Failed to update request. Please try again.");
     }
   };
 
   useEffect(() => {
+    const loadingTimer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
 
-  const loadingTimer = setTimeout(() => {
-    setLoading(false);
-  }, 1500);
-
-  const interval = setInterval(() => {
+    const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now);
 
@@ -419,9 +478,9 @@ const TeacherDashboard = () => {
     }, 1000);
 
     return () => {
-  clearInterval(timer);
-  clearTimeout(loadingTimer);
-};
+      clearInterval(timer);
+      clearTimeout(loadingTimer);
+    };
   }, []);
 
   const generatePasscode = () => {
@@ -466,10 +525,9 @@ const TeacherDashboard = () => {
     return user?.email?.[0]?.toUpperCase() || "T";
   };
 
-
   if (loading) {
-  return <DashboardSkeleton />;
-}
+    return <DashboardSkeleton />;
+  }
   const renderDashboard = () => (
     <div className="space-y-8">
       {/* Passcode Generation Section */}
@@ -493,8 +551,7 @@ const TeacherDashboard = () => {
               <div className="text-sm text-gray-400">Window closes in</div>
               <div className="text-white font-semibold">
                 {10 - currentTime.getMinutes()}:
-                {60 - currentTime.getSeconds() < 10 ? "0" : ""}
-                {60 - currentTime.getSeconds()} min
+                {String(currentTime.getSeconds()).padStart(2, "0")} min
               </div>
             </div>
           </div>
@@ -523,6 +580,7 @@ const TeacherDashboard = () => {
                 </div>
                 <button
                   onClick={copyPasscode}
+                  aria-label="Copy passcode"
                   className="bg-white/10 hover:bg-white/20 border border-white/20 text-white p-3 rounded-lg transition-colors"
                 >
                   {copied ? (
@@ -546,7 +604,7 @@ const TeacherDashboard = () => {
               <h2 className="text-2xl font-bold text-white">
                 Today's Attendance Overview
               </h2>
-              <button className="text-accent hover:text-accent/80 transition-colors">
+              <button aria-label="Refresh attendance" className="text-accent hover:text-accent/80 transition-colors">
                 <RefreshCw className="w-5 h-5" />
               </button>
             </div>
@@ -598,8 +656,8 @@ const TeacherDashboard = () => {
                           student.status === "present"
                             ? "bg-green-400"
                             : student.status === "absent"
-                            ? "bg-red-400"
-                            : "bg-yellow-400"
+                              ? "bg-red-400"
+                              : "bg-yellow-400"
                         }`}
                       />
                       <div>
@@ -615,7 +673,7 @@ const TeacherDashboard = () => {
                     <div className="text-right">
                       <div
                         className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                          student.status
+                          student.status,
                         )}`}
                       >
                         {student.status.toUpperCase()}
@@ -664,9 +722,10 @@ const TeacherDashboard = () => {
 
             <div className="space-y-3">
               {isLoadingRequests ? (
-                <div className="text-center py-8">
-                  <RefreshCw className="w-8 h-8 text-gray-600 mx-auto mb-3 animate-spin" />
-                  <p className="text-gray-400">Loading exception requests...</p>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <SkeletonCard key={i} />
+                  ))}
                 </div>
               ) : requestsError ? (
                 <div className="text-center py-8">
@@ -864,8 +923,8 @@ const TeacherDashboard = () => {
                               request.status === "approved"
                                 ? "bg-green-500/20 text-green-400 border border-green-500/30"
                                 : request.status === "rejected"
-                                ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                                : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                                  ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                  : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
                             }`}
                           >
                             {request.status?.toUpperCase() || "PENDING"}
@@ -1132,6 +1191,12 @@ const TeacherDashboard = () => {
           <div className="w-full min-h-[300px] overflow-hidden flex items-center justify-center">
             <EngagementChart />
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 mt-8">
+        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+          <AttendanceAnalytics userId={user?.uid} />
         </div>
       </div>
     </div>

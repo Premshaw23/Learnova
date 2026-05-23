@@ -1,0 +1,147 @@
+/* AttendanceCalendar.css - Custom Overrides for react-calendar */
+
+.calendar-glass-wrapper .react-calendar {
+  width: 100%;
+  max-width: 100%;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+/* Navigation Header */
+.calendar-glass-wrapper .react-calendar__navigation {
+  display: flex;
+  height: 48px;
+  margin-bottom: 1rem;
+}
+
+.calendar-glass-wrapper .react-calendar__navigation button {
+  min-width: 48px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin: 0 4px;
+  color: white;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.calendar-glass-wrapper .react-calendar__navigation button:disabled {
+  background-color: transparent;
+  opacity: 0.3;
+}
+
+.calendar-glass-wrapper .react-calendar__navigation button:enabled:hover,
+.calendar-glass-wrapper .react-calendar__navigation button:enabled:focus {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Weekday Labels */
+.calendar-glass-wrapper .react-calendar__month-view__weekdays {
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+  font-size: 0.75em;
+  color: #94a3b8; /* slate-400 */
+  padding-bottom: 0.5rem;
+}
+
+.calendar-glass-wrapper .react-calendar__month-view__weekdays abbr {
+  text-decoration: none;
+}
+
+/* Days Grid */
+.calendar-glass-wrapper .react-calendar__month-view__days {
+  gap: 4px 0;
+}
+
+.calendar-glass-wrapper .react-calendar__tile {
+  max-width: 100%;
+  background: none;
+  text-align: center;
+  padding: 0.75em 0.5em;
+  font-weight: 500;
+  color: #cbd5e1; /* slate-300 */
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.calendar-glass-wrapper .react-calendar__tile:disabled {
+  background-color: transparent;
+  color: #334155; /* slate-700 */
+}
+
+/* Hover effects for basic tiles */
+.calendar-glass-wrapper .react-calendar__tile:enabled:hover,
+.calendar-glass-wrapper .react-calendar__tile:enabled:focus {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+/* Neighboring month days */
+.calendar-glass-wrapper .react-calendar__month-view__days__day--neighboringMonth {
+  color: #475569; /* slate-600 */
+}
+
+/* Today indicator */
+.calendar-glass-wrapper .react-calendar__tile--now {
+  background: rgba(139, 92, 246, 0.15); /* accent/15 */
+  color: #c4b5fd;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.calendar-glass-wrapper .react-calendar__tile--now:enabled:hover,
+.calendar-glass-wrapper .react-calendar__tile--now:enabled:focus {
+  background: rgba(139, 92, 246, 0.25);
+}
+
+/* 
+  Custom Attendance Tile Classes
+*/
+
+.calendar-glass-wrapper .calendar-tile-present {
+  background-color: rgba(16, 185, 129, 0.1) !important; /* emerald-500/10 */
+  color: #34d399 !important; /* emerald-400 */
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+.calendar-glass-wrapper .calendar-tile-late {
+  background-color: rgba(245, 158, 11, 0.1) !important; /* amber-500/10 */
+  color: #fbbf24 !important; /* amber-400 */
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+.calendar-glass-wrapper .calendar-tile-absent {
+  background-color: rgba(244, 63, 94, 0.1) !important; /* rose-500/10 */
+  color: #fb7185 !important; /* rose-400 */
+  border: 1px solid rgba(244, 63, 94, 0.3) !important;
+}
+
+/* Hover states for mapped tiles */
+.calendar-glass-wrapper .calendar-tile-present:enabled:hover {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.calendar-glass-wrapper .calendar-tile-late:enabled:hover {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.calendar-glass-wrapper .calendar-tile-absent:enabled:hover {
+  background-color: rgba(244, 63, 94, 0.2) !important;
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+/* Overriding default active states to prevent ugly blue selections */
+.calendar-glass-wrapper .react-calendar__tile--active {
+  background: none !important;
+}
