@@ -21,7 +21,8 @@ export default function FaceRecognizer({ authUser }) {
   const canvasRef = useRef(null);
   const cachedDescriptorsRef = useRef(null);
   const faceMatcherRef = useRef(null);
-  
+  const isSubmittingRef = useRef(false);
+
   // Animation and Liveness Refs
   const animationFrameId = useRef(null);
   const lastDetectionTime = useRef(0);
@@ -31,7 +32,6 @@ export default function FaceRecognizer({ authUser }) {
     requiredBlinks: 2,
     lastBlinkTime: 0,
   });
-
   const { labels: fetchedLabels, loading: labelsLoading, error } = useLabels(authUser);
 
   const [message, setMessage] = useState("Loading models...");
@@ -368,13 +368,20 @@ export default function FaceRecognizer({ authUser }) {
   }, []);
 
   useEffect(() => {
+    if (!finished || !detectedPerson || !authUser?.uid) return;
+    if (isSubmittingRef.current) return;
+
     const persistAttendance = async () => {
       if (!finished || !detectedPerson || !authUser?.uid || livenessState !== "AUTHENTICATED") {
         return;
       }
 
+      if (isSubmittingRef.current) return;
+      isSubmittingRef.current = true;
+
       if (confidence < MIN_CONFIDENCE_TO_RECORD) {
         setAttendanceState("low-confidence");
+        isSubmittingRef.current = false;
         return;
       }
 
@@ -384,6 +391,7 @@ export default function FaceRecognizer({ authUser }) {
       if (detectedEmail && userEmail && detectedEmail !== userEmail) {
         setAttendanceState("mismatch");
         setMessage("Face does not match signed-in account.");
+        isSubmittingRef.current = false;
         return;
       }
 
@@ -401,6 +409,8 @@ export default function FaceRecognizer({ authUser }) {
       } catch (err) {
         setAttendanceState("error");
         setMessage(err.message || "Could not save attendance.");
+      } finally {
+        isSubmittingRef.current = false;
       }
     };
 
