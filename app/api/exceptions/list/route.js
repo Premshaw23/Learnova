@@ -4,6 +4,12 @@ import { jsonError, jsonSuccess } from "@/lib/api-response";
 
 export async function GET(request) {
   try {
+    // 1. Extract and validate pagination parameters
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page")) || 1;
+    const limit = parseInt(searchParams.get("limit")) || 10;
+    const skip = (page - 1) * limit;
+
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
@@ -21,28 +27,24 @@ export async function GET(request) {
 
     const db = await connectDb();
     const collection = db.collection("exceptions");
-    const query = { status: "pending" };
-
-    // Fetch total document count under query
-    const total = await collection.countDocuments(query);
-
-    let exceptions;
-
-    if (profile.role === "admin" || profile.role === "teacher") {
-      exceptions = await db
-        .collection("exceptions")
-        .find({ status: "pending" })
-        .sort({ createdAt: -1 })
-        .toArray();
-    } else if (profile.role === "student") {
-      exceptions = await db
-        .collection("exceptions")
-        .find({ status: "pending", studentEmail: decodedToken.email })
-        .sort({ createdAt: -1 })
-        .toArray();
-    } else {
+    
+    // Define query based on role
+    let query = { status: "pending" };
+    if (profile.role === "student") {
+      query.studentEmail = decodedToken.email;
+    } else if (profile.role !== "admin" && profile.role !== "teacher") {
       return jsonError("Forbidden", 403);
     }
+
+    // 2. Fetch total count and paginated data
+    const total = await collection.countDocuments(query);
+    
+    const exceptions = await collection
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)    // Apply skip
+      .limit(limit)  // Apply limit
+      .toArray();
 
     const totalPages = Math.ceil(total / limit);
 
