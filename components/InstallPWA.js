@@ -36,21 +36,26 @@ export default function InstallPWA() {
       console.error("Failed to read localStorage:", error);
     }
 
+    let visibilityTimer;
+
     const handler = (e) => {
       e.preventDefault();
       setInstallPrompt(e);
-      setTimeout(() => setIsVisible(true), 5000);
+      visibilityTimer = setTimeout(() => setIsVisible(true), 5000);
+    };
+
+    const installedHandler = () => {
+      setIsInstalled(true);
+      setIsVisible(false);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
-
-    window.addEventListener("appinstalled", () => {
-      setIsInstalled(true);
-      setIsVisible(false);
-    });
+    window.addEventListener("appinstalled", installedHandler);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", installedHandler);
+      if (visibilityTimer) clearTimeout(visibilityTimer);
     };
   }, []);
 
