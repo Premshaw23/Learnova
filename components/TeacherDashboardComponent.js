@@ -420,9 +420,9 @@ const TeacherDashboard = () => {
     }, 1000);
 
     return () => {
-  clearInterval(timer);
-  clearTimeout(loadingTimer);
-};
+      clearInterval(interval);
+      clearTimeout(loadingTimer);
+    };
   }, []);
 
   const generatePasscode = () => {
