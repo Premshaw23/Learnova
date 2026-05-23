@@ -3,7 +3,7 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
+  getCountFromServer,
   increment,
   query,
   setDoc,
@@ -11,8 +11,8 @@ import {
   where,
 } from "firebase/firestore";
 
-export function getWeekdaysSinceYearStart() {
-  const start = new Date(new Date().getFullYear(), 0, 1);
+export function getWeekdaysSince(startDate) {
+  const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
   const end = new Date();
   let weekdays = 0;
 
@@ -37,19 +37,19 @@ export function getWeekdaysSinceYearStart() {
 export const initializeUserStats = async (userId) => {
   if (!userId) return;
   const statsRef = doc(db, "userStats", userId);
-  
+
   const defaultStats = {
     "Courses Enrolled": 0,
     "Attendance Rate": "0%",
     "Assignments Done": 0,
     "Study Hours": 0,
-    lastUpdated: new Date()
+    lastUpdated: new Date(),
   };
 
   try {
     await setDoc(statsRef, defaultStats);
   } catch (error) {
-    console.error("Error initializing stats:", error);
+    // Error initializing stats
   }
 };
 
@@ -70,17 +70,17 @@ export const updateUserStat = async (userId, statField, value = 1) => {
 
   try {
     const statsSnap = await getDoc(statsRef);
-    
+
     if (!statsSnap.exists()) {
       await initializeUserStats(userId);
     }
 
     await updateDoc(statsRef, {
       [statField]: increment(value),
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     });
   } catch (error) {
-    console.error(`Error updating ${statField}:`, error);
+    // Error updating stat field
   }
 };
 
@@ -92,7 +92,7 @@ export const updateUserStat = async (userId, statField, value = 1) => {
  * @throws {Error} If the Firestore update fails.
  * @example
  * const rate = await recalculateAttendanceRate('user_abc123');
- * console.log(rate); // e.g. 87
+ * // rate is e.g. 87
  */
 export const recalculateAttendanceRate = async (userId) => {
   if (!userId || !db) {
@@ -102,7 +102,7 @@ export const recalculateAttendanceRate = async (userId) => {
   const statsRef = doc(db, "userStats", userId);
   const attendanceQuery = query(
     collection(db, "attendance_records"),
-    where("userId", "==", userId)
+    where("userId", "==", userId),
   );
 
   try {
@@ -111,9 +111,18 @@ export const recalculateAttendanceRate = async (userId) => {
       await initializeUserStats(userId);
     }
 
-    const attendanceSnap = await getDocs(attendanceQuery);
-    const presentDays = attendanceSnap.size;
-    const totalDays = getWeekdaysSinceYearStart();
+    const countSnapshot = await getCountFromServer(attendanceQuery);
+    const presentDays = countSnapshot.data().count;
+
+    const userSnap = await getDoc(doc(db, "users", userId));
+    let startDate = new Date(new Date().getFullYear(), 0, 1);
+    if (userSnap.exists() && userSnap.data().createdAt) {
+      // createdAt might be a Firestore Timestamp or a string
+      const createdAt = userSnap.data().createdAt;
+      startDate = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
+    }
+
+    const totalDays = getWeekdaysSince(startDate);
     const rate = Math.min(100, Math.round((presentDays / totalDays) * 100));
 
     await updateDoc(statsRef, {
@@ -124,7 +133,6 @@ export const recalculateAttendanceRate = async (userId) => {
 
     return rate;
   } catch (error) {
-    console.error("Error recalculating attendance rate:", error);
     throw error;
   }
 };

@@ -10,7 +10,7 @@ import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import NextImage from "next/image";
 import { validateRequired, validateName } from "@/utils/formValidation";
-
+import { isValidEmail, suggestEmailCorrection } from "@/utils/emailValidation";
 export default function RegisterPage() {
   useEffect(() => {
     if (analytics) {
@@ -23,7 +23,9 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [photo, setPhoto] = useState(null);
   const [registeredUser, setRegisteredUser] = useState(null);
+  const [registeredUserImageUrl, setRegisteredUserImageUrl] = useState(null);
   const [error, setError] = useState(null);
+  const [emailSuggestion, setEmailSuggestion] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // ✅ CORRECT LOCATION: Prefill email from auth user using useEffect
@@ -31,7 +33,36 @@ export default function RegisterPage() {
     if (user?.email) {
       setEmail(user.email);
     }
-  }, [user]); // Depend on 'user' to run when the auth state changes
+  }, [user]);
+
+  useEffect(() => {
+    if (!registeredUser?._id) return;
+
+    let cancelled = false;
+
+    const loadImage = async () => {
+      try {
+        const token = await user?.getIdToken();
+        const res = await fetch(`/api/images?id=${registeredUser._id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        if (!res.ok || cancelled) return;
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        if (!cancelled) setRegisteredUserImageUrl(url);
+      } catch {
+        // silently fail
+      }
+    };
+
+    loadImage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [registeredUser]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,6 +81,19 @@ export default function RegisterPage() {
       setError(rollNoValidation);
       return;
     }
+    if (!isValidEmail(email)) {
+  const suggestion = suggestEmailCorrection(email);
+  const message = suggestion
+    ? `Invalid email. Did you mean ${suggestion}?`
+    : "Please enter a valid email address.";
+
+  setEmailSuggestion(suggestion || null);
+  setError(message);
+  toast.error(message);
+
+  return;
+}
+setEmailSuggestion(null);
 
     const photoValidation = validateRequired(photo, "Profile Photo");
     if (photoValidation !== true) {
@@ -149,11 +193,12 @@ export default function RegisterPage() {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-slate-200 font-medium">
+                  <label htmlFor="fullName" className="flex items-center gap-2 text-slate-200 font-medium">
                     <User className="w-4 h-4 text-purple-400" />
                     Full Name
                   </label>
                   <input
+                    id="fullName"
                     type="text"
                     placeholder="Enter your full name"
                     value={name}
@@ -164,11 +209,12 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-slate-200 font-medium">
+                  <label htmlFor="rollNumber" className="flex items-center gap-2 text-slate-200 font-medium">
                     <Hash className="w-4 h-4 text-blue-400" />
                     Roll Number
                   </label>
                   <input
+                    id="rollNumber"
                     type="text"
                     placeholder="Enter your roll number"
                     value={rollNo}
@@ -180,11 +226,12 @@ export default function RegisterPage() {
 
                 {/* Email (auto from auth, read-only) */}
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-slate-200 font-medium">
+                  <label htmlFor="emailAddress" className="flex items-center gap-2 text-slate-200 font-medium">
                     <Mail className="w-4 h-4 text-pink-400" />
                     Email Address
                   </label>
                   <input
+                    id="emailAddress"
                     type="email"
                     value={email}
                     readOnly // ✅ user cannot change
@@ -193,12 +240,13 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-slate-200 font-medium">
+                  <label htmlFor="profilePhoto" className="flex items-center gap-2 text-slate-200 font-medium">
                     <Upload className="w-4 h-4 text-green-400" />
                     Profile Photo
                   </label>
                   <div className="relative">
                     <input
+                      id="profilePhoto"
                       type="file"
                       accept="image/*"
                       onChange={(e) => setPhoto(e.target.files?.[0] || null)}
@@ -281,14 +329,11 @@ export default function RegisterPage() {
                       </div>
                     </div>
 
-                    {registeredUser.image && (
+                    {registeredUser._id && registeredUserImageUrl && (
                       <div className="mt-6">
-                        <NextImage
-                          src={registeredUser.image}
+                        <img
+                          src={registeredUserImageUrl}
                           alt={`${registeredUser.name}'s photo`}
-                          width={400}
-                          height={400}
-                          unoptimized
                           className="w-full h-auto rounded-xl shadow-lg border border-white/10"
                         />
                       </div>

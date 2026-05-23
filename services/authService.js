@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   sendEmailVerification,
+  signOut,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import {
@@ -34,7 +35,7 @@ export const loginWithEmail = async (email, password, selectedRole) => {
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email.trim(),
-      password
+      password,
     );
     const user = userCredential.user;
 
@@ -50,7 +51,7 @@ export const loginWithEmail = async (email, password, selectedRole) => {
 
       // Check if role matches selected role
       if (userData.role !== selectedRole) {
-        await auth.signOut();
+        await signOut(auth);
         return {
           success: false,
           error: `This account is registered as ${
@@ -70,7 +71,6 @@ export const loginWithEmail = async (email, password, selectedRole) => {
       return { success: false, needsProfile: true };
     }
   } catch (err) {
-    console.error("Login error:", err);
     return {
       success: false,
       error:
@@ -95,7 +95,7 @@ export const signupWithEmail = async (
   email,
   password,
   selectedRole,
-  additionalData
+  additionalData,
 ) => {
   try {
     if (!auth || !db) {
@@ -110,7 +110,7 @@ export const signupWithEmail = async (
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email.trim(),
-      password
+      password,
     );
     const user = userCredential.user;
 
@@ -122,7 +122,6 @@ export const signupWithEmail = async (
 
     return { success: true, needsVerification: true };
   } catch (err) {
-    console.error("Signup error:", err);
     return {
       success: false,
       error:
@@ -145,7 +144,7 @@ export const signupWithEmail = async (
 export const loginWithGoogle = async (
   selectedRole,
   isLogin,
-  additionalData = {}
+  additionalData = {},
 ) => {
   try {
     if (!auth || !db) {
@@ -162,7 +161,8 @@ export const loginWithGoogle = async (
     if (!userDoc.exists()) {
       if (isLogin) {
         // New Google user trying to login - need to sign up first
-        await auth.signOut();
+        // ✅ modular style
+        await signOut(auth);
         return {
           success: false,
           error: "Account not found. Please sign up first.",
@@ -171,7 +171,8 @@ export const loginWithGoogle = async (
         // New Google user signing up - create profile with selected role
         const nameToUse = user.displayName || additionalData.fullName?.trim();
         if (!nameToUse) {
-          await auth.signOut();
+          // ✅ modular style
+          await signOut(auth);
           return {
             success: false,
             error: "Please enter your full name",
@@ -192,7 +193,7 @@ export const loginWithGoogle = async (
 
     // For existing users, check if role matches selected role (for login)
     if (isLogin && userData && userData.role !== selectedRole) {
-      await auth.signOut();
+      await signOut(auth);
       return {
         success: false,
         error: `This account is registered as ${
@@ -211,7 +212,6 @@ export const loginWithGoogle = async (
 
     return { success: true, userData: userData || { role: selectedRole } };
   } catch (err) {
-    console.error("Google auth error:", err);
     return {
       success: false,
       error:
@@ -238,7 +238,6 @@ export const resetPassword = async (email) => {
     await sendPasswordResetEmail(auth, email);
     return { success: true };
   } catch (err) {
-    console.error("Password reset error:", err);
     return {
       success: false,
       error:

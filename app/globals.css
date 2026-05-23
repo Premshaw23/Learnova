@@ -210,6 +210,11 @@
     @apply border-border outline-ring/50;
   }
 
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -240,4 +245,24 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: #8b5cf6 #05010d;
+}
+
+#cursor-glow {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  pointer-events: none;
+  position: fixed;
+  z-index: 9999;
+
+  background: radial-gradient(
+    circle,
+    rgba(167, 111, 219, 0.75) 10%,
+    rgba(168, 85, 247, 0.55) 35%,
+    rgba(168, 85, 247, 0.15) 55%,
+    transparent 80%
+  );
+
+  filter: blur(30px);
+  transform: translate(-50%, -50%);
 }

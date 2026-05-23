@@ -239,23 +239,22 @@ export default function UniversalSettings() {
   };
 
   const saveSettings = async () => {
-  setIsLoading(true);
-  try {
-    const response = await fetch("/api/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...settings, userId: user?.uid }),
-    });
-    if (!response.ok) throw new Error("Failed to save settings");
-    setHasChanges(false);
-    toast.success("Settings updated successfully!");
-  } catch (error) {
-    console.error("Failed to save settings:", error);
-    toast.error("Failed to save settings. Please try again.");
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...settings, userId: user?.uid }),
+      });
+      if (!response.ok) throw new Error("Failed to save settings");
+      setHasChanges(false);
+      toast.success("Settings updated successfully!");
+    } catch (error) {
+      toast.error("Failed to save settings. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const resetSettings = () => {
     setSettings({
@@ -573,7 +572,7 @@ export default function UniversalSettings() {
                           .replace(/([A-Z])/g, " $1")
                           .toLowerCase()}`}
                       />
-                    )
+                    ),
                   )}
                 </div>
               </SettingCard>
@@ -625,7 +624,7 @@ export default function UniversalSettings() {
                               updateSetting(
                                 "privacy",
                                 "profileVisibility",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 focus:ring-blue-500"
@@ -702,7 +701,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "learning",
                             "dailyGoal",
-                            Number.parseFloat(e.target.value)
+                            Number.parseFloat(e.target.value),
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -721,7 +720,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "learning",
                             "weeklyGoal",
-                            Number.parseInt(e.target.value)
+                            Number.parseInt(e.target.value),
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -745,7 +744,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "learning",
                             "difficulty",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -827,7 +826,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "appearance",
                             "language",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -849,7 +848,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "appearance",
                             "timezone",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -952,7 +951,7 @@ export default function UniversalSettings() {
                     </div>
                   </div>
                 </SettingCard>
-              </> 
+              </>
             )}
 
             {activeSection === "help" && (
