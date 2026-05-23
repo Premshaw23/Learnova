@@ -59,23 +59,31 @@ const StudentDashboard = () => {
   const [gamificationData, setGamificationData] = useState(null);
 
   useEffect(() => {
+    if (!user) return;
+
+    const controller = new AbortController();
+
     const fetchGamification = async () => {
       try {
         const token = await user.getIdToken();
         const res = await fetch("/api/student/gamification", {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         });
         if (res.ok) {
           const data = await res.json();
           setGamificationData(data);
         }
       } catch (err) {
-        console.error("Failed to load gamification data", err);
+        if (err.name !== "AbortError") {
+          console.error("Failed to load gamification data", err);
+        }
       }
     };
-    if (user) {
-      fetchGamification();
-    }
+
+    fetchGamification();
+
+    return () => controller.abort();
   }, [user]);
 
   // Mock schedule data is now imported from @/constants/mockData
