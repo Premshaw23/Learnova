@@ -209,4 +209,25 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     expect(body.success).toBe(true);
     expect(body.data.userMessage).toBe("Hello World"); // <script> tag stripped
   });
+
+  test("sanitizes onerror XSS payload", async () => {
+    const mockDecodedToken = { uid: "user-123", email: "user@example.com" };
+    verifyFirebaseToken.mockResolvedValue(mockDecodedToken);
+    mockInsertOne.mockResolvedValue({ insertedId: "conv-123" });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      {
+        userMessage: 'Test <img onerror="alert(1)">',
+        botMessage: "Response",
+      }
+    );
+
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data.userMessage).toBe("Test"); // onerror attribute and img tag stripped
+  });
 });
