@@ -32,76 +32,26 @@ export function Navbar() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  // Hook Integration: Connects actual hooks & destructured operations
-  const { 
-    notifications, 
-    unreadCount, 
-    markAsRead, 
-    markAllAsRead 
-  } = useNotifications();
-
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { user, userProfile, signOut, isAuthenticated } = useAuthContext();
 
   const dropdownRef = useRef(null);
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [prefersDark, setPrefersDark] = useState(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = localStorage.getItem("theme");
-      if (saved === "light") return false;
-      if (saved === "dark") return true;
-      return (
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches
-      );
-    } catch (e) {
-      return null;
-    }
-  });
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Detect system preference on mount so initial render matches user's OS
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const update = (e) => setPrefersDark(e.matches);
-      if (mq.addEventListener) mq.addEventListener("change", update);
-      else mq.addListener && mq.addListener(update);
-      return () => {
-        if (mq.removeEventListener) mq.removeEventListener("change", update);
-        else mq.removeListener && mq.removeListener(update);
-      };
-    } catch (e) {
-      // ignore
-    }
-  }, []);
-
-  const scrollProgressValue = Number.isFinite(scrollProgress) ? scrollProgress : 0;
-
-  // Scroll Effect
   useEffect(() => {
     const handleScroll = () => {  
-      const progress = Math.min(window.scrollY / 100, 1);
-      setScrollProgress(progress);
+      setScrollProgress(Math.min(window.scrollY / 100, 1));
     };
-
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Close dropdown on outside click
   const handleClickOutside = useCallback((event) => {
-    if (
-      dropdownRef.current &&
-      event.target &&
-      !dropdownRef.current.contains(event.target)
-    ) {
+    if (dropdownRef.current && event.target && !dropdownRef.current.contains(event.target)) {
       setIsDropdownOpen(false);
       setIsNotificationOpen(false);
     }
@@ -112,73 +62,16 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [handleClickOutside]);
 
-  // ESC Key Support
-  useEffect(() => {
-    const close = () => {
-      setIsDropdownOpen(false);
-      setIsNotificationOpen(false);
-      setIsMenuOpen(false);
-    };
-    const handleEscape = (event) => {
-      if (event.key === "Escape") close();
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    window.addEventListener("learnova:escape", close);
-
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-      window.removeEventListener("learnova:escape", close);
-    };
-  }, []);
-
-  // Prevent body scroll
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.classList.add("overflow-hidden");
-    } else {
-      document.body.classList.remove("overflow-hidden");
-    }
-    return () => document.body.classList.remove("overflow-hidden");
-  }, [isMenuOpen]);
-
-  // Close menus on route change
-  useEffect(() => {
-    setIsMenuOpen(false);
-    setIsDropdownOpen(false);
-    setIsNotificationOpen(false);
-  }, [pathname]);
-
   const handleLogout = async () => {
     setIsDropdownOpen(false);
     setIsMenuOpen(false);
     await signOut();
   };
 
-  // Helpers
-  const getUserInitials = (name) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getUserDisplayName = () => {
-    if (userProfile?.fullName) return userProfile.fullName;
-    if (user?.displayName) return user.displayName;
-    if (user?.email) return user.email.split("@")[0];
-    return "User";
-  };
-
+  const getUserInitials = (name) => name ? name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) : "U";
+  const getUserDisplayName = () => userProfile?.fullName || user?.displayName || user?.email?.split("@")[0] || "User";
   const getUserPhoto = () => user?.photoURL || null;
-
-  const getUserRole = () => {
-    if (!userProfile?.role) return "User";
-    return userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1);
-  };
+  const getUserRole = () => userProfile?.role ? userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1) : "User";
 
   const getDashboardLink = () => {
     if (!userProfile?.role) return "/profile";
@@ -203,166 +96,94 @@ export function Navbar() {
     { href: "/settings", icon: Settings, label: "Settings", key: "settings" },
   ].filter((item) => !(item.key === "dashboard" && item.href === "/profile"));
 
-  const handleImageError = (e) => {
-    const img = e.target;
-    const fallback = img.parentElement?.querySelector(".fallback-avatar");
-    if (img && fallback) {
-      img.style.display = "none";
-      fallback.style.display = "flex";
-    }
-  };
-
   return (
     <>
-      {/* Background Dimming Layer on Scroll */}
-      <div
-        className="fixed w-full top-0 z-[60] h-24 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300"
-        style={{ opacity: 1 - scrollProgressValue * 0.5 }}
-      />
-
-      {/* Main Navbar */}
-      <nav
-        className="fixed w-full top-0 left-0 right-0 z-[70] transition-all duration-300 ease-out"
-        style={{
-          // Use resolved theme when mounted; otherwise fall back to system preference
-          backgroundColor:
-            (mounted ? theme : prefersDark ? "dark" : "light") === "dark"
-              ? `rgba(0,0,0,${0.82 + scrollProgressValue * 0.12})`
-              : `rgba(255,255,255,0.98)`,
-          backdropFilter: `blur(20px)`,
-          WebkitBackdropFilter: `blur(20px)`,
-          borderBottom:
-            (mounted ? theme : prefersDark ? "dark" : "light") === "dark"
-              ? `1px solid rgba(255,255,255,0.1)`
-              : `1px solid rgba(0,0,0,0.08)`,
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="flex justify-between items-center h-16">
+      <div className="fixed w-full top-0 left-0 right-0 z-[70] px-4 sm:px-6 lg:px-8 pt-4 transition-all duration-300">
+        <nav
+          className={`max-w-7xl mx-auto backdrop-blur-md rounded-2xl border transition-all duration-300 ${
+            scrollProgress > 0 
+              ? "bg-white/90 dark:bg-zinc-950/70 shadow-lg shadow-gray-200/80 dark:shadow-black/30 border-gray-200 dark:border-zinc-800/60 py-2 px-6" 
+              : "bg-white/95 dark:bg-zinc-950/40 shadow-md shadow-gray-100/60 dark:shadow-none border-gray-200/70 dark:border-zinc-900/40 py-3.5 px-6"
+          }`}
+        >
+          <div className="flex justify-between items-center h-14">
             
-            {/* Logo Group */}
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="bg-gradient-to-br from-accent to-blue-500 p-2 rounded-xl">
-                <BookOpen className="h-6 w-6 text-white" />
+            {/* Logo Group (Readability Maximized) */}
+            <Link href="/" className="flex items-center space-x-3 group">
+              <div className="bg-blue-600 dark:bg-blue-500 p-2.5 rounded-xl text-white shadow-sm transition-all duration-200 group-hover:scale-102">
+                <BookOpen className="h-5 w-5" />
               </div>
-              <div>
-                <span className="text-xl font-bold text-gray-950 dark:text-white">
+              <div className="flex flex-col">
+                <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50 block leading-tight">
                   Learnova
                 </span>
-                <p className="text-xs text-gray-600 dark:text-gray-300 uppercase tracking-wider font-semibold">
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-widest font-black mt-0.5 leading-none">
                   Premium
                 </p>
               </div>
             </Link>
 
-            {/* Desktop Navigation Control */}
-            <div className="hidden sm:flex items-center space-x-2">
+            {/* Center Navigation Capsule (Bold Typography Integration) */}
+            <div className="hidden sm:flex items-center space-x-1 bg-zinc-100/80 dark:bg-zinc-900/50 border border-zinc-200/30 dark:border-zinc-800/30 rounded-2xl p-1">
               {navigationItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-4 py-2 rounded-lg transition-all duration-300 ${
+                    className={`text-sm font-bold tracking-wide px-5 py-2 rounded-xl transition-all duration-200 ${
                       isActive
-                        ? "bg-accent/20 text-gray-950 dark:text-white font-medium"
-                        : "text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10"
+                        ? "bg-white dark:bg-zinc-800 text-blue-600 dark:text-white shadow-sm"
+                        : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                     }`}
                   >
                     {item.label}
                   </Link>
                 );
               })}
+            </div>
 
-              {/* Theme Selector Button */}
+            {/* Right Group Actions */}
+            <div className="hidden sm:flex items-center space-x-4">
               {mounted && (
                 <button
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
+                  className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
                   aria-label="Toggle theme"
                 >
                   {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </button>
               )}
 
-              {/* Authentication Actions View */}
               {isAuthenticated ? (
-                <div className="flex items-center space-x-2 sm:space-x-4 ml-2 sm:ml-6">
-                  <Button asChild className="hidden sm:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
-                    <Link href="/attendance">
-                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="relative flex items-center">
-                        Mark Attendance
-                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
-                      </span>
-                    </Link>
-                  </Button>
-                  
-                  <Button asChild className="hidden lg:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
-                    <Link href="/notices">
-                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="relative flex items-center">
-                        Notice Board
-                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
-                      </span>
-                    </Link>
-                  </Button>
-
-                  {/* Notifications Overlay Node */}
+                <div className="flex items-center space-x-3 pl-2 border-l border-zinc-200 dark:border-zinc-800">
+                  {/* Notifications */}
                   <div className="relative">
                     <button
                       onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                      className="relative p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
-                      aria-label="View notifications"
+                      className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
                     >
                       <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-xs text-white rounded-full h-4 w-4 flex items-center justify-center animate-pulse">
-                          {unreadCount}
-                        </span>
-                      )}
+                      {unreadCount > 0 && <span className="absolute top-2 right-2 bg-red-500 rounded-full h-2 w-2" />}
                     </button>
 
                     {isNotificationOpen && (
-                      <div className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl z-[52] overflow-hidden">
-                        <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
-                          <h3 className="text-foreground font-semibold text-sm">
-                            Notifications
-                          </h3>
+                      <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-[80] overflow-hidden">
+                        <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50">
+                          <h3 className="text-zinc-900 dark:text-zinc-100 font-bold text-sm">Notifications</h3>
                           {unreadCount > 0 && (
-                            <button
-                              onClick={markAllAsRead}
-                              aria-label="Mark all notifications as read"
-                              className="text-xs font-medium text-accent hover:underline"
-                            >
+                            <button onClick={markAllAsRead} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
                               Mark all as read
                             </button>
                           )}
                         </div>
-                        
-                        <div className="max-h-72 overflow-y-auto">
+                        <div className="max-h-60 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-900">
                           {notifications.length === 0 ? (
-                            <div className="p-6 text-center">
-                              <Bell className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                              <p className="text-muted-foreground text-sm">
-                                No notifications available
-                              </p>
-                            </div>
+                            <div className="p-4 text-center text-sm text-zinc-400">No new notices</div>
                           ) : (
                             notifications.map((n) => (
-                              <div
-                                key={n.id}
-                                onClick={() => markAsRead(n.id)}
-                                className={`p-4 border-b border-border/60 cursor-pointer transition-colors hover:bg-muted/40 ${
-                                  !n.read ? "bg-accent/5 dark:bg-accent/10" : ""
-                                }`}
-                              >
-                                <p className="text-sm text-foreground">
-                                  {n.message}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {n.time}
-                                </p>
+                              <div key={n.id} onClick={() => markAsRead(n.id)} className={`p-3 text-left cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/40 ${!n.read ? "bg-blue-50/30" : ""}`}>
+                                <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{n.message}</p>
                               </div>
                             ))
                           )}
@@ -371,260 +192,83 @@ export function Navbar() {
                     )}
                   </div>
 
-                  {/* Profile Menu Dropdown */}
+                  {/* Profile Menu */}
                   <div className="relative" ref={dropdownRef}>
-                    <button
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="flex items-center space-x-3 p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
-                    >
-                      <div className="relative w-10 h-10">
+                    <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center space-x-2 p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                      <div className="relative w-8 h-8">
                         {getUserPhoto() ? (
-                          <Image
-                            src={getUserPhoto()}
-                            alt="Profile"
-                            width={40}
-                            height={40}
-                            className="rounded-full object-cover border-2 border-accent/50"
-                            onError={handleImageError}
-                          />
+                          <Image src={getUserPhoto()} alt="Profile" width={32} height={32} className="rounded-full object-cover" />
                         ) : (
-                          <div className="fallback-avatar absolute inset-0 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center">
-                            <span className="text-sm font-bold text-white">
-                              {getUserInitials(getUserDisplayName())}
-                            </span>
+                          <div className="absolute inset-0 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
+                            {getUserInitials(getUserDisplayName())}
                           </div>
                         )}
                       </div>
-
-                      <div className="hidden sm:block text-left">
-                        <p className="text-sm font-medium text-foreground">
-                          {getUserDisplayName()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {getUserRole()}
-                        </p>
-                      </div>
-
-                      <ChevronDown
-                        className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                          isDropdownOpen ? "rotate-180" : ""
-                        }`}
-                      />
+                      <ChevronDown className="h-4 w-4 text-zinc-400" />
                     </button>
 
                     {isDropdownOpen && (
-                      <div className="absolute right-0 mt-3 min-w-64 bg-background border border-border rounded-2xl shadow-2xl py-2 z-[52]">
+                      <div className="absolute right-0 mt-3 w-48 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-[80]">
                         {userMenuItems.map((item) => (
-                          <Link
-                            key={item.key}
-                            href={item.href}
-                            onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center px-4 py-3 text-sm text-muted-foreground hover:bg-accent/10 hover:text-foreground transition-colors"
-                          >
-                            <item.icon className="h-4 w-4 mr-3 text-muted-foreground" />
-                            {item.label}
+                          <Link key={item.key} href={item.href} onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                            <item.icon className="h-4 w-4 mr-2.5 text-zinc-400" /> {item.label}
                           </Link>
                         ))}
-                        <hr className="my-2 border-border" />
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
-                        >
-                          <LogOut className="h-4 w-4 mr-3" />
-                          Logout
+                        <button onClick={handleLogout} className="w-full flex items-center px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
+                          <LogOut className="h-4 w-4 mr-2.5" /> Logout
                         </button>
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="ml-2 sm:ml-6">
-                  <Button asChild className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
-                    <Link href="/auth">
-                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="relative flex items-center">
-                        Login / Signup
-                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
-                      </span>
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Mobile View Toggle Control Trigger */}
-            <div className="sm:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="Toggle Menu"
-                aria-expanded={isMenuOpen}
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-gray-800 dark:text-gray-100 hover:text-accent hover:bg-accent/10 transition-all duration-300"
-              >
-                {isMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Mobile Context Drawer Menu */}
-      {isMenuOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-background/60 backdrop-blur-sm z-[49] md:hidden"
-            onClick={() => setIsMenuOpen(false)}
-          />
-
-          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background text-foreground z-[52] md:hidden border-l border-border shadow-2xl flex flex-col justify-between">
-            <div>
-              <div className="p-6 border-b border-border flex justify-between items-center">
-                <h2 className="text-foreground text-lg font-bold">Menu</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Close menu"
-                  onClick={() => setIsMenuOpen(false)}
+                <Button 
+                  asChild 
+                  size="default" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-5 h-10 text-sm shadow-sm active:scale-98 transition-all"
                 >
-                  <X className="h-6 w-6" />
-                </Button>
-              </div>
-
-              {/* User Identity Display Node (Mobile) */}
-              {isAuthenticated && (
-                <div className="p-6 border-b border-border">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-14 h-14 relative">
-                      {getUserPhoto() && (
-                        <Image
-                          src={getUserPhoto()}
-                          alt="User profile avatar"
-                          width={56}
-                          height={56}
-                          className="rounded-full border-2 border-accent/50 object-cover shadow-lg"
-                          onError={handleImageError}
-                        />
-                      )}
-                      <div
-                        className={`fallback-avatar absolute inset-0 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-lg ${
-                          getUserPhoto() ? "hidden" : "flex"
-                        }`}
-                      >
-                        <span className="text-lg font-bold text-white">
-                          {getUserInitials(getUserDisplayName())}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-foreground font-semibold text-base truncate">
-                        {getUserDisplayName()}
-                      </h3>
-                      <p className="text-muted-foreground text-sm truncate">
-                        {user?.email || ""}
-                      </p>
-                      <div className="flex items-center mt-1">
-                        <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2" />
-                        <span className="text-xs text-yellow-500 font-medium">
-                          {getUserRole()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Operational Quick Actions (Mobile) */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button asChild className="w-full bg-muted text-foreground hover:bg-muted/80 text-sm font-medium border border-border">
-                      <Link href="/attendance" onClick={() => setIsMenuOpen(false)}>
-                        <UserCheck className="h-4 w-4 mr-2 text-accent" />
-                        Attendance
-                      </Link>
-                    </Button>
-                    <Button asChild className="w-full bg-muted text-foreground hover:bg-muted/80 text-sm font-medium border border-border">
-                      <Link href="/notices" onClick={() => setIsMenuOpen(false)}>
-                        <Bell className="h-4 w-4 mr-2 text-purple-500" />
-                        Notices
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Mobile Core Navigation List */}
-              <div className="p-4 space-y-6">
-                <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
-                    Navigation
-                  </h4>
-                  {navigationItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center px-4 py-3 hover:bg-accent/10 transition-colors rounded-xl group"
-                    >
-                      <item.icon className="h-5 w-5 mr-4 text-muted-foreground group-hover:text-accent transition-colors" />
-                      <span className="font-medium">{item.label}</span>
-                    </Link>
-                  ))}
-                </div>
-
-                {isAuthenticated && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
-                      Account
-                    </h4>
-                    {userMenuItems.map((item) => (
-                      <Link
-                        key={item.key}
-                        href={item.href}
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center px-4 py-3 hover:bg-accent/10 transition-colors rounded-xl group"
-                      >
-                        <item.icon className="h-5 w-5 mr-4 text-muted-foreground group-hover:text-accent transition-colors" />
-                        <span className="font-medium">{item.label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Mobile Footer Area Layout Container */}
-            <div className="p-6 border-t border-border space-y-4">
-              {isAuthenticated ? (
-                <Button
-                  className="w-full bg-red-500 hover:bg-red-600 text-white font-medium shadow-lg transition-all"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4 mr-3" />
-                  Sign Out
-                </Button>
-              ) : (
-                <Button asChild className="w-full bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg transition-all">
-                  <Link href="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
-                    <Sparkles className="h-4 w-4 mr-3" />
-                    Get Started
+                  <Link href="/auth">
+                    <span className="flex items-center gap-2">
+                      Login
+                      <Sparkles className="h-4 w-4 text-blue-200" />
+                    </span>
                   </Link>
                 </Button>
               )}
-              
-              <div className="text-center space-y-3">
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
-                  }}
-                  className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-accent transition-colors text-xs font-medium cursor-pointer"
-                >
-                  <Keyboard className="h-4 w-4 text-accent" />
-                  <span>Keyboard Shortcuts</span>
-                </button>
-                <p className="text-muted-foreground/60 text-[10px]">
-                  © {new Date().getFullYear()} Learnova. All rights reserved.
-                </p>
-              </div>
             </div>
+
+            {/* Mobile Menu Action */}
+            <div className="sm:hidden">
+              <Button variant="ghost" size="sm" onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-zinc-600 dark:text-zinc-400 px-1">
+                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </Button>
+            </div>
+
+          </div>
+        </nav>
+      </div>
+
+      {/* Mobile Menu Drawer Overlay */}
+      {isMenuOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[85]" onClick={() => setIsMenuOpen(false)} />
+          <div className="fixed top-4 right-4 max-w-[85vw] w-64 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-2xl shadow-xl p-4 space-y-4 z-[90] flex flex-col transition-all">
+            <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-900 pb-2">
+              <span className="font-bold text-sm text-zinc-400 uppercase tracking-wider">Menu</span>
+              <X className="h-5 w-5 text-zinc-400 cursor-pointer" onClick={() => setIsMenuOpen(false)} />
+            </div>
+            <div className="flex flex-col space-y-1">
+              {navigationItems.map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setIsMenuOpen(false)} className="px-3 py-2 text-sm font-medium rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+            {!isAuthenticated && (
+              <Button asChild size="default" className="w-full bg-blue-600 text-white rounded-lg text-sm h-10">
+                <Link href="/auth" onClick={() => setIsMenuOpen(false)}>Login / Signup</Link>
+              </Button>
+            )}
           </div>
         </>
       )}
