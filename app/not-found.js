@@ -36,8 +36,10 @@ export default function NotFound() {
       y: window.innerHeight / 2,
     });
 
-    let timeout;
+    const isTouchOnly = window.matchMedia("(pointer: coarse)").matches;
+    if (isTouchOnly) return;
 
+    let timeout;
     const throttledMouseMove = (event) => {
       if (!timeout) {
         timeout = setTimeout(() => {

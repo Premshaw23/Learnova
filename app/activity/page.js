@@ -91,11 +91,17 @@ export default function ActivityPage() {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+
+    const isTouchOnly = window.matchMedia("(pointer: coarse)").matches;
+    if (!isTouchOnly) {
+      window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    }
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("mousemove", handleMouseMove);
+      if (!isTouchOnly) {
+        window.removeEventListener("mousemove", handleMouseMove);
+      }
     };
   }, []);
 

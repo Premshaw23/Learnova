@@ -251,12 +251,18 @@ export default function AboutPage() {
       }
     };
 
+    const isTouchOnly = window.matchMedia("(pointer: coarse)").matches;
+
     window.addEventListener("scroll", throttledScroll, { passive: true });
-    window.addEventListener("mousemove", throttledMouseMove, { passive: true });
+    if (!isTouchOnly) {
+      window.addEventListener("mousemove", throttledMouseMove, { passive: true });
+    }
 
     return () => {
       window.removeEventListener("scroll", throttledScroll);
-      window.removeEventListener("mousemove", throttledMouseMove);
+      if (!isTouchOnly) {
+        window.removeEventListener("mousemove", throttledMouseMove);
+      }
       if (scrollTimeout) clearTimeout(scrollTimeout);
       if (mouseTimeout) clearTimeout(mouseTimeout);
     };
