@@ -107,7 +107,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
           timeout: 15000,
-          maximumAge: 30000,
+          maximumAge: 0,
         });
       });
 
@@ -236,7 +236,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
           timeout: 15000,
-          maximumAge: 30000,
+          maximumAge: 0,
         });
       });
 
