@@ -14,12 +14,15 @@ import {
   Crown,
   Zap,
   TrendingUp,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
 import UniversalProfile from "@/components/universal-profile";
 
 export default function ProfilePage() {
+  const [error, setError] = useState(null);
+  
   useEffect(() => {
     if (analytics) {
       logEvent(analytics, "page_view", { page: "profile" });
@@ -49,9 +52,14 @@ export default function ProfilePage() {
   };
 
   const handleSave = () => {
-    // Handle save logic here
-    setIsEditing(false);
-    // You would typically make an API call here
+    try {
+      // Handle save logic here
+      setIsEditing(false);
+      // You would typically make an API call here
+    } catch (err) {
+      setError("Failed to save profile changes");
+      console.error("Save error:", err);
+    }
   };
 
   const handleImageUpload = () => {
@@ -172,6 +180,25 @@ export default function ProfilePage() {
         <div className="text-center text-white pt-20">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+        <Navbar />
+        <div className="text-center text-white pt-20">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Error Loading Profile</h2>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-red-500/20 text-red-400 px-6 py-3 rounded-xl hover:bg-red-500/30 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

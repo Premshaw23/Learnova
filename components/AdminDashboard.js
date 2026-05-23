@@ -39,6 +39,7 @@ const EngagementChart = dynamic(
 
 const SuperAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedInstitute, setSelectedInstitute] = useState("all");
   const [showCriticalAlert, setShowCriticalAlert] = useState(false);
@@ -50,6 +51,24 @@ const SuperAdminDashboard = () => {
 
   return () => clearTimeout(loadingTimer);
 }, []);
+
+if (error) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+      <div className="text-center text-white p-8">
+        <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Error Loading Dashboard</h2>
+        <p className="text-gray-400 mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-red-500/20 text-red-400 px-6 py-3 rounded-xl hover:bg-red-500/30 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
+  );
+}
 
   // Platform-wide statistics
   const platformStats = {

@@ -60,6 +60,7 @@ const InstituteDashboard = () => {
   );
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Mock data - in real app, this would come from your backend
   const [dashboardData, setDashboardData] = useState({
@@ -209,7 +210,12 @@ const InstituteDashboard = () => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      try {
+        setCurrentTime(new Date());
+      } catch (err) {
+        setError("Failed to update time");
+        console.error("Time update error:", err);
+      }
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -233,19 +239,29 @@ const InstituteDashboard = () => {
   };
 
   const handleApproveRequest = (requestId) => {
-    setAttendanceRequests((prev) =>
-      prev.map((req) =>
-        req.id === requestId ? { ...req, status: "approved" } : req
-      )
-    );
+    try {
+      setAttendanceRequests((prev) =>
+        prev.map((req) =>
+          req.id === requestId ? { ...req, status: "approved" } : req
+        )
+      );
+    } catch (err) {
+      setError("Failed to approve request");
+      console.error("Approve request error:", err);
+    }
   };
 
   const handleRejectRequest = (requestId) => {
-    setAttendanceRequests((prev) =>
-      prev.map((req) =>
-        req.id === requestId ? { ...req, status: "rejected" } : req
-      )
-    );
+    try {
+      setAttendanceRequests((prev) =>
+        prev.map((req) =>
+          req.id === requestId ? { ...req, status: "rejected" } : req
+        )
+      );
+    } catch (err) {
+      setError("Failed to reject request");
+      console.error("Reject request error:", err);
+    }
   };
 
   const StatCard = ({
@@ -304,6 +320,24 @@ const InstituteDashboard = () => {
       </div>
     );
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center text-white p-8">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-red-500/20 text-red-400 px-6 py-3 rounded-xl hover:bg-red-500/30 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const TopInfoBar = () => (
     <div

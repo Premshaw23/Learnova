@@ -45,6 +45,7 @@ import AttendanceAnalytics from "./dashboard/AttendanceAnalytics";
 
 const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attendanceStatus, setAttendanceStatus] = useState("pending");
@@ -142,44 +143,49 @@ const StudentDashboard = () => {
     }, 1500);
 
     const timer = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now);
+      try {
+        const now = new Date();
+        setCurrentTime(now);
 
-      const hour = now.getHours();
-      const minute = now.getMinutes();
-      const day = now.getDay();
+        const hour = now.getHours();
+        const minute = now.getMinutes();
+        const day = now.getDay();
 
-      const isWeekday = day >= 1 && day <= 5;
-      const isAttendanceTime = hour === 9 && minute <= 10;
+        const isWeekday = day >= 1 && day <= 5;
+        const isAttendanceTime = hour === 9 && minute <= 10;
 
-      setIsAttendanceWindow(isWeekday && isAttendanceTime);
+        setIsAttendanceWindow(isWeekday && isAttendanceTime);
 
-      const dayNames = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ];
+        const dayNames = [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ];
 
-      const today = dayNames[day];
+        const today = dayNames[day];
 
-      setTodayClasses(weeklySchedule[today] || []);
+        setTodayClasses(weeklySchedule[today] || []);
 
-      if (weeklySchedule[today]) {
-        const upcoming = weeklySchedule[today].find((cls) => {
-          const [startTime] = cls.time.split("-");
-          const [classHour, classMinute] = startTime.split(":").map(Number);
+        if (weeklySchedule[today]) {
+          const upcoming = weeklySchedule[today].find((cls) => {
+            const [startTime] = cls.time.split("-");
+            const [classHour, classMinute] = startTime.split(":").map(Number);
 
-          return (
-            hour < classHour ||
-            (hour === classHour && minute < classMinute)
-          );
-        });
+            return (
+              hour < classHour ||
+              (hour === classHour && minute < classMinute)
+            );
+          });
 
-        setUpcomingClass(upcoming);
+          setUpcomingClass(upcoming);
+        }
+      } catch (err) {
+        setError("Failed to load dashboard data");
+        console.error("Dashboard error:", err);
       }
     }, 1000);
 
@@ -206,6 +212,24 @@ const StudentDashboard = () => {
 
   if (loading) {
     return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center text-white p-8">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-red-500/20 text-red-400 px-6 py-3 rounded-xl hover:bg-red-500/30 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const getStatusColor = (status) => {

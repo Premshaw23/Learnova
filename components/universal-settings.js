@@ -38,6 +38,7 @@ export default function UniversalSettings() {
   const [showPassword, setShowPassword] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const getUserInitials = (name) => {
     if (!name) return "U";
@@ -240,6 +241,7 @@ export default function UniversalSettings() {
 
   const saveSettings = async () => {
   setIsLoading(true);
+  setError(null);
   try {
     const response = await fetch("/api/settings", {
       method: "PATCH",
@@ -251,6 +253,7 @@ export default function UniversalSettings() {
     toast.success("Settings updated successfully!");
   } catch (error) {
     console.error("Failed to save settings:", error);
+    setError("Failed to save settings. Please try again.");
     toast.error("Failed to save settings. Please try again.");
   } finally {
     setIsLoading(false);
@@ -330,6 +333,24 @@ export default function UniversalSettings() {
     { id: "data", label: "Data & Storage", icon: Database },
     { id: "help", label: "Help & Support", icon: HelpCircle },
   ];
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center text-white p-8">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Error Loading Settings</h2>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-red-500/20 text-red-400 px-6 py-3 rounded-xl hover:bg-red-500/30 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative rounded-2xl bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950">
