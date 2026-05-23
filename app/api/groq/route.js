@@ -7,38 +7,7 @@ export const dynamic = "force-dynamic";
 const GROQ_API_URL =
   "https://api.groq.com/openai/v1/chat/completions";
 
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const MAX_REQUESTS_PER_WINDOW = 10;
-
-const rateLimitMap = new Map();
-
-/**
- * Simple in-memory rate limiter
- */
-const isRateLimited = (userId) => {
-  const now = Date.now();
-
-  const userRequests =
-    rateLimitMap.get(userId) || [];
-
-  const validRequests = userRequests.filter(
-    (timestamp) =>
-      now - timestamp < RATE_LIMIT_WINDOW
-  );
-
-  if (
-    validRequests.length >=
-    MAX_REQUESTS_PER_WINDOW
-  ) {
-    return true;
-  }
-
-  validRequests.push(now);
-
-  rateLimitMap.set(userId, validRequests);
-
-  return false;
-};
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(request) {
   try {
@@ -57,7 +26,8 @@ export async function POST(request) {
     }
 
     // Rate limiting
-    if (isRateLimited(decodedToken.uid)) {
+    const rateLimitResult = await checkRateLimit(decodedToken.uid);
+    if (!rateLimitResult.allowed) {
       return jsonError(
         "Too many requests. Please try again later.",
         429

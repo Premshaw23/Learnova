@@ -54,6 +54,14 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
   let mockUpdateOne;
   let mockFindOne;
 
+  beforeAll(() => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    console.error.mockRestore();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
 

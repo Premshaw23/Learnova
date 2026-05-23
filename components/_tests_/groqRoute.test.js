@@ -27,6 +27,16 @@ global.fetch = jest.fn();
 describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout Tests", () => {
   const originalEnv = { ...process.env };
 
+  beforeAll(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    console.warn.mockRestore();
+    console.log.mockRestore();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...originalEnv };
@@ -99,7 +109,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Message is too long");
+    expect(body.error).toBe("Message too long");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -176,7 +186,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(504);
-    expect(body.error).toBe("Gateway Timeout: Groq did not respond in time.");
+    expect(body.error).toBe("Gateway Timeout: AI response took too long.");
     expect(global.fetch).toHaveBeenCalled();
   });
 
