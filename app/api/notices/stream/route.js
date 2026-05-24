@@ -106,6 +106,12 @@ export async function GET(request) {
            if (changeStream) changeStream.close().catch(() => {});
            try { controller.close(); } catch (e) {}
         });
+      },
+      cancel() {
+        isConnected = false;
+        clearInterval(heartbeatInterval);
+        if (pollInterval) clearInterval(pollInterval);
+        if (changeStream) changeStream.close().catch(() => {});
       }
     });
 
