@@ -176,7 +176,7 @@ npm install
 Create a `.env.local` file in the root directory and add your credentials:
 
 ```env
-# Firebase
+# Firebase Client SDK
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
@@ -185,8 +185,14 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
-# MongoDB
+# Firebase Admin SDK (Server-Side Only)
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_CLIENT_EMAIL=your_service_account_email
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# MongoDB Settings
 MONGODB_URI=your_mongodb_connection_string
+MONGODB_DB=learnova
 
 # Vercel Blob
 BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
@@ -195,6 +201,10 @@ BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
 NEXT_PUBLIC_EMAILJS_SERVICE_ID=your_service_id
 NEXT_PUBLIC_EMAILJS_TEMPLATE_ID=your_template_id
 NEXT_PUBLIC_EMAILJS_USER_ID=your_user_id
+
+# AI/ML Services
+GROQ_API_KEY=your_groq_api_key
+GROQ_TIMEOUT=30000
 ```
 
 ### 4. Run the development server
