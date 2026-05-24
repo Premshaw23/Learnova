@@ -3,10 +3,12 @@ import SkeletonCard from "@/components/ui/SkeletonCard";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { toast } from "react-hot-toast";
+const AUTH_TIMEOUT = 15000;
 
 export default function ProtectedRoute({
   children,
-  allowedRoles = null, // null = all roles allowed
+  allowedRoles = null,
   requireEmailVerification = true,
 }) {
   const { user, userProfile, loading, isAuthenticated, hasProfile } =
@@ -14,36 +16,48 @@ export default function ProtectedRoute({
   const router = useRouter();
   const pathname = usePathname();
   const [redirecting, setRedirecting] = useState(false);
+  const [authTimedOut, setAuthTimedOut] = useState(false);
 
   useEffect(() => {
+    if (!loading) return;
+
+    const timer = setTimeout(() => {
+      setAuthTimedOut(true);
+    }, AUTH_TIMEOUT);
+
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  useEffect(() => {
+    if (authTimedOut) {
+      safeRedirect("/auth");
+      return;
+    }
+
     if (loading) return;
 
-    // Not logged in → go to auth
     if (!isAuthenticated) {
       safeRedirect("/auth");
       return;
     }
 
-    // Email not verified (if required) → go to verify page
     if (requireEmailVerification && user && !user.emailVerified) {
       safeRedirect("/verify");
       return;
     }
 
-    // No profile yet → force profile creation
     if (isAuthenticated && !hasProfile) {
       safeRedirect("/profile");
       return;
     }
 
-    // Role-based access control
     if (
-      allowedRoles && // only check if not null
+      allowedRoles &&
       userProfile &&
       !allowedRoles.includes(userProfile.role)
     ) {
-      // redirect user to their dashboard
-      let target = "/auth"; // fallback
+      toast.error("Access Denied: You do not have permission to view this page.");
+      let target = "/auth";
       switch (userProfile.role) {
         case "student":
           target = "/student/dashboard";
@@ -69,9 +83,9 @@ export default function ProtectedRoute({
     hasProfile,
     requireEmailVerification,
     allowedRoles,
+    authTimedOut,
   ]);
 
-  // Prevent infinite redirects by checking current pathname
   const safeRedirect = (target) => {
     if (pathname !== target) {
       setRedirecting(true);
@@ -79,28 +93,7 @@ export default function ProtectedRoute({
     }
   };
 
-  // // Loading spinner while auth state is resolving
-  // if (loading || redirecting) {
-  //   return (
-  //     <div className="min-h-screen flex items-center justify-center bg-gray-900">
-  //       <div className="text-center">
-  //         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-  //         <p className="text-gray-300">Loading...</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-const [showSkeleton, setShowSkeleton] = useState(true);
-
-useEffect(() => {
-  const timer = setTimeout(() => {
-    setShowSkeleton(false);
-  }, 5000);
-
-  return () => clearTimeout(timer);
-}, []);
-
-if ((loading || redirecting) && showSkeleton) {
+if (loading || redirecting) {
   return (
     <div className="min-h-screen bg-[#050816] text-white p-6 animate-pulse">
       

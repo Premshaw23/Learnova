@@ -47,7 +47,7 @@ jobs:
           NEXT_PUBLIC_EMAILJS_SERVICE_ID: dummy
           NEXT_PUBLIC_EMAILJS_TEMPLATE_ID: dummy
           NEXT_PUBLIC_EMAILJS_USER_ID: dummy
-          NEXT_PUBLIC_GROQ_API_KEY: dummy
+          GROQ_API_KEY: dummy
 
       - name: ✅ Build successful
         run: echo "✨ Build completed successfully!"

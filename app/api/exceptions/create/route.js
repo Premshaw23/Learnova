@@ -1,23 +1,57 @@
 import { connectDb } from "@/lib/mongodb";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { requireStudent } from "@/lib/rbac";
+import { withErrorHandler } from "@/lib/error-handler";
+import { jsonSuccess } from "@/lib/api-response";
+import { NextResponse } from "next/server";
+import { ValidationError } from "@/lib/errors";
+import { z } from "zod";
 
-export async function POST(request) {
-  try {
-    const authorization = request.headers.get("authorization");
-    const token = authorization?.split(" ")[1];
+export const dynamic = "force-dynamic";
 
-    const decodedToken = await verifyFirebaseToken(token);
+const exceptionCreateSchema = z.object({
+  reason: z
+    .string({
+      required_error: "Reason is required",
+      invalid_type_error: "Reason must be a string",
+    })
+    .trim()
+    .min(1, "Reason is required")
+    .max(200, "Reason must be under 200 characters"),
+  details: z
+    .string({
+      required_error: "Details are required",
+      invalid_type_error: "Details must be a string",
+    })
+    .trim()
+    .min(1, "Details are required")
+    .max(1000, "Details must be under 1000 characters"),
+  date: z
+    .string({
+      required_error: "Date is required",
+      invalid_type_error: "Date must be a string",
+    })
+    .trim()
+    .min(1, "Date is required"),
+});
 
-    if (!decodedToken) {
-      return jsonError("Unauthorized", 401);
-    }
+export const POST = withErrorHandler(async (request) => {
+  const { payload: decodedToken } = await requireStudent(request);
+  const body = await request.json();
+  
+  const validation = exceptionCreateSchema.safeParse(body);
+  if (!validation.success) {
+    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+    throw new ValidationError(firstError);
+  }
+  
+  const { reason, details, date } = validation.data;
 
-    const body = await request.json();
     const db = await connectDb();
 
     const exceptionData = {
-      ...body,
+      reason: reason.trim(),
+      details: details.trim(),
+      date: date.trim(),
       studentEmail: decodedToken.email,
       status: "pending",
       createdAt: new Date(),
@@ -31,10 +65,6 @@ export async function POST(request) {
         id: result.insertedId,
         message: "Exception request created successfully",
       },
-      201
+      201,
     );
-  } catch (error) {
-    console.error("Exception creation error:", error);
-    return jsonError("Internal server error", 500);
-  }
-}
+});

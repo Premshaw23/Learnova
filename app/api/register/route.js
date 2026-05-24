@@ -1,58 +1,456 @@
-import { put } from "@vercel/blob";
+import { put, del } from "@vercel/blob";
+import { randomUUID } from "crypto";
+
 import { connectDb } from "@/lib/mongodb";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
 
-export async function POST(req) {
-  try {
-    const formData = await req.formData();
-    const name = formData.get("name");
-    const rollNo = formData.get("rollNo");
-    const email = formData.get("email");
-    const file = formData.get("photo");
+import {
+  jsonError,
+  jsonSuccess,
+} from "@/lib/api-response";
 
-    if (!name || !rollNo || !email || !file) {
-      return jsonError("Name, rollNo, email, and photo are required", 400);
-    }
+import {
+  withErrorHandler,
+  authenticateRequest,
+} from "@/lib/error-handler";
 
-    // Get DB
-    const db = await connectDb();
-    const users = db.collection("users");
+import {
+  AppError,
+  ValidationError,
+  ForbiddenError,
+} from "@/lib/errors";
 
-    // Check if user already registered
-    const existingUser = await users.findOne({ rollNo });
-    if (existingUser) {
-      return jsonError("User already registered with a photo", 409);
-    }
+import { z } from "zod";
 
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+import { checkRateLimit } from "@/lib/rateLimit";
 
-    // Generate unique filename
-    const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const fileName = `labels/${safeName}/1.jpg`;
+export const dynamic = "force-dynamic";
 
-    // Upload to Vercel Blob
-    const blob = await put(fileName, buffer, {
-      contentType: file.type || "image/jpeg",
-      access: "public",
-    });
-
-    // Save user record in DB
-    const user = {
-      name,
-      rollNo,
-      email,
-      image: blob.url, // only one photo allowed
-    };
-    await users.insertOne(user);
-
-    return jsonSuccess({
-      message: "User registered successfully",
-      user,
-    });
-  } catch (error) {
-    console.error(error);
-    return jsonError(error.message || "Registration failed", 500);
-  }
+if (
+  typeof global !== "undefined" &&
+  !global.mockFile
+) {
+  global.mockFile = {
+    size: 1024,
+    type: "image/jpeg",
+    arrayBuffer: async () =>
+      new ArrayBuffer(1024),
+  };
 }
+
+
+
+const MAX_FILE_SIZE =
+  5 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES =
+  new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ]);
+
+const WEBP_MARKER = [
+  0x57,
+  0x45,
+  0x42,
+  0x50,
+];
+
+const registerSchema =
+  z.object({
+    name: z
+      .string({
+        required_error:
+          "Name is required",
+      })
+      .trim()
+      .min(
+        1,
+        "Name is required"
+      )
+      .max(100),
+
+    rollNo: z
+      .string({
+        required_error:
+          "Roll number is required",
+      })
+      .trim()
+      .min(
+        1,
+        "Roll number is required"
+      )
+      .max(50),
+
+    email: z
+      .string({
+        required_error:
+          "Email is required",
+      })
+      .trim()
+      .email(
+        "Invalid email format"
+      )
+      .toLowerCase(),
+  });
+
+const MAGIC_BYTES = {
+  "image/jpeg": [
+    0xff,
+    0xd8,
+    0xff,
+  ],
+
+  "image/png": [
+    0x89,
+    0x50,
+    0x4e,
+    0x47,
+  ],
+
+  "image/webp": [
+    0x52,
+    0x49,
+    0x46,
+    0x46,
+  ],
+};
+
+const normalizeText = (
+  value
+) =>
+  typeof value === "string"
+    ? value.trim()
+    : "";
+
+const getImageExtension = (
+  mimeType
+) => {
+  switch (mimeType) {
+    case "image/png":
+      return "png";
+
+    case "image/webp":
+      return "webp";
+
+    case "image/jpeg":
+    default:
+      return "jpg";
+  }
+};
+
+const validateMagicBytes = (
+  buffer,
+  mimeType
+) => {
+  const magic =
+    MAGIC_BYTES[mimeType];
+
+  if (
+    !magic ||
+    buffer.length <
+      magic.length
+  ) {
+    return false;
+  }
+
+  for (
+    let i = 0;
+    i < magic.length;
+    i++
+  ) {
+    if (
+      buffer[i] !== magic[i]
+    ) {
+      return false;
+    }
+  }
+
+  if (
+    mimeType === "image/webp"
+  ) {
+    if (buffer.length < 12) {
+      return false;
+    }
+
+    for (
+      let i = 0;
+      i <
+      WEBP_MARKER.length;
+      i++
+    ) {
+      if (
+        buffer[8 + i] !==
+        WEBP_MARKER[i]
+      ) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+};
+
+export const POST =
+  withErrorHandler(
+    async (req) => {
+      // Rate limiting
+      const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const rateLimitResult = await checkRateLimit(`register_ip_${ip}`);
+
+      if (!rateLimitResult.allowed) {
+        throw new AppError("Too many registration attempts. Please try again later.", 429);
+      }
+
+      // Authenticate
+      const decodedToken =
+        await authenticateRequest(
+          req
+        );
+
+      // Form data
+      const formData =
+        await req.formData();
+
+      const rawName =
+        formData.get(
+          "name"
+        );
+
+      const rawRollNo =
+        formData.get(
+          "rollNo"
+        );
+
+      const rawEmail =
+        formData.get(
+          "email"
+        );
+
+      const file =
+        formData.get(
+          "photo"
+        );
+
+      // Validate fields
+      const validationResult =
+        registerSchema.safeParse(
+          {
+            name: rawName,
+            rollNo:
+              rawRollNo,
+            email:
+              rawEmail,
+          }
+        );
+
+      if (
+        !validationResult.success
+      ) {
+        return jsonError(
+          validationResult.error.issues?.[0]?.message || "Validation failed",
+          400
+        );
+      }
+
+      const {
+        name,
+        rollNo,
+        email,
+      } =
+        validationResult.data;
+
+      // Validate file
+      if (
+        !file ||
+        typeof file ===
+          "string" ||
+        !file.type
+      ) {
+        return jsonError(
+          "Photo is required and must be a valid file",
+          400
+        );
+      }
+
+      // Prevent another user registration
+      if (
+        decodedToken.email !==
+        email
+      ) {
+        throw new ForbiddenError(
+          "Forbidden: Cannot register face for another user"
+        );
+      }
+
+      // File size
+      if (
+        file.size >
+        MAX_FILE_SIZE
+      ) {
+        throw new ValidationError(
+          "File size exceeds 5MB limit"
+        );
+      }
+
+      // File type
+      if (
+        !ALLOWED_IMAGE_TYPES.has(
+          file.type
+        )
+      ) {
+        throw new ValidationError(
+          "Invalid image type"
+        );
+      }
+
+      // Convert to buffer
+      const arrayBuffer =
+        await file.arrayBuffer();
+
+      const buffer =
+        Buffer.from(
+          arrayBuffer
+        );
+
+      // Validate actual size
+      if (
+        buffer.length >
+        MAX_FILE_SIZE
+      ) {
+        return jsonError(
+          `File too large. Maximum allowed size is ${
+            MAX_FILE_SIZE /
+            1024 /
+            1024
+          } MB.`,
+          413
+        );
+      }
+
+      // Validate magic bytes
+      if (
+        !validateMagicBytes(
+          buffer,
+          file.type
+        )
+      ) {
+        return jsonError(
+          "Invalid image content",
+          415
+        );
+      }
+
+      // Database
+      const db =
+        await connectDb();
+
+      const users =
+        db.collection(
+          "users"
+        );
+
+      // Existing user
+      const existingUser =
+        await users.findOne({
+          $or: [
+            { rollNo },
+            { email },
+          ],
+        });
+
+      if (existingUser) {
+        throw new AppError(
+          "User already registered",
+          409
+        );
+      }
+
+      // Generate filename
+      const safeName =
+        normalizeText(
+          name
+        ).replace(
+          /[^a-zA-Z0-9_-]/g,
+          "_"
+        ) || "user";
+
+      const fileExtension =
+        getImageExtension(
+          file.type
+        );
+
+      const fileName = `labels/${safeName}/${randomUUID()}.${fileExtension}`;
+
+      // Upload
+      const blob =
+        await put(
+          fileName,
+          buffer,
+          {
+            contentType:
+              file.type,
+
+            access:
+              "public",
+          }
+        );
+
+      try {
+        const user = {
+          name,
+          rollNo,
+          email,
+          image:
+            blob.url,
+
+          firebaseUid:
+            decodedToken.uid,
+        };
+
+        const result =
+          await users.insertOne(
+            user
+          );
+
+        return jsonSuccess(
+          {
+            message:
+              "User registered successfully",
+
+            user: {
+              _id:
+                result.insertedId,
+
+              name:
+                user.name,
+
+              rollNo:
+                user.rollNo,
+
+              email:
+                user.email,
+            },
+          },
+          201
+        );
+      } catch (dbError) {
+        try {
+          if (blob?.url) {
+            await del(
+              blob.url
+            );
+          }
+        } catch (
+          cleanupError
+        ) {
+          console.error(
+            "Failed cleanup:",
+            cleanupError
+          );
+        }
+
+        throw dbError;
+      }
+    }
+  );

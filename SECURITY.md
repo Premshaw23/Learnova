@@ -48,6 +48,9 @@ Include the following information:
 
 ## Known Security Considerations
 
+- **Registration Security Policy**: The registration endpoint (`/api/register`) enforces token authentication via Firebase ID Tokens. Users can only register under their own verified Firebase authentication email address. Attempts with missing/invalid credentials yield `401 Unauthorized`, and mismatched emails yield `403 Forbidden`.
+- **IP-Based Rate Limiting**: Registration is protected against spam and automated bots via IP-based sliding window rate-limiting. A maximum of `5 registration attempts per 1-minute window` is allowed per IP address. Exceeding this limit yields a `429 Too Many Requests` response.
+- **Rollback Protection**: In case of a database write failure, the registration endpoint automatically deletes the newly uploaded photo blob from Vercel Storage to prevent storage leaks and orphaned assets.
 - Face recognition data is processed client-side and should comply with GDPR/privacy laws
 - Student attendance data should be encrypted at rest and in transit
 - All API endpoints should enforce role-based access control

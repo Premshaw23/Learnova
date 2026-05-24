@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@layer base {
+  :focus-visible {
+    @apply outline-none ring-2 ring-blue-600 ring-offset-2 ring-offset-white dark:ring-blue-500 dark:ring-offset-gray-900;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* globals.css or your main CSS file */
@@ -18,11 +24,15 @@
 
 /* Hide scrollbar for all browsers */
 .scrollbar-none::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
+  /* Chrome, Safari, Opera */
 }
+
 .scrollbar-none {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 @keyframes slide-up {
@@ -30,6 +40,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -44,7 +55,8 @@
 @font-face {
   font-family: 'YourCustomFont';
   src: url('/fonts/your-font.woff2') format('woff2');
-  font-display: swap; /* This helps with font loading */
+  font-display: swap;
+  /* This helps with font loading */
 }
 
 /* Preload critical fonts */
@@ -54,39 +66,70 @@
 
 :root {
   /* Updated color tokens to match Learnova design brief */
-  --background: oklch(1 0 0); /* #ffffff */
-  --foreground: oklch(0.205 0 0); /* #1f2937 */
-  --card: oklch(0.97 0 0); /* #f1f5f9 */
-  --card-foreground: oklch(0.205 0 0); /* #1f2937 */
-  --popover: oklch(1 0 0); /* #ffffff */
-  --popover-foreground: oklch(0.205 0 0); /* #1f2937 */
-  --primary: oklch(0.205 0 0); /* #1f2937 */
-  --primary-foreground: oklch(1 0 0); /* #ffffff */
-  --secondary: oklch(0.646 0.222 280.116); /* #8b5cf6 */
-  --secondary-foreground: oklch(1 0 0); /* #ffffff */
-  --muted: oklch(0.97 0 0); /* #f1f5f9 */
-  --muted-foreground: oklch(0.556 0 0); /* #6b7280 */
-  --accent: oklch(0.646 0.222 280.116); /* #8b5cf6 */
-  --accent-foreground: oklch(1 0 0); /* #ffffff */
-  --destructive: oklch(0.577 0.245 27.325); /* #dc2626 */
-  --destructive-foreground: oklch(1 0 0); /* #ffffff */
-  --border: oklch(0.556 0 0); /* #6b7280 */
-  --input: oklch(0.97 0 0); /* #f1f5f9 */
-  --ring: oklch(0.646 0.222 280.116); /* #8b5cf6 */
+  --background: oklch(1 0 0);
+  /* #ffffff */
+  --foreground: oklch(0.205 0 0);
+  /* #1f2937 */
+  --card: oklch(0.97 0 0);
+  /* #f1f5f9 */
+  --card-foreground: oklch(0.205 0 0);
+  /* #1f2937 */
+  --popover: oklch(1 0 0);
+  /* #ffffff */
+  --popover-foreground: oklch(0.205 0 0);
+  /* #1f2937 */
+  --primary: oklch(0.205 0 0);
+  /* #1f2937 */
+  --primary-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --secondary: oklch(0.646 0.222 280.116);
+  /* #8b5cf6 */
+  --secondary-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --muted: oklch(0.97 0 0);
+  /* #f1f5f9 */
+  --muted-foreground: oklch(0.556 0 0);
+  /* #6b7280 */
+  --accent: oklch(0.646 0.222 280.116);
+  /* #8b5cf6 */
+  --accent-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --destructive: oklch(0.577 0.245 27.325);
+  /* #dc2626 */
+  --destructive-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --border: oklch(0.556 0 0);
+  /* #6b7280 */
+  --input: oklch(0.97 0 0);
+  /* #f1f5f9 */
+  --ring: oklch(0.646 0.222 280.116);
+  /* #8b5cf6 */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.5rem;
-  --sidebar: oklch(0.97 0 0); /* #f1f5f9 */
-  --sidebar-foreground: oklch(0.205 0 0); /* #1f2937 */
-  --sidebar-primary: oklch(0.646 0.222 280.116); /* #8b5cf6 */
-  --sidebar-primary-foreground: oklch(1 0 0); /* #ffffff */
-  --sidebar-accent: oklch(0.577 0.245 27.325); /* #dc2626 */
-  --sidebar-accent-foreground: oklch(1 0 0); /* #ffffff */
-  --sidebar-border: oklch(0.556 0 0); /* #6b7280 */
-  --sidebar-ring: oklch(0.646 0.222 280.116); /* #8b5cf6 */
+  --sidebar: oklch(0.97 0 0);
+  /* #f1f5f9 */
+  --sidebar-foreground: oklch(0.205 0 0);
+  /* #1f2937 */
+  --sidebar-primary: oklch(0.646 0.222 280.116);
+  /* #8b5cf6 */
+  --sidebar-primary-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --sidebar-accent: oklch(0.577 0.245 27.325);
+  /* #dc2626 */
+  --sidebar-accent-foreground: oklch(1 0 0);
+  /* #ffffff */
+  --sidebar-border: oklch(0.556 0 0);
+  /* #6b7280 */
+  --sidebar-ring: oklch(0.646 0.222 280.116);
+  /* #8b5cf6 */
+  --scrollbar-track: #f1f5f9;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-solid: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
 }
 
 .dark {
@@ -122,6 +165,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+  --scrollbar-track: #05010d;
+  --scrollbar-thumb: linear-gradient(to bottom, #8b5cf6, #ec4899);
+  --scrollbar-thumb-solid: #8b5cf6;
+  --scrollbar-thumb-hover: linear-gradient(to bottom, #a855f7, #f472b6);
 }
 
 @theme inline {
@@ -165,11 +212,39 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Shimmer animation for skeleton loading states */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
 }

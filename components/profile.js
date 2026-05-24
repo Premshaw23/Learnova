@@ -14,6 +14,8 @@ import {
   Crown,
   Zap,
   TrendingUp,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
@@ -29,6 +31,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const fileInputRef = useRef(null);
+  const [error, setError] = useState(null);
 
   const [formData, setFormData] = useState({
     displayName: user?.displayName || "",
@@ -177,6 +180,28 @@ export default function ProfilePage() {
     );
   }
   
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+        <Navbar />
+        <div className="text-center text-white pt-20 px-4">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-10 h-10 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Error Loading Profile</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-accent to-purple-500 hover:from-accent/80 hover:to-purple-500/80 text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+          >
+            <RefreshCw className="w-4 h-4 mr-2 inline" />
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">

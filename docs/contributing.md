@@ -86,7 +86,7 @@ BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
 # EmailJS
 NEXT_PUBLIC_EMAILJS_SERVICE_ID=your_service_id
 NEXT_PUBLIC_EMAILJS_TEMPLATE_ID=your_template_id
-NEXT_PUBLIC_EMAILJS_PUBLIC_KEY=your_public_key
+NEXT_PUBLIC_EMAILJS_USER_ID=your_user_id
 ```
 
 ### Run the development server

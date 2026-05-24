@@ -5,55 +5,15 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://learnova-web.vercel.app/about</loc>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://learnova-web.vercel.app/activity</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/admin/dashboard</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/attendance</loc>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://learnova-web.vercel.app/contact</loc>
     <priority>0.6</priority>
   </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/institute/dashboard</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/notices</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/profile</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/register</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/settings</loc>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/student/dashboard</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/teacher/dashboard</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://learnova-web.vercel.app/verify</loc>
-    <priority>0.6</priority>
-  </url>
+    <url>
+      <loc>https://learnova-web.vercel.app/auth</loc>
+      <priority>0.6</priority>
+    </url>
 </urlset>

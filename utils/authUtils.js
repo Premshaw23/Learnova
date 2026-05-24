@@ -2,7 +2,16 @@ import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { USER_ROLES } from "@/constants/userRoles";
 import { initializeUserStats } from "@/services/statsService";
-
+import {
+  validateRequired,
+  validateEmail,
+  validatePassword,
+  validateName,
+} from "./formValidation";
+/**
+ * Default password requirement validation message.
+ * @type {string}
+ */
 export const PASSWORD_REQUIREMENTS_MESSAGE =
   "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character.";
 
@@ -49,13 +58,13 @@ export const getErrorMessage = (errorCode) => {
     case "auth/email-already-in-use":
       return "An account with this email already exists.";
     case "auth/weak-password":
-      return PASSWORD_REQUIREMENTS_MESSAGE;
+      return "Password must be 8+ chars with upper, lower, number, and special character.";
     case "auth/invalid-email":
       return "Please enter a valid email address.";
     case "auth/too-many-requests":
       return "Too many failed attempts. Please try again later.";
     default:
-      return null;
+      return "Authentication failed. Please check your credentials and try again.";
   }
 };
 
@@ -91,7 +100,7 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
   }
 
   await setDoc(doc(db, "users", user.uid), userProfile);
-  
+
   // Initialize their empty dashboard stats
   await initializeUserStats(user.uid);
 
@@ -113,28 +122,32 @@ export const validateForm = (formData, isLogin) => {
     errors.role = "Please select your role";
   }
 
-  if (!email) {
-    errors.email = "Email is required";
-  } else if (!/\S+@\S+\.\S+/.test(email)) {
-    errors.email = "Please enter a valid email";
+  const emailValidation = validateEmail(email);
+  if (emailValidation !== true) {
+    errors.email = emailValidation;
   }
 
-  if (!password) {
-    errors.password = "Password is required";
-  } else if (!isLogin) {
-    const passwordError = validatePasswordStrength(password);
-    if (passwordError) {
-      errors.password = passwordError;
-    }
+  const passwordValidation = isLogin
+    ? validateRequired(password, "Password")
+    : validatePassword(password);
+  if (passwordValidation !== true) {
+    errors.password = passwordValidation;
   }
 
   if (!isLogin) {
-    if (!fullName?.trim()) {
-      errors.fullName = "Full name is required";
+    const fullNameValidation = validateName(fullName, "Full name");
+    if (fullNameValidation !== true) {
+      errors.fullName = fullNameValidation;
     }
 
-    if (selectedRole === USER_ROLES.INSTITUTE && !instituteName?.trim()) {
-      errors.instituteName = "Institute name is required";
+    if (selectedRole === USER_ROLES.INSTITUTE) {
+      const instituteNameValidation = validateRequired(
+        instituteName,
+        "Institute name",
+      );
+      if (instituteNameValidation !== true) {
+        errors.instituteName = instituteNameValidation;
+      }
     }
   }
 
@@ -169,7 +182,6 @@ export const redirectBasedOnRole = (role, router) => {
         router.push("/profile");
     }
   } catch (err) {
-    console.error("Navigation error:", err);
     throw new Error("Navigation failed. Please try refreshing the page.");
   }
 };
