@@ -43,7 +43,17 @@ const AttendanceCalendar = ({ recentActivity = [] }) => {
     const map = new Map();
     recentActivity.forEach((activity) => {
       if (activity?.date) {
-        map.set(activity.date, activity);
+        let dateStr = "";
+        if (activity.date.seconds) {
+          dateStr = new Date(activity.date.seconds * 1000).toISOString().slice(0, 10);
+        } else if (typeof activity.date === "string") {
+          dateStr = activity.date.slice(0, 10);
+        } else if (activity.date instanceof Date) {
+          dateStr = activity.date.toISOString().slice(0, 10);
+        }
+        if (dateStr) {
+          map.set(dateStr, activity);
+        }
       }
     });
     return map;
