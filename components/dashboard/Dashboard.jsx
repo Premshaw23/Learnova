@@ -88,7 +88,7 @@ const Dashboard = () => {
             <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
               Student Dashboard
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mt-1">
               Toggle between views to inspect the loading states and the empty states.
             </p>
           </div>
@@ -100,7 +100,7 @@ const Dashboard = () => {
               className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
                 activeTab === "all"
                   ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white"
               }`}
             >
               Simulate Courses
@@ -110,7 +110,7 @@ const Dashboard = () => {
               className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
                 activeTab === "empty"
                   ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white"
               }`}
             >
               Simulate Empty State
@@ -169,7 +169,7 @@ const Dashboard = () => {
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
                         {course.title}
                       </h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                      <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-3 leading-relaxed">
                         {course.description}
                       </p>
                     </div>
@@ -187,7 +187,7 @@ const Dashboard = () => {
                         {course.author.name}
                       </span>
                     </div>
-                    <span className="text-xs px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-medium">
+                    <span className="text-xs px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg font-medium">
                       {course.duration}
                     </span>
                   </div>
