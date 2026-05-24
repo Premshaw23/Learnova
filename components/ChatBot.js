@@ -406,7 +406,7 @@ const LearnovaChatbot = () => {
     );
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full max-w-4xl mx-auto bg-slate-50 border-x border-slate-200">
+    <div className="flex flex-col h-[100dvh] w-full max-w-4xl mx-auto bg-slate-50 border-x border-slate-200 z-40 relative">
 
       {/* Header */}
       <header className="flex items-center justify-between px-5 py-4 bg-white border-b border-slate-200">
