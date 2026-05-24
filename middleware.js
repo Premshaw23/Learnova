@@ -205,6 +205,9 @@ export async function middleware(request) {
       }
       const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
       const redirectTarget = correctDashboard ? correctDashboard.defaultPath : "/profile";
+      if (pathname === redirectTarget) {
+        return NextResponse.next();
+      }
       return NextResponse.redirect(new URL(redirectTarget, request.url));
     }
   }
@@ -233,6 +236,9 @@ export async function middleware(request) {
     if (isEmailVerified) {
       const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
       const redirectTarget = correctDashboard ? correctDashboard.defaultPath : "/profile";
+      if (pathname === redirectTarget) {
+        return NextResponse.next();
+      }
       return NextResponse.redirect(new URL(redirectTarget, request.url));
     }
   }
