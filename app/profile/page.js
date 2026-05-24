@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
 import ProfilePage from "@/components/profile";
+import ProfileSkeleton from "@/components/skeletons/ProfileSkeleton";
 
 const Profile = () => {
   const { user, loading: authLoading } = useAuthContext();
@@ -22,13 +23,7 @@ const Profile = () => {
   }, [authLoading, user, router]);
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <span className="text-indigo-300 text-xl animate-pulse">
-          Checking authentication...
-        </span>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (!user || !user.emailVerified) return null; // avoid flicker

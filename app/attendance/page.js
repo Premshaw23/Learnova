@@ -7,6 +7,8 @@ import AttendanceValidation from "@/components/AttendanceValidation";
 import { Navbar } from "@/components/Navbar";
 import useLabels from "@/components/useLabels";
 import { useAuth } from "@/hooks/useAuth";
+import CardSkeleton from "@/components/skeletons/CardSkeleton";
+import TableSkeleton from "@/components/skeletons/TableSkeleton";
 
 const FaceRecognizer = dynamic(() => import("@/components/FaceRecognizer"), {
   ssr: false,
@@ -45,12 +47,13 @@ const AttendancePage = () => {
   // While checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto"></div>
-          <span className="text-purple-300 text-xl font-medium">
-            Checking authentication...
-          </span>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <Navbar />
+        <div className="container mx-auto px-4 py-24">
+          <div className="space-y-8">
+            <CardSkeleton variant="dashboard" count={2} />
+            <TableSkeleton rows={4} columns={4} />
+          </div>
         </div>
       </div>
     );
@@ -63,11 +66,11 @@ const AttendancePage = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <Navbar />
-        <div className="flex items-center justify-center pt-32 space-x-4">
-          <div className="w-8 h-8 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
-          <span className="text-purple-300 text-xl font-medium">
-            Loading student database...
-          </span>
+        <div className="container mx-auto px-4 py-24">
+          <div className="space-y-8">
+            <CardSkeleton variant="dashboard" count={2} />
+            <TableSkeleton rows={4} columns={4} />
+          </div>
         </div>
       </div>
     );

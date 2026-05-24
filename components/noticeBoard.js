@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
+import NoticeSkeleton from "@/components/skeletons/NoticeSkeleton";
+import useLoadingState from "@/hooks/useLoadingState";
 
 const SmartNoticeBoard = () => {
   const { user } = useAuth();
@@ -33,7 +35,7 @@ const SmartNoticeBoard = () => {
   const [showOnlyUnread, setShowOnlyUnread] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [readNotices, setReadNotices] = useState(new Set());
-  const [loading, setLoading] = useState(true);
+  const { loading, showSkeleton, setLoading } = useLoadingState(true, 850);
   const [scheduleView, setScheduleView] = useState("school");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
 
@@ -291,13 +293,12 @@ const SmartNoticeBoard = () => {
     (notice) => !readNotices.has(notice.id)
   ).length;
 
-  if (loading) {
+  if (loading || showSkeleton) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 relative overflow-hidden">
         <Navbar />
-        <div className="text-center text-white pt-20">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Checking authentication...</p>
+        <div className="relative z-10 container mx-auto px-4 py-10 max-w-6xl">
+          <NoticeSkeleton count={5} />
         </div>
       </div>
     );
