@@ -64,7 +64,7 @@ export default function Timetable({ role = "student" }) {
   const classes = mockTimetable[selectedDay] || [];
 
   return (
-    <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6">
+    <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 min-h-[400px] flex flex-col justify-between">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
