@@ -52,3 +52,23 @@ export const getAverageEAR = (leftEye, rightEye) => {
   const rightEAR = getEyeAspectRatio(rightEye);
   return (leftEAR + rightEAR) / 2.0;
 };
+
+export const isStaticImage = (history) => {
+  if (!history || history.length < 5) return false;
+  let sumX = 0, sumY = 0;
+  for (const pts of history) {
+    if (!pts || pts.length <= 30) continue;
+    sumX += pts[30].x;
+    sumY += pts[30].y;
+  }
+  const avgX = sumX / history.length;
+  const avgY = sumY / history.length;
+  let varX = 0, varY = 0;
+  for (const pts of history) {
+    if (!pts || pts.length <= 30) continue;
+    varX += Math.pow(pts[30].x - avgX, 2);
+    varY += Math.pow(pts[30].y - avgY, 2);
+  }
+  const dev = Math.sqrt(varX + varY);
+  return dev < 0.05;
+};

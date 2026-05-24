@@ -7,7 +7,7 @@ import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
-import { getAverageEAR } from "@/utils/livenessUtils";
+import { getAverageEAR, isStaticImage } from "@/utils/livenessUtils";
 
 const MIN_CONFIDENCE_TO_RECORD = 60;
 const EAR_THRESHOLD = 0.25;
@@ -16,6 +16,7 @@ const PROCESSING_INTERVAL_MS = 100; // ~10 FPS
 
 export default function FaceRecognizer({ authUser }) {
   const isMounted = useRef(true);
+  const landmarksHistoryRef = useRef([]);
   const retryStreamRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -287,6 +288,10 @@ export default function FaceRecognizer({ authUser }) {
       setConfidence(confidenceScore);
 
       if (label !== "Unknown" && confidenceScore >= MIN_CONFIDENCE_TO_RECORD) {
+        landmarksHistoryRef.current.push(face.landmarks.positions);
+        if (landmarksHistoryRef.current.length > 10) {
+          landmarksHistoryRef.current.shift();
+        }
         const person = labels.find((l) => l.name === label);
         setDetectedPerson(person || null);
 
@@ -302,6 +307,13 @@ export default function FaceRecognizer({ authUser }) {
             const leftEye = face.landmarks.getLeftEye();
             const rightEye = face.landmarks.getRightEye();
             const ear = getAverageEAR(leftEye, rightEye);
+
+            if (isStaticImage(landmarksHistoryRef.current)) {
+              setMessage("Spoofing detected! Static image or photo feed is blocked.");
+              setBlinkPrompt("Failed!");
+              setFinished(true);
+              return "FAILED";
+            }
 
             if (ear < EAR_THRESHOLD) {
               blinkStateRef.current.isEyeClosed = true;
