@@ -1094,12 +1094,20 @@ export default function ProductivityPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {["Breathing", "Stretch", "Hydrate"].map((item) => (
-                    <span
+                    <button
                       key={item}
-                      className="px-3 py-1 rounded-full text-xs bg-white/10 border border-white/10"
+                      onClick={() => {
+                        setMode("short");
+                        setSessionSeconds(120);
+                        setTimeLeft(120);
+                        setManualMinutes("2");
+                        setIsRunning(true);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="px-3 py-1 rounded-full text-xs bg-white/10 border border-white/10 hover:bg-white/20 transition-colors cursor-pointer text-white"
                     >
                       {item}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </motion.div>

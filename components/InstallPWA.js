@@ -59,11 +59,8 @@ export default function InstallPWA() {
 
     try {
       const result = await installPrompt.prompt();
-
-      if (result.outcome === "accepted") {
-        setIsVisible(false);
-        setInstallPrompt(null);
-      }
+      setInstallPrompt(null);
+      setIsVisible(false);
     } catch (error) {
       // Silently handle installation errors
     }
