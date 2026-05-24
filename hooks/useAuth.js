@@ -54,14 +54,17 @@ export const useAuth = () => {
             const profileData = userDoc.data();
             setUser(firebaseUser);
             setUserProfile(profileData);
+            firebaseUser.getIdToken().then((t) => setCookie("authToken", t));
           } else {
             // User exists in Auth but no profile in Firestore
             setUser(firebaseUser);
             setUserProfile(null);
+            firebaseUser.getIdToken().then((t) => setCookie("authToken", t));
           }
         } else {
           setUser(null);
           setUserProfile(null);
+          deleteCookie("authToken");
 
           // Clear PWA caches on logout to prevent data leakage on shared devices
           if (typeof window !== "undefined" && "caches" in window) {
