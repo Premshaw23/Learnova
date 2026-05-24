@@ -459,6 +459,7 @@ const LearnovaChatbot = () => {
                     id
                   )
                 }
+                aria-pressed={currentCategory === id}
                 className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs transition-all ${
                   currentCategory === id
                     ? themeClasses.categoryButtonActive
