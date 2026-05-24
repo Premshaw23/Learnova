@@ -187,6 +187,7 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
 # MongoDB
 MONGODB_URI=your_mongodb_connection_string
+MONGODB_DB=learnova
 
 # Vercel Blob
 BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
