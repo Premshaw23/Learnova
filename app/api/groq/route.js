@@ -64,8 +64,17 @@ export async function POST(request) {
       );
     }
 
+    // Rate limit payload size
+    const contentLength = parseInt(request.headers.get("content-length") || "0", 10);
+    if (contentLength > 50000) {
+      return jsonError("Payload too large", 413);
+    }
+
     // Parse body
     const body = await request.json();
+    if (typeof body.message !== "string" && typeof body.userMessage !== "string") {
+      return jsonError("Invalid message format", 400);
+    }
 
     const rawMessage =
       typeof body.message === "string"
