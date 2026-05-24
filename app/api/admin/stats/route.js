@@ -168,9 +168,9 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   // Calculate platform stats
-  const totalInstitutes = institutes.length;
-  const activeInstitutes = institutes.filter((inst) => inst.status === "active").length;
-  const pendingIssues = institutes.reduce((sum, inst) => sum + (inst.issues || 0), 0);
+  const totalInstitutes = Array.isArray(institutes) ? institutes.length : 0;
+  const activeInstitutes = Array.isArray(institutes) ? institutes.filter((inst) => inst && inst.status === "active").length : 0;
+  const pendingIssues = Array.isArray(institutes) ? institutes.reduce((sum, inst) => sum + ((inst && inst.issues) || 0), 0) : 0;
 
   const platformStats = {
     totalInstitutes,
