@@ -46,7 +46,13 @@ export default function FaceRecognizer({ authUser }) {
   const { labels: fetchedLabels, loading: labelsLoading, error } = useLabels(authUser);
 
   const [message, setMessage] = useState("Loading models...");
-  const [finished, setFinished] = useState(false);
+  const [finished, setFinishedState] = useState(false);
+  const finishedRef = useRef(false);
+
+  const setFinished = (val) => {
+    setFinishedState(val);
+    finishedRef.current = val;
+  };
   const [detectedPerson, setDetectedPerson] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [confidence, setConfidence] = useState(0);
@@ -234,7 +240,8 @@ export default function FaceRecognizer({ authUser }) {
       !videoRef.current ||
       !canvasRef.current ||
       !faceMatcherRef.current ||
-      !isMounted.current
+      !isMounted.current ||
+      finishedRef.current
     ) {
       return;
     }
@@ -362,15 +369,8 @@ export default function FaceRecognizer({ authUser }) {
       }
     }
 
-    if (isMounted.current && !finished) {
-      // Loop execution only if not finished
-      // To prevent race conditions, check if we just transitioned to AUTHENTICATED
-      setLivenessState((currentLiveness) => {
-        if (currentLiveness !== "AUTHENTICATED") {
-           animationFrameId.current = requestAnimationFrame(processVideo);
-        }
-        return currentLiveness;
-      });
+    if (isMounted.current && !finishedRef.current) {
+      animationFrameId.current = requestAnimationFrame(processVideo);
     }
   };
 
