@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 
@@ -27,6 +27,7 @@ import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import { Navbar } from "./Navbar";
 import { useAuth } from "@/hooks/useAuth";
 
+import AchievementSection from "./AchievementSection";
 import AttendanceChart from "./AttendanceChart";
 
 import {
@@ -68,25 +69,18 @@ const StudentDashboard = () => {
   const [gamificationData, setGamificationData] = useState(null);
   const [viewMode, setViewMode] = useState("heatmap");
 
-  useEffect(() => {
-    const fetchGamification = async () => {
-      try {
-        const token = await user.getIdToken();
-        const res = await fetch("/api/student/gamification", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setGamificationData(data);
-        }
-      } catch (err) {
-        console.error("Failed to load gamification data", err);
-      }
-    };
-    if (user) {
-      fetchGamification();
-    }
-  }, [user]);
+  // Mock attendance stats
+  const attendanceStats = {
+    present: 18,
+    absent: 2,
+    late: 1,
+    percentage: 92,
+  };
+
+  const attendancePerformance = {
+    attendancePercentage: attendanceStats.percentage,
+    streakDays: 8,
+  };
 
   // Mock schedule data is now imported from @/constants/mockData
   useEffect(() => {
@@ -293,11 +287,11 @@ const StudentDashboard = () => {
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="flex flex-col gap-6 flex-1">
                 <div className="flex gap-4 items-center">
-                  <StreakCounter currentStreak={gamificationData.currentStreak} />
+                  <StreakCounter currentStreak={Number(gamificationData.currentStreak) || 0} />
                   <div className="flex-1">
                     <XpProgressBar 
-                      currentLevel={gamificationData.currentLevel} 
-                      currentXp={gamificationData.totalXp} 
+                      currentLevel={Number(gamificationData.currentLevel) || 1} 
+                      currentXp={Number(gamificationData.totalXp) || 0} 
                     />
                   </div>
                 </div>
@@ -466,6 +460,11 @@ const StudentDashboard = () => {
                 </div>
               </div>
             </div>
+
+            <AchievementSection
+              attendancePercentage={attendancePerformance.attendancePercentage}
+              streakDays={attendancePerformance.streakDays}
+            />
 
             {/* Activity */}
             <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">

@@ -1,6 +1,16 @@
 "use client";
 
-import { Eye, EyeOff, Pin, User, Clock } from "lucide-react";
+import {
+  Clock,
+  Download,
+  Eye,
+  EyeOff,
+  Pin,
+  Share2,
+  User,
+} from "lucide-react";
+import { jsPDF } from "jspdf";
+import { useCallback } from "react";
 import { motion } from "framer-motion";
 
 const priorityStyles = {
@@ -10,6 +20,83 @@ const priorityStyles = {
 };
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const buildNoticeFileName = (notice, extension = "txt") => {
+  const baseName = `${notice?.title || "notice"}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return `${baseName || "notice"}.${extension}`;
+};
+
+const formatNoticeForExport = (notice, isRead, relativeTime) => {
+  const tags = notice.tags || [];
+  const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
+
+  return [
+    notice.title || "Untitled notice",
+    "",
+    `Category: ${notice.category || "General"}`,
+    `Priority: ${notice.priority || "medium"}`,
+    `Status: ${isRead ? "Read" : "Unread"}`,
+    `Author: ${notice.author || "Unknown"}`,
+    `Published: ${createdAt.toLocaleString()}`,
+    `Relative time: ${relativeTime}`,
+    `Tags: ${tags.length > 0 ? tags.map((tag) => `#${tag}`).join(", ") : "None"}`,
+    "",
+    notice.content || "",
+  ].join("\n");
+};
+
+const createTextDownload = (content, fileName) => {
+  const blob = new Blob([content], {
+    type: "text/plain;charset=utf-8",
+  });
+
+  const fileUrl = URL.createObjectURL(blob);
+  const downloadLink = document.createElement("a");
+
+  downloadLink.href = fileUrl;
+  downloadLink.download = fileName;
+  downloadLink.rel = "noopener noreferrer";
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  downloadLink.remove();
+  URL.revokeObjectURL(fileUrl);
+};
+
+const createPdfDownload = (notice, content) => {
+  const doc = new jsPDF();
+  const margin = 16;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const maxWidth = pageWidth - margin * 2;
+  const lineHeight = 7;
+  const headingY = 18;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(notice.title || "Untitled notice", margin, headingY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+
+  const lines = doc.splitTextToSize(content, maxWidth);
+  let cursorY = headingY + 10;
+
+  lines.forEach((line) => {
+    if (cursorY > pageHeight - margin) {
+      doc.addPage();
+      cursorY = margin;
+    }
+
+    doc.text(line, margin, cursorY);
+    cursorY += lineHeight;
+  });
+
+  doc.save(buildNoticeFileName(notice, "pdf"));
+};
 
 const highlightMatch = (text, query) => {
   if (!query || !text) return text;
@@ -27,6 +114,40 @@ const highlightMatch = (text, query) => {
 };
 
 const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime }) => {
+  const relativeTime = getRelativeTime(notice.createdAt);
+  const exportText = formatNoticeForExport(notice, isRead, relativeTime);
+  const tags = notice.tags || [];
+
+  const handleExportNotice = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    createTextDownload(exportText, buildNoticeFileName(notice, "txt"));
+  }, [exportText, notice]);
+
+  const handlePdfExportNotice = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    createPdfDownload(notice, exportText);
+  }, [exportText, notice]);
+
+  const handleShareNotice = useCallback(async () => {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: notice.title || "Notice",
+          text: exportText,
+        });
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    handleExportNotice();
+  }, [exportText, handleExportNotice, notice.title]);
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 20 }}
@@ -69,21 +190,59 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
           </motion.h3>
         </div>
 
-        <motion.button
-          type="button"
-          onClick={onToggleRead}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className={`inline-flex items-center gap-2 rounded-3xl border px-4 py-2 text-sm font-semibold transition active:scale-95 ${
-            isRead
-              ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-              : "border-indigo-500/40 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
-          }`}
-          aria-label={isRead ? "Mark notice unread" : "Mark notice read"}
-        >
-          {isRead ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          {isRead ? "Unread" : "Read"}
-        </motion.button>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <motion.button
+            type="button"
+            onClick={onToggleRead}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className={`inline-flex items-center gap-2 rounded-3xl border px-4 py-2 text-sm font-semibold transition active:scale-95 ${
+              isRead
+                ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                : "border-indigo-500/40 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
+            }`}
+            aria-label={isRead ? "Mark notice unread" : "Mark notice read"}
+          >
+            {isRead ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {isRead ? "Unread" : "Read"}
+          </motion.button>
+
+          <motion.button
+            type="button"
+            onClick={handleExportNotice}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center gap-2 rounded-3xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20 active:scale-95"
+            aria-label={`Download ${notice.title || "notice"} as text`}
+          >
+            <Download className="h-4 w-4" />
+            Text
+          </motion.button>
+
+          <motion.button
+            type="button"
+            onClick={handlePdfExportNotice}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center gap-2 rounded-3xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20 active:scale-95"
+            aria-label={`Download ${notice.title || "notice"} as PDF`}
+          >
+            <Download className="h-4 w-4" />
+            PDF
+          </motion.button>
+
+          <motion.button
+            type="button"
+            onClick={handleShareNotice}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center gap-2 rounded-3xl border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20 active:scale-95"
+            aria-label={`Share ${notice.title || "notice"}`}
+          >
+            <Share2 className="h-4 w-4" />
+            Share
+          </motion.button>
+        </div>
       </div>
 
       <motion.p
@@ -101,7 +260,7 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
         transition={{ delay: 0.25 }}
         className="mt-5 flex flex-wrap gap-2"
       >
-        {notice.tags.map((tag, index) => (
+        {tags.map((tag, index) => (
           <motion.span
             key={tag}
             initial={{ opacity: 0, scale: 0.8 }}

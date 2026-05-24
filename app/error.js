@@ -7,6 +7,13 @@ export default function Error({ error, reset }) {
     console.error('Captured Runtime Layout Error:', error);
   }, [error]);
 
+  const handleReset = () => {
+    // Clear potentially corrupted auth cookies to avoid infinite crash loops on retry
+    document.cookie = "authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    reset();
+  };
+
   return (
     <div style={{
       padding: '40px 24px',
@@ -25,7 +32,7 @@ export default function Error({ error, reset }) {
         The interface encountered an unexpected error while loading this segment. Try refreshing the view grid.
       </p>
       <button
-        onClick={() => reset()} // Next.js built-in mechanism to re-render the segment
+        onClick={handleReset}
         style={{
           padding: '10px 20px',
           backgroundColor: '#dc2626',

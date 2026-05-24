@@ -197,7 +197,9 @@ export default function FaceRecognizer({ authUser }) {
       await Promise.all(
         labels.map(async (student) => {
           try {
-            const img = await faceapi.fetchImage(student.image);
+            if (!student.hasImage) return null;
+            const imgUrl = `/api/images?id=${student._id}`;
+            const img = await faceapi.fetchImage(imgUrl);
             const detection = await faceapi
               .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
               .withFaceLandmarks()
@@ -256,9 +258,12 @@ export default function FaceRecognizer({ authUser }) {
     lastDetectionTime.current = now;
 
     const canvas = canvasRef.current;
+    
+    // Fix: Use getBoundingClientRect to match responsive Tailwind w-full scaling on mobile screens
+    const rect = video.getBoundingClientRect();
     const displaySize = {
-      width: video.videoWidth || 720,
-      height: video.videoHeight || 500,
+      width: rect.width || video.videoWidth || 720,
+      height: rect.height || video.videoHeight || 500,
     };
 
     canvas.width = displaySize.width;

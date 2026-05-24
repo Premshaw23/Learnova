@@ -6,8 +6,19 @@ import { ValidationError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+
+const passcodeSchema = z.object({
+  passcode: z
+    .string({
+      required_error: "Passcode is required",
+      invalid_type_error: "Passcode must be a string",
+    })
+    .trim()
+    .min(1, "Passcode is required"),
+});
 
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
@@ -25,14 +36,18 @@ export const POST = withErrorHandler(async (request) => {
   // Initialize Firebase app to prevent cold-start crashes
   initializeFirebase();
 
-  const { passcode } = await request.json();
-
-  if (!passcode) {
+  const body = await request.json();
+  
+  const validation = passcodeSchema.safeParse(body);
+  if (!validation.success) {
+    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
     return NextResponse.json(
-      { valid: false, error: "Passcode is required" },
+      { valid: false, error: firstError },
       { status: 400 }
     );
   }
+  
+  const { passcode } = validation.data;
 
   const db = admin.firestore();
   const settingsDoc = await db
