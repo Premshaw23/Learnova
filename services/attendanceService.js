@@ -1,8 +1,13 @@
 import {
   collection,
+<<<<<<< Updated upstream
   addDoc,
+=======
+  doc,
+>>>>>>> Stashed changes
   getDocs,
   query,
+  runTransaction,
   serverTimestamp,
   where,
   limit,
@@ -71,6 +76,7 @@ export async function recordAttendance({
     throw new Error("Attendance cannot be saved without a signed-in user.");
   }
 
+<<<<<<< Updated upstream
   if (await hasCheckedInToday(userId)) {
     return { alreadyRecorded: true };
   }
@@ -86,6 +92,55 @@ export async function recordAttendance({
   });
 
   await recalculateAttendanceRate(userId);
+=======
+  const todayKey = getTodayKey();
+
+  // INTERCEPT OFFLINE SUBMISSIONS
+  if (typeof window !== "undefined" && !navigator.onLine) {
+    console.warn("Device is offline. Queuing attendance locally.");
+    await saveToOutbox({
+      userId,
+      studentName,
+      email,
+      confidenceScore: confidenceScore ?? 0,
+      date: todayKey,
+    });
+    
+    // Attempt to register Background Sync for later flush
+    await registerBackgroundSync();
+
+    return { alreadyRecorded: false, newRate: null, queuedOffline: true };
+  }
+
+  const docRef = doc(db, "attendance_records", `${userId}_${todayKey}`);
+  let alreadyRecorded = false;
+
+  // Atomic check-and-write: prevents TOCTOU race condition where concurrent
+  // requests could both pass the existence check and insert duplicate records.
+  // The document ID (userId_date) enforces the unique constraint per user per day.
+  await runTransaction(db, async (transaction) => {
+    const existing = await transaction.get(docRef);
+    if (existing.exists()) {
+      alreadyRecorded = true;
+      return;
+    }
+    transaction.set(docRef, {
+      userId,
+      studentName,
+      email,
+      timestamp: serverTimestamp(),
+      date: todayKey,
+      status: "present",
+      confidenceScore: confidenceScore ?? 0,
+    });
+  });
+
+  if (alreadyRecorded) {
+    return { alreadyRecorded: true };
+  }
+
+  const newRate = await recalculateAttendanceRate(userId);
+>>>>>>> Stashed changes
 
   return { alreadyRecorded: false };
 }
