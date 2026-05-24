@@ -4,7 +4,9 @@ import { useEffect } from 'react';
 
 export default function Error({ error, reset }) {
   useEffect(() => {
-    console.error('Captured Runtime Layout Error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Captured Runtime Layout Error:', error);
+    }
   }, [error]);
 
   return (
