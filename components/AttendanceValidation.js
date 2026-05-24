@@ -602,6 +602,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       <div className="space-y-6">
         <div className="relative">
           <input
+            autoFocus
             type="password"
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
