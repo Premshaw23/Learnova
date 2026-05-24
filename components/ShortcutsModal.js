@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { X, Keyboard } from "lucide-react";
 
 const shortcuts = [
@@ -21,29 +21,42 @@ const shortcuts = [
 ];
 
 export default function ShortcutsModal({ isOpen, onClose }) {
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose]);
+  const closeBtnRef = useRef(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen && closeBtnRef.current) {
+      closeBtnRef.current.focus();
+    }
+  }, [isOpen]);
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "Tab" && isOpen) {
+        e.preventDefault();
+        closeBtnRef.current?.focus();
+      }
+    };
+    if (isOpen) document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const isMac =
     typeof navigator !== "undefined" && /Mac/i.test(navigator.platform);
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+      className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 transition-all duration-300 ease-out ${
+        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      }`}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="keyboard shortcuts"
     >
       <div
-        className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md p-6"
+        className={`bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md p-6 transition-all duration-300 ease-out transform ${
+          isOpen ? "scale-100 opacity-100" : "scale-95 opacity-0"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
@@ -54,6 +67,7 @@ export default function ShortcutsModal({ isOpen, onClose }) {
             </h2>
           </div>
           <button
+            ref={closeBtnRef}
             onClick={onClose}
             className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
             aria-label="close shortcuts modal"

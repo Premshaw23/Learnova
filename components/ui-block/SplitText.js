@@ -26,7 +26,7 @@ const SplitText = ({
           setFontsReady(true);
         })
         .catch(() => {
-          console.warn("Font loading check failed, fallback");
+          // Font loading check failed, proceed with fallback
           setFontsReady(true);
         });
     }

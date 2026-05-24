@@ -1,7 +1,12 @@
-import { POST, rateLimitMap } from "@/app/api/register/route";
+import { POST } from "@/app/api/register/route";
 import { connectDb } from "@/lib/mongodb";
 import { put, del } from "@vercel/blob";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { checkRateLimit } from "@/lib/rateLimit";
+
+jest.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: jest.fn(),
+}));
 
 jest.mock("next/server", () => ({
   NextResponse: {
@@ -34,11 +39,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
   beforeEach(() => {
     jest.clearAllMocks();
-    rateLimitMap.clear();
-
-    if (rateLimitMap) {
-      rateLimitMap.clear();
-    }
+    checkRateLimit.mockResolvedValue({ allowed: true });
 
     verifyFirebaseToken.mockImplementation(async (token) => {
       if (!token || token === "invalid-token") return null;
@@ -87,6 +88,8 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     return mockFileObj;
   };
 
+  const mockFile = createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]);
+
   const createMockRequest = (data, token = "user@domain.com") => {
     const headers = new Map();
     if (token) {
@@ -121,7 +124,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
       name: "John Doe",
       rollNo: "123456",
       email: "user@domain.com",
-      photo: mockFile,
+      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
     });
 
     const response = await POST(req);
@@ -145,14 +148,14 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
       name: "John Doe",
       rollNo: "123456",
       email: invalidEmail,
-      photo: mockFile,
+      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
     });
 
     const response = await POST(req);
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Invalid email address");
+    expect(body.error).toBe("Invalid email format");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -161,7 +164,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
       name: "John Doe",
       rollNo: "123456",
       email: "user@domain.com",
-      photo: mockFile,
+      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
     }, ""); // empty token
 
     const response = await POST(req);
@@ -177,7 +180,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
       name: "John Doe",
       rollNo: "123456",
       email: "user@domain.com",
-      photo: mockFile,
+      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
     }, "invalid-token");
 
     const response = await POST(req);
@@ -193,7 +196,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
       name: "John Doe",
       rollNo: "123456",
       email: "user@domain.com",
-      photo: mockFile,
+      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
     }, "different-user@domain.com");
 
     const response = await POST(req);
@@ -208,24 +211,13 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     mockFindOne.mockResolvedValue(null);
     mockInsertOne.mockResolvedValue({ insertedId: "mock-id" });
 
-    // Send 5 successful requests
-    for (let i = 0; i < 5; i++) {
-      const req = createMockRequest({
-        name: "John Doe",
-        rollNo: `12345${i}`,
-        email: "user@domain.com",
-        photo: mockFile,
-      });
-      const response = await POST(req);
-      expect(response.status).toBe(201);
-    }
-
-    // 6th request from the same IP should trigger 429
+    checkRateLimit.mockResolvedValue({ allowed: false });
+    
     const req6 = createMockRequest({
       name: "John Doe",
       rollNo: "123456",
       email: "user@domain.com",
-      photo: mockFile,
+      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
     });
     const response6 = await POST(req6);
     const body6 = await response6.json();
@@ -242,14 +234,14 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
       name: "John Doe",
       rollNo: "123456",
       email: "user@domain.com",
-      photo: mockFile,
+      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
     });
 
     const response = await POST(req);
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Database write failed");
+    expect(body.error).toBe("Internal server error");
     expect(put).toHaveBeenCalled();
     expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
   });

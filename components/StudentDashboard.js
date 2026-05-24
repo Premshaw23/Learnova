@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 
@@ -19,14 +19,16 @@ import {
   Download,
   Star,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 
-import Navbar from "./Navbar";
+import { Navbar } from "./Navbar";
 import { useAuth } from "@/hooks/useAuth";
 
+import AchievementSection from "./AchievementSection";
 import AttendanceChart from "./AttendanceChart";
 
 import {
@@ -35,12 +37,21 @@ import {
 } from "@/constants/mockData";
 
 const AttendanceHeatmap = dynamic(
-  () => import("./AttendanceHeatmap"),
+  () => import("./AttendanceHeatmap.jsx"),
   {
     ssr: false,
     loading: () => <ChartSkeleton variant="heatmap" />,
   }
 );
+
+const AttendanceCalendar = dynamic(
+  () => import("./AttendanceCalendar.jsx"),
+  {
+    ssr: false,
+    loading: () => <ChartSkeleton variant="heatmap" />,
+  }
+);
+
 import AttendanceAnalytics from "./dashboard/AttendanceAnalytics";
 import StreakCounter from "./gamification/StreakCounter";
 import XpProgressBar from "./gamification/XpProgressBar";
@@ -51,32 +62,50 @@ const StudentDashboard = () => {
 
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(null);
+  const [error, setError] = useState(null);
 
   const [todayClasses, setTodayClasses] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [upcomingClass, setUpcomingClass] = useState(null);
   const [isAttendanceWindow, setIsAttendanceWindow] = useState(false);
   const [gamificationData, setGamificationData] = useState(null);
+  const [viewMode, setViewMode] = useState("heatmap");
 
-  useEffect(() => {
-    const fetchGamification = async () => {
-      try {
-        const token = await user.getIdToken();
-        const res = await fetch("/api/student/gamification", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setGamificationData(data);
-        }
-      } catch (err) {
-        console.error("Failed to load gamification data", err);
-      }
-    };
-    if (user) {
-      fetchGamification();
+  // Derived calculation from recentActivity state with safe fallback default metrics
+  const attendanceStats = useMemo(() => {
+    const defaultStats = { present: 0, absent: 0, late: 0, percentage: 0, total: 0 };
+    if (!recentActivity || !Array.isArray(recentActivity) || recentActivity.length === 0) {
+      return defaultStats;
     }
-  }, [user]);
+
+    const counts = recentActivity.reduce(
+      (acc, curr) => {
+        const status = curr?.status?.toLowerCase();
+        if (status === "present") acc.present++;
+        else if (status === "absent") acc.absent++;
+        else if (status === "late") acc.late++;
+        return acc;
+      },
+      { present: 0, absent: 0, late: 0 }
+    );
+
+    const total = counts.present + counts.absent + counts.late;
+    const percentage = total > 0 ? Math.round(((counts.present + counts.late) / total) * 100) : 0;
+
+    return {
+      ...counts,
+      total,
+      percentage,
+    };
+  }, [recentActivity]);
+
+  // Safe calculated attendance performance details for the AchievementSection
+  const attendancePerformance = useMemo(() => {
+    return {
+      attendancePercentage: attendanceStats?.percentage ?? 0,
+      streakDays: gamificationData?.currentStreak ?? 8, // fallback to mock default of 8 days
+    };
+  }, [attendanceStats, gamificationData]);
 
   // Mock schedule data is now imported from @/constants/mockData
   useEffect(() => {
@@ -85,57 +114,63 @@ const StudentDashboard = () => {
     }, 1500);
 
     const updateDashboard = () => {
-      const now = new Date();
+      try {
+        const now = new Date();
 
-      setCurrentTime(now);
+        setCurrentTime(now);
 
-      const hour = now.getHours();
-      const minute = now.getMinutes();
-      const day = now.getDay();
+        const hour = now.getHours();
+        const minute = now.getMinutes();
+        const day = now.getDay();
 
-      const isWeekday = day >= 1 && day <= 5;
-      const isAttendanceTime = hour === 9 && minute <= 10;
-      const newIsAttendance = isWeekday && isAttendanceTime;
+        const isWeekday = day >= 1 && day <= 5;
+        const isAttendanceTime = hour === 9 && minute <= 10;
+        const newIsAttendance = isWeekday && isAttendanceTime;
 
-      setIsAttendanceWindow((prev) => (prev !== newIsAttendance ? newIsAttendance : prev));
+        setIsAttendanceWindow((prev) => (prev !== newIsAttendance ? newIsAttendance : prev));
 
-      const dayNames = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ];
+        const dayNames = [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ];
 
-      const today = dayNames[day];
+        const today = dayNames[day];
 
-      const classes = weeklySchedule[today] || [];
+        const classes = weeklySchedule[today] || [];
 
-      setTodayClasses(classes);
+        setTodayClasses(classes);
 
-      const upcoming = classes.find((cls) => {
-        const [startTime] = cls.time.split("-");
+        const upcoming = classes.find((cls) => {
+          const [startTime] = cls.time.split("-");
 
-        const [classHour, classMinute] = startTime
-          .split(":")
-          .map(Number);
+          const [classHour, classMinute] = startTime
+            .split(":")
+            .map(Number);
 
-        return (
-          hour < classHour ||
-          (hour === classHour && minute < classMinute)
-        );
-      });
+          return (
+            hour < classHour ||
+            (hour === classHour && minute < classMinute)
+          );
+        });
 
-      setUpcomingClass(upcoming || null);
+        setUpcomingClass(upcoming || null);
+        
+        setRecentActivity(mockRecentActivity);
+        setError(null);
+      } catch (err) {
+        setError("Failed to load dashboard data. Please try again.");
+        console.error("Error updating dashboard:", err);
+      }
     };
 
     updateDashboard();
 
     const timer = setInterval(updateDashboard, 1000);
-
-    setRecentActivity(mockRecentActivity);
 
     return () => {
       clearInterval(timer);
@@ -177,6 +212,29 @@ const StudentDashboard = () => {
 
   if (loading) {
     return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="fixed inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/10 pointer-events-none animate-gradientMove" />
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(139,92,246,0.12)_0%,transparent_60%)] pointer-events-none" />
+        <div className="relative z-10 text-center text-white px-4">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-10 h-10 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"
+          >
+            <RefreshCw className="w-5 h-5 mr-2 inline" />
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -277,6 +335,32 @@ const StudentDashboard = () => {
 
       {/* Main */}
       <div className="relative z-10 container mx-auto px-4 py-8 space-y-8">
+        {/* Gamification Section */}
+        {gamificationData && (
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl flex flex-col gap-6">
+            <div className="flex flex-col lg:flex-row gap-6">
+              <div className="flex flex-col gap-6 flex-1">
+                <div className="flex gap-4 items-center">
+                  <StreakCounter currentStreak={Number(gamificationData.currentStreak) || 0} />
+                  <div className="flex-1">
+                    <XpProgressBar 
+                      currentLevel={Number(gamificationData.currentLevel) || 1} 
+                      currentXp={Number(gamificationData.totalXp) || 0} 
+                    />
+                  </div>
+                </div>
+                <BadgeGallery unlockedBadges={gamificationData.unlockedBadges} />
+              </div>
+            </div>
+            {user && user.uid && (
+              <AttendanceAnalytics
+                userId={user.uid}
+                recentActivity={recentActivity}
+              />
+            )}
+          </div>
+        )}
+
         {/* Attendance Window */}
         {isAttendanceWindow && upcomingClass && (
           <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-xl rounded-2xl border border-white/20 p-6 shadow-2xl">
@@ -371,7 +455,10 @@ const StudentDashboard = () => {
                   Attendance Overview
                 </h2>
 
-                <button className="text-accent hover:text-accent/80 transition-colors">
+                <button
+                  className="text-accent hover:text-accent/80 transition-colors"
+                  aria-label="Refresh attendance overview"
+                >
                   <RefreshCw className="w-5 h-5" />
                 </button>
               </div>
@@ -380,25 +467,25 @@ const StudentDashboard = () => {
                 <StatCard
                   color="green"
                   label="Present"
-                  value={attendanceStats.present}
+                  value={attendanceStats?.present ?? 0}
                 />
 
                 <StatCard
                   color="red"
                   label="Absent"
-                  value={attendanceStats.absent}
+                  value={attendanceStats?.absent ?? 0}
                 />
 
                 <StatCard
                   color="yellow"
                   label="Late"
-                  value={attendanceStats.late}
+                  value={attendanceStats?.late ?? 0}
                 />
 
                 <StatCard
                   color="blue"
                   label="Overall"
-                  value={`${attendanceStats.percentage}%`}
+                  value={`${attendanceStats?.percentage ?? 0}%`}
                 />
               </div>
 
@@ -409,7 +496,7 @@ const StudentDashboard = () => {
                   </span>
 
                   <span className="text-accent font-semibold">
-                    {attendanceStats.percentage}%
+                    {attendanceStats?.percentage ?? 0}%
                   </span>
                 </div>
 
@@ -417,7 +504,7 @@ const StudentDashboard = () => {
                   <div
                     className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full transition-all duration-700"
                     style={{
-                      width: `${attendanceStats.percentage}%`,
+                      width: `${attendanceStats?.percentage ?? 0}%`,
                     }}
                   />
                 </div>
@@ -428,6 +515,11 @@ const StudentDashboard = () => {
               </div>
             </div>
 
+            <AchievementSection
+              attendancePercentage={attendancePerformance.attendancePercentage}
+              streakDays={attendancePerformance.streakDays}
+            />
+
             {/* Activity */}
             <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
               <div className="flex items-center justify-between mb-6">
@@ -435,7 +527,10 @@ const StudentDashboard = () => {
                   Recent Activity
                 </h2>
 
-                <button className="text-accent hover:text-accent/80 transition-colors">
+                <button
+                  className="text-accent hover:text-accent/80 transition-colors"
+                  aria-label="Download recent activity"
+                >
                   <Download className="w-5 h-5" />
                 </button>
               </div>
@@ -486,8 +581,39 @@ const StudentDashboard = () => {
               </div>
             </div>
 
-            {/* Heatmap */}
-            <AttendanceHeatmap />
+            {/* Heatmap / Calendar View */}
+            <div>
+              <div className="flex justify-end mb-4">
+                <div className="bg-black/40 backdrop-blur-md p-1 rounded-xl flex items-center border border-white/10 w-fit">
+                  <button
+                    onClick={() => setViewMode("heatmap")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      viewMode === "heatmap"
+                        ? "bg-accent text-white shadow-lg"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Heatmap
+                  </button>
+                  <button
+                    onClick={() => setViewMode("calendar")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      viewMode === "calendar"
+                        ? "bg-accent text-white shadow-lg"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Calendar
+                  </button>
+                </div>
+              </div>
+
+              {viewMode === "heatmap" ? (
+                <AttendanceHeatmap recentActivity={recentActivity} />
+              ) : (
+                <AttendanceCalendar recentActivity={recentActivity} />
+              )}
+            </div>
           </div>
 
           {/* Right */}
@@ -649,7 +775,7 @@ const StudentDashboard = () => {
         }
       `}</style>
     </div>
-  );
+  );  
 };
 
 const StatCard = ({ color, label, value }) => {
@@ -667,27 +793,9 @@ const StatCard = ({ color, label, value }) => {
   const style = styles[color].split(" ");
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6 w-full max-w-7xl mx-auto min-h-screen">
-      {/* Gamification Section */}
-      {gamificationData && (
-        <div className="flex flex-col lg:flex-row gap-6 mb-4">
-          <div className="flex flex-col gap-6 flex-1">
-            <div className="flex gap-4 items-center">
-              <StreakCounter currentStreak={gamificationData.currentStreak} />
-              <div className="flex-1">
-                <XpProgressBar 
-                  currentLevel={gamificationData.currentLevel} 
-                  currentXp={gamificationData.totalXp} 
-                />
-              </div>
-            </div>
-            <BadgeGallery unlockedBadges={gamificationData.unlockedBadges} />
-          </div>
-        </div>
-      )}
-
-      {user && user.uid && <AttendanceAnalytics userId={user.uid} />}
-      {/* KEEP YOUR ENTIRE EXISTING JSX HERE EXACTLY SAME */}
+    <div className={`bg-gradient-to-br ${style[0]} ${style[1]} rounded-xl p-4 border ${style[2]}`}>
+      <div className={`text-2xl font-bold ${style[3]}`}>{value}</div>
+      <div className={`${style[4]} text-sm`}>{label}</div>
     </div>
   );
 };

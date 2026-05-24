@@ -16,7 +16,7 @@ const INJECTION_PATTERNS = [
   /(?:disregard|forget|override)\s+(all\s+)?(previous\s+)?instructions/i,
   /act\s+as\s+(?!a\s+student|a\s+teacher|an\s+admin)/i,
   /(?:bypass|skip|disable)\s+(your\s+)?(safety|content\s+filter|guidelines|rules)/i,
-  /(?:jailbreak|DAN|developer\s+mode)/i,
+  /\b(?:jailbreak|DAN|developer\s+mode)\b/i,
 ];
 
 const REINFORCEMENT_MESSAGE =

@@ -28,16 +28,56 @@ import {
   X,
   AlertTriangle,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
+import { useTheme } from "next-themes";
+
+const SettingCard = ({ children, title, description }) => (
+  <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 hover:bg-black/30 transition-all duration-300">
+    <div className="mb-4">
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      {description && (
+        <p className="text-white/60 text-sm mt-1">{description}</p>
+      )}
+    </div>
+    {children}
+  </div>
+);
+
+const ToggleSwitch = ({ enabled, onChange, label, description }) => (
+  <div className="flex items-center justify-between py-3">
+    <div className="flex-1">
+      <p className="text-white font-medium">{label}</p>
+      {description && <p className="text-white/60 text-sm">{description}</p>}
+    </div>
+    <button
+      onClick={() => onChange(!enabled)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+        enabled
+          ? "bg-gradient-to-r from-blue-500 to-purple-600"
+          : "bg-white/20"
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+          enabled ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
+  </div>
+);
 
 export default function UniversalSettings() {
   const { user } = useAuth();
+  const { setTheme } = useTheme();
   const [activeSection, setActiveSection] = useState("profile");
   const [showPassword, setShowPassword] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const getUserInitials = (name) => {
     if (!name) return "U";
@@ -212,19 +252,33 @@ export default function UniversalSettings() {
   });
 
   useEffect(() => {
-    if (user) {
-      setSettings((prev) => ({
-        ...prev,
-        profile: {
-          ...prev.profile,
-          name: getUserDisplayName(),
-          email: getUserEmail(),
-          phone: user.phone || prev.profile.phone,
-          bio: user.bio || prev.profile.bio,
-          avatar: getUserPhoto() || prev.profile.avatar,
-        },
-      }));
-    }
+    const loadSettings = async () => {
+      try {
+        setIsInitialLoading(true);
+        setError(null);
+        
+        if (user) {
+          setSettings((prev) => ({
+            ...prev,
+            profile: {
+              ...prev.profile,
+              name: getUserDisplayName(),
+              email: getUserEmail(),
+              phone: user.phone || prev.profile.phone,
+              bio: user.bio || prev.profile.bio,
+              avatar: getUserPhoto() || prev.profile.avatar,
+            },
+          }));
+        }
+      } catch (err) {
+        setError("Failed to load settings. Please try again.");
+        console.error("Error loading settings:", err);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+    
+    loadSettings();
   }, [user]);
 
   const updateSetting = (section, key, value) => {
@@ -239,23 +293,24 @@ export default function UniversalSettings() {
   };
 
   const saveSettings = async () => {
-  setIsLoading(true);
-  try {
-    const response = await fetch("/api/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...settings, userId: user?.uid }),
-    });
-    if (!response.ok) throw new Error("Failed to save settings");
-    setHasChanges(false);
-    toast.success("Settings updated successfully!");
-  } catch (error) {
-    console.error("Failed to save settings:", error);
-    toast.error("Failed to save settings. Please try again.");
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...settings, userId: user?.uid }),
+      });
+      if (!response.ok) throw new Error("Failed to save settings");
+      setHasChanges(false);
+      toast.success("Settings updated successfully!");
+    } catch (error) {
+      setError("Failed to save settings. Please try again.");
+      toast.error("Failed to save settings. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const resetSettings = () => {
     setSettings({
@@ -286,41 +341,6 @@ export default function UniversalSettings() {
     setHasChanges(false);
   };
 
-  const SettingCard = ({ children, title, description }) => (
-    <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 hover:bg-black/30 transition-all duration-300">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
-        {description && (
-          <p className="text-white/60 text-sm mt-1">{description}</p>
-        )}
-      </div>
-      {children}
-    </div>
-  );
-
-  const ToggleSwitch = ({ enabled, onChange, label, description }) => (
-    <div className="flex items-center justify-between py-3">
-      <div className="flex-1">
-        <p className="text-white font-medium">{label}</p>
-        {description && <p className="text-white/60 text-sm">{description}</p>}
-      </div>
-      <button
-        onClick={() => onChange(!enabled)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
-          enabled
-            ? "bg-gradient-to-r from-blue-500 to-purple-600"
-            : "bg-white/20"
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-            enabled ? "translate-x-6" : "translate-x-1"
-          }`}
-        />
-      </button>
-    </div>
-  );
-
   const sections = [
     { id: "profile", label: "Profile", icon: User },
     { id: "notifications", label: "Notifications", icon: Bell },
@@ -330,6 +350,38 @@ export default function UniversalSettings() {
     { id: "data", label: "Data & Storage", icon: Database },
     { id: "help", label: "Help & Support", icon: HelpCircle },
   ];
+
+  if (isInitialLoading) {
+    return (
+      <div className="min-h-screen relative rounded-2xl bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen relative rounded-2xl bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center text-white px-4">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-10 h-10 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Error Loading Settings</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+          >
+            <RefreshCw className="w-4 h-4 mr-2 inline" />
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative rounded-2xl bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950">
@@ -573,7 +625,7 @@ export default function UniversalSettings() {
                           .replace(/([A-Z])/g, " $1")
                           .toLowerCase()}`}
                       />
-                    )
+                    ),
                   )}
                 </div>
               </SettingCard>
@@ -625,7 +677,7 @@ export default function UniversalSettings() {
                               updateSetting(
                                 "privacy",
                                 "profileVisibility",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 focus:ring-blue-500"
@@ -702,7 +754,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "learning",
                             "dailyGoal",
-                            Number.parseFloat(e.target.value)
+                            Number.parseFloat(e.target.value),
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -721,7 +773,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "learning",
                             "weeklyGoal",
-                            Number.parseInt(e.target.value)
+                            Number.parseInt(e.target.value),
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -745,7 +797,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "learning",
                             "difficulty",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -798,9 +850,10 @@ export default function UniversalSettings() {
                       ].map((theme) => (
                         <button
                           key={theme.value}
-                          onClick={() =>
-                            updateSetting("appearance", "theme", theme.value)
-                          }
+                          onClick={() => {
+                            updateSetting("appearance", "theme", theme.value);
+                            setTheme(theme.value);
+                          }}
                           className={`flex flex-col items-center space-y-2 p-4 rounded-lg border transition-all duration-200 ${
                             settings.appearance.theme === theme.value
                               ? "border-blue-500 bg-blue-500/20"
@@ -827,7 +880,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "appearance",
                             "language",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -849,7 +902,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "appearance",
                             "timezone",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -952,7 +1005,7 @@ export default function UniversalSettings() {
                     </div>
                   </div>
                 </SettingCard>
-              </> 
+              </>
             )}
 
             {activeSection === "help" && (

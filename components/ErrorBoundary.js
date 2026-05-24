@@ -1,10 +1,16 @@
 "use client";
 import React from "react";
+import { AlertOctagon, RefreshCw, ChevronDown, ChevronUp, Terminal } from "lucide-react";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { 
+      hasError: false, 
+      error: null, 
+      errorInfo: null, 
+      showDetails: false 
+    };
   }
 
   static getDerivedStateFromError(error) {
@@ -12,17 +18,38 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("Error caught by boundary:", error, errorInfo);
+    this.setState({ errorInfo });
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.children !== this.props.children && this.state.hasError) {
-      this.setState({ hasError: false, error: null });
+      this.setState({ 
+        hasError: false, 
+        error: null, 
+        errorInfo: null, 
+        showDetails: false 
+      });
     }
   }
 
+  handleRetry = () => {
+    this.setState({ 
+      hasError: false, 
+      error: null, 
+      errorInfo: null, 
+      showDetails: false 
+    });
+  };
+
   render() {
     if (this.state.hasError) {
+      const { fallback } = this.props;
+
+      if (fallback) {
+        return fallback;
+      }
+
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900">
           <div className="text-center p-8 bg-gray-800 rounded-xl border border-gray-700 max-w-md">
@@ -30,8 +57,7 @@ class ErrorBoundary extends React.Component {
               Something went wrong
             </h2>
             <p className="text-gray-300 mb-6">
-              There was an error loading the authentication form. Please refresh
-              the page and try again.
+              {this.props.errorMessage || "An unexpected error occurred. Please refresh the page and try again."}
             </p>
             <button
               onClick={() => window.location.reload()}

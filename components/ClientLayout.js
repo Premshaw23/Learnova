@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import ShortcutsModal from "@/components/ShortcutsModal";
 
 const InstallPWA = dynamic(() => import("@/components/InstallPWA"), {
@@ -26,11 +27,20 @@ export default function ClientLayout() {
     window.dispatchEvent(new CustomEvent("learnova:escape"));
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleOpenShortcuts = () => setIsShortcutsOpen(true);
+    window.addEventListener("learnova:open-shortcuts", handleOpenShortcuts);
+    return () => window.removeEventListener("learnova:open-shortcuts", handleOpenShortcuts);
+  }, []);
+
   useKeyboardShortcuts({
     onSearch: handleSearch,
     onHelp: handleHelp,
     onEscape: handleEscape,
   });
+  
+  useIdleTimeout();
 
   return (
     <>

@@ -1,8 +1,9 @@
 "use client";
 import { useTheme } from "next-themes";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { translations } from "@/constants/translations";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Navbar } from "@/components/Navbar";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate, useInView } from "framer-motion";
 import SplitText from "@/components/ui-block/SplitText";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import toast from "react-hot-toast";
@@ -26,6 +27,9 @@ import {
   Users,
   TrendingUp,
   Award,
+  Timer,
+  CalendarDays,
+  ListTodo,
 } from "lucide-react";
 import Link from "next/link";
 import { analytics } from "@/lib/firebaseConfig";
@@ -39,13 +43,6 @@ const PARTICLES_DATA = [
   { id: 3, left: 80, top: 20, delay: 4, duration: 14 },
   { id: 4, left: 30, top: 70, delay: 6, duration: 11 },
   { id: 5, left: 90, top: 50, delay: 8, duration: 13 },
-];
-
-const STATS_DATA = [
-  { number: "10,000+", label: "Institution Partnerships", icon: BookOpen },
-  { number: "5M+", label: "Student Tracking", icon: Users },
-  { number: "70%", label: "Time Saved", icon: TrendingUp },
-  { number: "98%", label: "Accuracy Rate", icon: Award },
 ];
 
 const VALUES_DATA = [
@@ -150,19 +147,19 @@ const IMPACT_DATA = [
   },
 ];
 
-// Reusable components
 const SectionBadge = ({
   icon: Icon,
   text,
-  gradient = "from-purple-500/20 to-pink-500/20",
-  borderColor = "purple-500/30",
-  textColor = "purple-300",
+  gradient = "from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20",
+  borderClass = "border-purple-200/50 dark:border-purple-500/30",
+  iconClass = "text-purple-600 dark:text-purple-400",
+  textClass = "text-purple-700 dark:text-purple-300",
 }) => (
   <div
-    className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${gradient} rounded-full border border-${borderColor} backdrop-blur-sm mb-6`}
+    className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${gradient} rounded-full border ${borderClass} backdrop-blur-sm mb-6`}
   >
-    <Icon className={`w-5 h-5 text-${textColor.split("-")[0]}-400 mr-2`} />
-    <span className={`text-${textColor} font-medium`}>{text}</span>
+    <Icon className={`w-5 h-5 ${iconClass} mr-2`} />
+    <span className={`${textClass} font-medium`}>{text}</span>
   </div>
 );
 
@@ -188,9 +185,9 @@ const ActionButton = ({
     "group inline-flex items-center px-8 py-4 rounded-full font-semibold transition-all duration-500 hover:scale-[1.02]";
   const variants = {
     primary:
-      "bg-gradient-to-r from-accent to-purple-500 text-black dark:text-white hover:shadow-xl hover:shadow-accent/25",
+      "bg-gradient-to-r from-accent to-purple-500 text-white hover:shadow-xl hover:shadow-accent/25",
     secondary:
-      "bg-white/10 text-black dark:text-white border border-white/20 hover:bg-white/20",
+      "bg-purple-50/50 dark:bg-white/10 text-purple-700 dark:text-white border border-purple-200/60 dark:border-white/20 hover:bg-purple-100/50 dark:hover:bg-white/20",
   };
 
   const contentClasses = `${baseClasses} ${variants[variant]} ${className}`;
@@ -202,21 +199,65 @@ const ActionButton = ({
     );
   }
   return (
-    <button className={contentClasses}>
+    <button className={`${contentClasses} focus:outline-none focus:ring-2 focus:ring-purple-500`}>
       {children}
     </button>
   );
 };
 
+const MockupWindow = ({ children, gradientFrom }) => (
+  <div className="relative group p-1 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md overflow-hidden shadow-2xl transition-all duration-500 hover:border-white/20">
+    <div className={`absolute inset-0 bg-gradient-to-tr ${gradientFrom} to-transparent opacity-10 group-hover:opacity-30 transition-opacity duration-700 pointer-events-none`} />
+    
+    <div className="flex items-center gap-1.5 px-5 py-3.5 border-b border-white/5 bg-black/20">
+      <div className="w-2.5 h-2.5 rounded-full bg-rose-500/60" />
+      <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
+      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+    </div>
+
+    <div className="p-8 bg-black/40 flex items-center justify-center min-h-[220px]">
+      {children}
+    </div>
+  </div>
+);
+
+// High-fidelity counting metrics component
+function AnimatedCounter({ from = 0, to, suffix }) {
+  const nodeRef = useRef(null);
+  const inView = useInView(nodeRef, { once: true, margin: "-100px" });
+  const count = useMotionValue(from);
+  const rounded = useTransform(count, (latest) => Math.floor(latest).toLocaleString());
+
+  useEffect(() => {
+    if (inView) {
+      const controls = animate(count, to, {
+        duration: 2.2,
+        ease: [0.16, 1, 0.3, 1],
+      });
+      return controls.stop;
+    }
+  }, [inView, count, to]);
+
+  return (
+    <span ref={nodeRef} aria-live="polite">
+      <motion.span>{rounded}</motion.span>
+      {suffix}
+    </span>
+  );
+}
+
 export default function AboutPage() {
   const { theme } = useTheme();
+  const [language, setLanguage] = useState("en");
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const isDark = mounted ? theme === "dark" : true;
   const [scrollY, setScrollY] = useState(0);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Track active infographic orbital index layer
+  const [hoveredRing, setHoveredRing] = useState(null);
 
-  // Memoized mouse tracking with throttling
   const handleMouseMove = useCallback((e) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
   }, []);
@@ -225,11 +266,9 @@ export default function AboutPage() {
     setScrollY(window.scrollY);
   }, []);
 
-  const handleAnimationComplete = useCallback(() => {
-  }, []);
+  const handleAnimationComplete = useCallback(() => {}, []);
 
   useEffect(() => {
-    // Throttled event listeners
     let scrollTimeout;
     let mouseTimeout;
 
@@ -238,7 +277,7 @@ export default function AboutPage() {
         scrollTimeout = setTimeout(() => {
           handleScroll();
           scrollTimeout = null;
-        }, 16); // ~60fps
+        }, 16);
       }
     };
 
@@ -247,7 +286,7 @@ export default function AboutPage() {
         mouseTimeout = setTimeout(() => {
           handleMouseMove(e);
           mouseTimeout = null;
-        }, 32); // ~30fps
+        }, 32);
       }
     };
 
@@ -268,7 +307,6 @@ export default function AboutPage() {
     }
   }, []);
 
-  // Memoized style calculations
   const mouseOrbStyle = useMemo(
     () => ({
       left: mousePosition.x - 192,
@@ -285,19 +323,23 @@ export default function AboutPage() {
     [scrollY]
   );
 
+  const STATS_ITEMS = [
+    { id: 0, number: 10000, suffix: "+", label: "Institution Partnerships", href: "/case-studies/partnerships" },
+    { id: 1, number: 5, suffix: "M+", label: "Student Tracking", href: "/case-studies/impact" },
+    { id: 2, number: 70, suffix: "%", label: "Time Saved" },
+    { id: 3, number: 98, suffix: "%", label: "Accuracy Rate" },
+  ];
+
   return (
     <>
-      {/* Background Effects */}
       <div className="fixed inset-0 -z-10 bg-background">
         {isDark && <DarkVeil />}
 
-        {/* Mouse-following gradient orb */}
         <div
           className="absolute w-96 h-96 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-full blur-3xl"
           style={mouseOrbStyle}
         />
 
-        {/* Floating particles */}
         <div className="absolute inset-0 overflow-hidden">
           {PARTICLES_DATA.map((particle) => (
             <div
@@ -332,7 +374,7 @@ export default function AboutPage() {
           />
 
           <div className="max-w-4xl mx-auto text-center relative">
-            <SectionBadge icon={Sparkles} text="Introducing Learnova" />
+            <SectionBadge icon={Sparkles} text={translations[language].welcome} />
 
             <div className="flex flex-wrap justify-center items-center mb-8 text-center gap-x-6 gap-y-4">
               <SplitText
@@ -378,75 +420,123 @@ export default function AboutPage() {
             </h1>
           </div>
         </section>
+        <div className="mt-8 flex justify-center">
+          <a
+            href="#mission"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all duration-300"
+          >
+            {translations[language].explore}
+          </a>
+        </div>
 
         {/* Mission Section */}
         <section
           id="mission"
-          className="md:py-20 px-4 sm:px-6 lg:px-8 relative"
+          className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
         >
-          <div className="max-w-7xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
-              <Reveal className="space-y-8">
-                <SectionBadge icon={Sparkles} text="Our Mission" />
+          <div className="max-w-6xl mx-auto">
+            <Reveal className="mb-24 max-w-2xl">
+              <SectionBadge icon={Sparkles} text={translations[language].mission} />
+              <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white mt-4 mb-6">
+                Empowering Educational Excellence
+              </h2>
+              <p className="text-xl text-muted-foreground leading-relaxed">
+                At Learnova, our mission is to harness the power of technology to make education more efficient, engaging, and equitable. We build modern workflows to replace age-old fragmentation.
+              </p>
+            </Reveal>
 
-                <h2 className="text-2xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-accent bg-clip-text text-transparent">
-                  Empowering Educational Excellence
-                </h2>
-
-                <div className="space-y-6">
-                  <p className="md:text-lg text-muted-foreground leading-relaxed">
-                    At Learnova, our mission is to harness the power of{" "}
-                    <span className="text-accent font-semibold">
-                      technology
-                    </span>{" "}
-                    to make education more efficient, engaging, and equitable.
-                    We address the inefficiencies of traditional systems—manual
-                    attendance, siloed data, and limited student interaction—by
-                    delivering{" "}
-                    <span className="text-purple-400 font-semibold">
-                      integrated, intuitive solutions
-                    </span>
-                    .
-                  </p>
-
-                  <p className="md:text-lg text-gray-400 leading-relaxed">
-                    With Learnova, teachers can teach without distractions,
-                    students can learn with purpose, and institutions can create
-                    environments where every learner thrives.
-                  </p>
-                </div>
-
-                <ActionButton href="/activity">
-                  Learn More
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-                </ActionButton>
-              </Reveal>
-
-              <Reveal className="relative" delay={0.1}>
-                <div className="bg-gradient-to-br from-purple-500/10 via-accent/10 to-pink-500/10 rounded-3xl h-96 flex items-center justify-center border border-purple-500/20 backdrop-blur-sm relative overflow-hidden group hover:scale-[1.02] transition-all duration-700">
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-
-                  <div className="absolute top-4 right-4 w-3 h-3 bg-accent/60 rounded-full animate-pulse" />
-                  <div
-                    className="absolute bottom-6 left-6 w-2 h-2 bg-purple-400/60 rounded-full animate-pulse"
-                    style={{ animationDelay: "1s" }}
-                  />
-
-                  <div className="text-center z-10">
-                    <div className="relative mb-6">
-                      <GraduationCap className="h-24 w-24 text-black dark:text-white mx-auto group-hover:scale-110 transition-transform duration-700" />
-                      <div className="absolute inset-0 bg-gradient-to-r from-accent/20 to-purple-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-700" />
+            <div className="space-y-32">
+              {/* Block 1: Teachers */}
+              <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-center">
+                <Reveal className="lg:col-span-7 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                      <User className="w-5 h-5 text-purple-400" />
                     </div>
-                    <p className="text-xl font-semibold text-black dark:text-white group-hover:text-accent transition-colors duration-500">
-                      Transforming Education
-                    </p>
-                    <p className="text-gray-400 mt-2">
-                      One Institution at a Time
-                    </p>
+                    <span className="text-xs font-bold uppercase tracking-wider text-purple-400">01 / Workspace Focus</span>
                   </div>
-                </div>
-              </Reveal>
+                  <h3 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
+                    For Teachers: Teach Without Distractions
+                  </h3>
+                  <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+                    Traditional educational setups trap mentors inside layers of manual administrative tasks and overhead tracking lines. Learnova automates routine administrative operations completely, returning up to 1 hour daily to invest directly back into instructional mentoring.
+                  </p>
+                </Reveal>
+                <Reveal className="lg:col-span-5" delay={0.1}>
+                  <MockupWindow gradientFrom="from-purple-500/20">
+                    <div className="relative flex items-center justify-center">
+                      <div className="absolute w-32 h-32 rounded-full border border-purple-500/10 animate-ping [animation-duration:4s]" />
+                      <div className="absolute w-24 h-24 rounded-full border border-purple-500/20" />
+                      <User className="w-16 h-16 text-purple-400/50 group-hover:scale-110 group-hover:text-purple-400 transition-all duration-500 relative z-10" />
+                    </div>
+                  </MockupWindow>
+                </Reveal>
+              </div>
+
+              {/* Block 2: Students */}
+              <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-center">
+                <Reveal className="lg:col-span-5 lg:order-2 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+                      <GraduationCap className="w-5 h-5 text-accent" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-accent">02 / Dynamic Training</span>
+                  </div>
+                  <h3 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
+                    For Students: Learn With Purpose
+                  </h3>
+                  <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+                    By structuring access windows and simplifying operational steps, we transform idle overhead slots into engaging learning trajectories. Students benefit from transparent tracking loops and collaborative modules optimized for high engagement rates.
+                  </p>
+                </Reveal>
+                <Reveal className="lg:col-span-7 lg:order-1" delay={0.1}>
+                  <MockupWindow gradientFrom="from-accent/20">
+                    <div className="relative flex items-center justify-center">
+                      <div className="absolute w-32 h-32 rounded-full border border-accent/10 animate-ping [animation-duration:4s]" />
+                      <div className="absolute w-24 h-24 rounded-full border border-accent/20" />
+                      <GraduationCap className="w-16 h-16 text-accent/50 group-hover:scale-110 group-hover:text-accent transition-all duration-500 relative z-10" />
+                    </div>
+                  </MockupWindow>
+                </Reveal>
+              </div>
+
+              {/* Block 3: Institutions */}
+              <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-center">
+                <Reveal className="lg:col-span-7 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">03 / Centralized System</span>
+                  </div>
+                  <h3 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
+                    For Institutions: Thrive via Connected Insights
+                  </h3>
+                  <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+                    Say goodbye to siloed dashboards and broken communication channels. Our system structures an environment where unified insights deliver deep transparency, protecting data accurately across every department level.
+                  </p>
+                </Reveal>
+                <Reveal className="lg:col-span-5" delay={0.1}>
+                  <MockupWindow gradientFrom="from-emerald-500/20">
+                    <div className="relative flex items-center justify-center">
+                      <div className="absolute w-32 h-32 rounded-full border border-emerald-500/10 animate-ping [animation-duration:4s]" />
+                      <div className="absolute w-24 h-24 rounded-full border border-emerald-500/20" />
+                      <Building2 className="w-16 h-16 text-emerald-400/50 group-hover:scale-110 group-hover:text-emerald-400 transition-all duration-500 relative z-10" />
+                    </div>
+                  </MockupWindow>
+                </Reveal>
+              </div>
             </div>
+
+            <Reveal className="mt-24 pt-12 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-6">
+              <p className="text-sm text-muted-foreground max-w-sm text-center sm:text-left">
+                Ready to review our technical system features? Jump directly into the activity center.
+              </p>
+              <ActionButton href="/activity">
+                Explore Platform Features
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+              </ActionButton>
+            </Reveal>
           </div>
         </section>
 
@@ -462,9 +552,10 @@ export default function AboutPage() {
               <SectionBadge
                 icon={Heart}
                 text="Our Values"
-                gradient="from-accent/20 to-purple-500/20"
-                borderColor="accent/30"
-                textColor="accent"
+                gradient="from-accent/10 to-purple-500/10 dark:from-accent/20 dark:to-purple-500/20"
+                borderClass="border-accent/20 dark:border-accent/30"
+                iconClass="text-accent dark:text-purple-400"
+                textClass="text-accent dark:text-purple-300"
               />
 
               <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
@@ -476,23 +567,23 @@ export default function AboutPage() {
               </p>
             </Reveal>
 
-            <div className="grid md:grid-cols-3 gap-8 items-stretch">
+            <div className="grid md:grid-cols-3 gap-8 items-stretch auto-rows-fr">
               {VALUES_DATA.map((value, index) => (
-         <Reveal key={value.title} delay={index * 0.08}>
-             <Card className="group bg-white dark:bg-white/40 border-gray-200 dark:border-white/10 backdrop-blur-xl hover:border-accent/50 transition-all duration-700 hover:scale-[1.02]">    
-                  <CardHeader className="text-center pb-4">
+                <Reveal key={value.title} delay={index * 0.08}>
+                  <Card className="group h-full flex flex-col bg-white dark:bg-black/40 border-gray-200 dark:border-white/10 backdrop-blur-xl shadow-sm hover:shadow-lg hover:shadow-accent/10 hover:border-accent/50 transition-all duration-700 hover:scale-[1.02]">
+                    <CardHeader className="text-center pb-4">
                       <div
                         className={`mx-auto w-20 h-20 bg-gradient-to-br ${value.gradient} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-105 transition-transform duration-500 relative overflow-hidden`}
                       >
-                        <value.icon className="h-10 w-10 text-black dark:text-black dark:text-white relative z-10" />
+                        <value.icon className="h-10 w-10 text-white relative z-10" />
                         <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       </div>
-                      <CardTitle className="text-black dark:text-black dark:text-white text-xl group-hover:text-accent transition-colors duration-500">
+                      <CardTitle className="text-gray-950 dark:text-white text-xl group-hover:text-gray-950 dark:group-hover:text-accent transition-colors duration-500">
                         {value.title}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
+                    <CardContent className="flex flex-col flex-grow">
+                      <CardDescription className="text-gray-600 dark:text-gray-300 leading-relaxed group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors duration-500">
                         {value.description}
                       </CardDescription>
                     </CardContent>
@@ -503,6 +594,88 @@ export default function AboutPage() {
           </div>
         </section>
 
+        {/* Productivity Section */}
+        <section
+          id="productivity"
+          className="py-20 px-4 sm:px-6 lg:px-8 relative"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-purple-500/10 to-pink-500/10 blur-3xl" />
+          <div className="max-w-7xl mx-auto relative">
+            <Reveal className="text-center mb-16">
+              <SectionBadge
+                icon={Sparkles}
+                text="Productivity Studio"
+                gradient="from-blue-500/20 to-purple-500/20"
+                borderClass="border-blue-500/30"
+                textColor="blue-300"
+              />
+              <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
+                Focus Tools Built for Modern Classrooms
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Plan the day, stay on schedule, and protect deep work sessions with a
+                productivity hub designed to match Learnova's smart workflow.
+              </p>
+            </Reveal>
+
+            <div className="grid lg:grid-cols-3 gap-8 mb-12">
+              {[
+                {
+                  title: "Pomodoro Flow",
+                  description:
+                    "Guided focus cycles with adaptive breaks, gentle timers, and streak tracking.",
+                  icon: Timer,
+                  gradient: "from-blue-500/20 to-cyan-500/20",
+                },
+                {
+                  title: "Calendar Pulse",
+                  description:
+                    "A clean month view with highlighted priorities and built-in agenda cues.",
+                  icon: CalendarDays,
+                  gradient: "from-purple-500/20 to-pink-500/20",
+                },
+                {
+                  title: "Task Orbit",
+                  description:
+                    "Create, sort, and complete tasks with quick status updates and reminders.",
+                  icon: ListTodo,
+                  gradient: "from-emerald-500/20 to-teal-500/20",
+                },
+              ].map((item, index) => (
+                <Reveal key={item.title} delay={index * 0.08}>
+                  <Card className="group bg-white dark:bg-black/40 border-gray-200 dark:border-white/10 backdrop-blur-xl shadow-sm hover:shadow-xl hover:shadow-accent/10 hover:border-accent/40 transition-all duration-700 hover:scale-[1.02]">
+                    <CardHeader className="text-center pb-4">
+                      <div
+                        className={`mx-auto w-20 h-20 ${item.gradient} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-105 transition-transform duration-500`}
+                      >
+                        <item.icon className="h-10 w-10 text-accent" />
+                      </div>
+                      <CardTitle className="text-gray-950 dark:text-white text-xl">
+                        {item.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {item.description}
+                      </CardDescription>
+                    </CardContent>
+                  </Card>
+                </Reveal>
+              ))}
+            </div>
+
+            <Reveal className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <ActionButton href="/productivity">
+                Explore Productivity Hub
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+              </ActionButton>
+              <ActionButton href="/contact" variant="secondary">
+                Request a Workflow Demo
+              </ActionButton>
+            </Reveal>
+          </div>
+        </section>
+
         {/* Team Section */}
         <section id="team" className="py-20 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
@@ -510,9 +683,10 @@ export default function AboutPage() {
               <SectionBadge
                 icon={Users}
                 text="Our Team"
-                gradient="from-emerald-500/20 to-teal-500/20"
-                borderColor="emerald-500/30"
-                textColor="emerald-400"
+                gradient="from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/20 dark:to-teal-500/20"
+                borderClass="border-emerald-500/20 dark:border-emerald-500/30"
+                iconClass="text-emerald-600 dark:text-emerald-400"
+                textClass="text-emerald-700 dark:text-emerald-300"
               />
 
               <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
@@ -524,16 +698,16 @@ export default function AboutPage() {
               </p>
             </Reveal>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-3 gap-8 auto-rows-fr">
               {TEAM_MEMBERS.map((member, index) => (
                 <Reveal key={member.name} delay={index * 0.08}>
-                  <Card className="group bg-white dark:bg-white/70 dark:bg-black/40 border-gray-200 dark:border-white/10 backdrop-blur-xl hover:border-accent/50 transition-all duration-700 hover:scale-[1.02]">
-                    <CardContent className="pt-8 text-center">
+                  <Card className="group h-full flex flex-col bg-white dark:bg-black/40 border-gray-200 dark:border-white/10 backdrop-blur-xl shadow-sm hover:shadow-lg hover:shadow-accent/10 hover:border-accent/50 transition-all duration-700 hover:scale-[1.02]">
+                    <CardContent className="pt-8 text-center flex flex-col flex-grow">
                       <div className="relative mb-6">
                         <div
                           className={`w-28 h-28 bg-gradient-to-br ${member.color} rounded-full flex items-center justify-center mx-auto group-hover:scale-105 transition-transform duration-500 relative overflow-hidden`}
                         >
-                          <span className="text-3xl font-bold text-black dark:text-white relative z-10">
+                          <span className="text-3xl font-bold text-white relative z-10">
                             {member.initials}
                           </span>
                           <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -544,13 +718,13 @@ export default function AboutPage() {
                         </div>
                       </div>
 
-                      <h3 className="text-2xl font-semibold text-black dark:text-white mb-2 group-hover:text-accent transition-colors duration-500">
+                      <h3 className="text-2xl font-semibold text-gray-950 dark:text-white mb-2 group-hover:text-gray-950 dark:group-hover:text-accent transition-colors duration-500">
                         {member.name}
                       </h3>
                       <p className="text-accent font-medium mb-4 text-lg">
                         {member.role}
                       </p>
-                      <p className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors duration-500">
                         {member.description}
                       </p>
                     </CardContent>
@@ -561,55 +735,132 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Stats Section */}
+        {/* Premium Infographic Concentric Rings Stats Section */}
         <section
           id="stats"
-          className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
+          className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-accent/10 via-purple-500/10 to-pink-500/10 backdrop-blur-3xl">
-            <div
-              className="absolute inset-0 opacity-30"
-              style={{
-                backgroundImage: `radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 70%), radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.2) 0%, transparent 70%)`,
-              }}
-            />
-          </div>
-
           <div className="max-w-7xl mx-auto relative">
-            <Reveal className="text-center mb-20">
-              <SectionBadge
-                icon={TrendingUp}
-                text="Our Impact"
-                gradient="from-white/10 to-white/10"
-                borderColor="white/20"
-                textColor="white"
-              />
+            <div className="grid lg:grid-cols-12 gap-16 items-center">
+              
+              {/* Left Side Static Content Blocks */}
+              <div className="lg:col-span-5 flex flex-col items-start">
+                <SectionBadge
+                  icon={TrendingUp}
+                  text={translations[language].impact}
+                  gradient="from-purple-500/10 to-pink-500/10"
+                  borderClass="border-purple-500/20"
+                  iconClass="text-purple-400"
+                  textClass="text-purple-400"
+                />
 
-              <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
-                Transforming Education Globally
-              </h2>
-              <p className="text-xl text-black dark:text-white/80 max-w-3xl mx-auto">
-                Measurable results that demonstrate our commitment to
-                educational excellence and institutional success.
-              </p>
-            </Reveal>
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-black dark:text-white mb-6">
+                  Transforming Education Globally
+                </h2>
+                <p className="text-lg text-muted-foreground leading-relaxed mb-10">
+                  Hover over our verification categories to examine how specific metrics map live into Learnova's global data orbit layers.
+                </p>
 
-            <div className="grid md:grid-cols-4 gap-8">
-              {STATS_DATA.map((stat, index) => (
-                <Reveal key={stat.label} delay={index * 0.08}>
-                  <div className="group text-center">
-                    <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-accent/40 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl">
-                      <stat.icon className="w-12 h-12 text-accent mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
-                      <div className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-3 group-hover:text-accent transition-colors duration-500">
-                        {stat.number}
-                      </div>
-                      <p className="text-black dark:text-white/80 font-medium text-lg group-hover:text-black dark:text-white transition-colors duration-500">
-                        {stat.label}
-                      </p>
-                    </div>
+                {/* Vertical Interlocking Row Anchors */}
+                <div className="w-full space-y-4">
+                  {STATS_ITEMS.map((stat) => {
+                    const isClickable = !!stat.href;
+                    const ItemWrapper = isClickable ? Link : "div";
+
+                    return (
+                      <ItemWrapper
+                        key={stat.id}
+                        href={stat.href || ""}
+                        onMouseEnter={() => setHoveredRing(stat.id)}
+                        onMouseLeave={() => setHoveredRing(null)}
+                        className={`block p-5 border rounded-2xl transition-all duration-500 ${
+                          hoveredRing === stat.id 
+                            ? "border-purple-500/40 bg-purple-500/5 -translate-x-1" 
+                            : "border-zinc-200 dark:border-white/5 bg-transparent"
+                        } ${isClickable ? "cursor-pointer" : "cursor-default"}`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="text-2xl font-black text-black dark:text-white transition-colors duration-300 group-hover:text-purple-400">
+                              <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                            </div>
+                            <p className="text-sm font-semibold text-zinc-400 dark:text-zinc-500 mt-0.5">{stat.label}</p>
+                          </div>
+                          {isClickable && (
+                            <ArrowRight className={`w-4 h-4 text-purple-400 transition-transform duration-500 ${
+                              hoveredRing === stat.id ? "translate-x-1" : ""
+                            }`} />
+                          )}
+                        </div>
+                      </ItemWrapper>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Side Complex Interlocking Orbital Rings Showcase */}
+              <div className="lg:col-span-7 flex items-center justify-center min-h-[450px] md:min-h-[550px] relative pointer-events-none">
+                <div className="relative w-[380px] h-[380px] md:w-[480px] md:h-[480px] flex items-center justify-center">
+                  
+                  {/* Central Glow Core */}
+                  <div className="absolute w-12 h-12 bg-purple-500/20 dark:bg-purple-500/10 rounded-full blur-xl animate-pulse" />
+                  <div className="absolute w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow-[0_0_20px_rgba(168,85,247,0.8)]" />
+
+                  {/* Ring Layer 0: Institution Partnerships */}
+                  <div 
+                    className={`absolute rounded-full border transition-all duration-700 w-[140px] h-[140px] md:w-[180px] md:h-[180px] ${
+                      hoveredRing === 0 
+                        ? "border-purple-500/60 shadow-[0_0_25px_rgba(168,85,247,0.25)] ring-4 ring-purple-500/5 animate-[spin_20s_linear_infinite]" 
+                        : "border-zinc-200/40 dark:border-white/5 animate-[spin_40s_linear_infinite]"
+                    }`}
+                  >
+                    <div className={`absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full transition-colors duration-500 ${
+                      hoveredRing === 0 ? "bg-purple-400 shadow-[0_0_10px_#a855f7]" : "bg-zinc-400 dark:bg-zinc-700"
+                    }`} />
                   </div>
-                </Reveal>
-              ))}
+
+                  {/* Ring Layer 1: Student Tracking */}
+                  <div 
+                    className={`absolute rounded-full border transition-all duration-700 w-[210px] h-[210px] md:w-[270px] md:h-[270px] ${
+                      hoveredRing === 1 
+                        ? "border-purple-500/60 shadow-[0_0_25px_rgba(168,85,247,0.25)] ring-4 ring-purple-500/5 animate-[spin_15s_linear_infinite_reverse]" 
+                        : "border-zinc-200/40 dark:border-white/5 animate-[spin_35s_linear_infinite_reverse]"
+                    }`}
+                  >
+                    <div className={`absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 rounded-full transition-colors duration-500 ${
+                      hoveredRing === 1 ? "bg-purple-400 shadow-[0_0_10px_#a855f7]" : "bg-zinc-400 dark:bg-zinc-700"
+                    }`} />
+                  </div>
+
+                  {/* Ring Layer 2: Time Saved */}
+                  <div 
+                    className={`absolute rounded-full border transition-all duration-700 w-[280px] h-[280px] md:w-[360px] md:h-[360px] ${
+                      hoveredRing === 2 
+                        ? "border-purple-500/60 shadow-[0_0_25px_rgba(168,85,247,0.25)] ring-4 ring-purple-500/5 animate-[spin_25s_linear_infinite]" 
+                        : "border-zinc-200/40 dark:border-white/5 animate-[spin_45s_linear_infinite]"
+                    }`}
+                  >
+                    <div className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full transition-colors duration-500 ${
+                      hoveredRing === 2 ? "bg-purple-400 shadow-[0_0_10px_#a855f7]" : "bg-zinc-400 dark:bg-zinc-700"
+                    }`} />
+                  </div>
+
+                  {/* Ring Layer 3: Accuracy Rate */}
+                  <div 
+                    className={`absolute rounded-full border transition-all duration-700 w-[350px] h-[350px] md:w-[450px] md:h-[450px] ${
+                      hoveredRing === 3 
+                        ? "border-purple-500/60 shadow-[0_0_25px_rgba(168,85,247,0.25)] ring-4 ring-purple-500/5 animate-[spin_18s_linear_infinite_reverse]" 
+                        : "border-zinc-200/40 dark:border-white/5 animate-[spin_50s_linear_infinite_reverse]"
+                    }`}
+                  >
+                    <div className={`absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 rounded-full transition-colors duration-500 ${
+                      hoveredRing === 3 ? "bg-purple-400 shadow-[0_0_10px_#a855f7]" : "bg-zinc-400 dark:bg-zinc-700"
+                    }`} />
+                  </div>
+
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
@@ -621,7 +872,7 @@ export default function AboutPage() {
         >
           <div className="max-w-7xl mx-auto relative">
             <Reveal className="text-center mb-16">
-              <SectionBadge icon={Sparkles} text="Our Impact" />
+              <SectionBadge icon={Sparkles} text={translations[language].impact} />
               <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
                 Transforming Education for Everyone
               </h2>
@@ -634,7 +885,7 @@ export default function AboutPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
               {IMPACT_DATA.map((impact, index) => (
                 <Reveal key={impact.title} delay={index * 0.08}>
-                  <div className="group bg-card backdrop-blur-xl rounded-3xl p-8 border border-border hover:border-accent/40 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl hover:shadow-accent/25 text-center">
+                  <div className="bg-white dark:bg-black rounded-3xl p-8 flex flex-col justify-center items-center text-center h-full min-h-[260px] border border-gray-200 dark:border-white/10 shadow-sm dark:shadow-none hover:border-accent/50 transition-all duration-700 hover:scale-[1.02] group">
                     <impact.icon className="w-12 h-12 text-accent mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
                     <h3 className="text-xl font-semibold text-black dark:text-white mb-3 group-hover:text-accent transition-colors duration-500">
                       {impact.title}
@@ -652,7 +903,7 @@ export default function AboutPage() {
         {/* CTA Section */}
         <section id="get-started" className="py-20 px-4 sm:px-6 lg:px-8">
           <Reveal className="max-w-4xl mx-auto text-center">
-            <div className="bg-gradient-to-br dark:from-black/50 to-purple-900/30 rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
+            <div className="bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-black/50 dark:to-purple-900/30 rounded-3xl p-12 border border-purple-200/50 dark:border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
               <h2 className="text-3xl md:text-4xl font-bold text-black dark:text-white mb-6">
                 Ready to Transform Your Institution?
               </h2>
@@ -663,7 +914,7 @@ export default function AboutPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <ActionButton href="/auth">
+                <ActionButton href="/auth?mode=signup">
                   Get Started Today
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </ActionButton>

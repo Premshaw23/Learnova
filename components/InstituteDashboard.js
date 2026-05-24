@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Users,
   Calendar,
@@ -63,138 +64,29 @@ const InstituteDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setInitialLoading(false), 1200);
     return () => clearTimeout(timer);
   }, []);
 
-  // Mock data - in real app, this would come from your backend
+  // Data fetched from /api/institute/stats
+  const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState({
-    totalStudents: 1247,
-    totalTeachers: 45,
-    totalClasses: 67,
-    todayAttendance: 89.2,
-    weeklyTrend: "+2.4%",
-    activeClasses: 12,
-    pendingRequests: 8,
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClasses: 0,
+    todayAttendance: 0,
+    weeklyTrend: "",
+    activeClasses: 0,
+    pendingRequests: 0,
   });
+  const [classes, setClasses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [attendanceRequests, setAttendanceRequests] = useState([]);
 
-  const [classes, setClasses] = useState([
-    {
-      id: 1,
-      name: "Computer Science A",
-      students: 35,
-      teacher: "Dr. Smith",
-      room: "CS-101",
-      time: "09:00-10:30",
-      semester: "4th",
-      section: "A",
-    },
-    {
-      id: 2,
-      name: "Mathematics B",
-      students: 42,
-      teacher: "Prof. Johnson",
-      room: "MATH-201",
-      time: "10:45-12:15",
-      semester: "6th",
-      section: "B",
-    },
-    {
-      id: 3,
-      name: "Physics C",
-      students: 28,
-      teacher: "Dr. Williams",
-      room: "PHY-301",
-      time: "13:30-15:00",
-      semester: "5th",
-      section: "A",
-    },
-    {
-      id: 4,
-      name: "Chemistry A",
-      students: 31,
-      teacher: "Prof. Brown",
-      room: "CHEM-101",
-      time: "15:15-16:45",
-      semester: "3rd",
-      section: "B",
-    },
-  ]);
-
-  const [teachers, setTeachers] = useState([
-    {
-      id: 1,
-      name: "Dr. Smith",
-      email: "smith@institute.edu",
-      classes: 3,
-      attendance: "92.1%",
-      status: "active",
-      department: "Computer Science",
-    },
-    {
-      id: 2,
-      name: "Prof. Johnson",
-      email: "johnson@institute.edu",
-      classes: 4,
-      attendance: "88.7%",
-      status: "active",
-      department: "Mathematics",
-    },
-    {
-      id: 3,
-      name: "Dr. Williams",
-      email: "williams@institute.edu",
-      classes: 2,
-      attendance: "94.3%",
-      status: "active",
-      department: "Physics",
-    },
-    {
-      id: 4,
-      name: "Prof. Brown",
-      email: "brown@institute.edu",
-      classes: 3,
-      attendance: "87.9%",
-      status: "active",
-      department: "Chemistry",
-    },
-  ]);
-
-  const [attendanceRequests, setAttendanceRequests] = useState([
-    {
-      id: 1,
-      student: "John Doe",
-      rollNo: "CS21B1010",
-      class: "Computer Science A",
-      reason: "Medical emergency",
-      time: "2 hours ago",
-      status: "pending",
-      location: "Home - GPS verified",
-    },
-    {
-      id: 2,
-      student: "Jane Smith",
-      rollNo: "CS21B1015",
-      class: "Mathematics B",
-      reason: "Family emergency",
-      time: "4 hours ago",
-      status: "pending",
-      location: "Hospital - GPS verified",
-    },
-    {
-      id: 3,
-      student: "Mike Johnson",
-      rollNo: "PHY21B1008",
-      class: "Physics C",
-      reason: "Transportation issue",
-      time: "6 hours ago",
-      status: "approved",
-      location: "Bus stop - GPS verified",
-    },
-  ]);
-
+  // Keep institute and currentUser as static placeholders
   // Mock institute data
   const [institute] = useState({
     name: "Learnova Institute of Technology",
@@ -215,19 +107,41 @@ const InstituteDashboard = () => {
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face",
   });
 
+  // Fetch institute stats from API
   useEffect(() => {
-    const loadingTimer = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
+    if (!user) return;
+    const fetchStats = async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/institute/stats", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.dashboardData) setDashboardData(data.dashboardData);
+          if (data.classes) setClasses(data.classes);
+          if (data.teachers) setTeachers(data.teachers);
+          if (data.attendanceRequests) setAttendanceRequests(data.attendanceRequests);
+        } else {
+          setError("Failed to fetch institute data. Please try again.");
+        }
+      } catch (err) {
+        setError("Network error. Please check your connection and try again.");
+        console.error("Error fetching institute stats:", err);
+      } finally {
+        setLoading(false);
+        setInitialLoading(false);
+      }
+    };
+    fetchStats();
+  }, [user]);
 
+  // Clock interval only
+  useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
-    return () => {
-      clearInterval(timer);
-      clearTimeout(loadingTimer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   const formatTime = (date) => {
@@ -379,6 +293,7 @@ const InstituteDashboard = () => {
 
             {/* Notifications */}
             <button
+              aria-label="Notifications"
               className="relative p-2.5 bg-gray-800/60 hover:bg-gray-700/60 
                              rounded-xl border border-gray-600/40 transition-colors shadow-sm"
             >
@@ -648,13 +563,13 @@ const InstituteDashboard = () => {
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex space-x-2">
-                  <button className="text-blue-400 hover:text-blue-300 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30 transition-colors">
+                  <button aria-label="View class details" className="text-blue-400 hover:text-blue-300 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30 transition-colors">
                     <Eye className="w-4 h-4" />
                   </button>
-                  <button className="text-green-400 hover:text-green-300 p-2 bg-green-500/20 rounded-lg border border-green-500/30 transition-colors">
+                  <button aria-label="Edit class" className="text-green-400 hover:text-green-300 p-2 bg-green-500/20 rounded-lg border border-green-500/30 transition-colors">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button className="text-red-400 hover:text-red-300 p-2 bg-red-500/20 rounded-lg border border-red-500/30 transition-colors">
+                  <button aria-label="Delete class" className="text-red-400 hover:text-red-300 p-2 bg-red-500/20 rounded-lg border border-red-500/30 transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -765,7 +680,7 @@ const InstituteDashboard = () => {
               <button className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl transition-colors text-sm font-medium">
                 View Details
               </button>
-              <button className="bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 border border-gray-500/30 px-3 py-2 rounded-xl transition-colors">
+              <button aria-label="Edit teacher" className="bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 border border-gray-500/30 px-3 py-2 rounded-xl transition-colors">
                 <Edit className="w-4 h-4" />
               </button>
             </div>
@@ -1050,6 +965,30 @@ const InstituteDashboard = () => {
 
   if (initialLoading) {
     return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="fixed top-0 left-0 w-full z-50 shadow-xl border-b border-white/10 bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-xl">
+          <Navbar />
+        </div>
+        <div className="text-center pt-20 px-4">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-10 h-10 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+          >
+            <RefreshCw className="w-4 h-4 mr-2 inline" />
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

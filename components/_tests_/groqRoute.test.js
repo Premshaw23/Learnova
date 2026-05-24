@@ -27,6 +27,16 @@ global.fetch = jest.fn();
 describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout Tests", () => {
   const originalEnv = { ...process.env };
 
+  beforeAll(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    console.warn.mockRestore();
+    console.log.mockRestore();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...originalEnv };
@@ -99,7 +109,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Message is too long");
+    expect(body.error).toBe("Message too long");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -176,7 +186,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(504);
-    expect(body.error).toBe("Gateway Timeout: Groq did not respond in time.");
+    expect(body.error).toBe("Gateway Timeout: AI response took too long.");
     expect(global.fetch).toHaveBeenCalled();
   });
 
@@ -193,21 +203,18 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     });
 
     // Mock MongoDB database responses
-    let storedTimestamps = [];
-    const mockFindOne = jest.fn().mockImplementation(async () => {
-      return { userId: "user-mongo-rate-limit-test", timestamps: storedTimestamps };
-    });
-    const mockUpdateOne = jest.fn().mockImplementation(async (query, update) => {
-      if (update.$set && update.$set.timestamps) {
-        storedTimestamps = update.$set.timestamps;
+    let storedRequests = [];
+    const mockFindOneAndUpdate = jest.fn().mockImplementation(async (query, update) => {
+      if (update.$push && update.$push.requests) {
+        storedRequests.push(...update.$push.requests.$each);
       }
-      return { acknowledged: true };
+      return { requests: storedRequests };
     });
 
     connectDb.mockResolvedValue({
       collection: jest.fn().mockReturnValue({
-        findOne: mockFindOne,
-        updateOne: mockUpdateOne,
+        findOneAndUpdate: mockFindOneAndUpdate,
+        createIndex: jest.fn(),
       }),
     });
 
@@ -219,11 +226,42 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
       );
       const res = await POST(req);
       expect(res.status).toBe(200);
-      expect(mockFindOne).toHaveBeenCalled();
-      expect(mockUpdateOne).toHaveBeenCalled();
+      expect(mockFindOneAndUpdate).toHaveBeenCalled();
     }
 
     // The 11th request must be rate limited (429)
+    const req11 = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      { message: "Request 11" }
+    );
+    const response = await POST(req11);
+    const body = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(body.error).toBe("Too many requests. Please try again later.");
+  });
+
+  test("enforces in-memory rate limiting fallback when MongoDB is unavailable", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-mongo-down", email: "user@example.com" });
+
+    connectDb.mockRejectedValue(new Error("Connection refused"));
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        choices: [{ message: { content: "AI response" } }],
+      }),
+    });
+
+    for (let i = 0; i < 10; i++) {
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        { message: `Request ${i}` }
+      );
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+    }
+
     const req11 = createMockRequest(
       { authorization: "Bearer valid-token" },
       { message: "Request 11" }

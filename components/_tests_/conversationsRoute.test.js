@@ -298,7 +298,7 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     expect(body.data).toEqual(dummyConversations);
 
     expect(mockFind).toHaveBeenCalledWith({ userId: "user-123" });
-    expect(mockSort).toHaveBeenCalledWith({ timestamp: 1 });
+    expect(mockSort).toHaveBeenCalledWith({ timestamp: -1 });
     expect(mockLimit).toHaveBeenCalledWith(50);
   });
 
@@ -336,7 +336,7 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Database offline");
+    expect(body.error).toBe("Internal server error");
   });
 });
 

@@ -1,6 +1,6 @@
 import { GET, rateLimitMap } from "@/app/api/labels/route";
 import { connectDb } from "@/lib/mongodb";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 
 jest.mock("next/server", () => ({
   NextResponse: {
@@ -20,6 +20,7 @@ jest.mock("@/lib/mongodb", () => ({
 
 jest.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: jest.fn(),
+  getUserProfile: jest.fn(),
 }));
 
 describe("GET /api/labels - Security & Authentication Tests", () => {
@@ -35,9 +36,11 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     }
 
     verifyFirebaseToken.mockImplementation(async (token) => {
-      if (!token || token === "invalid-token") return null;
-      return { uid: "mock-uid", email: "user@domain.com" };
+      if (!token || token === "invalid-token") return { valid: false, reason: "Invalid" };
+      return { valid: true, decodedToken: { uid: "mock-uid", email: "user@domain.com" } };
     });
+
+    getUserProfile.mockResolvedValue({ role: "teacher" });
 
     mockToArray = jest.fn();
     mockLimit = jest.fn().mockReturnValue({
@@ -94,7 +97,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     expect(connectDb).not.toHaveBeenCalled();
   });
 
-  test("returns projected labels list for authenticated users bounded to 50 records (200)", async () => {
+  test("returns projected labels list without image URLs for authenticated users bounded to 50 records (200)", async () => {
     const mockUsers = [
       { name: "Alice", email: "alice@domain.com", image: "https://example.com/alice.jpg", sensitiveField: "secret" },
       { name: "Bob", email: "bob@domain.com", image: "https://example.com/bob.jpg", sensitiveField: "secret" },
@@ -107,9 +110,12 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
 
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.data).toEqual(mockUsers);
+    expect(body.data).toEqual([
+      { name: "Alice", email: "alice@domain.com", sensitiveField: "secret", hasImage: true },
+      { name: "Bob", email: "bob@domain.com", sensitiveField: "secret", hasImage: true },
+    ]);
     expect(connectDb).toHaveBeenCalled();
-    expect(mockFind).toHaveBeenCalledWith({}, { projection: { _id: 0, name: 1, email: 1, image: 1 } });
+    expect(mockFind).toHaveBeenCalledWith({}, { projection: { _id: 1, name: 1, email: 1, image: 1 } });
     expect(mockLimit).toHaveBeenCalledWith(50);
   });
 
@@ -129,9 +135,30 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
           { email: { $regex: "alice", $options: "i" } },
         ],
       },
-      { projection: { _id: 0, name: 1, email: 1, image: 1 } }
+      { projection: { _id: 1, name: 1, email: 1, image: 1 } }
     );
     expect(mockLimit).toHaveBeenCalledWith(50);
+  });
+
+  test("escapes regex metacharacters in search param before querying MongoDB", async () => {
+    mockToArray.mockResolvedValue([]);
+
+    const req = createMockRequest("valid-token", "10.0.0.5", "http://localhost/api/labels?search=test.*%2B%3F");
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    // Characters like . * + ? should be backslash-escaped by escapeRegex
+    expect(mockFind).toHaveBeenCalledWith(
+      {
+        $or: [
+          { name: { $regex: "test\\.\\*\\+\\?", $options: "i" } },
+          { email: { $regex: "test\\.\\*\\+\\?", $options: "i" } },
+        ],
+      },
+      { projection: { _id: 1, name: 1, email: 1, image: 1 } }
+    );
   });
 
   test("rate limits requests if more than MAX_ATTEMPTS (10) per IP are made (429)", async () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebaseConfig";
-import { onAuthStateChanged, onIdTokenChanged, signOut as firebaseSignOut } from "firebase/auth";
+import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
 /**
@@ -24,13 +24,13 @@ const deleteCookie = (name) => {
  * Provides authentication state and user profile information.
  * Tracks Firebase authentication changes and exposes auth-related utilities.
  * @returns {{
- *   user: Object|null,
- *   userProfile: Object|null,
- *   loading: boolean,
- *   error: string|null,
- *   signOut: Function,
- *   isAuthenticated: boolean,
- *   hasProfile: boolean
+ * user: Object|null,
+ * userProfile: Object|null,
+ * loading: boolean,
+ * error: string|null,
+ * signOut: Function,
+ * isAuthenticated: boolean,
+ * hasProfile: boolean
  * }} Authentication state and helper methods.
  */
 export const useAuth = () => {
@@ -44,7 +44,6 @@ export const useAuth = () => {
       setLoading(false);
       return;
     }
-
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
@@ -55,22 +54,48 @@ export const useAuth = () => {
             const profileData = userDoc.data();
             setUser(firebaseUser);
             setUserProfile(profileData);
+
+            // Sync auth token and role in cookies
+            const token = await firebaseUser.getIdToken();
+            setCookie("authToken", token, 7);
+            setCookie("userRole", profileData.role, 7);
           } else {
             // User exists in Auth but no profile in Firestore
             setUser(firebaseUser);
             setUserProfile(null);
+
+            // Clean up cookies if profile is missing
+            deleteCookie("authToken");
+            deleteCookie("userRole");
           }
         } else {
           setUser(null);
           setUserProfile(null);
+
+          // Clear auth cookies
+          deleteCookie("authToken");
+          deleteCookie("userRole");
+
+          // Clear PWA caches on logout to prevent data leakage on shared devices
+          if (typeof window !== "undefined" && "caches" in window) {
+            try {
+              const cacheKeys = await caches.keys();
+              await Promise.all(
+                cacheKeys.map((key) => caches.delete(key))
+              );
+            } catch (cacheErr) {
+              console.warn("Failed to clear PWA caches on auth state change:", cacheErr);
+            }
+          }
         }
 
         setError(null);
       } catch (err) {
-        console.error("Auth state change error:", err);
         setError(err.message);
         setUser(null);
         setUserProfile(null);
+        deleteCookie("authToken");
+        deleteCookie("userRole");
       } finally {
         setLoading(false);
       }
@@ -88,8 +113,23 @@ export const useAuth = () => {
       await firebaseSignOut(auth);
       setUser(null);
       setUserProfile(null);
+
+      // Critical Security Fix: Clear authentication cookies to prevent zombie sessions in Next.js middleware
+      deleteCookie("authToken");
+      deleteCookie("userRole");
+
+      // Clear all PWA caches to prevent cached API responses from persisting after logout
+      if (typeof window !== "undefined" && "caches" in window) {
+        try {
+          const cacheKeys = await caches.keys();
+          await Promise.all(
+            cacheKeys.map((key) => caches.delete(key))
+          );
+        } catch (cacheErr) {
+          console.warn("Failed to clear PWA caches on sign out:", cacheErr);
+        }
+      }
     } catch (err) {
-      console.error("Sign out error:", err);
       setError(err.message);
     }
   };

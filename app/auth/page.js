@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Components
 import { Navbar } from "@/components/Navbar";
@@ -24,8 +24,19 @@ import { validateForm, redirectBasedOnRole } from "@/utils/authUtils";
 import { USER_ROLES } from "@/constants/userRoles";
 
 export default function AuthPage() {
-  const [showRoleSelection, setShowRoleSelection] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
+  return (
+    <Suspense fallback={null}>
+      <AuthPageContent />
+    </Suspense>
+  );
+}
+
+function AuthPageContent() {
+  const searchParams = useSearchParams();
+  const mode = searchParams.get("mode");
+
+  const [showRoleSelection, setShowRoleSelection] = useState(true);
+  const [isLogin, setIsLogin] = useState(mode !== "signup");
   const [selectedRole, setSelectedRole] = useState("");
 
   // Form state
@@ -41,6 +52,11 @@ export default function AuthPage() {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
 
   const router = useRouter();
+
+  // Sync isLogin state when the URL query parameter changes
+  useEffect(() => {
+    setIsLogin(mode !== "signup");
+  }, [mode]);
 
   useEffect(() => {
     if (analytics) {
@@ -88,7 +104,7 @@ export default function AuthPage() {
 
     const { isValid, errors: validationErrors } = validateForm(
       formData,
-      isLogin
+      isLogin,
     );
 
     if (!isValid) {
@@ -106,8 +122,8 @@ export default function AuthPage() {
         result = await loginWithEmail(email, password, selectedRole);
       } else {
         result = await signupWithEmail(email, password, selectedRole, {
-            fullName,
-            instituteName,
+          fullName,
+          instituteName,
         });
       }
 
@@ -120,24 +136,29 @@ export default function AuthPage() {
         setShowRoleSelection(true);
         router.push("/profile");
       } else if (result.success) {
-        toast.success(isLogin ? "Successfully logged in!" : "Account created successfully!");
+        toast.success(
+          isLogin ? "Successfully logged in!" : "Account created successfully!",
+        );
         setShowRoleSelection(true);
         redirectBasedOnRole(result.userData.role, router);
       } else {
         toast.error(result.error || "Authentication failed. Please try again.");
-        setErrors({ submit: result.error || "Something went wrong. Please try again." });
+        setErrors({
+          submit: result.error || "Something went wrong. Please try again.",
+        });
       }
     } catch (err) {
-      console.error("Auth error:", err);
-      toast.error("An unexpected error occurred. Please try again.");
-      setErrors({ submit: "An unexpected error occurred. Please try again." });
+      toast.error("Authentication failed. Please verify your credentials and try again.");
+      setErrors({ submit: "Authentication failed. Please verify your credentials and try again." });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    
     if (!selectedRole) {
+      
       setErrors({ role: "Please select your role first" });
       return;
     }
@@ -148,6 +169,7 @@ export default function AuthPage() {
       selectedRole === USER_ROLES.INSTITUTE &&
       !instituteName.trim()
     ) {
+      
       setErrors({ instituteName: "Institute name is required" });
       return;
     }
@@ -156,22 +178,25 @@ export default function AuthPage() {
     setErrors({});
 
     try {
+    
       const result = await loginWithGoogle(selectedRole, isLogin, {
         fullName,
         instituteName,
       });
+      
 
       if (result.success) {
+        
         toast.success("Successfully logged in with Google!");
         redirectBasedOnRole(result.userData.role, router);
       } else {
-        toast.error(result.error || "Google authentication failed.");
-        setErrors({ submit: result.error });
+        
+        toast.error(result.error || "Google sign-in could not be completed. Please try again.");
+        setErrors({ submit: result.error || "Google sign-in could not be completed. Please try again." });
       }
     } catch (err) {
-      console.error("Google auth error:", err);
-      toast.error("An unexpected error occurred. Please try again.");
-      setErrors({ submit: "An unexpected error occurred. Please try again." });
+      toast.error("An unexpected error occurred during Google authentication. Please try again later.");
+      setErrors({ submit: "An unexpected error occurred during Google authentication. Please try again later." });
     } finally {
       setIsLoading(false);
     }
@@ -195,16 +220,22 @@ export default function AuthPage() {
       const result = await resetPassword(emailToReset);
 
       if (result.success) {
-        toast.success("Password reset email sent! Check your inbox and spam folder.");
+        toast.success(
+          "Password reset email sent! Check your inbox and spam folder.",
+        );
         setShowForgotPassword(false);
         setForgotPasswordEmail("");
       } else {
         setErrors({ forgotEmail: result.error });
       }
     } catch (err) {
-      console.error("Password reset error:", err);
+      toast.error(
+        "Password reset failed. Please verify your email and try again.",
+      );
+
       setErrors({
-        forgotEmail: "Failed to send reset email. Please try again.",
+        forgotEmail:
+          "Password reset failed. Please verify your email and try again.",
       });
     } finally {
       setIsLoading(false);
@@ -258,7 +289,7 @@ export default function AuthPage() {
 
               {/* Right Side - Hero Content */}
               <div className="order-1 lg:order-2">
-                <HeroSection />
+                <HeroSection selectedRole={selectedRole} />
               </div>
             </div>
           )}

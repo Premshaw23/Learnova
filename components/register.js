@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [photo, setPhoto] = useState(null);
   const [registeredUser, setRegisteredUser] = useState(null);
+  const [registeredUserImageUrl, setRegisteredUserImageUrl] = useState(null);
   const [error, setError] = useState(null);
   const [emailSuggestion, setEmailSuggestion] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +33,36 @@ export default function RegisterPage() {
     if (user?.email) {
       setEmail(user.email);
     }
-  }, [user]); // Depend on 'user' to run when the auth state changes
+  }, [user]);
+
+  useEffect(() => {
+    if (!registeredUser?._id) return;
+
+    let cancelled = false;
+
+    const loadImage = async () => {
+      try {
+        const token = await user?.getIdToken();
+        const res = await fetch(`/api/images?id=${registeredUser._id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        if (!res.ok || cancelled) return;
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        if (!cancelled) setRegisteredUserImageUrl(url);
+      } catch {
+        // silently fail
+      }
+    };
+
+    loadImage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [registeredUser]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -299,14 +329,11 @@ setEmailSuggestion(null);
                       </div>
                     </div>
 
-                    {registeredUser.image && (
+                    {registeredUser._id && registeredUserImageUrl && (
                       <div className="mt-6">
-                        <NextImage
-                          src={registeredUser.image}
+                        <img
+                          src={registeredUserImageUrl}
                           alt={`${registeredUser.name}'s photo`}
-                          width={400}
-                          height={400}
-                          unoptimized
                           className="w-full h-auto rounded-xl shadow-lg border border-white/10"
                         />
                       </div>

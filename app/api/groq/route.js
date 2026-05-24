@@ -1,192 +1,183 @@
-import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { connectDb } from "@/lib/mongodb";
-import { detectInjection, sanitizeMessage, buildSecureMessages } from "@/utils/promptGuard";
+import { jsonSuccess, jsonError } from "@/lib/api-response";
+import { authenticateRequest } from "@/lib/error-handler";
+import { AppError, ValidationError } from "@/lib/errors";
+import { z } from "zod";
+
+export const dynamic = "force-dynamic";
+
+const GROQ_API_URL =
+  "https://api.groq.com/openai/v1/chat/completions";
+
 import { checkRateLimit } from "@/lib/rateLimit";
 
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MAX_MESSAGE_LENGTH = 2000;
-
-const SYSTEM_PROMPT =
-  "You are Nova, the friendly AI assistant for Learnova - a Smart Student Engagement Ecosystem. You help with questions about attendance automation, smart activities, security features, analytics, and educational technology. Always be helpful, informative, and encouraging. Keep responses concise but comprehensive.";
-
-// Rate limiting setup
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10; // max 10 requests per minute
-
-// Fallback in-memory rate limiter for resilience (e.g. offline dev or DB issues)
-const fallbackRateLimitMap = new Map();
-
-const isRateLimitedFallback = (userId) => {
-  const now = Date.now();
-  if (!fallbackRateLimitMap.has(userId)) {
-    fallbackRateLimitMap.set(userId, [now]);
-    return false;
+const groqSchema = z.object({
+  message: z.string().optional(),
+  userMessage: z.string().optional(),
+}).refine(
+  (data) => {
+    const message = data.message || data.userMessage;
+    return message && message.trim().length > 0;
+  },
+  {
+    message: "Message is required",
   }
-
-  const timestamps = fallbackRateLimitMap.get(userId);
-  const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
-
-  if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
-    fallbackRateLimitMap.set(userId, validTimestamps);
-    return true;
+).refine(
+  (data) => {
+    const message = data.message || data.userMessage;
+    return message && message.trim().length <= 2000;
+  },
+  {
+    message: "Message too long (max 2000 characters)",
   }
+);
 
-  validTimestamps.push(now);
-  fallbackRateLimitMap.set(userId, validTimestamps);
-  return false;
-};
-
-const isRateLimited = async (userId) => {
-  if (!process.env.MONGODB_URI) {
-    return isRateLimitedFallback(userId);
-  }
-
-  try {
-    const db = await connectDb();
-    const rateLimits = db.collection("rate_limits");
-    const now = Date.now();
-
-    const doc = await rateLimits.findOne({ userId });
-    const timestamps = doc?.timestamps || [];
-    const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
-
-    if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
-      // Update DB to prune expired timestamps even when rate limited
-      await rateLimits.updateOne(
-        { userId },
-        { $set: { timestamps: validTimestamps } },
-        { upsert: true }
-      );
-      return true;
-    }
-
-    validTimestamps.push(now);
-    await rateLimits.updateOne(
-      { userId },
-      { $set: { timestamps: validTimestamps } },
-      { upsert: true }
-    );
-    return false;
-  } catch (error) {
-    console.warn(`[Rate Limit] MongoDB distributed rate limiter failed, falling back to in-memory:`, error);
-    return isRateLimitedFallback(userId);
-  }
-};
-
-
-/**
- * Handles incoming chat completions requests using the Groq AI SDK.
- * Secured via Firebase Bearer Token authentication to prevent API resource abuse,
- * billing spikes, and unauthorized client consumption. Includes per-user rate limiting.
- * 
- * @param {Request} request - The incoming HTTP POST request.
- * @returns {Promise<Response>} JSON response containing completion results or an error payload.
- */
 export async function POST(request) {
   try {
-    const authorization = request.headers.get("authorization");
-    const token = authorization?.split(" ")[1];
+    const decodedToken =
+      await authenticateRequest(request);
 
-    const authResult = await verifyFirebaseToken(token);
-
-    if (!authResult.valid) {
+    // Rate limiting
+    const rateLimitResult = await checkRateLimit(decodedToken.uid);
+    if (!rateLimitResult.allowed) {
       return jsonError(
-        { message: "Unauthorized", reason: authResult.reason },
-        401
+        "Too many requests. Please try again later.",
+        429
       );
     }
 
-    const decodedToken = authResult.decodedToken;
+    // Parse body
+    const body = await request.json();
 
-
-    // Rate limiting per authenticated user (persisted across cold starts)
-    const rateLimit = await checkRateLimit(decodedToken.uid);
-    if (!rateLimit.allowed) {
-      return jsonError("Too many requests. Please try again later.", 429);
+    const validation = groqSchema.safeParse(body);
+    if (!validation.success) {
+      const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+      throw new ValidationError(firstError);
     }
 
-    // Usage logging with user ID for audit/quota tracking
+    const rawMessage =
+      validation.data.message ||
+      validation.data.userMessage;
 
-    const { message, userMessage } = await request.json();
-    const rawMessage = typeof message === "string" ? message : userMessage;
-    const trimmedMessage = rawMessage?.trim();
+    const trimmedMessage = rawMessage.trim();
 
-    if (!trimmedMessage) {
-      return jsonError("Message is required", 400);
-    }
+    // API key
+    const apiKey =
+      process.env.GROQ_API_KEY;
 
-    if (trimmedMessage.length > MAX_MESSAGE_LENGTH) {
-      return jsonError("Message is too long", 400);
-    }
-
-    const { isInjection, matchedPattern } = detectInjection(trimmedMessage);
-    if (isInjection) {
-      console.warn(`[nova-prompt-guard] Injection attempt detected from UID: ${decodedToken.uid}, pattern: ${matchedPattern}`);
-      return jsonError("Your message contains content that violates usage policies. Please rephrase your question.", 400);
-    }
-
-    const cleanMessage = sanitizeMessage(trimmedMessage);
-    if (!cleanMessage) {
-      return jsonError("Message is required", 400);
-    }
-
-    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      return jsonError("Groq API key is not configured", 500);
+      throw new AppError(
+        "Groq API key is not configured",
+        500
+      );
     }
 
-    const timeoutMs = parseInt(process.env.GROQ_TIMEOUT || "30000", 10) || 30000;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    // Timeout setup
+    const timeoutMs = parseInt(
+      process.env.GROQ_TIMEOUT || "30000",
+      10
+    );
 
-    const messages = buildSecureMessages(cleanMessage, SYSTEM_PROMPT);
+    const controller =
+      new AbortController();
+
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      timeoutMs
+    );
 
     let response;
+
     try {
-      response = await fetch(GROQ_API_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages,
-          max_tokens: 400,
-          temperature: 0.7,
-        }),
-      });
+      response = await fetch(
+        GROQ_API_URL,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type":
+              "application/json",
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: "llama-3.1-8b-instant",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are Nova, the friendly AI assistant for Learnova - a Smart Student Engagement Ecosystem.",
+              },
+              {
+                role: "user",
+                content: trimmedMessage,
+              },
+            ],
+            max_tokens: 400,
+            temperature: 0.7,
+          }),
+        }
+      );
     } finally {
       clearTimeout(timeoutId);
     }
 
+    // Handle API errors
     if (!response.ok) {
-      const errorBody = await response.json().catch((error) => {
-        console.error("Error:", error);
-        return { error: "Something went wrong" };
-      });
+      const errorData =
+        await response
+          .json()
+          .catch(() => ({}));
+
       return jsonError(
-        errorBody?.error?.message || "Groq request failed",
-        response.status,
+        errorData?.error?.message ||
+          "Groq API request failed",
+        response.status
       );
     }
 
+    // Parse response
     const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
+
+    const content =
+      data?.choices?.[0]?.message
+        ?.content;
 
     if (!content) {
-      return jsonError("Groq response was empty", 502);
+      return jsonError(
+        "AI generated an empty response",
+        502
+      );
     }
 
-    return jsonSuccess({ message: content });
+    console.log(
+      `[nova-ai-quota-tracker] Success for ${decodedToken.uid}`
+    );
+
+    return jsonSuccess({
+      message: content,
+    });
   } catch (error) {
-    if (error.name === "AbortError") {
-      console.error("Groq API request timed out:", error);
-      return jsonError("Gateway Timeout: Groq did not respond in time.", 504);
+    if (error instanceof AppError) {
+      return jsonError(
+        error.message,
+        error.statusCode
+      );
     }
-    console.error("Groq API route error:", error);
-    return jsonError("Internal server error", 500);
+
+    if (error.name === "AbortError") {
+      return jsonError(
+        "Gateway Timeout: AI response took too long.",
+        504
+      );
+    }
+
+    console.error(
+      "Groq API route error:",
+      error
+    );
+
+    return jsonError(
+      "Internal server error",
+      500
+    );
   }
 }

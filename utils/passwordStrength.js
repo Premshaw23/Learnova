@@ -28,22 +28,21 @@ export function getPasswordStrength(password = "") {
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
-  let label = "Weak";
-  let barClass = "bg-red-500";
-  let textClass = "text-red-400";
-  let widthClass = "w-1/3";
+  let levelIndex = 0;
+  let widthClass = "w-1/4";
 
-  if (score >= 4) {
-    label = "Strong";
-    barClass = "bg-green-500";
-    textClass = "text-green-400";
+  if (score === 5) {
+    levelIndex = 3;
     widthClass = "w-full";
-  } else if (score >= 2) {
-    label = "Medium";
-    barClass = "bg-yellow-500";
-    textClass = "text-yellow-400";
-    widthClass = "w-2/3";
+  } else if (score >= 3) {
+    levelIndex = 2;
+    widthClass = "w-3/4";
+  } else if (score === 2) {
+    levelIndex = 1;
+    widthClass = "w-2/4";
   }
 
-  return { score, label, barClass, textClass, widthClass };
+  const level = STRENGTH_LEVELS[levelIndex];
+
+  return { score, label: level.label, barClass: level.barClass, textClass: level.textClass, widthClass };
 }

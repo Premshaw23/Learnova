@@ -11,8 +11,8 @@ import {
   where,
 } from "firebase/firestore";
 
-export function getWeekdaysSinceYearStart() {
-  const start = new Date(new Date().getFullYear(), 0, 1);
+export function getWeekdaysSince(startDate) {
+  const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
   const end = new Date();
   let weekdays = 0;
 
@@ -37,19 +37,19 @@ export function getWeekdaysSinceYearStart() {
 export const initializeUserStats = async (userId) => {
   if (!userId) return;
   const statsRef = doc(db, "userStats", userId);
-  
+
   const defaultStats = {
     "Courses Enrolled": 0,
     "Attendance Rate": "0%",
     "Assignments Done": 0,
     "Study Hours": 0,
-    lastUpdated: new Date()
+    lastUpdated: new Date(),
   };
 
   try {
     await setDoc(statsRef, defaultStats);
   } catch (error) {
-    console.error("Error initializing stats:", error);
+    // Error initializing stats
   }
 };
 
@@ -70,17 +70,17 @@ export const updateUserStat = async (userId, statField, value = 1) => {
 
   try {
     const statsSnap = await getDoc(statsRef);
-    
+
     if (!statsSnap.exists()) {
       await initializeUserStats(userId);
     }
 
     await updateDoc(statsRef, {
       [statField]: increment(value),
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     });
   } catch (error) {
-    console.error(`Error updating ${statField}:`, error);
+    // Error updating stat field
   }
 };
 
@@ -102,7 +102,7 @@ export const recalculateAttendanceRate = async (userId) => {
   const statsRef = doc(db, "userStats", userId);
   const attendanceQuery = query(
     collection(db, "attendance_records"),
-    where("userId", "==", userId)
+    where("userId", "==", userId),
   );
 
   try {
@@ -113,7 +113,16 @@ export const recalculateAttendanceRate = async (userId) => {
 
     const countSnapshot = await getCountFromServer(attendanceQuery);
     const presentDays = countSnapshot.data().count;
-    const totalDays = getWeekdaysSinceYearStart();
+
+    const userSnap = await getDoc(doc(db, "users", userId));
+    let startDate = new Date(new Date().getFullYear(), 0, 1);
+    if (userSnap.exists() && userSnap.data().createdAt) {
+      // createdAt might be a Firestore Timestamp or a string
+      const createdAt = userSnap.data().createdAt;
+      startDate = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
+    }
+
+    const totalDays = getWeekdaysSince(startDate);
     const rate = Math.min(100, Math.round((presentDays / totalDays) * 100));
 
     await updateDoc(statsRef, {
@@ -124,65 +133,6 @@ export const recalculateAttendanceRate = async (userId) => {
 
     return rate;
   } catch (error) {
-    console.error("Error recalculating attendance rate:", error);
     throw error;
-  }
-};
-
-/**
- * Checks if a user's attendance rate is below 75% and sends an email alert using EmailJS.
- * Prevents spamming by checking `lastLowAttendanceAlertSentAt` (7-day cooldown).
- * @param {string} userId - The Firebase Auth user ID.
- * @param {string} studentName - The student's name.
- * @param {string} studentEmail - The student's email address.
- * @param {number} currentRate - The newly calculated attendance rate.
- * @returns {Promise<boolean>} True if an email was sent, false otherwise.
- */
-export const checkAndSendAttendanceAlert = async (userId, studentName, studentEmail, currentRate) => {
-  if (!userId || currentRate >= 75 || !studentEmail) return false;
-
-  const statsRef = doc(db, "userStats", userId);
-  
-  try {
-    const statsSnap = await getDoc(statsRef);
-    if (!statsSnap.exists()) return false;
-
-    const data = statsSnap.data();
-    const lastAlertSentAt = data.lastLowAttendanceAlertSentAt?.toDate();
-
-    // 7-day cooldown
-    if (lastAlertSentAt) {
-      const daysSinceLastAlert = (new Date() - lastAlertSentAt) / (1000 * 60 * 60 * 24);
-      if (daysSinceLastAlert < 7) {
-        return false;
-      }
-    }
-
-    // Import emailjs dynamically or statically. Since this runs on client, we can dynamically import it to avoid bundle bloat
-    const emailjs = (await import("@emailjs/browser")).default;
-
-    // Send the email
-    await emailjs.send(
-      process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-      process.env.NEXT_PUBLIC_EMAILJS_ALERT_TEMPLATE_ID,
-      {
-        to_name: studentName,
-        to_email: studentEmail,
-        attendance_rate: currentRate,
-        message: `Your current attendance rate has dropped to ${currentRate}%. Please ensure you attend future classes to maintain a healthy attendance record.`
-      },
-      process.env.NEXT_PUBLIC_EMAILJS_USER_ID
-    );
-
-    // Update the cooldown timestamp
-    await updateDoc(statsRef, {
-      lastLowAttendanceAlertSentAt: new Date(),
-      lastUpdated: new Date(),
-    });
-
-    return true;
-  } catch (error) {
-    console.error("Error sending low attendance alert:", error);
-    return false;
   }
 };

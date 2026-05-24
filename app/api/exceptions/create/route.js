@@ -1,39 +1,50 @@
 import { connectDb } from "@/lib/mongodb";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { requireStudent } from "@/lib/rbac";
+import { withErrorHandler } from "@/lib/error-handler";
+import { jsonSuccess } from "@/lib/api-response";
+import { NextResponse } from "next/server";
+import { ValidationError } from "@/lib/errors";
+import { z } from "zod";
 
-export async function POST(request) {
-  try {
-    const authorization = request.headers.get("authorization");
-    const token = authorization?.split(" ")[1];
+export const dynamic = "force-dynamic";
 
-    const authResult = await verifyFirebaseToken(token);
+const exceptionCreateSchema = z.object({
+  reason: z
+    .string({
+      required_error: "Reason is required",
+      invalid_type_error: "Reason must be a string",
+    })
+    .trim()
+    .min(1, "Reason is required")
+    .max(200, "Reason must be under 200 characters"),
+  details: z
+    .string({
+      required_error: "Details are required",
+      invalid_type_error: "Details must be a string",
+    })
+    .trim()
+    .min(1, "Details are required")
+    .max(1000, "Details must be under 1000 characters"),
+  date: z
+    .string({
+      required_error: "Date is required",
+      invalid_type_error: "Date must be a string",
+    })
+    .trim()
+    .min(1, "Date is required"),
+});
 
-    if (!authResult.valid) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: authResult.reason,
-        },
-        { status: 401 }
-      );
-    }
-
-    const decodedToken = authResult.decodedToken;
-
-
-    const body = await request.json();
-    const { reason, details, date } = body;
-
-    if (!reason || typeof reason !== "string" || reason.trim() === "") {
-      return jsonError("Reason is required and must be a string", 400);
-    }
-    if (!details || typeof details !== "string" || details.trim() === "") {
-      return jsonError("Details are required and must be a string", 400);
-    }
-    if (!date || typeof date !== "string" || date.trim() === "") {
-      return jsonError("Date is required and must be a string", 400);
-    }
+export const POST = withErrorHandler(async (request) => {
+  const { payload: decodedToken } = await requireStudent(request);
+  const body = await request.json();
+  
+  const validation = exceptionCreateSchema.safeParse(body);
+  if (!validation.success) {
+    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+    throw new ValidationError(firstError);
+  }
+  
+  const { reason, details, date } = validation.data;
 
     const db = await connectDb();
 
@@ -56,8 +67,4 @@ export async function POST(request) {
       },
       201,
     );
-  } catch (error) {
-    console.error("Exception creation error:", error);
-    return jsonError("Internal server error", 500);
-  }
-}
+});

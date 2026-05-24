@@ -1,43 +1,32 @@
 ---
 name: 🐛 Bug Report
-about: Report a bug or unexpected behaviour in Learnova
-title: "[Bug]: "
-labels: ["bug", "needs-triage"]
+about: Create a report to help us improve and fix errors.
+title: "[BUG] "
+labels: ["bug", "triage"]
 assignees: ""
 ---
 
 ## 🐛 Describe the Bug
+A clear and concise description of what the bug is.
 
-<!-- A clear and concise description of what the bug is. -->
-
-## 🔁 Steps to Reproduce
-
+## 🚶 Steps to Reproduce
+Steps to reproduce the behavior:
 1. Go to '...'
 2. Click on '...'
 3. Scroll down to '...'
 4. See error
 
-## ✅ Expected Behaviour
+## 🎯 Expected Behavior
+A clear and concise description of what you expected to happen.
 
-<!-- What you expected to happen. -->
+## 📸 Screenshots / Recordings
+If applicable, add screenshots or screen recordings to help explain your problem.
 
-## ❌ Actual Behaviour
+## 💻 Environment
+- **Browser & Version:** [e.g., Chrome 124, Safari 17]
+- **Device:** [e.g., MacBook Pro, iPhone 15]
+- **OS:** [e.g., macOS Sonoma, iOS 17, Windows 11]
+- **Environment:** [e.g., Local Dev, Staging, Production]
 
-<!-- What actually happened. Include error messages or screenshots if possible. -->
-
-## 📸 Screenshots / Screen Recording
-
-<!-- If applicable, add screenshots or a screen recording to help explain the problem. -->
-
-## 🌍 Environment
-
-| Detail | Value |
-|--------|-------|
-| Browser | e.g. Chrome 123, Safari 17 |
-| OS | e.g. macOS 14, Windows 11, Android 14 |
-| Device | e.g. Desktop, iPhone 15 |
-| Learnova version / commit | e.g. main @ abc1234 |
-
-## 📋 Additional Context
-
-<!-- Add any other context about the problem here. -->
+## 📝 Additional Context
+Add any other context about the problem here (e.g., terminal stack traces, console logs, network response details).

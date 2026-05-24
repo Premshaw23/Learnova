@@ -3,12 +3,12 @@ import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebaseConfig";
 import {
   sendEmailVerification,
-  onAuthStateChanged,
   reload,
   signOut,
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
+import { useAuthContext } from "@/contexts/AuthContext";
 import {
   Mail,
   CheckCircle,
@@ -19,29 +19,35 @@ import {
 } from "lucide-react";
 
 export default function EmailVerificationPage() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, userProfile, loading: authLoading } = useAuthContext();
   const [isSending, setIsSending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [message, setMessage] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const router = useRouter();
 
+  const getDashboardLink = (role) => {
+    if (!role) return "/profile";
+    switch (role) {
+      case "student": return "/student/dashboard";
+      case "teacher": return "/teacher/dashboard";
+      case "institute": return "/institute/dashboard";
+      case "admin": return "/admin/dashboard";
+      default: return "/profile";
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        if (currentUser.emailVerified) {
-          router.push("/profile");
+    if (!authLoading) {
+      if (user) {
+        if (user.emailVerified) {
+          router.push(getDashboardLink(userProfile?.role));
         }
       } else {
         router.push("/auth");
       }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [router]);
+    }
+  }, [user, userProfile, authLoading, router]);
 
   useEffect(() => {
     let interval;
@@ -62,11 +68,10 @@ export default function EmailVerificationPage() {
     try {
       await sendEmailVerification(user);
       setMessage(
-        "Verification email sent! Please check your inbox and spam folder."
+        "Verification email sent! Please check your inbox and spam folder.",
       );
       setResendCooldown(60); // 60 second cooldown
     } catch (error) {
-      console.error("Error sending verification email:", error);
       setMessage("Failed to send verification email. Please try again.");
     } finally {
       setIsSending(false);
@@ -86,15 +91,14 @@ export default function EmailVerificationPage() {
         await user.getIdToken(true);
         setMessage("Email verified successfully! Redirecting...");
         setTimeout(() => {
-          router.push("/profile");
+          router.push(getDashboardLink(userProfile?.role));
         }, 2000);
       } else {
         setMessage(
-          "Email not verified yet. Please check your inbox and click the verification link."
+          "Email not verified yet. Please check your inbox and click the verification link.",
         );
       }
     } catch (error) {
-      console.error("Error checking verification:", error);
       setMessage("Failed to check verification status. Please try again.");
     } finally {
       setIsChecking(false);
@@ -106,7 +110,7 @@ export default function EmailVerificationPage() {
       await signOut(auth);
       router.push("/auth");
     } catch (error) {
-      console.error("Error signing out:", error);
+      // Silently handle sign out errors
     }
   };
 
@@ -114,7 +118,7 @@ export default function EmailVerificationPage() {
     router.push("/auth");
   };
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
         <div className="flex items-center gap-3 text-white">
@@ -166,9 +170,9 @@ export default function EmailVerificationPage() {
                     message.includes("successfully") || message.includes("sent")
                       ? "bg-green-900/50 border-green-700/50 text-green-300"
                       : message.includes("Failed") ||
-                        message.includes("not verified")
-                      ? "bg-yellow-900/50 border-yellow-700/50 text-yellow-300"
-                      : "bg-blue-900/50 border-blue-700/50 text-blue-300"
+                          message.includes("not verified")
+                        ? "bg-yellow-900/50 border-yellow-700/50 text-yellow-300"
+                        : "bg-blue-900/50 border-blue-700/50 text-blue-300"
                   }`}
                 >
                   <p className="text-sm">{message}</p>

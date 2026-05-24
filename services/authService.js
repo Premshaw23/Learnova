@@ -7,7 +7,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   signOut,
-  
+  deleteUser,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import {
@@ -36,7 +36,7 @@ export const loginWithEmail = async (email, password, selectedRole) => {
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email.trim(),
-      password
+      password,
     );
     const user = userCredential.user;
 
@@ -72,7 +72,6 @@ export const loginWithEmail = async (email, password, selectedRole) => {
       return { success: false, needsProfile: true };
     }
   } catch (err) {
-    console.error("Login error:", err);
     return {
       success: false,
       error:
@@ -97,7 +96,7 @@ export const signupWithEmail = async (
   email,
   password,
   selectedRole,
-  additionalData
+  additionalData,
 ) => {
   try {
     if (!auth || !db) {
@@ -112,19 +111,24 @@ export const signupWithEmail = async (
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email.trim(),
-      password
+      password,
     );
     const user = userCredential.user;
 
-    // Create user profile with role
-    await createUserProfile(user, selectedRole, additionalData);
+    try {
+      // Create user profile with role
+      await createUserProfile(user, selectedRole, additionalData);
 
-    // Send verification email to new users
-    await sendEmailVerification(user);
+      // Send verification email to new users
+      await sendEmailVerification(user);
 
-    return { success: true, needsVerification: true };
+      return { success: true, needsVerification: true };
+    } catch (profileError) {
+      // Clean up the orphaned user account if profile creation fails
+      await deleteUser(user).catch(() => {});
+      throw profileError;
+    }
   } catch (err) {
-    console.error("Signup error:", err);
     return {
       success: false,
       error:
@@ -147,7 +151,7 @@ export const signupWithEmail = async (
 export const loginWithGoogle = async (
   selectedRole,
   isLogin,
-  additionalData = {}
+  additionalData = {},
 ) => {
   try {
     if (!auth || !db) {
@@ -174,7 +178,7 @@ export const loginWithGoogle = async (
         // New Google user signing up - create profile with selected role
         const nameToUse = user.displayName || additionalData.fullName?.trim();
         if (!nameToUse) {
-          // ✅ modular style
+          await deleteUser(user).catch(() => {});
           await signOut(auth);
           return {
             success: false,
@@ -182,10 +186,15 @@ export const loginWithGoogle = async (
           };
         }
 
-        await createUserProfile(user, selectedRole, {
-          ...additionalData,
-          fullName: nameToUse,
-        });
+        try {
+          await createUserProfile(user, selectedRole, {
+            ...additionalData,
+            fullName: nameToUse,
+          });
+        } catch (profileError) {
+          await deleteUser(user).catch(() => {});
+          throw profileError;
+        }
 
         // Email is already verified with Google
         return { success: true, userData: { role: selectedRole } };
@@ -215,7 +224,6 @@ export const loginWithGoogle = async (
 
     return { success: true, userData: userData || { role: selectedRole } };
   } catch (err) {
-    console.error("Google auth error:", err);
     return {
       success: false,
       error:
@@ -229,7 +237,73 @@ export const loginWithGoogle = async (
 };
 
 /**
- * Sends a password reset email to the user.
+ * Validates and checks client-side rate limits for password reset requests.
+ * @param {string} email - The target email address.
+ * @returns {Object} Validation result { allowed: boolean, error?: string }
+ */
+const checkClientRateLimit = (email) => {
+  if (typeof window === "undefined") {
+    return { allowed: true };
+  }
+
+  try {
+    const now = Date.now();
+    const emailKey = `pw_reset_limit_${email}`;
+    const globalKey = `pw_reset_limit_global`;
+    const windowMs = 15 * 60 * 1000; // 15 minutes window
+    const maxEmailRequests = 3;
+    const maxGlobalRequests = 5;
+
+    // 1. Check Global Limit
+    const globalDataStr = localStorage.getItem(globalKey);
+    let globalData = globalDataStr ? JSON.parse(globalDataStr) : null;
+    if (globalData && now - globalData.firstRequest < windowMs) {
+      if (globalData.count >= maxGlobalRequests) {
+        const timeLeft = Math.ceil((globalData.firstRequest + windowMs - now) / 1000 / 60);
+        return {
+          allowed: false,
+          error: `Too many password reset requests from this browser. Please try again in ${timeLeft} minutes.`,
+        };
+      }
+    }
+
+    // 2. Check Per-Email Limit
+    const emailDataStr = localStorage.getItem(emailKey);
+    let emailData = emailDataStr ? JSON.parse(emailDataStr) : null;
+    if (emailData && now - emailData.firstRequest < windowMs) {
+      if (emailData.count >= maxEmailRequests) {
+        const timeLeft = Math.ceil((emailData.firstRequest + windowMs - now) / 1000 / 60);
+        return {
+          allowed: false,
+          error: `Too many password reset requests for this email. Please try again in ${timeLeft} minutes.`,
+        };
+      }
+    }
+
+    // Update global counter
+    if (!globalData || now - globalData.firstRequest >= windowMs) {
+      localStorage.setItem(globalKey, JSON.stringify({ count: 1, firstRequest: now }));
+    } else {
+      globalData.count += 1;
+      localStorage.setItem(globalKey, JSON.stringify(globalData));
+    }
+
+    // Update email counter
+    if (!emailData || now - emailData.firstRequest >= windowMs) {
+      localStorage.setItem(emailKey, JSON.stringify({ count: 1, firstRequest: now }));
+    } else {
+      emailData.count += 1;
+      localStorage.setItem(emailKey, JSON.stringify(emailData));
+    }
+
+    return { allowed: true };
+  } catch (e) {
+    return { allowed: true }; // Fallback if localStorage is disabled/fails
+  }
+};
+
+/**
+ * Sends a password reset email to the user with client-side rate limiting.
  * @param {string} email - The user's email address.
  * @returns {Promise<Object>} Result of the password reset request.
  */
@@ -239,10 +313,15 @@ export const resetPassword = async (email) => {
       return { success: false, error: FIREBASE_CONFIG_ERROR };
     }
 
-    await sendPasswordResetEmail(auth, email);
+    const sanitizedEmail = email.trim().toLowerCase();
+    const rateLimitCheck = checkClientRateLimit(sanitizedEmail);
+    if (!rateLimitCheck.allowed) {
+      return { success: false, error: rateLimitCheck.error };
+    }
+
+    await sendPasswordResetEmail(auth, sanitizedEmail);
     return { success: true };
   } catch (err) {
-    console.error("Password reset error:", err);
     return {
       success: false,
       error:
