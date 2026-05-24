@@ -7,6 +7,7 @@ import {
 
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
+import { escapeRegex } from "@/utils/mongoUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -47,14 +48,15 @@ export const GET = withErrorHandler(async (request) => {
     // Authentication and Role Verification
     await requireRole(request, ["admin", "teacher"]);
 
-    // Search query
+    // Search query — escape metacharacters to prevent ReDoS
     const { searchParams } =
       new URL(request.url);
 
+    const rawSearch =
+      searchParams.get("search") || "";
+
     const search =
-      searchParams.get(
-        "search"
-      );
+      escapeRegex(rawSearch);
 
     const query = search
       ? {

@@ -16,6 +16,7 @@ import PageTransition from "@/components/PageTransition";
 import ScrollToTop from "@/components/ScrollToTop";
 import BackToTop from "@/components/BackToTop";
 import OfflineIndicator from "@/components/OfflineIndicator";
+import NextTopLoader from "nextjs-toploader";
 
 
 const geistSans = Geist({
@@ -244,6 +245,17 @@ export default function RootLayout({ children }) {
           {/* Cursor glow removed per UX preference */}
           
         <ThemeProvider>
+          <NextTopLoader
+            color="#4f46e5"
+            initialPosition={0.08}
+            crawlSpeed={200}
+            height={3}
+            crawl={true}
+            showSpinner={false}
+            easing="ease"
+            speed={200}
+            shadow="0 0 10px #4f46e5,0 0 5px #4f46e5"
+          />
           <AuthProvider>
             <NotificationProvider>
               <Suspense fallback={null}>
