@@ -15,8 +15,8 @@ export const PUT = withErrorHandler(async (request) => {
   const body = await request.json();
   const { exceptionId, status, comments } = body;
 
-  if (!exceptionId) {
-    throw new ValidationError("exceptionId is required");
+  if (!exceptionId || !ObjectId.isValid(exceptionId)) {
+    throw new ValidationError("Invalid or missing exceptionId parameter");
   }
 
   if (!ObjectId.isValid(exceptionId)) {
