@@ -69,13 +69,13 @@ const StudentDashboard = () => {
   const [gamificationData, setGamificationData] = useState(null);
   const [viewMode, setViewMode] = useState("heatmap");
 
-  // Mock attendance stats
-  const attendanceStats = {
+  // State for attendance stats
+  const [attendanceStats, setAttendanceStats] = useState({
     present: 18,
     absent: 2,
     late: 1,
     percentage: 92,
-  };
+  });
 
   const attendancePerformance = {
     attendancePercentage: attendanceStats.percentage,
