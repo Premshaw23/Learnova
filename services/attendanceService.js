@@ -1,10 +1,6 @@
 import {
   collection,
-<<<<<<< Updated upstream
-  addDoc,
-=======
   doc,
->>>>>>> Stashed changes
   getDocs,
   query,
   runTransaction,
@@ -16,6 +12,8 @@ import {
 import { db } from "@/lib/firebaseConfig";
 
 import { recalculateAttendanceRate } from "./statsService";
+import { saveToOutbox } from "@/lib/offlineStore";
+import { registerBackgroundSync } from "@/lib/syncService";
 
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -76,23 +74,6 @@ export async function recordAttendance({
     throw new Error("Attendance cannot be saved without a signed-in user.");
   }
 
-<<<<<<< Updated upstream
-  if (await hasCheckedInToday(userId)) {
-    return { alreadyRecorded: true };
-  }
-
-  await addDoc(collection(db, "attendance_records"), {
-    userId,
-    studentName,
-    email,
-    timestamp: serverTimestamp(),
-    date: getTodayKey(),
-    status: "present",
-    confidenceScore: confidenceScore ?? 0,
-  });
-
-  await recalculateAttendanceRate(userId);
-=======
   const todayKey = getTodayKey();
 
   // INTERCEPT OFFLINE SUBMISSIONS
@@ -140,7 +121,6 @@ export async function recordAttendance({
   }
 
   const newRate = await recalculateAttendanceRate(userId);
->>>>>>> Stashed changes
 
-  return { alreadyRecorded: false };
+  return { alreadyRecorded: false, newRate };
 }
