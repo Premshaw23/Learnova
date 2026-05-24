@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
+import { useAuthContext } from "@/contexts/AuthContext";
+
 // ---------------------------------------------------------------------------
 // Constants — swap out with your real import if you have one:
 // import { CONTACT_INFO } from '../constants/contact';
@@ -189,7 +191,7 @@ const markdownComponents = {
 // ---------------------------------------------------------------------------
 // Bot response logic
 // ---------------------------------------------------------------------------
-async function generateBotResponse(userMessage, currentCategory) {
+async function generateBotResponse(userMessage, currentCategory, idToken) {
   const lower = userMessage.toLowerCase();
 
   // Greetings
@@ -239,9 +241,13 @@ async function generateBotResponse(userMessage, currentCategory) {
 
   // Try API
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (idToken) {
+      headers["Authorization"] = `Bearer ${idToken}`;
+    }
     const response = await fetch("/api/groq", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ message: userMessage, category: currentCategory }),
     });
 
@@ -276,6 +282,9 @@ async function saveConversation(userText, botText) {
 // Main component
 // ---------------------------------------------------------------------------
 const LearnovaChatbot = () => {
+  // Get the Firebase user object so we can fetch a fresh ID token per request
+  const { user } = useAuthContext();
+
   const INITIAL_MESSAGE = {
     id: 1,
     text: "Hello! I'm Nova, your AI assistant for Learnova — the Smart Student Engagement Ecosystem! I can help you with attendance management, smart activities, security features, analytics, and more. What would you like to know?",
@@ -294,7 +303,13 @@ const LearnovaChatbot = () => {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // Auto-scroll
+  useEffect(() => {
+    if (!inputMessage && textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  }, [inputMessage]);
+
+  // Auto scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -336,7 +351,12 @@ const LearnovaChatbot = () => {
 
       let botText = "";
       try {
-        botText = await generateBotResponse(text, currentCategory);
+        if (!user) {
+          botText = "**Please sign in** to use the AI chatbot.";
+        } else {
+          const idToken = await user.getIdToken();
+          botText = await generateBotResponse(text, currentCategory, idToken);
+        }
       } catch {
         botText = `I apologize for the technical difficulty. Our team is here to help:\n\n📧 **Email:** ${CONTACT_INFO.email}\n📞 **Phone:** ${CONTACT_INFO.phone}\n🎯 **Live Demo:** ${CONTACT_INFO.demo}`;
       }
@@ -353,7 +373,7 @@ const LearnovaChatbot = () => {
 
       await saveConversation(text, botText);
     },
-    [inputMessage, isLoading, currentCategory]
+    [inputMessage, isLoading, currentCategory, user]
   );
 
   const handleKeyDown = (e) => {
@@ -479,7 +499,9 @@ const LearnovaChatbot = () => {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.isBot ? "justify-start" : "justify-end"}`}
+                className={`flex animate-fadeIn ${
+  message.isBot ? "justify-start" : "justify-end"
+}`}
               >
                 <div className={`flex max-w-[85%] items-end gap-2 ${message.isBot ? "flex-row" : "flex-row-reverse"}`}>
                   {/* Avatar */}
@@ -542,7 +564,12 @@ const LearnovaChatbot = () => {
                         />
                       ))}
                     </div>
-                    <span className={`text-xs ${t.dot}`}>Nova is thinking…</span>
+                    <span
+                      className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                    >
+                      Analyzing your question...
+                    </span>
                   </div>
                 </div>
               </div>

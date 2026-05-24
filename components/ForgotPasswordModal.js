@@ -11,9 +11,16 @@ export default function ForgotPasswordModal({
   isLoading = false,
 }) {
   const [email, setEmail] = useState(initialEmail);
+  const [localError, setLocalError] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setLocalError("");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setLocalError("Please enter a valid email address.");
+      return;
+    }
     onSubmit(email.trim());
   };
 
@@ -70,12 +77,15 @@ export default function ForgotPasswordModal({
                 type="email"
                 placeholder="name@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setLocalError("");
+                }}
                 className="w-full px-4 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 text-white placeholder-slate-500 text-sm transition-all duration-300 focus:outline-none"
                 required
               />
             </div>
-            {error && <p className="text-red-400 text-xs mt-2 font-medium">{error}</p>}
+            {(localError || error) && <p className="text-red-400 text-xs mt-2 font-medium">{localError || error}</p>}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">

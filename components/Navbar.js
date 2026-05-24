@@ -65,7 +65,21 @@ export function Navbar() {
   const dropdownRef = useRef(null);
   const langRef = useRef(null); // Ref to track language dropdown outside clicks
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [prefersDark, setPrefersDark] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = localStorage.getItem("theme");
+      if (saved === "light") return false;
+      if (saved === "dark") return true;
+      return (
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+      );
+    } catch (e) {
+      return null;
+    }
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -203,17 +217,38 @@ export function Navbar() {
     }
   };
 
+  const scrollProgressValue =
+  Number.isFinite(scrollProgress)
+    ? scrollProgress
+    : 0;
+  
   return (
     <>
-      <div className="fixed w-full top-0 left-0 right-0 z-[70] px-4 sm:px-6 lg:px-8 pt-4 transition-all duration-300">
-        <nav
-          className={`max-w-7xl mx-auto backdrop-blur-md rounded-2xl border transition-all duration-300 ${
-            scrollProgress > 0 
-              ? "bg-white/90 dark:bg-zinc-950/70 shadow-lg shadow-gray-200/80 dark:shadow-black/30 border-gray-200 dark:border-zinc-800/60 py-2 px-6" 
-              : "bg-white/95 dark:bg-zinc-950/40 shadow-md shadow-gray-100/60 dark:shadow-none border-gray-200/70 dark:border-zinc-900/40 py-3.5 px-6"
-          }`}
-        >
-          <div className="flex justify-between items-center h-14">
+      {/* Background Dimming Layer on Scroll */}
+      <div
+        className="fixed w-full top-0 z-[60] h-24 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300"
+        style={{ opacity: 1 - scrollProgressValue * 0.5 }}
+      />
+
+      {/* Main Navbar */}
+      <nav
+        className="fixed w-full top-0 left-0 right-0 z-[70] transition-all duration-300 ease-out"
+        style={{
+          // Use resolved theme when mounted; otherwise fall back to system preference
+          backgroundColor:
+            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
+              ? `rgba(0,0,0,${0.82 + scrollProgressValue * 0.12})`
+              : `rgba(255,255,255,0.98)`,
+          backdropFilter: `blur(20px)`,
+          WebkitBackdropFilter: `blur(20px)`,
+          borderBottom:
+            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
+              ? `1px solid rgba(255,255,255,0.1)`
+              : `1px solid rgba(0,0,0,0.08)`,
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="flex justify-between items-center h-16">
             
             {/* Logo Group */}
             <Link href="/" className="flex items-center space-x-3 group">
@@ -240,8 +275,8 @@ export function Navbar() {
                     href={item.href}
                     className={`text-sm font-bold tracking-wide px-5 py-2 rounded-xl transition-all duration-200 ${
                       isActive
-                        ? "bg-white dark:bg-zinc-800 text-blue-600 dark:text-white shadow-sm"
-                        : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+                        ? "bg-accent/20 text-gray-950 dark:text-white font-medium"
+                        : "text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10"
                     }`}
                   >
                     {item.label}
@@ -262,8 +297,14 @@ export function Navbar() {
                 >
                   <Languages className="h-4 w-4 text-zinc-400" />
                   <span className="hidden md:inline">{currentLang}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 style={{ transform: isLangOpen ? 'rotate(180deg)' : 'none' }}" />
-                </button>
+               <ChevronDown
+  className="h-3.5 w-3.5 text-zinc-400 transition-transform duration-200"
+  style={{
+    transform: isLangOpen
+      ? "rotate(180deg)"
+      : "none",
+  }}
+/></button>
 
                 {isLangOpen && (
                   <div className="absolute right-0 mt-2 w-36 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-[80]">
@@ -291,7 +332,7 @@ export function Navbar() {
               {mounted && (
                 <button
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors border border-zinc-200/40 dark:border-zinc-800/50"
+                  className="p-2 rounded-xl text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
                   aria-label="Toggle theme"
                 >
                   {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -305,7 +346,8 @@ export function Navbar() {
                   <div className="relative">
                     <button
                       onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                      className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                      className="relative p-2 rounded-xl text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
+                      aria-label="View notifications"
                     >
                       <Bell className="h-5 w-5" />
                       {unreadCount > 0 && <span className="absolute top-2 right-2 bg-red-500 rounded-full h-2 w-2" />}
@@ -338,8 +380,14 @@ export function Navbar() {
 
                   {/* Profile Dropdown */}
                   <div className="relative" ref={dropdownRef}>
-                    <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center space-x-2 p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-                      <div className="relative w-8 h-8">
+                    <button
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="flex items-center space-x-3 p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
+                      aria-label="User profile menu"
+                      aria-haspopup="true"
+                      aria-expanded={isDropdownOpen}
+                    >
+                      <div className="relative w-10 h-10">
                         {getUserPhoto() ? (
                           <Image src={getUserPhoto()} alt="Profile" width={32} height={32} className="rounded-full object-cover" onError={handleImageError} />
                         ) : (
@@ -383,16 +431,22 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Responsive Mobile Menu Button Target */}
-            <div className="sm:hidden flex items-center space-x-2">
-              <Button variant="ghost" size="sm" onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-zinc-600 dark:text-zinc-400 px-1">
-                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {/* Mobile View Toggle Control Trigger */}
+            <div className="sm:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Toggle Menu"
+                aria-expanded={isMenuOpen}
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="text-gray-900 dark:text-gray-50 hover:text-accent hover:bg-accent/10 transition-all duration-300"
+              >
+                {isMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
               </Button>
             </div>
-
+                  </div>
           </div>
         </nav>
-      </div>
 
       {/* Mobile Drawer Overlay Architecture */}
       {isMenuOpen && (

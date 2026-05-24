@@ -94,7 +94,7 @@ export default function AuthForm({
         </div>
       )}
 
-      <div className="bg-card backdrop-blur-xl rounded-2xl shadow-2xl border border-border p-8">
+      <div className="bg-card backdrop-blur-xl rounded-2xl shadow-2xl border border-border p-8 min-h-[620px] flex flex-col justify-between transition-all duration-300">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-foreground mb-2">
             {isLogin ? "Welcome Back" : "Create Account"}
@@ -246,31 +246,41 @@ export default function AuthForm({
             {errors.password && (
               <p className="text-red-400 text-sm mt-1">{errors.password}</p>
             )}
-            {!isLogin && password && (
-  <div className="mt-2 space-y-1 text-xs">
-
-    <p className={password.length >= 8 ? "text-green-400" : "text-red-400"}>
-      {password.length >= 8 ? "✓" : "✗"} Minimum 8 characters
-    </p>
-
-    <p className={/[A-Z]/.test(password) ? "text-green-400" : "text-red-400"}>
-      {/[A-Z]/.test(password) ? "✓" : "✗"} One uppercase letter
-    </p>
-
-    <p className={/[a-z]/.test(password) ? "text-green-400" : "text-red-400"}>
-      {/[a-z]/.test(password) ? "✓" : "✗"} One lowercase letter
-    </p>
-
-    <p className={/[0-9]/.test(password) ? "text-green-400" : "text-red-400"}>
-      {/[0-9]/.test(password) ? "✓" : "✗"} One number
-    </p>
-
-    <p className={/[^A-Za-z0-9]/.test(password) ? "text-green-400" : "text-red-400"}>
-      {/[^A-Za-z0-9]/.test(password) ? "✓" : "✗"} One special character
-    </p>
-
-  </div>
-)}
+            {!isLogin && !errors.password && (
+              <p className="text-gray-400 text-xs mt-1">
+                Min 8 characters with upper, lower, number, and special character.
+              </p>
+            )}
+            {!isLogin && (
+              <div className="mt-3 space-y-1.5 text-xs bg-slate-950/20 p-3 rounded-lg border border-border/50">
+                <p className="font-semibold text-slate-400 mb-1">Password Requirements:</p>
+                <div className="flex items-center gap-2">
+                  <span className={password.length >= 8 ? "text-green-400" : "text-gray-400"}>
+                    {password.length >= 8 ? "✓" : "○"} 8+ characters
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={/[A-Z]/.test(password) ? "text-green-400" : "text-gray-400"}>
+                    {/[A-Z]/.test(password) ? "✓" : "○"} At least one uppercase letter
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={/[a-z]/.test(password) ? "text-green-400" : "text-gray-400"}>
+                    {/[a-z]/.test(password) ? "✓" : "○"} At least one lowercase letter
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={/\d/.test(password) ? "text-green-400" : "text-gray-400"}>
+                    {/\d/.test(password) ? "✓" : "○"} At least one number
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={/[^A-Za-z0-9]/.test(password) ? "text-green-400" : "text-gray-400"}>
+                    {/[^A-Za-z0-9]/.test(password) ? "✓" : "○"} At least one special character
+                  </span>
+                </div>
+              </div>
+            )}
             {!isLogin && password && (
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between text-xs">

@@ -117,7 +117,12 @@ const getCellClassName = (value) => {
 
 const AttendanceHeatmap = ({ recentActivity = [] }) => {
   const values = useMemo(
-    () => buildAttendanceValues(recentActivity),
+    () => {
+      if (!recentActivity || recentActivity.length === 0) {
+        return [];
+      }
+      return buildAttendanceValues(recentActivity);
+    },
     [recentActivity],
   );
 

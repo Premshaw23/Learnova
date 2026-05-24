@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@layer base {
+  :focus-visible {
+    @apply outline-none ring-2 ring-blue-600 ring-offset-2 ring-offset-white dark:ring-blue-500 dark:ring-offset-gray-900;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* globals.css or your main CSS file */
@@ -120,6 +126,10 @@
   /* #6b7280 */
   --sidebar-ring: oklch(0.646 0.222 280.116);
   /* #8b5cf6 */
+  --scrollbar-track: #f1f5f9;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-solid: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
 }
 
 .dark {
@@ -155,6 +165,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+  --scrollbar-track: #05010d;
+  --scrollbar-thumb: linear-gradient(to bottom, #8b5cf6, #ec4899);
+  --scrollbar-thumb-solid: #8b5cf6;
+  --scrollbar-thumb-hover: linear-gradient(to bottom, #a855f7, #f472b6);
 }
 
 @theme inline {
@@ -220,49 +234,17 @@
   }
 }
 
-
-/* Custom Scrollbar */
-
-::-webkit-scrollbar {
-  width: 10px;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: #05010d;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #8b5cf6, #ec4899);
-  border-radius: 9999px;
-  border: 2px solid #05010d;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #a855f7, #f472b6);
-}
-
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #8b5cf6 #05010d;
-}
-
-#cursor-glow {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  pointer-events: none;
-  position: fixed;
-  z-index: 9999;
-
-  background: radial-gradient(
-    circle,
-    rgba(167, 111, 219, 0.75) 10%,
-    rgba(168, 85, 247, 0.55) 35%,
-    rgba(168, 85, 247, 0.15) 55%,
-    transparent 80%
-  );
-
-  filter: blur(30px);
-  transform: translate(-50%, -50%);
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
 }
