@@ -260,6 +260,12 @@ export const POST =
       } =
         validationResult.data;
 
+      const allowedDomains = (process.env.ALLOWED_EMAIL_DOMAINS || "institute.edu,learnova.edu").split(",");
+      const domain = email.split("@")[1];
+      if (allowedDomains.length > 0 && !allowedDomains.includes(domain)) {
+        return jsonError("Unauthorized email domain for registration", 400);
+      }
+
       // Validate file
       if (
         !file ||
