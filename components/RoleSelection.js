@@ -28,7 +28,7 @@ export default function RoleSelection({ onRoleSelect }) {
       </div>
 
       {/* Role Cards */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 relative z-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 relative z-10">
         {Object.entries(ROLE_CONFIG).map(([role, config]) => {
           const IconComponent = config.icon;
           
@@ -46,7 +46,7 @@ export default function RoleSelection({ onRoleSelect }) {
               onClick={() => onRoleSelect(role)}
               aria-label={`Select ${config.title} role`}
               onKeyDown={(e) => handleKeyDown(e, role)} // Keyboard support
-              className={`group p-6 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-white/10 ${shadowGlow} transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.03] active:scale-[0.98] text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 cursor-pointer shadow-xl`}
+              className={`group p-6 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-white/10 ${shadowGlow} transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.03] active:scale-[0.98] text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 cursor-pointer shadow-xl w-full max-w-[280px] sm:max-w-none mx-auto`}
             >
               <div
                 className={`w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-r ${config.color} p-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}

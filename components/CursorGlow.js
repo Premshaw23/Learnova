@@ -4,6 +4,8 @@ import { useEffect } from "react";
 
 export default function CursorGlow() {
   useEffect(() => {
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+    if (isTouchDevice) return;
     const glow = document.getElementById("cursor-glow");
 
     let mouseX = 0;

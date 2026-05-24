@@ -1,43 +1,29 @@
-## What type of PR is this?
+## 🎯 Purpose of this Pull Request
+Provide a brief summary of what this Pull Request introduces or resolves.
 
-- [ ] 🐛 Bug fix
-- [ ] ✨ New feature
-- [ ] 📚 Documentation
-- [ ] 🎨 UI/UX improvement
-- [ ] ⚡ Performance improvement
-- [ ] 🔒 Security fix
+## 🔗 Related Issue / Link
+Fixes #[Issue Number] (or links to the relevant GSSOC issue).
 
-## Description
+## 🛠️ Description of Changes
+List the major changes introduced by this PR:
+- 
+- 
+- 
 
-Briefly describe what you changed and why.
+## 🧪 Verification / Testing Done
+How did you test your changes? Mention exact steps, browsers used, or automation test suites run:
+- [ ] Rendered locally and checked dark/light modes.
+- [ ] Tested on Chrome/Safari/Firefox.
+- [ ] Ran relevant linters or unit tests (`npm run lint` / `npm test`).
 
-## Related Issues
+## 📸 Screenshots / GIFs
+If this PR changes or introduces any UI components, please add screenshots or a short GIF showing the before and after states.
 
-Closes #(issue number)
-
-## Changes Made
-
-- Bullet point 1
-- Bullet point 2
-- Bullet point 3
-
-## Testing
-
-How did you test these changes?
-- [ ] Tested locally
-- [ ] Tested on mobile
-- [ ] Tested different user roles
-- [ ] All roles tested
-
-## Screenshots (if applicable)
-
-Add before/after screenshots for UI changes.
-
-## Checklist
-
-- [ ] No hardcoded secrets or credentials
-- [ ] `.env.local` is not committed
-- [ ] Code follows project style
-- [ ] Changes are documented
-- [ ] Build passes locally (`npm run build`)
-- [ ] No console errors/warnings
+## 📋 Checklist
+Before submitting, please make sure you check the following:
+- [ ] My code follows the code style guidelines of this project.
+- [ ] I have performed a self-review of my own code.
+- [ ] I have commented my code, particularly in hard-to-understand areas.
+- [ ] I have updated the documentation accordingly.
+- [ ] My changes generate no new warnings or console errors.
+- [ ] I have deleted any temporary or debugging console logs.

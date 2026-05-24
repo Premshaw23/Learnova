@@ -291,6 +291,7 @@ const InstituteDashboard = () => {
 
             {/* Notifications */}
             <button
+              aria-label="Notifications"
               className="relative p-2.5 bg-gray-800/60 hover:bg-gray-700/60 
                              rounded-xl border border-gray-600/40 transition-colors shadow-sm"
             >
@@ -560,13 +561,13 @@ const InstituteDashboard = () => {
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex space-x-2">
-                  <button className="text-blue-400 hover:text-blue-300 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30 transition-colors">
+                  <button aria-label="View class details" className="text-blue-400 hover:text-blue-300 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30 transition-colors">
                     <Eye className="w-4 h-4" />
                   </button>
-                  <button className="text-green-400 hover:text-green-300 p-2 bg-green-500/20 rounded-lg border border-green-500/30 transition-colors">
+                  <button aria-label="Edit class" className="text-green-400 hover:text-green-300 p-2 bg-green-500/20 rounded-lg border border-green-500/30 transition-colors">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button className="text-red-400 hover:text-red-300 p-2 bg-red-500/20 rounded-lg border border-red-500/30 transition-colors">
+                  <button aria-label="Delete class" className="text-red-400 hover:text-red-300 p-2 bg-red-500/20 rounded-lg border border-red-500/30 transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -677,7 +678,7 @@ const InstituteDashboard = () => {
               <button className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl transition-colors text-sm font-medium">
                 View Details
               </button>
-              <button className="bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 border border-gray-500/30 px-3 py-2 rounded-xl transition-colors">
+              <button aria-label="Edit teacher" className="bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 border border-gray-500/30 px-3 py-2 rounded-xl transition-colors">
                 <Edit className="w-4 h-4" />
               </button>
             </div>

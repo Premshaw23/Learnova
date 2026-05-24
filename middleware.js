@@ -81,6 +81,7 @@ async function verifyIdToken(token) {
     const header = JSON.parse(
       new TextDecoder().decode(base64UrlDecode(parts[0]))
     );
+    if (header.alg !== "RS256") return null;
     const payload = JSON.parse(
       new TextDecoder().decode(base64UrlDecode(parts[1]))
     );

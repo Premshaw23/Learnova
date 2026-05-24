@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
 import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebaseConfig";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { Navbar } from "./Navbar";
 import NoticeSearch from "./NoticeSearch";
 import NoticeFilters from "./NoticeFilters";
@@ -22,7 +24,7 @@ const CATEGORIES = [
 ];
 
 const SmartNoticeBoard = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
 
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,83 +41,48 @@ const SmartNoticeBoard = () => {
 
   const userId = user?.uid || user?.id || "anonymous";
 
-  // Load notices + SSE
+  const getUserRole = () => {
+    return userProfile?.role || "student";
+  };
+
+  // Load notices + Firestore onSnapshot query
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading) return;
+    if (!user) {
       setLoading(false);
       return;
     }
 
-    if (!user) return;
+    const userRole = getUserRole();
 
-    let eventSource;
-    let reconnectTimeout;
+    // Query notices collection where targetAudience contains userRole
+    const q = query(
+      collection(db, "notices"),
+      where("targetAudience", "array-contains", userRole)
+    );
 
-    const connectSSE = () => {
-      eventSource = new EventSource("/api/notices/stream");
-
-      // Initial notices
-      eventSource.addEventListener("initial", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-
-          const parsed = data.map((notice) => ({
-            ...notice,
-            createdAt: new Date(notice.createdAt),
-          }));
-
-          setNotices(parsed);
-          setLoading(false);
-        } catch (err) {
-          console.error("Failed to parse initial notices:", err);
-        }
-      });
-
-      // New notice
-      eventSource.addEventListener("new-notice", (e) => {
-        try {
-          const notice = JSON.parse(e.data);
-
-          const parsedNotice = {
-            ...notice,
-            createdAt: new Date(notice.createdAt),
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const noticesData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate
+              ? data.createdAt.toDate()
+              : new Date(data.createdAt || Date.now()),
           };
-
-          setNotices((prev) => {
-            const exists = prev.some(
-              (item) => item.id === parsedNotice.id
-            );
-
-            if (exists) return prev;
-
-            return [parsedNotice, ...prev];
-          });
-
-          if (parsedNotice.priority === "high") {
-            toast(`High Priority: ${parsedNotice.title}`, {
-              icon: "🚨",
-              duration: 5000,
-            });
-          } else {
-            toast.success(`New Notice: ${parsedNotice.title}`);
-          }
-        } catch (err) {
-          console.error("Failed to parse new notice:", err);
-        }
-      });
-
-      eventSource.onerror = () => {
-        console.error("SSE disconnected. Reconnecting...");
-
-        eventSource.close();
-
-        reconnectTimeout = setTimeout(() => {
-          connectSSE();
-        }, 5000);
-      };
-    };
-
-    connectSSE();
+        });
+        setNotices(noticesData);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching notices:", error);
+        toast.error("Failed to load notices");
+        setLoading(false);
+      }
+    );
 
     // Load read notices
     try {
@@ -134,16 +101,8 @@ const SmartNoticeBoard = () => {
       console.error("Failed to load read notices:", err);
     }
 
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-      }
-    };
-  }, [user, authLoading, userId]);
+    return () => unsubscribe();
+  }, [user, userProfile, authLoading, userId]);
 
   // Save read state
   const saveReadState = useCallback(

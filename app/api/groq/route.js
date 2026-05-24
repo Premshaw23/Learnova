@@ -1,63 +1,44 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { AppError } from "@/lib/errors";
+import { authenticateRequest } from "@/lib/error-handler";
+import { AppError, ValidationError } from "@/lib/errors";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 const GROQ_API_URL =
   "https://api.groq.com/openai/v1/chat/completions";
 
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const MAX_REQUESTS_PER_WINDOW = 10;
+import { checkRateLimit } from "@/lib/rateLimit";
 
-const rateLimitMap = new Map();
-
-/**
- * Simple in-memory rate limiter
- */
-const isRateLimited = (userId) => {
-  const now = Date.now();
-
-  const userRequests =
-    rateLimitMap.get(userId) || [];
-
-  const validRequests = userRequests.filter(
-    (timestamp) =>
-      now - timestamp < RATE_LIMIT_WINDOW
-  );
-
-  if (
-    validRequests.length >=
-    MAX_REQUESTS_PER_WINDOW
-  ) {
-    return true;
+const groqSchema = z.object({
+  message: z.string().optional(),
+  userMessage: z.string().optional(),
+}).refine(
+  (data) => {
+    const message = data.message || data.userMessage;
+    return message && message.trim().length > 0;
+  },
+  {
+    message: "Message is required",
   }
-
-  validRequests.push(now);
-
-  rateLimitMap.set(userId, validRequests);
-
-  return false;
-};
+).refine(
+  (data) => {
+    const message = data.message || data.userMessage;
+    return message && message.trim().length <= 2000;
+  },
+  {
+    message: "Message too long (max 2000 characters)",
+  }
+);
 
 export async function POST(request) {
   try {
-    // Authentication
-    const authorization =
-      request.headers.get("authorization");
-
-    const token =
-      authorization?.split(" ")[1];
-
     const decodedToken =
-      await verifyFirebaseToken(token);
-
-    if (!decodedToken) {
-      return jsonError("Unauthorized", 401);
-    }
+      await authenticateRequest(request);
 
     // Rate limiting
-    if (isRateLimited(decodedToken.uid)) {
+    const rateLimitResult = await checkRateLimit(decodedToken.uid);
+    if (!rateLimitResult.allowed) {
       return jsonError(
         "Too many requests. Please try again later.",
         429
@@ -67,28 +48,17 @@ export async function POST(request) {
     // Parse body
     const body = await request.json();
 
+    const validation = groqSchema.safeParse(body);
+    if (!validation.success) {
+      const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+      throw new ValidationError(firstError);
+    }
+
     const rawMessage =
-      typeof body.message === "string"
-        ? body.message
-        : body.userMessage;
+      validation.data.message ||
+      validation.data.userMessage;
 
-    const trimmedMessage =
-      rawMessage?.trim();
-
-    if (!trimmedMessage) {
-      return jsonError(
-        "Message is required",
-        400
-      );
-    }
-
-    // Validate length
-    if (trimmedMessage.length > 2000) {
-      return jsonError(
-        "Message too long",
-        400
-      );
-    }
+    const trimmedMessage = rawMessage.trim();
 
     // API key
     const apiKey =
@@ -186,6 +156,13 @@ export async function POST(request) {
       message: content,
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return jsonError(
+        error.message,
+        error.statusCode
+      );
+    }
+
     if (error.name === "AbortError") {
       return jsonError(
         "Gateway Timeout: AI response took too long.",

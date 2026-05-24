@@ -60,6 +60,16 @@ export default function Timetable({ role = "student" }) {
   const [selectedDay, setSelectedDay] = useState(
     days.includes(today) ? today : "Monday"
   );
+  const [isPending, setIsPending] = useState(false);
+
+  const handleDayClick = (day) => {
+    if (day === selectedDay || isPending) return;
+    setIsPending(true);
+    setSelectedDay(day);
+    setTimeout(() => {
+      setIsPending(false);
+    }, 300);
+  };
 
   const classes = mockTimetable[selectedDay] || [];
 
@@ -86,14 +96,19 @@ export default function Timetable({ role = "student" }) {
       </div>
 
       {/* Day Selector */}
-      <div className="flex space-x-1 mb-6 overflow-x-auto pb-1">
+      <div className="flex space-x-1 mb-6 overflow-x-auto pb-1" role="tablist" aria-label="Timetable days">
         {days.map((day) => {
           const isToday = day === today;
           const isSelected = day === selectedDay;
           return (
             <button
               key={day}
-              onClick={() => setSelectedDay(day)}
+              onClick={() => handleDayClick(day)}
+              role="tab"
+              aria-selected={isSelected}
+              aria-controls="timetable-panel"
+              id={`tab-${day}`}
+              aria-label={day}
               className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 ${
                 isSelected
                   ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
@@ -112,6 +127,7 @@ export default function Timetable({ role = "student" }) {
       </div>
 
       {/* Classes List */}
+      <div id="timetable-panel" role="tabpanel" aria-labelledby={`tab-${selectedDay}`}>
       {classes.length > 0 ? (
         <div className="space-y-3">
           {classes.map((cls, index) => (
@@ -149,6 +165,7 @@ export default function Timetable({ role = "student" }) {
           <p className="text-white/20 text-xs mt-1">Enjoy your day off! 🎉</p>
         </div>
       )}
+      </div>
     </div>
   );
 }

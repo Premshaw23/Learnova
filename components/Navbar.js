@@ -1,10 +1,24 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+} from "react";
+
+import Image from "next/image";
+
 import { Button } from "@/components/ui/button";
+
 import { useNotifications } from "@/hooks/useNotifications";
+
 import { useTheme } from "next-themes";
+
+import { useAuthContext } from "@/contexts/AuthContext";
+
 import {
   Menu,
   X,
@@ -22,30 +36,36 @@ import {
   Sun,
   Moon,
   Keyboard,
+  Languages, // Added for the translation button icon
 } from "lucide-react";
-import { useAuthContext } from "@/contexts/AuthContext";
-import Image from "next/image";
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isLangOpen, setIsLangOpen] = useState(false); // Language dropdown state
+  const [currentLang, setCurrentLang] = useState("English"); // Tracks selected language
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
-  // Hook Integration: Connects actual hooks & destructured operations
-  const { 
-    notifications, 
-    unreadCount, 
-    markAsRead, 
-    markAllAsRead 
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
   } = useNotifications();
 
-  const { user, userProfile, signOut, isAuthenticated } = useAuthContext();
+  const {
+    user,
+    userProfile,
+    signOut,
+    isAuthenticated,
+  } = useAuthContext();
 
   const dropdownRef = useRef(null);
+  const langRef = useRef(null); // Ref to track language dropdown outside clicks
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [prefersDark, setPrefersDark] = useState(() => {
     if (typeof window === "undefined") return null;
     try {
@@ -65,37 +85,15 @@ export function Navbar() {
     setMounted(true);
   }, []);
 
-  // Detect system preference on mount so initial render matches user's OS
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const update = (e) => setPrefersDark(e.matches);
-      if (mq.addEventListener) mq.addEventListener("change", update);
-      else mq.addListener && mq.addListener(update);
-      return () => {
-        if (mq.removeEventListener) mq.removeEventListener("change", update);
-        else mq.removeListener && mq.removeListener(update);
-      };
-    } catch (e) {
-      // ignore
-    }
-  }, []);
-
-  const scrollProgressValue = Number.isFinite(scrollProgress) ? scrollProgress : 0;
-
-  // Scroll Effect
-  useEffect(() => {
-    const handleScroll = () => {  
-      const progress = Math.min(window.scrollY / 100, 1);
-      setScrollProgress(progress);
+    const handleScroll = () => {
+      setScrollProgress(Math.min(window.scrollY / 100, 1));
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Close dropdown on outside click
   const handleClickOutside = useCallback((event) => {
     if (
       dropdownRef.current &&
@@ -105,6 +103,14 @@ export function Navbar() {
       setIsDropdownOpen(false);
       setIsNotificationOpen(false);
     }
+    // Close language selector if clicking outside
+    if (
+      langRef.current &&
+      event.target &&
+      !langRef.current.contains(event.target)
+    ) {
+      setIsLangOpen(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -112,27 +118,24 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [handleClickOutside]);
 
-  // ESC Key Support
   useEffect(() => {
-    const close = () => {
+    const closeMenus = () => {
       setIsDropdownOpen(false);
       setIsNotificationOpen(false);
       setIsMenuOpen(false);
+      setIsLangOpen(false);
     };
-    const handleEscape = (event) => {
-      if (event.key === "Escape") close();
+
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        closeMenus();
+      }
     };
 
     window.addEventListener("keydown", handleEscape);
-    window.addEventListener("learnova:escape", close);
-
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-      window.removeEventListener("learnova:escape", close);
-    };
+    return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
-  // Prevent body scroll
   useEffect(() => {
     if (isMenuOpen) {
       document.body.classList.add("overflow-hidden");
@@ -142,11 +145,11 @@ export function Navbar() {
     return () => document.body.classList.remove("overflow-hidden");
   }, [isMenuOpen]);
 
-  // Close menus on route change
   useEffect(() => {
     setIsMenuOpen(false);
     setIsDropdownOpen(false);
     setIsNotificationOpen(false);
+    setIsLangOpen(false);
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -155,7 +158,6 @@ export function Navbar() {
     await signOut();
   };
 
-  // Helpers
   const getUserInitials = (name) => {
     if (!name) return "U";
     return name
@@ -193,6 +195,7 @@ export function Navbar() {
 
   const navigationItems = [
     { href: "/", label: "Home", icon: Home },
+    { href: "/productivity", label: "Focus", icon: Sparkles },
     { href: "/activity", label: "Activities", icon: Activity },
     { href: "/contact", label: "Contact", icon: Mail },
   ];
@@ -203,6 +206,8 @@ export function Navbar() {
     { href: "/settings", icon: Settings, label: "Settings", key: "settings" },
   ].filter((item) => !(item.key === "dashboard" && item.href === "/profile"));
 
+  const languagesList = ["English", "Español", "Français", "Deutsch", "हिन्दी"];
+
   const handleImageError = (e) => {
     const img = e.target;
     const fallback = img.parentElement?.querySelector(".fallback-avatar");
@@ -212,6 +217,11 @@ export function Navbar() {
     }
   };
 
+  const scrollProgressValue =
+  Number.isFinite(scrollProgress)
+    ? scrollProgress
+    : 0;
+  
   return (
     <>
       {/* Background Dimming Layer on Scroll */}
@@ -226,13 +236,13 @@ export function Navbar() {
         style={{
           // Use resolved theme when mounted; otherwise fall back to system preference
           backgroundColor:
-            (mounted ? theme : prefersDark ? "dark" : "light") === "dark"
+            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
               ? `rgba(0,0,0,${0.82 + scrollProgressValue * 0.12})`
               : `rgba(255,255,255,0.98)`,
           backdropFilter: `blur(20px)`,
           WebkitBackdropFilter: `blur(20px)`,
           borderBottom:
-            (mounted ? theme : prefersDark ? "dark" : "light") === "dark"
+            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
               ? `1px solid rgba(255,255,255,0.1)`
               : `1px solid rgba(0,0,0,0.08)`,
         }}
@@ -241,128 +251,125 @@ export function Navbar() {
           <div className="flex justify-between items-center h-16">
             
             {/* Logo Group */}
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="bg-gradient-to-br from-accent to-blue-500 p-2 rounded-xl">
-                <BookOpen className="h-6 w-6 text-white" />
+            <Link href="/" className="flex items-center space-x-3 group">
+              <div className="bg-blue-600 dark:bg-blue-500 p-2.5 rounded-xl text-white shadow-sm transition-all duration-200 group-hover:scale-102">
+                <BookOpen className="h-5 w-5" />
               </div>
-              <div>
-                <span className="text-xl font-bold text-gray-950 dark:text-white">
+              <div className="flex flex-col">
+                <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50 block leading-tight">
                   Learnova
                 </span>
-                <p className="text-xs text-gray-600 dark:text-gray-300 uppercase tracking-wider font-semibold">
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-widest font-black mt-0.5 leading-none">
                   Premium
                 </p>
               </div>
             </Link>
 
-            {/* Desktop Navigation Control */}
-            <div className="hidden sm:flex items-center space-x-2">
+            {/* Center Navigation Capsule */}
+            <div className="hidden sm:flex items-center space-x-1 bg-zinc-100/80 dark:bg-zinc-900/50 border border-zinc-200/30 dark:border-zinc-800/30 rounded-2xl p-1">
               {navigationItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-4 py-2 rounded-lg transition-all duration-300 ${
+                    className={`text-sm font-bold tracking-wide px-5 py-2 rounded-xl transition-all duration-200 ${
                       isActive
                         ? "bg-accent/20 text-gray-950 dark:text-white font-medium"
-                        : "text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10"
+                        : "text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10"
                     }`}
                   >
                     {item.label}
                   </Link>
                 );
               })}
+            </div>
 
-              {/* Theme Selector Button */}
+            {/* Right Group Controls */}
+            <div className="hidden sm:flex items-center space-x-3">
+              
+              {/* Language Selector Dropdown */}
+              <div className="relative" ref={langRef}>
+                <button
+                  onClick={() => setIsLangOpen(!isLangOpen)}
+                  className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors border border-zinc-200/40 dark:border-zinc-800/50"
+                  aria-label="Select language"
+                >
+                  <Languages className="h-4 w-4 text-zinc-400" />
+                  <span className="hidden md:inline">{currentLang}</span>
+               <ChevronDown
+  className="h-3.5 w-3.5 text-zinc-400 transition-transform duration-200"
+  style={{
+    transform: isLangOpen
+      ? "rotate(180deg)"
+      : "none",
+  }}
+/></button>
+
+                {isLangOpen && (
+                  <div className="absolute right-0 mt-2 w-36 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-[80]">
+                    {languagesList.map((lang) => (
+                      <button
+                        key={lang}
+                        onClick={() => {
+                          setCurrentLang(lang);
+                          setIsLangOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                          currentLang === lang
+                            ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-white font-bold"
+                            : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                        }`}
+                      >
+                        {lang}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Theme Toggle */}
               {mounted && (
                 <button
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
+                  className="p-2 rounded-xl text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
                   aria-label="Toggle theme"
                 >
-                  {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </button>
               )}
 
-              {/* Authentication Actions View */}
               {isAuthenticated ? (
-                <div className="flex items-center space-x-2 sm:space-x-4 ml-2 sm:ml-6">
-                  <Button asChild className="hidden sm:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
-                    <Link href="/attendance">
-                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="relative flex items-center">
-                        Mark Attendance
-                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
-                      </span>
-                    </Link>
-                  </Button>
+                <div className="flex items-center space-x-3 pl-1 border-l border-zinc-200 dark:border-zinc-800">
                   
-                  <Button asChild className="hidden lg:block relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
-                    <Link href="/notices">
-                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="relative flex items-center">
-                        Notice Board
-                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
-                      </span>
-                    </Link>
-                  </Button>
-
-                  {/* Notifications Overlay Node */}
+                  {/* Notifications Module Panel */}
                   <div className="relative">
                     <button
                       onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                      className="relative p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
+                      className="relative p-2 rounded-xl text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
                       aria-label="View notifications"
                     >
                       <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-xs text-white rounded-full h-4 w-4 flex items-center justify-center animate-pulse">
-                          {unreadCount}
-                        </span>
-                      )}
+                      {unreadCount > 0 && <span className="absolute top-2 right-2 bg-red-500 rounded-full h-2 w-2" />}
                     </button>
 
                     {isNotificationOpen && (
-                      <div className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl z-[52] overflow-hidden">
-                        <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
-                          <h3 className="text-foreground font-semibold text-sm">
-                            Notifications
-                          </h3>
+                      <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-[80] overflow-hidden">
+                        <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50">
+                          <h3 className="text-zinc-900 dark:text-zinc-100 font-bold text-sm">Notifications</h3>
                           {unreadCount > 0 && (
-                            <button
-                              onClick={markAllAsRead}
-                              aria-label="Mark all notifications as read"
-                              className="text-xs font-medium text-accent hover:underline"
-                            >
+                            <button onClick={markAllAsRead} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
                               Mark all as read
                             </button>
                           )}
                         </div>
-                        
-                        <div className="max-h-72 overflow-y-auto">
+                        <div className="max-h-60 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-900">
                           {notifications.length === 0 ? (
-                            <div className="p-6 text-center">
-                              <Bell className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                              <p className="text-muted-foreground text-sm">
-                                No notifications available
-                              </p>
-                            </div>
+                            <div className="p-4 text-center text-sm text-zinc-400">No new notices</div>
                           ) : (
                             notifications.map((n) => (
-                              <div
-                                key={n.id}
-                                onClick={() => markAsRead(n.id)}
-                                className={`p-4 border-b border-border/60 cursor-pointer transition-colors hover:bg-muted/40 ${
-                                  !n.read ? "bg-accent/5 dark:bg-accent/10" : ""
-                                }`}
-                              >
-                                <p className="text-sm text-foreground">
-                                  {n.message}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {n.time}
-                                </p>
+                              <div key={n.id} onClick={() => markAsRead(n.id)} className={`p-3 text-left cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/40 ${!n.read ? "bg-blue-50/30" : ""}`}>
+                                <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{n.message}</p>
                               </div>
                             ))
                           )}
@@ -371,84 +378,56 @@ export function Navbar() {
                     )}
                   </div>
 
-                  {/* Profile Menu Dropdown */}
+                  {/* Profile Dropdown */}
                   <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                       className="flex items-center space-x-3 p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
+                      aria-label="User profile menu"
+                      aria-haspopup="true"
+                      aria-expanded={isDropdownOpen}
                     >
                       <div className="relative w-10 h-10">
                         {getUserPhoto() ? (
-                          <Image
-                            src={getUserPhoto()}
-                            alt="Profile"
-                            width={40}
-                            height={40}
-                            className="rounded-full object-cover border-2 border-accent/50"
-                            onError={handleImageError}
-                          />
+                          <Image src={getUserPhoto()} alt="Profile" width={32} height={32} className="rounded-full object-cover" onError={handleImageError} />
                         ) : (
-                          <div className="fallback-avatar absolute inset-0 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center">
-                            <span className="text-sm font-bold text-white">
-                              {getUserInitials(getUserDisplayName())}
-                            </span>
+                          <div className="absolute inset-0 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
+                            {getUserInitials(getUserDisplayName())}
                           </div>
                         )}
                       </div>
-
-                      <div className="hidden sm:block text-left">
-                        <p className="text-sm font-medium text-foreground">
-                          {getUserDisplayName()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {getUserRole()}
-                        </p>
-                      </div>
-
-                      <ChevronDown
-                        className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                          isDropdownOpen ? "rotate-180" : ""
-                        }`}
-                      />
+                      <ChevronDown className="h-4 w-4 text-zinc-400" />
                     </button>
 
                     {isDropdownOpen && (
-                      <div className="absolute right-0 mt-3 min-w-64 bg-background border border-border rounded-2xl shadow-2xl py-2 z-[52]">
+                      <div className="absolute right-0 mt-3 w-48 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-[80]">
                         {userMenuItems.map((item) => (
-                          <Link
-                            key={item.key}
-                            href={item.href}
-                            onClick={() => setIsDropdownOpen(false)}
-                            className="flex items-center px-4 py-3 text-sm text-muted-foreground hover:bg-accent/10 hover:text-foreground transition-colors"
-                          >
-                            <item.icon className="h-4 w-4 mr-3 text-muted-foreground" />
-                            {item.label}
+                          <Link key={item.key} href={item.href} onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                            <item.icon className="h-4 w-4 mr-2.5 text-zinc-400" /> {item.label}
                           </Link>
                         ))}
-                        <hr className="my-2 border-border" />
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center px-4 py-3 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
-                        >
-                          <LogOut className="h-4 w-4 mr-3" />
-                          Logout
+                        <hr className="my-1 border-zinc-100 dark:border-zinc-900" />
+                        <button onClick={handleLogout} className="w-full flex items-center px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
+                          <LogOut className="h-4 w-4 mr-2.5" /> Logout
                         </button>
                       </div>
                     )}
                   </div>
+
                 </div>
               ) : (
-                <div className="ml-2 sm:ml-6">
-                  <Button asChild className="relative bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg hover:shadow-2xl hover:shadow-accent/30 transition-all duration-300 hover:scale-105 group overflow-hidden">
-                    <Link href="/auth">
-                      <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <span className="relative flex items-center">
-                        Login / Signup
-                        <Sparkles className="ml-2 h-4 w-4 transition-all duration-300" />
-                      </span>
-                    </Link>
-                  </Button>
-                </div>
+                <Button 
+                  asChild 
+                  size="default" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-5 h-10 text-sm shadow-sm active:scale-98 transition-all"
+                >
+                  <Link href="/auth">
+                    <span className="flex items-center gap-2">
+                      Login
+                      <Sparkles className="h-4 w-4 text-blue-200" />
+                    </span>
+                  </Link>
+                </Button>
               )}
             </div>
 
@@ -460,171 +439,120 @@ export function Navbar() {
                 aria-label="Toggle Menu"
                 aria-expanded={isMenuOpen}
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-gray-800 dark:text-gray-100 hover:text-accent hover:bg-accent/10 transition-all duration-300"
+                className="text-gray-900 dark:text-gray-50 hover:text-accent hover:bg-accent/10 transition-all duration-300"
               >
                 {isMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
               </Button>
             </div>
+                  </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      {/* Mobile Context Drawer Menu */}
+      {/* Mobile Drawer Overlay Architecture */}
       {isMenuOpen && (
         <>
-          <div
-            className="fixed inset-0 bg-background/60 backdrop-blur-sm z-[49] md:hidden"
-            onClick={() => setIsMenuOpen(false)}
-          />
-
-          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background text-foreground z-[52] md:hidden border-l border-border shadow-2xl flex flex-col justify-between">
-            <div>
-              <div className="p-6 border-b border-border flex justify-between items-center">
-                <h2 className="text-foreground text-lg font-bold">Menu</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Close menu"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <X className="h-6 w-6" />
-                </Button>
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[85]" onClick={() => setIsMenuOpen(false)} />
+          <div className="fixed top-4 right-4 max-w-[85vw] w-64 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-2xl shadow-xl p-4 space-y-4 z-[90] flex flex-col transition-all">
+            <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-900 pb-2">
+              <span className="font-bold text-sm text-zinc-400 uppercase tracking-wider">Menu</span>
+              <X className="h-5 w-5 text-zinc-400 cursor-pointer" onClick={() => setIsMenuOpen(false)} />
+            </div>
+            
+            {isAuthenticated && (
+              <div className="flex items-center space-x-3 p-2 bg-zinc-50 dark:bg-zinc-900/40 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
+                <div className="relative w-10 h-10 shrink-0">
+                  {getUserPhoto() ? (
+                    <Image src={getUserPhoto()} alt="Profile" width={40} height={40} className="rounded-full object-cover" onError={handleImageError} />
+                  ) : (
+                    <div className="absolute inset-0 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                      {getUserInitials(getUserDisplayName())}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 truncate">{getUserDisplayName()}</h4>
+                  <p className="text-[11px] text-zinc-400 truncate">{getUserRole()}</p>
+                </div>
               </div>
+            )}
 
-              {/* User Identity Display Node (Mobile) */}
-              {isAuthenticated && (
-                <div className="p-6 border-b border-border">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-14 h-14 relative">
-                      {getUserPhoto() && (
-                        <Image
-                          src={getUserPhoto()}
-                          alt="User profile avatar"
-                          width={56}
-                          height={56}
-                          className="rounded-full border-2 border-accent/50 object-cover shadow-lg"
-                          onError={handleImageError}
-                        />
-                      )}
-                      <div
-                        className={`fallback-avatar absolute inset-0 rounded-full bg-gradient-to-br from-accent via-blue-500 to-purple-500 flex items-center justify-center border-2 border-accent/50 shadow-lg ${
-                          getUserPhoto() ? "hidden" : "flex"
-                        }`}
-                      >
-                        <span className="text-lg font-bold text-white">
-                          {getUserInitials(getUserDisplayName())}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-foreground font-semibold text-base truncate">
-                        {getUserDisplayName()}
-                      </h3>
-                      <p className="text-muted-foreground text-sm truncate">
-                        {user?.email || ""}
-                      </p>
-                      <div className="flex items-center mt-1">
-                        <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2" />
-                        <span className="text-xs text-yellow-500 font-medium">
-                          {getUserRole()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+            {/* Mobile Nav Actions */}
+            <div className="flex flex-col space-y-1">
+              {navigationItems.map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setIsMenuOpen(false)} className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                  <item.icon className="h-4 w-4 mr-2.5 text-zinc-400" />
+                  {item.label}
+                </Link>
+              ))}
+            </div>
 
-                  {/* Operational Quick Actions (Mobile) */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button asChild className="w-full bg-muted text-foreground hover:bg-muted/80 text-sm font-medium border border-border">
-                      <Link href="/attendance" onClick={() => setIsMenuOpen(false)}>
-                        <UserCheck className="h-4 w-4 mr-2 text-accent" />
-                        Attendance
-                      </Link>
-                    </Button>
-                    <Button asChild className="w-full bg-muted text-foreground hover:bg-muted/80 text-sm font-medium border border-border">
-                      <Link href="/notices" onClick={() => setIsMenuOpen(false)}>
-                        <Bell className="h-4 w-4 mr-2 text-purple-500" />
-                        Notices
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Mobile Core Navigation List */}
-              <div className="p-4 space-y-6">
-                <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
-                    Navigation
-                  </h4>
-                  {navigationItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center px-4 py-3 hover:bg-accent/10 transition-colors rounded-xl group"
-                    >
-                      <item.icon className="h-5 w-5 mr-4 text-muted-foreground group-hover:text-accent transition-colors" />
-                      <span className="font-medium">{item.label}</span>
-                    </Link>
-                  ))}
-                </div>
-
-                {isAuthenticated && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
-                      Account
-                    </h4>
-                    {userMenuItems.map((item) => (
-                      <Link
-                        key={item.key}
-                        href={item.href}
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center px-4 py-3 hover:bg-accent/10 transition-colors rounded-xl group"
-                      >
-                        <item.icon className="h-5 w-5 mr-4 text-muted-foreground group-hover:text-accent transition-colors" />
-                        <span className="font-medium">{item.label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
+            {/* Mobile Language Selector */}
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900">
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2 px-1">Language</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {languagesList.slice(0, 4).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setCurrentLang(lang);
+                      setIsMenuOpen(false);
+                    }}
+                    className={`text-xs p-2 rounded-xl border text-center transition-all ${
+                      currentLang === lang
+                        ? "bg-blue-600 text-white border-blue-600 font-bold"
+                        : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200/60 dark:border-zinc-800/60 text-zinc-600 dark:text-zinc-400"
+                    }`}
+                  >
+                    {lang}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Mobile Footer Area Layout Container */}
-            <div className="p-6 border-t border-border space-y-4">
+            {/* Account Specific Navigation */}
+            {isAuthenticated && (
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900 space-y-1">
+                {userMenuItems.map((item) => (
+                  <Link key={item.key} href={item.href} onClick={() => setIsMenuOpen(false)} className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                    <item.icon className="h-4 w-4 mr-2.5 text-zinc-400" />
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* Primary Action Buttons */}
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900">
               {isAuthenticated ? (
-                <Button
-                  className="w-full bg-red-500 hover:bg-red-600 text-white font-medium shadow-lg transition-all"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4 mr-3" />
-                  Sign Out
+                <Button onClick={handleLogout} variant="destructive" size="default" className="w-full text-white rounded-lg text-sm h-10">
+                  <LogOut className="h-4 w-4 mr-2" /> Logout
                 </Button>
               ) : (
-                <Button asChild className="w-full bg-gradient-to-r from-accent to-blue-500 hover:from-accent/90 hover:to-blue-600 text-white font-medium shadow-lg transition-all">
-                  <Link href="/auth?mode=signup" onClick={() => setIsMenuOpen(false)}>
-                    <Sparkles className="h-4 w-4 mr-3" />
-                    Get Started
+                <Button asChild size="default" className="w-full bg-blue-600 text-white rounded-lg text-sm h-10">
+                  <Link href="/auth" onClick={() => setIsMenuOpen(false)}>
+                    <span className="flex items-center gap-2">
+                      Get Started <Sparkles className="h-4 w-4 text-blue-200" />
+                    </span>
                   </Link>
                 </Button>
               )}
-              
-              <div className="text-center space-y-3">
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
-                  }}
-                  className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-accent transition-colors text-xs font-medium cursor-pointer"
-                >
-                  <Keyboard className="h-4 w-4 text-accent" />
-                  <span>Keyboard Shortcuts</span>
-                </button>
-                <p className="text-muted-foreground/60 text-[10px]">
-                  © {new Date().getFullYear()} Learnova. All rights reserved.
-                </p>
-              </div>
             </div>
+
+            {/* Shortcuts Footer */}
+            <div className="text-center space-y-2 pt-1">
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
+                }}
+                className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-blue-600 transition-colors text-xs"
+              >
+                <Keyboard className="h-3.5 w-3.5" />
+                <span>Keyboard Shortcuts</span>
+              </button>
+              <p className="text-zinc-400/50 text-[10px]">© {new Date().getFullYear()} Learnova.</p>
+            </div>
+
           </div>
         </>
       )}

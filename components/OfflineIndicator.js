@@ -67,7 +67,7 @@ export default function OfflineIndicator() {
   if (!isOffline && queueCount === 0 && !isSyncing) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div className="fixed bottom-20 sm:bottom-4 right-4 z-50 flex flex-col gap-2">
       {isOffline && (
         <div className="bg-red-500/90 text-white backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium animate-pulse">
           <CloudOff className="w-4 h-4" />

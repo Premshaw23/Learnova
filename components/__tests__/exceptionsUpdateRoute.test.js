@@ -54,6 +54,14 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
   let mockUpdateOne;
   let mockFindOne;
 
+  beforeAll(() => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    console.error.mockRestore();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -261,6 +269,37 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     expect(response.status).toBe(200);
     expect(body.message).toBe("Exception updated successfully");
     expect(mockUpdateOne).toHaveBeenCalled();
+  });
+
+  test("accepts valid request with empty or null comments", async () => {
+    verifyFirebaseToken.mockResolvedValue({ valid: true, decodedToken: { uid: "admin-123", email: "admin@domain.com" } });
+    getUserProfile.mockResolvedValue({ role: "admin" });
+    mockFindOne.mockResolvedValue({ _id: "507f1f77bcf86cd799439011", studentEmail: "student@domain.com" });
+    mockUpdateOne.mockResolvedValue({ modifiedCount: 1 });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      { exceptionId: "507f1f77bcf86cd799439011", status: "approved", comments: "" }
+    );
+    const response = await PUT(req);
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateOne).toHaveBeenCalled();
+  });
+
+  test("rejects request if status is entirely missing", async () => {
+    verifyFirebaseToken.mockResolvedValue({ valid: true, decodedToken: { uid: "admin-123", email: "admin@domain.com" } });
+    getUserProfile.mockResolvedValue({ role: "admin" });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      { exceptionId: "507f1f77bcf86cd799439011" } // Missing status
+    );
+    const response = await PUT(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Invalid status value");
   });
 
   test("returns 404 if matching exception record not found", async () => {

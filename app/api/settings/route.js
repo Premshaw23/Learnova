@@ -5,7 +5,7 @@ import { jsonSuccess } from "@/lib/api-response";
 import { z } from "zod";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
-import { ValidationError, ForbiddenError } from "@/lib/errors";
+import { ValidationError, ForbiddenError, AppError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -136,13 +136,22 @@ export const PATCH = withErrorHandler(async (request) => {
   const updatePayload = flattenObject(settings);
   updatePayload.updatedAt = new Date();
 
-  const db = await connectDb();
+  let db;
+  try {
+    db = await connectDb();
+  } catch (error) {
+    throw new AppError("Database connection timed out or failed. Please try again.", 503);
+  }
 
-  await db.collection("settings").updateOne(
-    { userId: targetUserId },
-    { $set: updatePayload },
-    { upsert: true }
-  );
+  try {
+    await db.collection("settings").updateOne(
+      { userId: targetUserId },
+      { $set: updatePayload },
+      { upsert: true }
+    );
+  } catch (error) {
+    throw new AppError("Failed to update user settings database entry.", 500);
+  }
 
   console.log(`[Audit Log] Settings updated successfully for target user: ${targetUserId} by operator: ${decodedToken.uid} (Role: ${isOperatorAdmin ? "admin" : "owner"})`);
 

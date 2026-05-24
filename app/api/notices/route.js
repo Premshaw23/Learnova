@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
-import { requireAuth } from "@/lib/rbac";
+import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { z } from "zod";
 
@@ -17,15 +17,8 @@ const noticeSchema = z.object({
 });
 
 async function publishNotice(request) {
-  const decodedToken = await requireAuth(request);
-  
-  // Basic RBAC: Only teachers/admins can publish notices
   const allowedRoles = ["teacher", "admin", "staff"];
-  // Note: the middleware / RBAC logic might already assign custom claims, 
-  // but we enforce an explicit check here if needed.
-  if (!allowedRoles.includes(decodedToken.role || "teacher")) {
-    return NextResponse.json({ error: "Forbidden: Only authorized staff can publish notices" }, { status: 403 });
-  }
+  const { payload: decodedToken, profile } = await requireRole(request, allowedRoles);
 
   const body = await request.json();
   const validData = noticeSchema.parse(body);
@@ -36,7 +29,7 @@ async function publishNotice(request) {
     ...validData,
     author: decodedToken.name || decodedToken.email.split("@")[0],
     authorId: decodedToken.uid,
-    authorRole: decodedToken.role || "teacher",
+    authorRole: profile.role,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

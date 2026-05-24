@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import ShortcutsModal from "@/components/ShortcutsModal";
 
 const InstallPWA = dynamic(() => import("@/components/InstallPWA"), {
@@ -38,6 +39,8 @@ export default function ClientLayout() {
     onHelp: handleHelp,
     onEscape: handleEscape,
   });
+  
+  useIdleTimeout();
 
   return (
     <>
