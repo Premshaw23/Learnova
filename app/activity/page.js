@@ -218,7 +218,7 @@ export default function ActivityPage() {
 
   const handleStartActivity = async (activity) => {
     if (!user) {
-      alert("Please log in to track your learning progress!");
+      toast.error("Please log in to track your learning progress!");
       return;
     }
 
@@ -233,7 +233,7 @@ export default function ActivityPage() {
     await updateUserStat(user.uid, "Courses Enrolled", 1);
 
     // Here add logic to actually open the quiz/game
-    alert(`Started ${activity.title}! Progress is now being tracked.`);
+    toast.success(`Started ${activity.title}! Progress is now being tracked.`);
   };
 
   const getDifficultyColor = (difficulty) => {

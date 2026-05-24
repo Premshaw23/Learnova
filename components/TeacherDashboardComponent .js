@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Navbar } from "./Navbar";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Calendar,
@@ -366,7 +367,7 @@ const TeacherDashboard = () => {
       );
     } catch (error) {
       console.error("Failed to update exception request:", error);
-      alert("Failed to update request. Please try again.");
+      toast.error("Failed to update request. Please try again.");
     }
   };
 
