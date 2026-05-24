@@ -26,6 +26,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState("");
   const [locationDenied, setLocationDenied] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [modalLocationLoading, setModalLocationLoading] = useState(false);
@@ -58,6 +59,8 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
           checkTimeValidity(settingsData.timeWindow);
         }
       } catch (error) {
+        console.error("Failed to load attendance settings from Firestore:", error);
+        setSettingsError(error.message || "Database connection failure");
       } finally {
         setSettingsLoading(false);
       }
@@ -365,6 +368,11 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
               Unable to load attendance settings. Please contact your
               administrator or try refreshing the page.
             </p>
+            {settingsError && (
+              <p className="text-xs text-red-400/80 bg-red-950/40 p-3 rounded-lg border border-red-500/20 mt-4 text-left font-mono break-all">
+                Details: {settingsError}
+              </p>
+            )}
           </div>
           <Button
             onClick={() => window.location.reload()}
