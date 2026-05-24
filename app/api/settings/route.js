@@ -20,6 +20,7 @@ const settingsSchema = z
         phone: z.string().optional(),
         bio: z.string().optional(),
         avatar: z.string().optional(),
+        banner: z.string().optional(),
       })
       .strict()
       .optional(),
