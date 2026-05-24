@@ -33,7 +33,7 @@ const NoticeSearch = ({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       onSearchChange(localSearch.trim());
-    }, 220);
+    }, 300);
     return () => window.clearTimeout(timer);
   }, [localSearch, onSearchChange]);
 
