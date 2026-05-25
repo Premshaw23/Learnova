@@ -22,12 +22,12 @@ import {
   Clock,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useTheme } from "next-themes";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 
 // ---------------------------------------------------------------------------
-// Constants — swap out with your real import if you have one:
-// import { CONTACT_INFO } from '../constants/contact';
+// Constants
 // ---------------------------------------------------------------------------
 const CONTACT_INFO = {
   email: "shawprem217@gmail.com",
@@ -282,50 +282,62 @@ async function saveConversation(userText, botText) {
 // Main component
 // ---------------------------------------------------------------------------
 const LearnovaChatbot = () => {
-  // Get the Firebase user object so we can fetch a fresh ID token per request
-  // ✅ 1. Dynamic Greeting Generator based on the user's logged-in profile role
+  // Get the user profile data directly from your Auth Context framework
+  const { user } = useAuthContext();
+
+  // Helper helper function to format context welcome messages dynamically
   const getContextWelcomeMessage = useCallback(() => {
-    if (!user) return "Hello! I'm Nova, your AI assistant for Learnova. How can I assist you today?";
+    const fallbackGreeting = "Hello! I'm Nova, your AI assistant for Learnova — the Smart Student Engagement Ecosystem! I can help you with attendance management, smart activities, security features, analytics, and more. What would you like to know?";
+    
+    if (!user) return fallbackGreeting;
 
     const nameSegment = user.displayName || user.email?.split('@')[0] || "there";
     const role = user.role?.toLowerCase() || "";
 
+    // ✅ Requirement 1: Contextual welcome greetings based on User profile roles
     if (role === "teacher" || role === "instructor") {
-      return `Hello Creator! Ready to manage your classes or check attendance logs today?`;
+      return `Welcome back, Professor **${nameSegment}**! 🎓\n\nI'm ready to assist with your class workflows today. You can ask me about tracking automated geofenced attendance logs, creating dynamic coding challenges, or checking analytics data insights. How can I help streamline your classroom today?`;
     } else if (role === "student") {
-      return `Hi ${nameSegment}, need help finding your assignments or checking your attendance?`;
+      return `Hey **${nameSegment}**! 👋 Welcome to your Learnova hub.\n\nI'm here to help you review your verified attendance history, view active gamified quizzes or coding labs, and monitor your personal skill assessment tracking. What target are we crushing today?`;
     }
 
-    return `Hello ${nameSegment}! Welcome to Learnova. How can I help you today?`;
+    return `Hello **${nameSegment}**! Welcome to Learnova — the Smart Student Engagement Ecosystem! How can I help you find what you need today?`;
   }, [user]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState(() => [
-    {
-      id: 1
-  
 
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const isDarkMode = resolvedTheme === "dark" || theme === "dark";
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
+  
+  // Initialize with functional generator evaluation
+  const [messages, setMessages] = useState(() => [
+    {
+      id: 1,
+      text: "Hello! I'm Nova, your AI assistant for Learnova. How can I assist you today?",
+      isBot: true,
+      timestamp: new Date(),
+    }
+  ]);
+  
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentCategory, setCurrentCategory] = useState("general");
 
+  const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  // Re-run setup mapping when user authentication data changes state asynchronously
   useEffect(() => {
-    
     setMessages([
       {
         id: Date.now(),
-        text: getContextWelcomeMessage(), 
+        text: getContextWelcomeMessage(),
         isBot: true,
         timestamp: new Date(),
       }
     ]);
-  }, [getContextWelcomeMessage]); 
-  const messagesEndRef = useRef(null);
-  const textareaRef = useRef(null);
+  }, [getContextWelcomeMessage]);
 
   useEffect(() => {
     if (!inputMessage && textareaRef.current) {
@@ -336,7 +348,7 @@ const LearnovaChatbot = () => {
   // Auto scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]); // Trigger on loading states too for tracking
 
   // Auto-resize textarea
   const handleInputChange = (e) => {
@@ -348,18 +360,6 @@ const LearnovaChatbot = () => {
     }
   };
 
-  useEffect(() => {
-   
-    setMessages([
-      {
-        id: Date.now(),
-        text: getContextWelcomeMessage(), 
-        isBot: true,
-        timestamp: new Date(),
-      }
-    ]);
-  }, [getContextWelcomeMessage]);
-  // ✅ 4. Re-applies the user role greeting when the chat window is cleared
   const clearChat = () => {
     setMessages([
       {
@@ -390,7 +390,7 @@ const LearnovaChatbot = () => {
       setIsLoading(true);
 
       // Small delay for UX
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 800));
 
       let botText = "";
       try {
@@ -416,7 +416,7 @@ const LearnovaChatbot = () => {
 
       await saveConversation(text, botText);
     },
-    [inputMessage, isLoading, currentCategory, user]
+    [inputMessage, isLoading, currentCategory, user, getContextWelcomeMessage]
   );
 
   const handleKeyDown = (e) => {
@@ -447,13 +447,9 @@ const LearnovaChatbot = () => {
     suggestion: isDarkMode
       ? "bg-purple-900/50 text-purple-300 hover:bg-purple-800/60 border border-purple-800"
       : "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200",
-    loading: isDarkMode ? "bg-gray-800" : "bg-gray-100",
-    dot: isDarkMode ? "text-gray-400" : "text-gray-500",
+    loading: isDarkMode ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200",
   };
 
-  // ---------------------------------------------------------------------------
-  // Closed state — floating button
-  // ---------------------------------------------------------------------------
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50">
@@ -463,11 +459,9 @@ const LearnovaChatbot = () => {
           aria-label="Open Nova chat"
         >
           <MessageCircle size={24} />
-          {/* Pulse badge */}
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
             <Sparkles size={14} />
           </span>
-          {/* Tooltip */}
           <span className="absolute -left-28 -top-10 bg-gray-900 text-white px-3 py-1 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             Ask Nova anything!
           </span>
@@ -476,16 +470,13 @@ const LearnovaChatbot = () => {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Open state — chat window
-  // ---------------------------------------------------------------------------
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 flex flex-col ${t.bg} rounded-xl shadow-2xl transition-all duration-300 border ${t.border} ${
-        isMinimized ? "w-72 h-16 overflow-hidden" : "w-96 h-[660px]"
+      className={`fixed z-50 flex flex-col ${t.bg} shadow-2xl transition-all duration-300 border ${t.border} ${
+        isMinimized ? "bottom-6 right-6 w-72 h-16 overflow-hidden rounded-xl" : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
       }`}
     >
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className={`${t.header} text-white p-4 rounded-t-xl flex items-center justify-between shrink-0`}>
         <div className="flex items-center space-x-3">
           <div className="relative">
@@ -504,22 +495,21 @@ const LearnovaChatbot = () => {
           <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Clear chat">
             <RefreshCw size={16} />
           </button>
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme">
+          <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme">
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
           <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title={isMinimized ? "Expand" : "Minimize"}>
             {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
           </button>
-          <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Close">
-            <X size={16} />
+          <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-2 sm:p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Close" aria-label="Close chat">
+            <X size={20} className="sm:w-4 sm:h-4" />
           </button>
         </div>
       </div>
 
-      {/* Everything below is hidden when minimized */}
       {!isMinimized && (
         <>
-          {/* ── Category Tabs ────────────────────────────────────────────── */}
+          {/* Category Tabs */}
           <div className={`p-2 border-b ${t.border} shrink-0`}>
             <div className="flex space-x-1 overflow-x-auto scrollbar-none">
               {categories.map(({ id, label, icon: Icon }) => (
@@ -537,20 +527,18 @@ const LearnovaChatbot = () => {
             </div>
           </div>
 
-          {/* ── Messages Area ─────────────────────────────────────────────── */}
+          {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-none">
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.isBot ? "justify-start" : "justify-end"}`}
+                className={`flex animate-fadeIn ${message.isBot ? "justify-start" : "justify-end"}`}
               >
                 <div className={`flex max-w-[85%] items-end gap-2 ${message.isBot ? "flex-row" : "flex-row-reverse"}`}>
-                  {/* Avatar */}
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${message.isBot ? t.botAvatar : t.userAvatar}`}>
                     {message.isBot ? <Bot size={16} /> : <User size={16} />}
                   </div>
 
-                  {/* Bubble */}
                   <div className={`px-4 py-3 rounded-2xl shadow-sm ${message.isBot ? t.botMsg : t.userMsg}`}>
                     {message.isBot ? (
                       <ReactMarkdown components={markdownComponents}>
@@ -572,7 +560,7 @@ const LearnovaChatbot = () => {
               </div>
             ))}
 
-            {/* Suggested questions — shown only with the welcome message */}
+            {/* Suggested questions */}
             {messages.length === 1 && (
               <div className="space-y-2">
                 <p className={`text-xs font-medium text-center ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
@@ -589,23 +577,24 @@ const LearnovaChatbot = () => {
                   </button>
                 ))}
               </div>
-            )}
+                )}
 
-            {/* Loading indicator */}
+            {/* ✅ Requirement 2: Fluid 3-dot Animated Typing Indicator Bubble */}
             {isLoading && (
-              <div className="flex justify-start">
-                <div className={`${t.loading} rounded-2xl px-4 py-3 shadow-sm`}>
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1">
-                      {[0, 0.1, 0.2].map((delay, i) => (
-                        <div
-                          key={i}
-                          className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
-                          style={{ animationDelay: `${delay}s` }}
-                        />
-                      ))}
+              <div className="flex justify-start items-end gap-2 animate-fadeIn">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${t.botAvatar}`}>
+                  <Bot size={16} />
+                </div>
+                <div className={`${t.loading} border rounded-2xl px-4 py-3.5 shadow-sm max-w-[85%]`}>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center gap-1 w-12 justify-center py-1">
+                      <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full animate-[bounce_1.2s_infinite_0ms]" />
+                      <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full animate-[bounce_1.2s_infinite_200ms]" />
+                      <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full animate-[bounce_1.2s_infinite_400ms]" />
                     </div>
-                    <span className={`text-xs ${t.dot}`}>Nova is thinking…</span>
+                    <span className={`text-xs font-medium tracking-wide ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Nova is thinking...
+                    </span>
                   </div>
                 </div>
               </div>
@@ -614,37 +603,26 @@ const LearnovaChatbot = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* ── Quick Contact Bar ─────────────────────────────────────────── */}
+          {/* Quick Contact Bar */}
           <div className={`px-4 py-2 border-t ${t.border} shrink-0`}>
             <div className="flex items-center justify-center space-x-4 text-xs">
-              <a
-                href={`mailto:${CONTACT_INFO.email}`}
-                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-blue-400" : "text-blue-600"}`}
-              >
+              <a href={`mailto:${CONTACT_INFO.email}`} className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-blue-400" : "text-blue-600"}`}>
                 <Mail size={12} />
                 <span>Email</span>
               </a>
-              <a
-                href={`tel:${CONTACT_INFO.phone}`}
-                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-green-400" : "text-green-600"}`}
-              >
+              <a href={`tel:${CONTACT_INFO.phone}`} className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-green-400" : "text-green-600"}`}>
                 <Phone size={12} />
                 <span>Call</span>
               </a>
-              <a
-                href={CONTACT_INFO.demo}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-purple-400" : "text-purple-600"}`}
-              >
+              <a href={CONTACT_INFO.demo} target="_blank" rel="noopener noreferrer" className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-purple-400" : "text-purple-600"}`}>
                 <ExternalLink size={12} />
                 <span>Demo</span>
               </a>
             </div>
           </div>
 
-          {/* ── Input ─────────────────────────────────────────────────────── */}
-          <div className={`p-4 border-t ${t.border} shrink-0`}>
+          {/* Input Panel */}
+          <div className="p-4 border-t shrink-0">
             <div className="flex items-end gap-3">
               <textarea
                 ref={textareaRef}
