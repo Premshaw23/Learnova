@@ -3,61 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* globals.css or your main CSS file */
+/**
+ * Learnova - Dark Mode Global Styles
+ * Comprehensive theme system with smooth transitions and animations
+ */
 
-/* Hide SplitText elements until fonts are loaded */
-.split-text {
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
-}
-
-/* Show SplitText elements when fonts are ready */
-.fonts-loaded .split-text {
-  opacity: 1;
-}
-
-/* Hide scrollbar for all browsers */
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-  /* Chrome, Safari, Opera */
-}
-
-.scrollbar-none {
-  -ms-overflow-style: none;
-  /* IE and Edge */
-  scrollbar-width: none;
-  /* Firefox */
-}
-
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.5s ease-out;
-}
-
-/* Font display strategy */
-@font-face {
-  font-family: 'YourCustomFont';
-  src: url('/fonts/your-font.woff2') format('woff2');
-  font-display: swap;
-  /* This helps with font loading */
-}
-
-/* Preload critical fonts */
-/* Add this to your HTML head:
-<link rel="preload" href="/fonts/your-font.woff2" as="font" type="font/woff2" crossorigin>
-*/
-
+/* ===== ROOT & LIGHT THEME COLORS ===== */
 :root {
   /* Updated color tokens to match Learnova design brief */
   --background: oklch(1 0 0);
@@ -122,6 +73,7 @@
   /* #8b5cf6 */
 }
 
+/* ===== DARK THEME COLORS ===== */
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -198,51 +150,148 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* Shimmer animation for skeleton loading states */
+/* ===== ANIMATIONS & KEYFRAMES ===== */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
   }
 }
 
+@keyframes theme-transition {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ===== BASE & LAYOUT STYLES ===== */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
 
-  html,
-body {
-  overflow-x: hidden;
+  html {
+    @apply scroll-smooth;
+    overflow-x: hidden;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
 }
 
-body {
-  @apply bg-background text-foreground;
+/* ===== UTILITY CLASSES ===== */
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out;
 }
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
 }
 
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
 
-/* Custom Scrollbar */
+/* Smooth theme transition effect */
+.theme-transition {
+  animation: theme-transition 0.3s ease-out;
+}
 
+/* Hidden SplitText elements until fonts are loaded */
+.split-text {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.fonts-loaded .split-text {
+  opacity: 1;
+}
+
+/* Scrollbar hiding utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ===== CUSTOM SCROLLBAR STYLES ===== */
 ::-webkit-scrollbar {
   width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #05010d;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, #8b5cf6, #ec4899);
   border-radius: 9999px;
-  border: 2px solid #05010d;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(to bottom, #a855f7, #f472b6);
+  background-clip: padding-box;
 }
 
-/* Firefox */
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #a855f7, #ec4899);
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #c084fc, #f472b6);
+  background-clip: padding-box;
+}
+
+/* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #8b5cf6 #05010d;
+  scrollbar-color: #8b5cf6 transparent;
+}
+
+.dark {
+  scrollbar-color: #a855f7 transparent;
 }
