@@ -1,3 +1,4 @@
+import StatsSkeleton from "@/components/ui/skeletons/StatsSkeleton";
 import { toast } from "react-hot-toast";
 import React, { useState, useEffect } from "react";
 import { Navbar } from "./Navbar";
@@ -71,6 +72,7 @@ const EngagementChart = dynamic(
 
 const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attendanceWindow, setAttendanceWindow] = useState(false);
   const [currentPasscode, setCurrentPasscode] = useState("");
@@ -130,11 +132,13 @@ const fetchTodayAttendanceStats = async () => {
       lateToday,
       averageAttendance,
     });
+    setLoadingStats(false);
   } catch (err) {
     console.error(
       "Failed to fetch today's attendance stats:",
       err,
     );
+    setLoadingStats(false);
   }
 };
 
