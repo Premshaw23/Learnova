@@ -19,13 +19,18 @@ export const GET = withErrorHandler(async (request) => {
 
     const { searchParams } = new URL(request.url);
 
-    // Pagination
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    // Pagination - extract and validate query parameters
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
+    
+    const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
+    const limit = limitParam ? Math.min(100, Math.max(1, parseInt(limitParam, 10))) : 20;
 
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(searchParams.get("limit") || "20", 10)),
-    );
+    // Validate pagination parameters
+    if (isNaN(page) || isNaN(limit)) {
+      const { ValidationError } = require("@/lib/errors");
+      throw new ValidationError("Invalid pagination parameters");
+    }
 
     const skip = (page - 1) * limit;
 

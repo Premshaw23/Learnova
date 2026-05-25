@@ -1,30 +1,92 @@
 import { authenticateRequest } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
-import { connectDb } from "@/lib/mongodb";
+import { connectDbForSSE } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
 
-const activeStreams = new Map();
-const MAX_STREAMS_PER_USER = 2;
+const userStreams = new Map();
+const streamListeners = new Map();
+let connectionCount = 0;
+let nextConnId = 0;
+const MAX_CONNECTIONS = 50;
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+let sharedStream = null;
+let sharedDb = null;
+
+async function getSharedStream() {
+  if (sharedStream) return true;
+  try {
+    sharedDb = await connectDbForSSE();
+    const coll = sharedDb.collection("notices");
+    sharedStream = coll.watch([{ $match: { operationType: "insert" } }]);
+    sharedStream.on("change", (change) => {
+      const doc = change.fullDocument;
+      if (!doc) return;
+      for (const [, cbs] of streamListeners) {
+        for (const cb of cbs) cb(doc);
+      }
+    });
+    sharedStream.on("error", () => {
+      sharedStream?.close().catch(() => {});
+      sharedStream = null;
+      sharedDb = null;
+    });
+    sharedStream.on("close", () => {
+      sharedStream = null;
+      sharedDb = null;
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function addListener(userId, cb) {
+  if (!streamListeners.has(userId)) {
+    streamListeners.set(userId, new Set());
+  }
+  streamListeners.get(userId).add(cb);
+}
+
+function removeListener(userId, cb) {
+  const cbs = streamListeners.get(userId);
+  if (!cbs) return;
+  cbs.delete(cb);
+  if (cbs.size === 0) {
+    streamListeners.delete(userId);
+  }
+  if (streamListeners.size === 0 && sharedStream) {
+    sharedStream.close().catch(() => {});
+    sharedStream = null;
+    sharedDb = null;
+  }
+}
 
 export async function GET(request) {
   try {
-    // Authenticate and establish tenant/role context BEFORE opening stream
     const decodedToken = await authenticateRequest(request);
     const profile = await getUserProfile(decodedToken.uid);
     const userRole = profile?.role || "student";
+    const userId = decodedToken.uid;
 
-    // Enforce per-user SSE connection limit to prevent MongoDB pool exhaustion
-    const userStreamCount = activeStreams.get(decodedToken.uid) || 0;
-    if (userStreamCount >= MAX_STREAMS_PER_USER) {
-      return new Response(JSON.stringify({ error: "Too many connections. Please close other tabs." }), {
-        status: 429,
-        headers: { "Content-Type": "application/json" }
+    if (connectionCount >= MAX_CONNECTIONS) {
+      return new Response(JSON.stringify({ error: "Too many connections" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
       });
     }
-    activeStreams.set(decodedToken.uid, userStreamCount + 1);
-    
+
+    const existing = userStreams.get(userId);
+    if (existing) {
+      existing.close();
+    }
+
+    const connId = nextConnId++;
     let isConnected = true;
+    let heartbeatInterval;
+    let pollInterval;
+    let idleTimer;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -34,110 +96,94 @@ export async function GET(request) {
           controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
         };
 
-        const db = await connectDb();
+        const db = await connectDbForSSE();
         const noticesCollection = db.collection("notices");
 
-        // 1. Send initial batch of notices instantly
         try {
-           const initialNotices = await noticesCollection
-             .find({ targetAudience: userRole })
-             .sort({ isPinned: -1, createdAt: -1 })
-             .limit(50)
-             .toArray();
-           
-           const formattedNotices = initialNotices.map(n => ({ ...n, id: n._id.toString() }));
-           sendEvent("initial", formattedNotices);
+          const initialNotices = await noticesCollection
+            .find({ targetAudience: userRole })
+            .sort({ isPinned: -1, createdAt: -1 })
+            .limit(50)
+            .toArray();
+
+          const formattedNotices = initialNotices.map(n => ({ ...n, id: n._id.toString() }));
+          sendEvent("initial", formattedNotices);
         } catch (error) {
-           console.error("Initial fetch error:", error);
-           sendEvent("error", { message: "Failed to fetch initial notices" });
-           const count = activeStreams.get(decodedToken.uid);
-           if (count <= 1) {
-             activeStreams.delete(decodedToken.uid);
-           } else {
-             activeStreams.set(decodedToken.uid, count - 1);
-           }
-           return controller.close();
+          console.error("Initial fetch error:", error);
+          sendEvent("error", { message: "Failed to fetch initial notices" });
+          return controller.close();
         }
 
-        let changeStream;
-        let pollInterval;
+        const entry = {
+          id: connId,
+          close() {
+            isConnected = false;
+            try { controller.close(); } catch {}
+          },
+        };
 
-        function startPollingFallback() {
+        userStreams.set(userId, entry);
+        connectionCount++;
+
+        const onNotice = (doc) => {
+          if (!isConnected) return;
+          if (doc.targetAudience && doc.targetAudience.includes(userRole)) {
+            sendEvent("new-notice", { ...doc, id: doc._id.toString() });
+          }
+        };
+
+        addListener(userId, onNotice);
+        const hasStream = await getSharedStream();
+
+        if (!hasStream) {
           let lastCheckTime = new Date();
           pollInterval = setInterval(async () => {
-             if (!isConnected) return clearInterval(pollInterval);
-             try {
-                const newNotices = await noticesCollection
-                  .find({ 
-                    targetAudience: userRole, 
-                    createdAt: { $gt: lastCheckTime } 
-                  })
-                  .toArray();
-                
-                if (newNotices.length > 0) {
-                  lastCheckTime = new Date();
-                  newNotices.forEach(notice => {
-                    sendEvent("new-notice", { ...notice, id: notice._id.toString() });
-                  });
-                }
-             } catch (e) {
-                console.error("Polling error:", e);
-             }
-          }, 10000); // 10s fallback polling internally
+            if (!isConnected) return clearInterval(pollInterval);
+            try {
+              const newNotices = await noticesCollection
+                .find({ targetAudience: userRole, createdAt: { $gt: lastCheckTime } })
+                .toArray();
+
+              if (newNotices.length > 0) {
+                lastCheckTime = new Date();
+                newNotices.forEach(notice => {
+                  sendEvent("new-notice", { ...notice, id: notice._id.toString() });
+                });
+              }
+            } catch (e) {
+              console.error("Polling error:", e);
+            }
+          }, 10000);
         }
 
-        // 2. Setup Realtime Broadcast
-        try {
-          // Attempt MongoDB Change Stream (Only works on Replica Sets)
-          changeStream = noticesCollection.watch([
-            { $match: { operationType: "insert" } }
-          ]);
+        const resetIdle = () => {
+          if (idleTimer) clearTimeout(idleTimer);
+          idleTimer = setTimeout(() => {
+            if (!isConnected) return;
+            isConnected = false;
+            try { controller.close(); } catch {}
+          }, IDLE_TIMEOUT_MS);
+        };
+        resetIdle();
 
-          changeStream.on("change", (change) => {
-             if (!isConnected) return;
-             const notice = change.fullDocument;
-             
-             // Strict Multi-Tenant Enforcement: only send if user is in target audience
-             if (notice.targetAudience && notice.targetAudience.includes(userRole)) {
-               const formatted = { ...notice, id: notice._id.toString() };
-               sendEvent("new-notice", formatted);
-             }
-          });
-
-          changeStream.on("error", (error) => {
-             console.error("Change stream error, falling back to polling:", error.message);
-             if (changeStream) changeStream.close().catch(() => {});
-             startPollingFallback();
-          });
-        } catch (error) {
-          console.warn("Change Stream not supported. Falling back to internal polling.");
-          startPollingFallback();
-        }
-
-        // 3. Keep-alive Heartbeat to prevent premature proxy termination
-        const heartbeatInterval = setInterval(() => {
+        heartbeatInterval = setInterval(() => {
           sendEvent("ping", { time: new Date().toISOString() });
         }, 15000);
 
-        function cleanupStream() {
+        request.signal.addEventListener("abort", () => {
+          const current = userStreams.get(userId);
+          if (current && current.id === connId) {
+            userStreams.delete(userId);
+            connectionCount = Math.max(0, connectionCount - 1);
+          }
           isConnected = false;
           clearInterval(heartbeatInterval);
           if (pollInterval) clearInterval(pollInterval);
-          if (changeStream) changeStream.close().catch(() => {});
-          
-          const count = activeStreams.get(decodedToken.uid);
-          if (count <= 1) {
-            activeStreams.delete(decodedToken.uid);
-          } else {
-            activeStreams.set(decodedToken.uid, count - 1);
-          }
-        }
-
-        request.signal.addEventListener("abort", () => {
-          cleanupStream();
-          try { controller.close(); } catch (e) {}
+          if (idleTimer) clearTimeout(idleTimer);
+          removeListener(userId, onNotice);
+          try { controller.close(); } catch {}
         });
-      }
+      },
     });
 
     return new Response(stream, {
@@ -145,15 +191,15 @@ export async function GET(request) {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache, no-transform",
         "Connection": "keep-alive",
-        "X-Accel-Buffering": "no" // Disables Nginx buffering on platforms like Vercel
-      }
+        "X-Accel-Buffering": "no",
+      },
     });
 
   } catch (error) {
     console.error("SSE stream auth error:", error);
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { 
-      status: 401, 
-      headers: { "Content-Type": "application/json" } 
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
     });
   }
 }

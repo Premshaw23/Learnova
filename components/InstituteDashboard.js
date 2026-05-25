@@ -64,6 +64,7 @@ const InstituteDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setInitialLoading(false), 1200);
@@ -122,9 +123,10 @@ const InstituteDashboard = () => {
           if (data.teachers) setTeachers(data.teachers);
           if (data.attendanceRequests) setAttendanceRequests(data.attendanceRequests);
         } else {
-          console.error("Failed to fetch institute stats:", res.status);
+          setError("Failed to fetch institute data. Please try again.");
         }
       } catch (err) {
+        setError("Network error. Please check your connection and try again.");
         console.error("Error fetching institute stats:", err);
       } finally {
         setLoading(false);
@@ -963,6 +965,30 @@ const InstituteDashboard = () => {
 
   if (initialLoading) {
     return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="fixed top-0 left-0 w-full z-50 shadow-xl border-b border-white/10 bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-xl">
+          <Navbar />
+        </div>
+        <div className="text-center pt-20 px-4">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-10 h-10 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+          >
+            <RefreshCw className="w-4 h-4 mr-2 inline" />
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

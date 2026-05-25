@@ -27,7 +27,7 @@ describe("validateName", () => {
 
   test("rejects invalid characters", () => {
     expect(validateName("Priyanshi123", "Full Name")).toBe(
-      "Full Name must only contain letters and spaces"
+      "Full Name must only contain letters, spaces, hyphens, and apostrophes"
     );
   });
 });

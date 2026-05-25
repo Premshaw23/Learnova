@@ -3,7 +3,7 @@ import SkeletonCard from "@/components/ui/SkeletonCard";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
-
+import { toast } from "react-hot-toast";
 const AUTH_TIMEOUT = 15000;
 
 export default function ProtectedRoute({
@@ -56,6 +56,7 @@ export default function ProtectedRoute({
       userProfile &&
       !allowedRoles.includes(userProfile.role)
     ) {
+      toast.error("Access Denied: You do not have permission to view this page.");
       let target = "/auth";
       switch (userProfile.role) {
         case "student":

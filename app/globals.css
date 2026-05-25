@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@layer base {
+  :focus-visible {
+    @apply outline-none ring-2 ring-blue-600 ring-offset-2 ring-offset-white dark:ring-blue-500 dark:ring-offset-gray-900;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* globals.css or your main CSS file */
@@ -228,50 +234,17 @@
   }
 }
 
-
-/* Custom Scrollbar */
-
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 9999px;
-  border: 2px solid var(--scrollbar-track);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
-}
-
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb-solid) var(--scrollbar-track);
-}
-
-#cursor-glow {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  pointer-events: none;
-  position: fixed;
-  z-index: 9999;
-
-  background: radial-gradient(
-    circle,
-    rgba(167, 111, 219, 0.75) 10%,
-    rgba(168, 85, 247, 0.55) 35%,
-    rgba(168, 85, 247, 0.15) 55%,
-    transparent 80%
-  );
-
-  filter: blur(30px);
-  transform: translate(-50%, -50%);
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { X, Keyboard } from "lucide-react";
 
 const shortcuts = [
@@ -21,12 +21,23 @@ const shortcuts = [
 ];
 
 export default function ShortcutsModal({ isOpen, onClose }) {
+  const closeBtnRef = useRef(null);
+
   useEffect(() => {
-    const handleEscape = (e) => {
+    if (isOpen && closeBtnRef.current) {
+      closeBtnRef.current.focus();
+    }
+  }, [isOpen]);
+  useEffect(() => {
+    const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose();
+      if (e.key === "Tab" && isOpen) {
+        e.preventDefault();
+        closeBtnRef.current?.focus();
+      }
     };
-    if (isOpen) document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
+    if (isOpen) document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   const isMac =
@@ -56,6 +67,7 @@ export default function ShortcutsModal({ isOpen, onClose }) {
             </h2>
           </div>
           <button
+            ref={closeBtnRef}
             onClick={onClose}
             className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
             aria-label="close shortcuts modal"

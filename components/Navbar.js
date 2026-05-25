@@ -18,7 +18,16 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useTheme } from "next-themes";
 
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
 
+const languageMap = {
+  "English": "en",
+  "Español": "es",
+  "Français": "fr",
+  "Deutsch": "de",
+  "हिन्दी": "hi"
+};
 import {
   Menu,
   X,
@@ -37,6 +46,7 @@ import {
   Moon,
   Keyboard,
   Languages, // Added for the translation button icon
+  Search,
 } from "lucide-react";
 
 export function Navbar() {
@@ -47,7 +57,7 @@ export function Navbar() {
   const [currentLang, setCurrentLang] = useState("English"); // Tracks selected language
   const [scrollProgress, setScrollProgress] = useState(0);
   const [mounted, setMounted] = useState(false);
-
+  const { i18n } = useTranslation();
   const {
     notifications,
     unreadCount,
@@ -60,29 +70,28 @@ export function Navbar() {
     userProfile,
     signOut,
     isAuthenticated,
+    loading,
   } = useAuthContext();
 
   const dropdownRef = useRef(null);
   const langRef = useRef(null); // Ref to track language dropdown outside clicks
   const pathname = usePathname();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [prefersDark, setPrefersDark] = useState(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = localStorage.getItem("theme");
-      if (saved === "light") return false;
-      if (saved === "dark") return true;
-      return (
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches
-      );
-    } catch (e) {
-      return null;
-    }
-  });
+  const [prefersDark, setPrefersDark] = useState(null);
 
   useEffect(() => {
     setMounted(true);
+    try {
+      const saved = localStorage.getItem("theme");
+      if (saved === "light") setPrefersDark(false);
+      else if (saved === "dark") setPrefersDark(true);
+      else {
+        setPrefersDark(
+          typeof window.matchMedia === "function" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+        );
+      }
+    } catch (e) {}
   }, []);
 
   useEffect(() => {
@@ -197,6 +206,7 @@ export function Navbar() {
     { href: "/", label: "Home", icon: Home },
     { href: "/productivity", label: "Focus", icon: Sparkles },
     { href: "/activity", label: "Activities", icon: Activity },
+    { href: "/complaints", label: "Complaints", icon: Mail },
     { href: "/contact", label: "Contact", icon: Mail },
   ];
 
@@ -288,6 +298,17 @@ export function Navbar() {
             {/* Right Group Controls */}
             <div className="hidden sm:flex items-center space-x-3">
               
+              {/* Global Search Button */}
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent("learnova:open-search"))}
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors border border-zinc-200/40 dark:border-zinc-800/50 cursor-pointer"
+                aria-label="Open search modal"
+              >
+                <Search className="h-4 w-4 text-zinc-400" />
+                <span className="hidden md:inline">Search</span>
+                <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-400 text-[10px] rounded border border-zinc-200 dark:border-zinc-800 font-mono leading-none">Ctrl K</kbd>
+              </button>
+
               {/* Language Selector Dropdown */}
               <div className="relative" ref={langRef}>
                 <button
@@ -314,6 +335,9 @@ export function Navbar() {
                         onClick={() => {
                           setCurrentLang(lang);
                           setIsLangOpen(false);
+                          if (i18n && i18n.changeLanguage) {
+                            i18n.changeLanguage(languageMap[lang]);
+                          }
                         }}
                         className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                           currentLang === lang
@@ -339,7 +363,9 @@ export function Navbar() {
                 </button>
               )}
 
-              {isAuthenticated ? (
+              {loading ? (
+                <div className="w-24 h-10 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />
+              ) : isAuthenticated ? (
                 <div className="flex items-center space-x-3 pl-1 border-l border-zinc-200 dark:border-zinc-800">
                   
                   {/* Notifications Module Panel */}
@@ -494,9 +520,12 @@ export function Navbar() {
                   <button
                     key={lang}
                     onClick={() => {
-                      setCurrentLang(lang);
-                      setIsMenuOpen(false);
-                    }}
+                          setCurrentLang(lang);
+                          setIsMenuOpen(false);
+                          if (i18n && i18n.changeLanguage) {
+                            i18n.changeLanguage(languageMap[lang]);
+                          }
+                        }}
                     className={`text-xs p-2 rounded-xl border text-center transition-all ${
                       currentLang === lang
                         ? "bg-blue-600 text-white border-blue-600 font-bold"
@@ -523,7 +552,9 @@ export function Navbar() {
 
             {/* Primary Action Buttons */}
             <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900">
-              {isAuthenticated ? (
+              {loading ? (
+                <div className="w-full h-10 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-lg" />
+              ) : isAuthenticated ? (
                 <Button onClick={handleLogout} variant="destructive" size="default" className="w-full text-white rounded-lg text-sm h-10">
                   <LogOut className="h-4 w-4 mr-2" /> Logout
                 </Button>
@@ -539,17 +570,30 @@ export function Navbar() {
             </div>
 
             {/* Shortcuts Footer */}
-            <div className="text-center space-y-2 pt-1">
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
-                }}
-                className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-blue-600 transition-colors text-xs"
-              >
-                <Keyboard className="h-3.5 w-3.5" />
-                <span>Keyboard Shortcuts</span>
-              </button>
+            <div className="text-center space-y-2 pt-1 flex flex-col items-center">
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    window.dispatchEvent(new CustomEvent("learnova:open-search"));
+                  }}
+                  className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-blue-600 transition-colors text-xs"
+                >
+                  <Search className="h-3.5 w-3.5" />
+                  <span>Search</span>
+                </button>
+                <span className="text-zinc-600 dark:text-zinc-800">|</span>
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
+                  }}
+                  className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-blue-600 transition-colors text-xs"
+                >
+                  <Keyboard className="h-3.5 w-3.5" />
+                  <span>Shortcuts</span>
+                </button>
+              </div>
               <p className="text-zinc-400/50 text-[10px]">© {new Date().getFullYear()} Learnova.</p>
             </div>
 

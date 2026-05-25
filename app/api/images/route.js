@@ -5,13 +5,22 @@ import { withErrorHandler } from "@/lib/error-handler";
 import { AppError, ValidationError, NotFoundError } from "@/lib/errors";
 import { put } from "@vercel/blob";
 import { randomUUID } from "crypto";
+import { z } from "zod";
+
+export const dynamic = "force-dynamic";
+
+const getImageSchema = z.object({
+  id: z.string().min(1, "Missing user id parameter"),
+});
 
 export const GET = withErrorHandler(async (request) => {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
-    if (!id) {
-      throw new ValidationError("Missing user id parameter");
+    const validation = getImageSchema.safeParse({ id });
+    if (!validation.success) {
+      const firstError = validation.error.issues?.[0]?.message || "Invalid request parameter";
+      throw new ValidationError(firstError);
     }
 
     await requireAuth(request);
@@ -36,9 +45,38 @@ export const GET = withErrorHandler(async (request) => {
       throw new NotFoundError("Image not found");
     }
 
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(user.image);
+    } catch {
+      throw new ValidationError("Invalid image URL");
+    }
+
+    if (parsedUrl.protocol !== "https:") {
+      throw new ValidationError("Image URL must use HTTPS");
+    }
+
+    const allowedImageHosts = [
+      "public.blob.vercel-storage.com",
+      "lh3.googleusercontent.com",
+    ];
+
+    const hostOk = allowedImageHosts.some(
+      (h) => parsedUrl.hostname === h || parsedUrl.hostname.endsWith("." + h)
+    );
+
+    if (!hostOk) {
+      throw new ValidationError("Image source not allowed");
+    }
+
     const imageResponse = await fetch(user.image);
     if (!imageResponse.ok) {
       throw new AppError("Failed to fetch image", 502);
+    }
+
+    const contentType = imageResponse.headers.get("content-type") || "";
+    if (!contentType.startsWith("image/")) {
+      throw new AppError("Response is not an image", 502);
     }
 
     const imageBuffer = await imageResponse.arrayBuffer();
@@ -46,7 +84,7 @@ export const GET = withErrorHandler(async (request) => {
     return new NextResponse(imageBuffer, {
       status: 200,
       headers: {
-        "Content-Type": imageResponse.headers.get("content-type") || "image/jpeg",
+        "Content-Type": contentType,
         "Cache-Control": "no-store, no-cache, must-revalidate",
         "X-Content-Type-Options": "nosniff",
       },

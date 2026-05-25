@@ -1,0 +1,97 @@
+name: Contributor Guidelines Reminder
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  check-contributor-limits:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Post Contribution Guidelines
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const author = context.payload.issue?.user?.login || context.payload.pull_request?.user?.login;
+            const eventType = context.payload.issue ? 'issue' : 'pull_request';
+            const issue_number = context.payload.issue?.number || context.payload.pull_request?.number;
+
+            // Query open issues by this contributor
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: author,
+              state: 'open'
+            });
+
+            // Query open PRs by this contributor
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: author,
+              state: 'open'
+            });
+
+            // Query ALL open PRs in the repository
+            const allPRs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open'
+            });
+
+            const PER_PERSON_LIMIT = 3;
+            const GLOBAL_PR_LIMIT = 30;
+            const issueCount = issues.data.length;
+            const prCount = prs.data.length;
+            const totalOpenPRs = allPRs.data.length;
+
+            // Message template
+            let message = `📌 **Contribution Guidelines Reminder**\n\n`;
+            message += `👋 Thanks for contributing to Learnova!\n\n`;
+            message += `We maintain contribution limits to ensure quality and fair visibility:\n`;
+            message += `• **Per-person limit:** Max 3 open Issues & 3 open PRs\n`;
+            message += `• **Repository limit:** Max 30 open PRs total\n\n`;
+            message += `**Your current activity:**\n`;
+            message += `- Your Open Issues: ${issueCount}\n`;
+            message += `- Your Open PRs: ${prCount}\n`;
+            message += `- Repository Total Open PRs: ${totalOpenPRs}\n\n`;
+
+            // Check if limits exceeded
+            if (issueCount > PER_PERSON_LIMIT) {
+              message += `⚠️ **You have ${issueCount} open issues** (limit is ${PER_PERSON_LIMIT}). `;
+              message += `Please close or complete existing work before opening new ones.\n\n`;
+            }
+
+            if (prCount > PER_PERSON_LIMIT) {
+              message += `⚠️ **You have ${prCount} open PRs** (limit is ${PER_PERSON_LIMIT}). `;
+              message += `Please get them reviewed, merged, or closed before opening new ones.\n\n`;
+            }
+
+            if (totalOpenPRs > GLOBAL_PR_LIMIT) {
+              message += `⚠️ **Repository has ${totalOpenPRs} open PRs** (global limit is ${GLOBAL_PR_LIMIT}). `;
+              message += `Consider reviewing and merging existing PRs before opening new ones.\n\n`;
+            }
+
+            message += `**Tips for quality contributions:**\n`;
+            message += `✅ Test thoroughly before submitting\n`;
+            message += `✅ Add documentation when needed\n`;
+            message += `✅ Respond to reviews promptly\n`;
+            message += `✅ Focus on one issue/PR at a time\n\n`;
+            message += `📖 See our [Contribution Guidelines](../../blob/master/CONTRIBUTING.md) and [Discussion Board](../../discussions) for more info.\n\n`;
+            message += `Thanks for being a great contributor! 🎉`;
+
+            // Post comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              body: message
+            });

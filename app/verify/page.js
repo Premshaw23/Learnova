@@ -3,12 +3,12 @@ import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebaseConfig";
 import {
   sendEmailVerification,
-  onAuthStateChanged,
   reload,
   signOut,
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
+import { useAuthContext } from "@/contexts/AuthContext";
 import {
   Mail,
   CheckCircle,
@@ -19,29 +19,35 @@ import {
 } from "lucide-react";
 
 export default function EmailVerificationPage() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, userProfile, loading: authLoading } = useAuthContext();
   const [isSending, setIsSending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [message, setMessage] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const router = useRouter();
 
+  const getDashboardLink = (role) => {
+    if (!role) return "/profile";
+    switch (role) {
+      case "student": return "/student/dashboard";
+      case "teacher": return "/teacher/dashboard";
+      case "institute": return "/institute/dashboard";
+      case "admin": return "/admin/dashboard";
+      default: return "/profile";
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        if (currentUser.emailVerified) {
-          router.push("/profile");
+    if (!authLoading) {
+      if (user) {
+        if (user.emailVerified) {
+          router.push(getDashboardLink(userProfile?.role));
         }
       } else {
         router.push("/auth");
       }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [router]);
+    }
+  }, [user, userProfile, authLoading, router]);
 
   useEffect(() => {
     let interval;
@@ -85,7 +91,7 @@ export default function EmailVerificationPage() {
         await user.getIdToken(true);
         setMessage("Email verified successfully! Redirecting...");
         setTimeout(() => {
-          router.push("/profile");
+          router.push(getDashboardLink(userProfile?.role));
         }, 2000);
       } else {
         setMessage(
@@ -112,7 +118,7 @@ export default function EmailVerificationPage() {
     router.push("/auth");
   };
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
         <div className="flex items-center gap-3 text-white">

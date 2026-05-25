@@ -1,122 +1,57 @@
 import { NextResponse } from "next/server";
 
+import { jwtVerify, createRemoteJWKSet } from "jose";
+
 // Firebase publishes RS256 public keys here; rotate every ~6 hours
-const JWKS_URL =
-  "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
+const JWKS_URL = new URL(
+  "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
+);
+const JWKS = createRemoteJWKSet(JWKS_URL);
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-// In-process key cache — shared across requests within the same Edge worker instance
-let _cachedKeys = null;
-let _cacheExpiry = 0;
-
-/**
- * Fetches and caches Firebase RS256 public keys from the JWKS endpoint.
- * Respects the Cache-Control max-age header Firebase provides (~6 h).
- * Throws on network failure — callers must handle and fail closed.
- * @returns {Promise<Record<string, CryptoKey>>} Map of kid → CryptoKey
- */
-async function fetchPublicKeys() {
-  const now = Date.now();
-  
-  // L1 Cache: Fast in-memory return if the current Edge isolate is still alive
-  if (_cachedKeys && now < _cacheExpiry) return _cachedKeys;
-
-  // L2 Cache: Next.js Data Cache to prevent 429 Rate Limit errors across new Edge isolates
-  const res = await fetch(JWKS_URL, {
-    cache: "force-cache",
-    next: { revalidate: 21600 } // Cache response at the edge for 6 hours (21600 seconds)
-  });
-  
-  if (!res.ok) {
-    throw new Error(`JWKS fetch failed: ${res.status}`);
-  }
-
-  const cacheControl = res.headers.get("cache-control") ?? "";
-  const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
-  const maxAgeSec = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) : 3600;
-
-  const { keys } = await res.json();
-  const imported = {};
-
-  for (const jwk of keys) {
-    imported[jwk.kid] = await crypto.subtle.importKey(
-      "jwk",
-      jwk,
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-      false,
-      ["verify"]
-    );
-  }
-
-  _cachedKeys = imported;
-  _cacheExpiry = now + maxAgeSec * 1000;
-  return imported;
-}
-
-/**
- * Decodes a base64url-encoded string into a Uint8Array.
- * @param {string} str - Base64url input
- * @returns {Uint8Array}
- */
-function base64UrlDecode(str) {
-  const padded = str.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = padded + "=".repeat((4 - (padded.length % 4)) % 4);
-  return Uint8Array.from(atob(pad), (c) => c.charCodeAt(0));
-}
+const PAGE_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com",
+  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.public.blob.vercel-storage.com https://api.emailjs.com",
+  "media-src 'self' blob:",
+  "worker-src 'self' blob:",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
 
 /**
  * Verifies a Firebase ID token's RS256 signature and all standard claims.
- * Runs entirely in the Edge Runtime using the Web Crypto API — no Node.js
- * dependencies required. Fails closed: any error returns null (deny access).
+ * Runs entirely in the Edge Runtime using the jose library.
+ * Fails closed: any error returns null (deny access).
  *
  * @param {string} token - The Firebase ID token from the authToken cookie
  * @returns {Promise<Object|null>} Verified payload, or null if invalid
  */
 async function verifyIdToken(token) {
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
+    if (!FIREBASE_PROJECT_ID) return null;
 
-    const header = JSON.parse(
-      new TextDecoder().decode(base64UrlDecode(parts[0]))
-    );
-    if (header.alg !== "RS256") return null;
-    const payload = JSON.parse(
-      new TextDecoder().decode(base64UrlDecode(parts[1]))
-    );
-
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+      audience: FIREBASE_PROJECT_ID,
+      algorithms: ["RS256"],
+      clockTolerance: 300,
+    });
+    
+    // Validate standard JWT claims as required by the Firebase ID token spec
     const now = Math.floor(Date.now() / 1000);
-
-    // Validate standard JWT claims as required by the Firebase ID token spec:
-    // https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
-    if (
-      !payload.sub ||
-      payload.aud !== FIREBASE_PROJECT_ID ||
-      payload.iss !== `https://securetoken.google.com/${FIREBASE_PROJECT_ID}` ||
-      payload.exp <= now ||
-      payload.iat > now + 300 // tolerate up to 5-minute clock skew
-    ) {
+    if (!payload.sub || payload.iat > now + 300) {
       return null;
     }
 
-    // Fetch cached RS256 public keys and locate the one matching this token
-    const publicKeys = await fetchPublicKeys();
-    const publicKey = publicKeys[header.kid];
-    if (!publicKey) return null; // unknown key ID — reject (handles alg:none, HS256, etc.)
-
-    // Cryptographically verify the signature over header.payload
-    const signingInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
-    const signature = base64UrlDecode(parts[2]);
-
-    const valid = await crypto.subtle.verify(
-      "RSASSA-PKCS1-v1_5",
-      publicKey,
-      signature,
-      signingInput
-    );
-
-    return valid ? payload : null;
+    return payload;
   } catch {
     // Network errors, malformed JSON, or crypto failures all result in denial
     return null;
@@ -125,6 +60,13 @@ async function verifyIdToken(token) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+
+  // We only want to generate CSP for HTML pages, not static assets or APIs.
+  const isPage = !pathname.startsWith("/_next") && 
+                 !pathname.startsWith("/api") && 
+                 !pathname.match(/\.(?:png|jpg|jpeg|gif|svg|ico|css|js|woff2?|json)$/);
+
+  const requestHeaders = new Headers(request.headers);
 
   // Retrieve token from Authorization header or cookies
   let authToken = null;
@@ -156,9 +98,7 @@ export async function middleware(request) {
           const res = await fetch(
             `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${payload.sub}`,
             {
-              headers: { Authorization: `Bearer ${authToken}` },
-              cache: "force-cache",
-              next: { revalidate: 300 } // Cache securely at the edge for 5 minutes
+              headers: { Authorization: `Bearer ${authToken}` }
             }
           );
           if (res.ok) {
@@ -246,19 +186,23 @@ export async function middleware(request) {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+
+  if (isPage) {
+    response.headers.set("Content-Security-Policy", PAGE_CSP);
+  }
+
+  return response;
 }
 
 // Next.js Middleware matcher configuration
 export const config = {
   matcher: [
-    "/student/:path*",
-    "/teacher/:path*",
-    "/admin/:path*",
-    "/institute/:path*",
-    "/profile/:path*",
-    "/settings/:path*",
-    "/verify/:path*",
-    "/auth",
+    // Match all HTML page routes. Exclude APIs, static assets, favicon, manifest, and service worker.
+    "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
   ],
 };

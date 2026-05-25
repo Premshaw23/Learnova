@@ -1,162 +1,165 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
-import { Navbar } from "@/components/Navbar";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Home, ArrowLeft } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import DarkVeil from "@/components/ui-block/DarkVeil";
 
+// Floating background particles
 const PARTICLES_DATA = [
-  { id: 1, left: 16, top: 22, delay: 0, duration: 10 },
-  { id: 2, left: 64, top: 78, delay: 1.5, duration: 12 },
-  { id: 3, left: 82, top: 18, delay: 3, duration: 14 },
-  { id: 4, left: 34, top: 66, delay: 4.5, duration: 11 },
-  { id: 5, left: 90, top: 48, delay: 6, duration: 13 },
+  {
+    id: 1,
+    left: "12%",
+    top: "20%",
+    size: 8,
+    delay: "0s",
+    duration: "12s",
+  },
+  {
+    id: 2,
+    left: "68%",
+    top: "72%",
+    size: 12,
+    delay: "1.5s",
+    duration: "16s",
+  },
+  {
+    id: 3,
+    left: "85%",
+    top: "15%",
+    size: 10,
+    delay: "3s",
+    duration: "14s",
+  },
+  {
+    id: 4,
+    left: "30%",
+    top: "68%",
+    size: 6,
+    delay: "4.5s",
+    duration: "10s",
+  },
+  {
+    id: 5,
+    left: "75%",
+    top: "40%",
+    size: 8,
+    delay: "6s",
+    duration: "18s",
+  },
 ];
 
 export default function NotFound() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
-  const handleMouseMove = useCallback((event) => {
-    setMousePosition({
-      x: event.clientX,
-      y: event.clientY,
-    });
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    setMousePosition({
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    });
-
-    let timeout;
-
-    const throttledMouseMove = (event) => {
-      if (!timeout) {
-        timeout = setTimeout(() => {
-          handleMouseMove(event);
-          timeout = null;
-        }, 32);
-      }
-    };
-
-    window.addEventListener("mousemove", throttledMouseMove, {
-      passive: true,
-    });
-
-    return () => {
-      window.removeEventListener("mousemove", throttledMouseMove);
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [handleMouseMove]);
-
-  const mouseOrbStyle = useMemo(
-    () => ({
-      left: mousePosition.x - 192,
-      top: mousePosition.y - 192,
-      transition: "all 1.2s ease-out",
-    }),
-    [mousePosition]
-  );
-
   return (
-    <>
-      <Navbar />
+    <div className="relative min-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
+      
+      {/* Background */}
+      <div className="absolute inset-0 pointer-events-none -z-10 select-none">
+        
+        {/* Glow Orbs */}
+        <div className="absolute top-1/4 left-1/4 h-[30rem] w-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 dark:bg-indigo-500/5 blur-3xl" />
 
-      <div className="fixed inset-0 -z-10">
-        <DarkVeil />
+        <div className="absolute bottom-1/4 right-1/4 h-[30rem] w-[30rem] translate-x-1/2 translate-y-1/2 rounded-full bg-purple-500/10 dark:bg-purple-500/5 blur-3xl" />
 
-        <div
-          className="absolute h-96 w-96 rounded-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 blur-3xl pointer-events-none"
-          style={mouseOrbStyle}
-        />
-
+        {/* Particles */}
         <div className="absolute inset-0 overflow-hidden">
           {PARTICLES_DATA.map((particle) => (
             <div
               key={particle.id}
-              className="absolute h-1.5 w-1.5 rounded-full bg-indigo-500/30 animate-float"
+              className="absolute rounded-full bg-indigo-500/20 dark:bg-indigo-400/20 animate-pulse"
               style={{
-                left: `${particle.left}%`,
-                top: `${particle.top}%`,
-                animationDelay: `${particle.delay}s`,
-                animationDuration: `${particle.duration}s`,
+                left: particle.left,
+                top: particle.top,
+                width: `${particle.size}px`,
+                height: `${particle.size}px`,
+                animationDelay: particle.delay,
+                animationDuration: particle.duration,
               }}
             />
           ))}
         </div>
       </div>
 
-      <main className="relative z-10 flex min-h-screen items-center justify-center px-6 py-24 text-center text-white">
-        <div className="w-full max-w-2xl space-y-8">
+      {/* Main Content */}
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-6 py-24">
+        
+        <div className="w-full max-w-2xl text-center space-y-8">
+          
+          {/* Badge */}
           <div className="inline-flex rounded-full border border-red-500/20 bg-red-500/10 px-4 py-1 text-sm text-red-400">
             Error 404
           </div>
 
-          <h1 className="animate-pulse text-7xl sm:text-8xl md:text-9xl font-extrabold tracking-tight">
-            404
+          {/* Heading */}
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+            Lesson Not Found
           </h1>
 
-          <h2 className="text-3xl font-bold">
-            Page Not Found
-          </h2>
-
-          <p className="text-lg text-slate-300">
-            Oops! The page you're trying to access doesn't exist,
-            may have been moved, or the URL might be incorrect.
+          {/* Description */}
+          <p className="mx-auto max-w-md text-base leading-relaxed text-slate-500 dark:text-slate-400">
+            Oops! This lesson couldn&apos;t be found.
+            It seems this path isn&apos;t in our curriculum.
           </p>
 
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-400 backdrop-blur-sm">
-            Requested path:{" "}
-            <span className="font-mono text-white">
+          {/* Path Indicator */}
+          <div className="inline-block rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 p-3 text-xs text-slate-500 dark:text-slate-400 backdrop-blur-sm shadow-sm select-all">
+            Requested path:
+            <code className="ml-1 font-mono font-bold text-indigo-600 dark:text-indigo-400">
               {pathname}
-            </span>
+            </code>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          {/* Action Buttons */}
+          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+            
+            {/* Home Button */}
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-accent to-purple-500 px-8 py-4 text-sm font-semibold text-white shadow-xl shadow-accent/25 transition-all duration-300 hover:scale-105"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all duration-300 hover:scale-105 hover:from-indigo-600 hover:to-purple-700 hover:shadow-indigo-500/30 active:scale-95"
             >
-              <Home className="h-4 w-4" />
-              Go Home
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                />
+              </svg>
+
+              Go Back Home
             </Link>
 
+            {/* Back Button */}
             <button
               onClick={() => router.back()}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-white/10"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-7 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-300 hover:scale-105 hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+
               Go Back
             </button>
           </div>
         </div>
-      </main>
-
-      <style jsx>{`
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0px) rotate(0deg);
-            opacity: 0.3;
-          }
-          50% {
-            transform: translateY(-15px) rotate(90deg);
-            opacity: 0.8;
-          }
-        }
-
-        .animate-float {
-          animation: float ease-in-out infinite;
-        }
-      `}</style>
-    </>
+      </div>
+    </div>
   );
 }
