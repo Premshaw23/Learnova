@@ -1,4 +1,4 @@
-import clientPromise from "@/lib/mongodb";
+import { connectDb } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +18,7 @@ export async function GET(request) {
   }
 
   try {
-    const client = await clientPromise;
-    const db = client.db();
+    const db = await connectDb();
     const notifications = await db
       .collection("notifications")
       .find({ userId })
@@ -51,8 +50,7 @@ export async function PATCH(request) {
   }
 
   try {
-    const client = await clientPromise;
-    const db = client.db();
+    const db = await connectDb();
 
     await db.collection("notifications").updateMany(
       { userId, read: false },

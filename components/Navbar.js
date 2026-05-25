@@ -116,6 +116,8 @@ export function Navbar() {
   const [currentLang, setCurrentLang] = useState("English");
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [prefersDark, setPrefersDark] = useState(null);
 
   const { i18n } = useTranslation();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
@@ -128,6 +130,10 @@ export function Navbar() {
   const { theme, setTheme, resolvedTheme } = useTheme();
 
   const isDark = (mounted ? resolvedTheme : null) === "dark";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     try {
@@ -152,6 +158,9 @@ export function Navbar() {
     const handleScroll = () => {
       setScrollProgress(Math.min(window.scrollY / 100, 1));
     };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -392,16 +401,6 @@ export function Navbar() {
                   aria-label="Select language"
                 >
                   <Languages className="h-4 w-4 text-zinc-400" />
-<<<<<<< HEAD
-                  <span className="hidden md:inline">{currentLang}</span>
-                  <ChevronDown
-                    className="h-3.5 w-3.5 text-zinc-400 transition-transform duration-200"
-                    style={{
-                      transform: isLangOpen ? "rotate(180deg)" : "none",
-                    }}
-                  />
-                </button>
-=======
                   <span className="hidden md:inline text-xs">{currentLang}</span>
                   <motion.span
                     animate={{ rotate: isLangOpen ? 180 : 0 }}
@@ -411,7 +410,6 @@ export function Navbar() {
                     <ChevronDown className="h-3 w-3 opacity-50" />
                   </motion.span>
                 </motion.button>
->>>>>>> 72f5857ef4be125f0370bf23fb67c39459c1a6c5
 
                 <AnimatePresence>
                   {isLangOpen && (

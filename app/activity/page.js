@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo, useOptimistic } from "react";
+import { useState, useEffect, useMemo, useOptimistic, useRef } from "react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -62,6 +62,8 @@ export default function ActivityPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const orbRef = useRef(null);
+  const mouseMoveRaf = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLevel, setSelectedLevel] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
