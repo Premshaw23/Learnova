@@ -304,14 +304,13 @@ export function Navbar() {
                 >
                   <Languages className="h-4 w-4 text-zinc-400" />
                   <span className="hidden md:inline">{currentLang}</span>
-               <ChevronDown
-  className="h-3.5 w-3.5 text-zinc-400 transition-transform duration-200"
-  style={{
-    transform: isLangOpen
-      ? "rotate(180deg)"
-      : "none",
-  }}
-/></button>
+                  <ChevronDown
+                    className="h-3.5 w-3.5 text-zinc-400 transition-transform duration-200"
+                    style={{
+                      transform: isLangOpen ? "rotate(180deg)" : "none",
+                    }}
+                  />
+                </button>
 
                 {isLangOpen && (
                   <div className="absolute right-0 mt-2 w-36 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-[80]">
