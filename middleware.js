@@ -44,6 +44,7 @@ async function verifyIdToken(token) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+  const isDev = process.env.NODE_ENV === "development";
 
   // We only want to generate CSP for HTML pages, not static assets or APIs.
   const isPage = !pathname.startsWith("/_next") && 
@@ -56,12 +57,32 @@ export async function middleware(request) {
   if (isPage) {
     // Generate a cryptographic nonce (base-64 encoded UUID)
     nonce = btoa(crypto.randomUUID());
-    
+
     // Construct the CSP string using the generated nonce
+    const scriptSrc = isDev
+      ? [
+          "'self'",
+          "'unsafe-inline'",
+          "'unsafe-eval'",
+          "https://apis.google.com",
+          "https://www.gstatic.com",
+        ].join(" ")
+      : [
+          "'self'",
+          `'nonce-${nonce}'`,
+          "'strict-dynamic'",
+          "https://apis.google.com",
+          "https://www.gstatic.com",
+        ].join(" ");
+
+    const styleSrc = isDev
+      ? ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"].join(" ")
+      : ["'self'", `'nonce-${nonce}'`, "https://fonts.googleapis.com"].join(" ");
+
     const csp = [
       "default-src 'self'",
-      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://apis.google.com https://www.gstatic.com`,
-      `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
+      `script-src ${scriptSrc}`,
+      `style-src ${styleSrc}`,
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com",
       "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.public.blob.vercel-storage.com https://api.emailjs.com",
@@ -79,7 +100,7 @@ export async function middleware(request) {
 
   // Set standard headers on request so Next.js can read the x-nonce
   const requestHeaders = new Headers(request.headers);
-  if (isPage) {
+  if (isPage && !isDev) {
     requestHeaders.set("x-nonce", nonce);
   }
 

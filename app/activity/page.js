@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useOptimistic } from "react";
+import { useState, useEffect, useMemo, useOptimistic } from "react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -12,13 +12,19 @@ import {
   Users,
   Star,
   Play,
+  BarChart3,
+  Flame,
+  LineChart,
+  Timer,
+  CheckCircle2,
+  ArrowUpRight,
+  ArrowDownRight,
   ChevronRight,
   Sparkles,
   Target,
   Zap,
   Award,
   TrendingUp,
-  User,
   Calendar,
   Filter,
   Search,
@@ -32,7 +38,7 @@ import { Navbar } from "@/components/Navbar";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/hooks/useAuth";
-import { logActivity, getUserActivities, removeActivity } from "@/services/activityService";
+import { logActivity, getUserActivities } from "@/services/activityService";
 import { updateUserStat } from "@/services/statsService";
 
 // Reusable animation component
@@ -55,12 +61,13 @@ export default function ActivityPage() {
   const isDark = mounted ? theme === "dark" : true;
   const { user } = useAuth();
   const router = useRouter();
-  const [scrollY, setScrollY] = useState(0);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLevel, setSelectedLevel] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [activities, setActivities] = useState([]);
+  const [analysisRange, setAnalysisRange] = useState("7d");
+  const [analysisType, setAnalysisType] = useState("all");
   
   // React 19 Optimistic Hook
   const [optimisticActivities, addOptimisticActivity] = useOptimistic(
@@ -85,16 +92,13 @@ export default function ActivityPage() {
   });
 
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
     const handleMouseMove = (e) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("mousemove", handleMouseMove);
     };
   }, []);
@@ -146,6 +150,19 @@ export default function ActivityPage() {
     { id: "middle", label: "Middle School" },
     { id: "high", label: "High School" },
     { id: "college", label: "College" },
+  ];
+
+  const analysisRanges = [
+    { id: "7d", label: "7 days" },
+    { id: "30d", label: "30 days" },
+    { id: "90d", label: "90 days" },
+  ];
+
+  const analysisTypes = [
+    { id: "all", label: "All types" },
+    { id: "quiz", label: "Quizzes" },
+    { id: "game", label: "Games" },
+    { id: "course", label: "Courses" },
   ];
 
   const featuredActivities = [
@@ -287,6 +304,288 @@ export default function ActivityPage() {
     return categoryMatch && levelMatch && searchMatch;
   });
 
+  const analysisRangeDays = useMemo(() => {
+    switch (analysisRange) {
+      case "30d":
+        return 30;
+      case "90d":
+        return 90;
+      default:
+        return 7;
+    }
+  }, [analysisRange]);
+
+  const analysisActivities = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - (analysisRangeDays - 1));
+
+    return optimisticActivities.filter((activity) => {
+      const activityDate = activity?.timestamp ? new Date(activity.timestamp) : null;
+      if (!activityDate) return false;
+      const inRange = activityDate >= start && activityDate <= now;
+      const matchesType =
+        analysisType === "all" ||
+        (activity?.type || "course").toLowerCase() === analysisType;
+      return inRange && matchesType;
+    });
+  }, [analysisRangeDays, analysisType, optimisticActivities]);
+
+  const analysisData = useMemo(() => {
+    const now = new Date();
+    const dayKey = (date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+        date.getDate(),
+      ).padStart(2, "0")}`;
+
+    const activityDates = analysisActivities
+      .map((activity) => (activity?.timestamp ? new Date(activity.timestamp) : null))
+      .filter(Boolean);
+
+    const activityDays = new Set(activityDates.map(dayKey));
+
+    const days = Array.from({ length: analysisRangeDays }, (_, index) => {
+      const day = new Date(now);
+      day.setDate(now.getDate() - (analysisRangeDays - 1 - index));
+      const key = dayKey(day);
+      const count = activityDates.filter((date) => dayKey(date) === key).length;
+
+      return {
+        key,
+        count,
+        label: day.toLocaleDateString("en-US", { weekday: "short" }),
+        short: day.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      };
+    });
+
+    const maxDayCount = Math.max(
+      1,
+      ...days.map((day) => day.count),
+    );
+
+    const rangeTotal = days.reduce((sum, day) => sum + day.count, 0);
+
+    const previousRange = Array.from({ length: analysisRangeDays }, (_, index) => {
+      const day = new Date(now);
+      day.setDate(now.getDate() - analysisRangeDays - index);
+      return dayKey(day);
+    });
+
+    const previousTotal = optimisticActivities.filter((activity) => {
+      const activityDate = activity?.timestamp ? new Date(activity.timestamp) : null;
+      if (!activityDate) return false;
+      const matchesType =
+        analysisType === "all" ||
+        (activity?.type || "course").toLowerCase() === analysisType;
+      return matchesType && previousRange.includes(dayKey(activityDate));
+    }).length;
+
+    const change = rangeTotal - previousTotal;
+    const changePercent =
+      previousTotal > 0 ? Math.round((change / previousTotal) * 100) : rangeTotal > 0 ? 100 : 0;
+
+    const last14Days = Array.from({ length: 14 }, (_, index) => {
+      const day = new Date(now);
+      day.setDate(now.getDate() - index);
+      return dayKey(day);
+    });
+
+    const activeDays = last14Days.filter((key) => activityDays.has(key)).length;
+    const consistency = Math.round((activeDays / last14Days.length) * 100);
+
+    const currentStreak = (() => {
+      let streak = 0;
+      for (let i = 0; i < 30; i += 1) {
+        const day = new Date(now);
+        day.setDate(now.getDate() - i);
+        if (activityDays.has(dayKey(day))) {
+          streak += 1;
+        } else {
+          break;
+        }
+      }
+      return streak;
+    })();
+
+    const longestStreak = (() => {
+      const sortedDays = Array.from(activityDays)
+        .map((key) => {
+          const [year, month, day] = key.split("-").map(Number);
+          return new Date(year, month - 1, day);
+        })
+        .sort((a, b) => a - b);
+
+      let longest = 0;
+      let current = 0;
+
+      for (let i = 0; i < sortedDays.length; i += 1) {
+        if (i === 0) {
+          current = 1;
+          longest = 1;
+          continue;
+        }
+
+        const diff = Math.round(
+          (sortedDays[i] - sortedDays[i - 1]) / (1000 * 60 * 60 * 24),
+        );
+
+        if (diff === 1) {
+          current += 1;
+        } else {
+          current = 1;
+        }
+
+        if (current > longest) {
+          longest = current;
+        }
+      }
+
+      return longest;
+    })();
+
+    const typeCounts = analysisActivities.reduce((acc, activity) => {
+      const key = (activity?.type || "course").toLowerCase();
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const totalMinutes = analysisActivities.reduce((sum, activity) => {
+      return sum + (activity?.durationMinutes || 0);
+    }, 0);
+
+    const averageMinutes =
+      analysisActivities.length > 0
+        ? Math.round(totalMinutes / analysisActivities.length)
+        : 0;
+
+    const completedCount = analysisActivities.filter(
+      (activity) => activity?.completed || (activity?.progress || 0) >= 100,
+    ).length;
+
+    const completionRate =
+      analysisActivities.length > 0
+        ? Math.round((completedCount / analysisActivities.length) * 100)
+        : 0;
+
+    const scores = analysisActivities
+      .map((activity) => activity?.score)
+      .filter((score) => typeof score === "number");
+
+    const averageScore =
+      scores.length > 0 ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
+
+    const averagePerDay =
+      analysisRangeDays > 0 ? Number((rangeTotal / analysisRangeDays).toFixed(1)) : 0;
+
+    const bestDay = days.reduce(
+      (best, day) => (day.count > best.count ? day : best),
+      days[0] || { count: 0, short: "-" },
+    );
+
+    const sparkline = (() => {
+      const width = 240;
+      const height = 80;
+      const padding = 6;
+      const counts = days.map((day) => day.count);
+      const maxValue = Math.max(1, ...counts);
+      const points = counts.map((value, index) => {
+        const x = padding + (index / Math.max(1, counts.length - 1)) * (width - padding * 2);
+        const y = height - padding - (value / maxValue) * (height - padding * 2);
+        return { x, y };
+      });
+
+      const linePath = points
+        .map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`)
+        .join(" ");
+
+      const areaPath = `${linePath} L ${width - padding},${height - padding} L ${padding},${height - padding} Z`;
+
+      return { width, height, linePath, areaPath };
+    })();
+
+    const heatmapDays = Array.from({ length: 28 }, (_, index) => {
+      const day = new Date(now);
+      day.setDate(now.getDate() - (27 - index));
+      const key = dayKey(day);
+      const count = activityDates.filter((date) => dayKey(date) === key).length;
+      return {
+        key,
+        count,
+        label: day.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      };
+    });
+
+    const heatMax = Math.max(1, ...heatmapDays.map((day) => day.count));
+
+    const goalPerWeek = 10;
+    const goalTarget = Math.max(5, Math.round((analysisRangeDays / 7) * goalPerWeek));
+    const goalProgress = Math.min(100, Math.round((rangeTotal / goalTarget) * 100));
+
+    const insights = [];
+    if (rangeTotal === 0) {
+      insights.push("No activity logged yet. Start a quick quiz to build momentum.");
+    } else if (consistency < 40) {
+      insights.push("Try a 10-minute habit: one activity per day to boost consistency.");
+    } else if (consistency >= 70) {
+      insights.push("Great streak! Keep your pace to lock in your weekly goal.");
+    }
+
+    if (completionRate < 50 && analysisActivities.length > 0) {
+      insights.push("Finish a few in-progress activities to raise completion rate.");
+    }
+
+    if (totalMinutes >= 120) {
+      insights.push("Strong focus time! Consider mixing in a challenge quiz.");
+    }
+
+    return {
+      days,
+      maxDayCount,
+      rangeTotal,
+      change,
+      changePercent,
+      activeDays,
+      consistency,
+      currentStreak,
+      longestStreak,
+      typeCounts,
+      total: analysisActivities.length,
+      totalMinutes,
+      averageMinutes,
+      completionRate,
+      averageScore,
+      averagePerDay,
+      bestDay,
+      sparkline,
+      heatmapDays,
+      heatMax,
+      goalTarget,
+      goalProgress,
+      insights,
+    };
+  }, [analysisActivities, analysisRangeDays, analysisType, optimisticActivities]);
+
+  const parseDurationMinutes = (duration) => {
+    if (!duration) return 0;
+    const match = String(duration).match(/(\d+)/);
+    return match ? Number(match[1]) : 0;
+  };
+
+  const formatMinutes = (minutes) => {
+    if (!minutes) return "0m";
+    const hours = Math.floor(minutes / 60);
+    const remaining = minutes % 60;
+    return hours > 0 ? `${hours}h ${remaining}m` : `${remaining}m`;
+  };
+
+  const typeTotal = Object.values(analysisData.typeCounts).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
+
+  const isSignedIn = Boolean(user);
+  const hasActivityData = optimisticActivities.length > 0;
+
   const handleEnrollActivity = async (activity) => {
     if (!user) {
       toast.error("Please login to enroll.");
@@ -304,6 +603,10 @@ export default function ActivityPage() {
       title: activity.title,
       type: activity.type || "course",
       progress: 0,
+      durationMinutes: parseDurationMinutes(activity.duration),
+      score: null,
+      completed: false,
+      completedAt: null,
       timestamp: new Date(),
       saving: true // Optimistic flag
     };
@@ -804,6 +1107,375 @@ export default function ActivityPage() {
                 </div>
               </Reveal>
             )}
+          </div>
+        </section>
+
+        <section className="px-4 sm:px-6 lg:px-8 mb-20">
+          <div className="max-w-7xl mx-auto">
+            <Reveal delay={0.1}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-10">
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+                    Activity Analysis
+                  </h2>
+                  <p className="text-muted-foreground">
+                    Weekly momentum, consistency, and progress signals
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 bg-card border border-border px-4 py-2 rounded-full">
+                  <BarChart3 className="w-4 h-4 text-accent" />
+                  <span className="text-sm text-foreground font-semibold">
+                    {analysisData.rangeTotal} in last {analysisRangeDays} days
+                  </span>
+                  <span
+                    className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${
+                      analysisData.change >= 0
+                        ? "bg-emerald-500/10 text-emerald-400"
+                        : "bg-rose-500/10 text-rose-400"
+                    }`}
+                  >
+                    {analysisData.change >= 0 ? (
+                      <ArrowUpRight className="w-3 h-3" />
+                    ) : (
+                      <ArrowDownRight className="w-3 h-3" />
+                    )}
+                    {analysisData.change >= 0 ? "+" : ""}
+                    {analysisData.changePercent}%
+                  </span>
+                </div>
+              </div>
+            </Reveal>
+
+            {!isSignedIn && (
+              <Reveal delay={0.12}>
+                <div className="mb-6 rounded-2xl border border-border bg-card/70 px-5 py-4 text-sm text-muted-foreground">
+                  Sign in to see your personalized activity insights.
+                </div>
+              </Reveal>
+            )}
+
+            {isSignedIn && !hasActivityData && (
+              <Reveal delay={0.12}>
+                <div className="mb-6 rounded-2xl border border-border bg-card/70 px-5 py-4 text-sm text-muted-foreground">
+                  No activity data yet. Enroll in a quiz or game to start tracking your progress.
+                </div>
+              </Reveal>
+            )}
+
+            <Reveal delay={0.12}>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+                <div className="flex flex-wrap gap-2">
+                  {analysisRanges.map((range) => (
+                    <button
+                      key={range.id}
+                      onClick={() => setAnalysisRange(range.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
+                        analysisRange === range.id
+                          ? "bg-gradient-to-r from-accent to-purple-500 text-white border-transparent shadow-lg shadow-accent/20"
+                          : "bg-slate-100 dark:bg-black/30 text-slate-700 dark:text-gray-300 border-slate-200 dark:border-white/10 hover:text-foreground"
+                      }`}
+                    >
+                      {range.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {analysisTypes.map((type) => (
+                    <button
+                      key={type.id}
+                      onClick={() => setAnalysisType(type.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
+                        analysisType === type.id
+                          ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-transparent shadow-lg shadow-blue-500/20"
+                          : "bg-slate-100 dark:bg-black/30 text-slate-700 dark:text-gray-300 border-slate-200 dark:border-white/10 hover:text-foreground"
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+
+            <div className="grid lg:grid-cols-3 gap-6">
+              <Reveal delay={0.15} className="lg:col-span-2">
+                <Card className="bg-card backdrop-blur-xl border-border h-full">
+                  <CardHeader>
+                    <CardTitle className="text-foreground text-lg flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-accent" />
+                      Weekly activity trend
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                        <div className="rounded-xl border border-border bg-background/60 p-4">
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Total activities
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-foreground">
+                            {analysisData.total}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/60 p-4">
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Avg per day
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-foreground">
+                            {analysisData.averagePerDay}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/60 p-4">
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Focus time
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-foreground">
+                            {formatMinutes(analysisData.totalMinutes)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {analysisData.averageMinutes}m avg / activity
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/60 p-4">
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Completion rate
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-foreground">
+                            {analysisData.completionRate}%
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/60 p-4">
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Best day
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-foreground">
+                            {analysisData.bestDay.short}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {analysisData.bestDay.count} activities
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/60 p-4">
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Avg score
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-foreground">
+                            {analysisData.averageScore ?? "--"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {analysisData.averageScore ? "Points" : "No graded items"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid lg:grid-cols-2 gap-6">
+                        <div className="rounded-2xl border border-border bg-background/60 p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm text-muted-foreground">Daily trend</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <LineChart className="w-4 h-4 text-accent" />
+                              {analysisRangeDays} day view
+                            </div>
+                          </div>
+                          <svg
+                            width={analysisData.sparkline.width}
+                            height={analysisData.sparkline.height}
+                            viewBox={`0 0 ${analysisData.sparkline.width} ${analysisData.sparkline.height}`}
+                            className="w-full"
+                            aria-hidden
+                          >
+                            <path
+                              d={analysisData.sparkline.areaPath}
+                              fill="url(#activityArea)"
+                              opacity="0.35"
+                            />
+                            <path
+                              d={analysisData.sparkline.linePath}
+                              fill="none"
+                              stroke="#8b5cf6"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                            />
+                            <defs>
+                              <linearGradient id="activityArea" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.6" />
+                                <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+                              </linearGradient>
+                            </defs>
+                          </svg>
+                          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                            <span>{analysisData.days[0]?.short}</span>
+                            <span>{analysisData.days[analysisData.days.length - 1]?.short}</span>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-border bg-background/60 p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm text-muted-foreground">Activity mix</p>
+                            <span className="text-xs text-muted-foreground">
+                              {typeTotal} total
+                            </span>
+                          </div>
+                          <div className="h-3 w-full rounded-full overflow-hidden bg-white/5 border border-border">
+                            {typeTotal === 0 && <div className="h-full w-full bg-white/10" />}
+                            {typeTotal > 0 && (
+                              <div className="h-full flex">
+                                {Object.entries(analysisData.typeCounts).map(([type, count]) => (
+                                  <div
+                                    key={type}
+                                    className={`h-full ${
+                                      type === "quiz"
+                                        ? "bg-blue-500"
+                                        : type === "game"
+                                          ? "bg-emerald-500"
+                                          : "bg-amber-500"
+                                    }`}
+                                    style={{ width: `${Math.round((count / typeTotal) * 100)}%` }}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {Object.keys(analysisData.typeCounts).length === 0 && (
+                              <span className="text-xs text-muted-foreground">No activity yet</span>
+                            )}
+                            {Object.entries(analysisData.typeCounts).map(([type, count]) => (
+                              <span
+                                key={type}
+                                className="text-xs px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20"
+                              >
+                                {type}: {count}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                  </CardContent>
+                </Card>
+              </Reveal>
+
+              <Reveal delay={0.2}>
+                <Card className="bg-card backdrop-blur-xl border-border h-full">
+                  <CardHeader>
+                    <CardTitle className="text-foreground text-lg flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-accent" />
+                      Consistency insights
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Consistency score</span>
+                        <span className="text-foreground font-semibold">
+                          {analysisData.consistency}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-white/10 rounded-full mt-2 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400"
+                          style={{ width: `${analysisData.consistency}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-xl border border-border bg-background/60 p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.18em]">
+                          <Flame className="w-4 h-4 text-orange-400" />
+                          Current streak
+                        </div>
+                        <p className="mt-2 text-2xl font-semibold text-foreground">
+                          {analysisData.currentStreak} days
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background/60 p-4">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.18em]">
+                          <Award className="w-4 h-4 text-yellow-400" />
+                          Longest streak
+                        </div>
+                        <p className="mt-2 text-2xl font-semibold text-foreground">
+                          {analysisData.longestStreak} days
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-background/60 p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Goal tracker
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Target {analysisData.goalTarget} activities
+                          </p>
+                        </div>
+                        <div
+                          className="w-14 h-14 rounded-full flex items-center justify-center text-sm font-semibold text-foreground"
+                          style={{
+                            background: `conic-gradient(#34d399 ${analysisData.goalProgress * 3.6}deg, rgba(148, 163, 184, 0.2) 0deg)`,
+                          }}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center">
+                            {analysisData.goalProgress}%
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        {analysisData.rangeTotal} logged so far
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-background/60 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                          Consistency heatmap
+                        </p>
+                        <span className="text-xs text-muted-foreground">Last 4 weeks</span>
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {analysisData.heatmapDays.map((day) => (
+                          <div
+                            key={day.key}
+                            title={`${day.label}: ${day.count} activities`}
+                            className="w-full aspect-square rounded"
+                            style={{
+                              backgroundColor: `rgba(139, 92, 246, ${
+                                0.1 + (day.count / analysisData.heatMax) * 0.7
+                              })`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mt-3">
+                        <span>Low</span>
+                        <span>High</span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-background/60 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Timer className="w-4 h-4 text-accent" />
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                          Coach tips
+                        </p>
+                      </div>
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                        {analysisData.insights.slice(0, 3).map((tip, index) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-accent" />
+                            <span>{tip}</span>
+                          </li>
+                        ))}
+                        {analysisData.insights.length === 0 && (
+                          <li>Log a few activities to unlock personalized tips.</li>
+                        )}
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Reveal>
+            </div>
           </div>
         </section>
 

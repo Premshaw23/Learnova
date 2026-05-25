@@ -66,23 +66,29 @@ export function Navbar() {
   const langRef = useRef(null); // Ref to track language dropdown outside clicks
   const pathname = usePathname();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [prefersDark, setPrefersDark] = useState(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = localStorage.getItem("theme");
-      if (saved === "light") return false;
-      if (saved === "dark") return true;
-      return (
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches
-      );
-    } catch (e) {
-      return null;
-    }
-  });
+  const [prefersDark, setPrefersDark] = useState(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      if (saved === "light") {
+        setPrefersDark(false);
+        return;
+      }
+      if (saved === "dark") {
+        setPrefersDark(true);
+        return;
+      }
+      if (typeof window.matchMedia === "function") {
+        setPrefersDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
+      }
+    } catch (e) {
+      setPrefersDark(null);
+    }
   }, []);
 
   useEffect(() => {

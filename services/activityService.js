@@ -8,6 +8,10 @@ import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, do
  * @param {string} activityData.title - Human-readable title of the activity.
  * @param {string} [activityData.type='course'] - Category of the activity (e.g. 'course', 'quiz').
  * @param {number} [activityData.progress=0] - Completion progress as a percentage (0–100).
+ * @param {number} [activityData.durationMinutes=0] - Estimated time spent in minutes.
+ * @param {number|null} [activityData.score=null] - Optional score for graded activities.
+ * @param {boolean} [activityData.completed=false] - Whether the activity was completed.
+ * @param {Date|null} [activityData.completedAt=null] - Completion timestamp if completed.
  * @returns {Promise<void>} Resolves when the activity has been written to Firestore.
  * @example
  * await logActivity('user_abc123', { title: 'Intro to React', type: 'course', progress: 50 });
@@ -22,6 +26,10 @@ export const logActivity = async (userId, activityData) => {
       title: activityData.title,
       type: activityData.type || "course",
       progress: activityData.progress || 0,
+      durationMinutes: activityData.durationMinutes || 0,
+      score: typeof activityData.score === "number" ? activityData.score : null,
+      completed: Boolean(activityData.completed),
+      completedAt: activityData.completedAt || null,
       timestamp: serverTimestamp(),
     });
     return docRef.id;

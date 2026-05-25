@@ -265,7 +265,6 @@ export default function AboutPage() {
     setScrollY(window.scrollY);
   }, []);
 
-  const handleAnimationComplete = useCallback(() => {}, []);
 
   useEffect(() => {
     let scrollTimeout;
@@ -388,7 +387,6 @@ export default function AboutPage() {
                 threshold={0.1}
                 rootMargin="-100px"
                 textAlign="center"
-                onLetterAnimationComplete={handleAnimationComplete}
               />
               <SplitText
                 text="Education"
@@ -402,7 +400,6 @@ export default function AboutPage() {
                 threshold={0.1}
                 rootMargin="-100px"
                 textAlign="center"
-                onLetterAnimationComplete={handleAnimationComplete}
               />
             </div>
 
@@ -763,13 +760,14 @@ export default function AboutPage() {
                 {/* Vertical Interlocking Row Anchors */}
                 <div className="w-full space-y-4">
                   {STATS_ITEMS.map((stat) => {
-                    const isClickable = !!stat.href;
+                    const isClickable = Boolean(stat.href);
                     const ItemWrapper = isClickable ? Link : "div";
+                    const itemWrapperProps = isClickable ? { href: stat.href } : {};
 
                     return (
                       <ItemWrapper
                         key={stat.id}
-                        href={stat.href || ""}
+                        {...itemWrapperProps}
                         onMouseEnter={() => setHoveredRing(stat.id)}
                         onMouseLeave={() => setHoveredRing(null)}
                         className={`block p-5 border rounded-2xl transition-all duration-500 ${

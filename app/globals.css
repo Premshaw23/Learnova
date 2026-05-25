@@ -31,8 +31,13 @@
 .scrollbar-none {
   -ms-overflow-style: none;
   /* IE and Edge */
-  scrollbar-width: none;
-  /* Firefox */
+}
+
+@supports (scrollbar-width: none) {
+  .scrollbar-none {
+    scrollbar-width: none;
+    /* Firefox */
+  }
 }
 
 @keyframes slide-up {
