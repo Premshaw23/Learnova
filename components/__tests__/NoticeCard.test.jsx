@@ -15,6 +15,14 @@ const mockPdfInstance = {
   splitTextToSize: jest.fn(() => ["Exam Schedule Updated", "The exam timetable has been updated for next week." ]),
   addPage: jest.fn(),
   save: jest.fn(),
+  setFillColor: jest.fn(),
+  rect: jest.fn(),
+  setDrawColor: jest.fn(),
+  setLineWidth: jest.fn(),
+  line: jest.fn(),
+  getTextWidth: jest.fn(() => 15),
+  roundedRect: jest.fn(),
+  setTextColor: jest.fn(),
 };
 
 jest.mock("jspdf", () => ({

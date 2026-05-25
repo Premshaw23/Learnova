@@ -54,12 +54,12 @@ describe("attendance sync route", () => {
       commit: jest.fn().mockResolvedValue(undefined),
     };
 
-    const attendanceQuery = { empty: true };
+    const docRef = {
+      get: jest.fn().mockResolvedValue({ exists: false }),
+    };
+
     const collectionRef = {
-      where: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue(attendanceQuery),
-      doc: jest.fn(() => ({})),
+      doc: jest.fn(() => docRef),
     };
 
     getFirestore.mockReturnValue({
@@ -89,6 +89,8 @@ describe("attendance sync route", () => {
     });
 
     expect(getUserProfile).toHaveBeenCalledWith("user-123");
+    expect(collectionRef.doc).toHaveBeenCalledWith(expect.stringMatching(/^user-123_\d{4}-\d{2}-\d{2}$/));
+    expect(docRef.get).toHaveBeenCalledTimes(1);
     expect(batch.set).toHaveBeenCalledWith(
       expect.any(Object),
       expect.objectContaining({
@@ -117,10 +119,7 @@ describe("attendance sync route", () => {
     };
 
     const collectionRef = {
-      where: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn(),
-      doc: jest.fn(() => ({})),
+      doc: jest.fn(() => ({ get: jest.fn() })),
     };
 
     getFirestore.mockReturnValue({

@@ -10,6 +10,22 @@ const JWKS = createRemoteJWKSet(JWKS_URL);
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
+const PAGE_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com",
+  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.public.blob.vercel-storage.com https://api.emailjs.com",
+  "media-src 'self' blob:",
+  "worker-src 'self' blob:",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
+
 /**
  * Verifies a Firebase ID token's RS256 signature and all standard claims.
  * Runs entirely in the Edge Runtime using the jose library.
@@ -31,7 +47,7 @@ async function verifyIdToken(token) {
     
     // Validate standard JWT claims as required by the Firebase ID token spec
     const now = Math.floor(Date.now() / 1000);
-    if (!payload.sub || payload.iat > now + 300) {
+    if (!payload.sub || payload.iat > now) {
       return null;
     }
 
@@ -134,9 +150,7 @@ export async function middleware(request) {
           const res = await fetch(
             `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${payload.sub}`,
             {
-              headers: { Authorization: `Bearer ${authToken}` },
-              cache: "force-cache",
-              next: { revalidate: 300 } // Cache securely at the edge for 5 minutes
+              headers: { Authorization: `Bearer ${authToken}` }
             }
           );
           if (res.ok) {
@@ -231,7 +245,7 @@ export async function middleware(request) {
   });
 
   if (isPage) {
-    response.headers.set("Content-Security-Policy", contentSecurityPolicyHeaderValue);
+    response.headers.set("Content-Security-Policy", PAGE_CSP);
   }
 
   return response;

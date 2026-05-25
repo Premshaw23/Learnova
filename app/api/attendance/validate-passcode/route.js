@@ -13,8 +13,10 @@ export const dynamic = "force-dynamic";
 const passcodeSchema = z.object({
   passcode: z
     .string({
-      required_error: "Passcode is required",
-      invalid_type_error: "Passcode must be a string",
+      error: (issue) =>
+        issue.input === undefined
+          ? "Passcode is required"
+          : "Passcode must be a string",
     })
     .trim()
     .min(1, "Passcode is required"),
@@ -63,6 +65,20 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   const settings = settingsDoc.data();
+
+  if (!settings.active) {
+    return NextResponse.json(
+      { valid: false, error: "Attendance window is currently closed." },
+      { status: 403 }
+    );
+  }
+
+  if (settings.expiresAt && new Date(settings.expiresAt) < new Date()) {
+    return NextResponse.json(
+      { valid: false, error: "Attendance passcode has expired." },
+      { status: 410 }
+    );
+  }
 
   if (settings.passcode === passcode) {
     return NextResponse.json({ valid: true });

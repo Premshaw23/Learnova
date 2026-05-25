@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Calendar,
   Clock,
@@ -7,6 +7,8 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  Bell,
+  BellOff,
 } from "lucide-react";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -61,6 +63,117 @@ export default function Timetable({ role = "student" }) {
     days.includes(today) ? today : "Monday"
   );
   const [isPending, setIsPending] = useState(false);
+  const [pushStatus, setPushStatus] = useState("default");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (!("Notification" in window)) {
+        setPushStatus("unsupported");
+      } else {
+        setPushStatus(Notification.permission);
+      }
+    }
+  }, []);
+
+  // Timetable push reminder scheduler
+  useEffect(() => {
+    if (pushStatus !== "granted") return;
+
+    const timerIds = [];
+    const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+    const todayClasses = mockTimetable[todayName] || [];
+
+    todayClasses.forEach((cls) => {
+      const [startStr] = cls.time.split("-");
+      const [hours, minutes] = startStr.split(":").map(Number);
+
+      const now = new Date();
+      const classTime = new Date();
+      classTime.setHours(hours, minutes, 0, 0);
+
+      // Reminder is 10 minutes before class
+      const reminderTime = new Date(classTime.getTime() - 10 * 60 * 1000);
+
+      if (classTime > now) {
+        if (reminderTime > now) {
+          const delay = reminderTime.getTime() - now.getTime();
+          const timerId = setTimeout(() => {
+            triggerNotification(cls);
+          }, delay);
+          timerIds.push(timerId);
+        } else {
+          // Class starts in less than 10m but hasn't started yet - trigger alert immediately
+          triggerNotification(cls, true);
+        }
+      }
+    });
+
+    return () => {
+      timerIds.forEach((id) => clearTimeout(id));
+    };
+  }, [pushStatus]);
+
+  const triggerNotification = (cls, immediate = false) => {
+    if (typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") return;
+
+    const [startStr] = cls.time.split("-");
+    const [hours, minutes] = startStr.split(":").map(Number);
+    const classTime = new Date();
+    classTime.setHours(hours, minutes, 0, 0);
+
+    const minsLeft = immediate
+      ? Math.max(1, Math.round((classTime.getTime() - Date.now()) / 60000))
+      : 10;
+
+    const title = `Class starting in ${minsLeft}m: ${cls.subject}`;
+    const options = {
+      body: `📍 Location: ${cls.room}\n👨‍🏫 Instructor: ${cls.teacher}\n⏰ Schedule: ${cls.time}`,
+      icon: "/logo-icon.png",
+      badge: "/logo-icon.png",
+      vibrate: [100, 50, 100],
+      tag: `class-reminder-${cls.subject}-${cls.time}`,
+      data: {
+        url: "/timetable"
+      },
+      actions: [
+        { action: "open", title: "View Timetable" },
+        { action: "close", title: "Dismiss" }
+      ]
+    };
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.showNotification(title, options);
+      }).catch(() => {
+        new Notification(title, options);
+      });
+    } else {
+      new Notification(title, options);
+    }
+  };
+
+  const handleTogglePush = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+
+    if (pushStatus === "granted") {
+      setPushStatus("default");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setPushStatus(permission);
+      if (permission === "granted") {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("/sw.js")
+            .then((reg) => console.log("Service Worker registered:", reg.scope))
+            .catch((err) => console.error("SW Registration failed:", err));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleDayClick = (day) => {
     if (day === selectedDay || isPending) return;
@@ -88,11 +201,27 @@ export default function Timetable({ role = "student" }) {
             </p>
           </div>
         </div>
-        {classes.length > 0 && (
-          <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full">
-            {classes.length} classes
-          </span>
-        )}
+        <div className="flex items-center space-x-2">
+          {pushStatus !== "unsupported" && (
+            <button
+              onClick={handleTogglePush}
+              className={`p-2 rounded-xl border transition-all duration-200 cursor-pointer ${
+                pushStatus === "granted"
+                  ? "bg-green-500/20 border-green-500/30 text-green-400 hover:bg-green-500/30"
+                  : "bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10"
+              }`}
+              title={pushStatus === "granted" ? "Class reminders active" : "Enable class reminders"}
+              aria-label={pushStatus === "granted" ? "Mute class reminders" : "Enable class reminders"}
+            >
+              {pushStatus === "granted" ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+            </button>
+          )}
+          {classes.length > 0 && (
+            <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full">
+              {classes.length} classes
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Day Selector */}

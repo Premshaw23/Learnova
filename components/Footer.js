@@ -22,6 +22,7 @@ export default function Footer() {
     { label: "Contact", href: "/contact" },
     { label: "Register", href: "/register" },
     { label: "Contributors", href: "/contributors" },
+    { label: "Terms & Conditions", href: "/terms" },
   ];
 
   const sectionLinks = [
@@ -147,7 +148,7 @@ export default function Footer() {
             <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">
               Quick Links
             </h3>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-1 text-sm">
               {quickLinks.map((link) => (
                 <li key={link.href}>
                   <Link
