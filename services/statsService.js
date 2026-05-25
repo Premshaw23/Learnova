@@ -131,6 +131,19 @@ export const recalculateAttendanceRate = async (userId) => {
       lastUpdated: new Date(),
     });
 
+    // Trigger attendance alert if below 75%
+    if (rate < 75) {
+      try {
+        await createAttendanceAlert(userId, {
+          percentage: rate,
+          totalDays,
+          attendedClasses: presentDays,
+        });
+      } catch (error) {
+        console.error("Error creating attendance alert:", error);
+      }
+    }
+
     return rate;
   } catch (error) {
     throw error;

@@ -1,15 +1,25 @@
 "use client";
 
-import { createContext, useState, useEffect, useRef } from "react";
+import { createContext, useState, useEffect, useRef, useContext } from "react";
+import { useFirestoreNotifications } from "@/contexts/FirestoreContext";
+import { db } from "@/lib/firebaseConfig";
+import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { useAuth } from "@/hooks/useAuth";
+import toast from "react-hot-toast";
 
 export const NotificationContext = createContext();
 
 export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState([]);
-  // Keep timers so we can clear on unmount
+  const [toastNotifications, setToastNotifications] = useState([]);
   const timersRef = useRef(new Map());
+  const { user } = useAuth();
+  const { firestoreNotifications, loading: notificationsLoading } = useFirestoreNotifications();
 
-  const addNotification = (notification) => {
+  // Calculate unread count from Firestore notifications
+  const unreadCount = firestoreNotifications?.filter(n => !n.read).length || 0;
+
+  // Add a temporary toast notification (auto-dismisses after 5s)
+  const addToastNotification = (notification) => {
     const id = Date.now();
 
     const newNotification = {
@@ -17,25 +27,30 @@ export function NotificationProvider({ children }) {
       ...notification,
     };
 
-    setNotifications((prev) => [...prev, newNotification]);
+    setToastNotifications((prev) => [...prev, newNotification]);
 
-    // Auto-remove notification after 5s. Track timer so it can be cleared
-    // if the provider unmounts or the notification is removed early.
+    // Show toast alert
+    if (notification.message) {
+      toast(notification.message, {
+        icon: notification.type === 'alert' ? '⚠️' : '🔔',
+        duration: 5000,
+      });
+    }
+
+    // Auto-remove notification after 5s
     const timerId = setTimeout(() => {
-      removeNotification(id);
-      // clean up timer map entry
+      removeToastNotification(id);
       timersRef.current.delete(id);
     }, 5000);
 
     timersRef.current.set(id, timerId);
   };
 
-  const removeNotification = (id) => {
-    setNotifications((prev) =>
+  const removeToastNotification = (id) => {
+    setToastNotifications((prev) =>
       prev.filter((notification) => notification.id !== id)
     );
 
-    // clear any pending timer for this notification
     const t = timersRef.current.get(id);
     if (t) {
       clearTimeout(t);
@@ -43,31 +58,79 @@ export function NotificationProvider({ children }) {
     }
   };
 
-  const clearNotifications = () => {
-    setNotifications([]);
+  const clearToastNotifications = () => {
+    setToastNotifications([]);
+    timersRef.current.forEach((t) => clearTimeout(t));
+    timersRef.current.clear();
   };
 
-  const markAsRead = (id) => {
-    setNotifications((prev) =>
-        prev.map((notification) =>
-        notification.id === id
-            ? { ...notification, read: true }
-            : notification
-        )
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((prev) =>
-        prev.map((notification) => ({
-        ...notification,
+  // Mark a Firestore notification as read
+  const markAsRead = async (id) => {
+    try {
+      if (!user?.uid) return;
+      
+      const notificationRef = doc(db, "notifications", id);
+      await updateDoc(notificationRef, {
         read: true,
-        }))
-    );
+        readAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
   };
+
+  // Mark all Firestore notifications as read
+  const markAllAsRead = async () => {
+    try {
+      if (!user?.uid) return;
+      
+      const unreadNotifications = firestoreNotifications?.filter(n => !n.read) || [];
+      
+      await Promise.all(
+        unreadNotifications.map((notification) =>
+          updateDoc(doc(db, "notifications", notification.id), {
+            read: true,
+            readAt: new Date().toISOString(),
+          })
+        )
+      );
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
+  // Create a new notification in Firestore
+  const createNotification = async (notificationData) => {
+    try {
+      if (!user?.uid) return;
+
+      const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
+      
+      const notification = {
+        recipientId: notificationData.recipientId || user.uid,
+        type: notificationData.type || "info",
+        title: notificationData.title || "",
+        message: notificationData.message || "",
+        read: false,
+        createdAt: serverTimestamp(),
+        metadata: notificationData.metadata || {},
+        actionUrl: notificationData.actionUrl || null,
+      };
+
+      await addDoc(collection(db, "notifications"), notification);
+      
+      // Also show toast for immediate feedback
+      addToastNotification({
+        message: notification.message,
+        type: notification.type,
+      });
+    } catch (error) {
+      console.error("Error creating notification:", error);
+    }
+  };
+
   useEffect(() => {
     return () => {
-      // clear any remaining timeouts when provider unmounts
       timersRef.current.forEach((t) => clearTimeout(t));
       timersRef.current.clear();
     };
@@ -76,12 +139,21 @@ export function NotificationProvider({ children }) {
   return (
     <NotificationContext.Provider
       value={{
-        notifications,
-        addNotification,
-        removeNotification,
-        clearNotifications,
+        // Firestore notifications (persistent)
+        notifications: firestoreNotifications || [],
+        unreadCount,
+        notificationsLoading,
+        
+        // Toast notifications (temporary)
+        toastNotifications,
+        
+        // Actions
+        addToastNotification,
+        removeToastNotification,
+        clearToastNotifications,
         markAsRead,
         markAllAsRead,
+        createNotification,
       }}
     >
       {children}

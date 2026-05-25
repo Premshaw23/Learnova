@@ -3,6 +3,7 @@ import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { z } from "zod";
+import { createRoleBasedAnnouncement } from "@/services/notificationService";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,23 @@ async function publishNotice(request) {
   };
 
   const result = await db.collection("notices").insertOne(newNotice);
+
+  // Create notifications for target audience
+  try {
+    const targetRoles = validData.targetAudience;
+    const notificationPromises = targetRoles.map((role) =>
+      createRoleBasedAnnouncement(role, {
+        id: result.insertedId.toString(),
+        title: validData.title,
+        message: validData.content,
+        priority: validData.priority,
+      })
+    );
+    await Promise.allSettled(notificationPromises);
+  } catch (error) {
+    console.error("Error creating announcement notifications:", error);
+    // Don't fail the request if notifications fail
+  }
 
   return NextResponse.json({
     success: true,
