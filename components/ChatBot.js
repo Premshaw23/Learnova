@@ -283,14 +283,27 @@ async function saveConversation(userText, botText) {
 // ---------------------------------------------------------------------------
 const LearnovaChatbot = () => {
   // Get the Firebase user object so we can fetch a fresh ID token per request
-  const { user } = useAuthContext();
+  // ✅ 1. Dynamic Greeting Generator based on the user's logged-in profile role
+  const getContextWelcomeMessage = useCallback(() => {
+    if (!user) return "Hello! I'm Nova, your AI assistant for Learnova. How can I assist you today?";
 
-  const INITIAL_MESSAGE = {
-    id: 1,
-    text: "Hello! I'm Nova, your AI assistant for Learnova — the Smart Student Engagement Ecosystem! I can help you with attendance management, smart activities, security features, analytics, and more. What would you like to know?",
-    isBot: true,
-    timestamp: new Date(),
-  };
+    const nameSegment = user.displayName || user.email?.split('@')[0] || "there";
+    const role = user.role?.toLowerCase() || "";
+
+    if (role === "teacher" || role === "instructor") {
+      return `Hello Creator! Ready to manage your classes or check attendance logs today?`;
+    } else if (role === "student") {
+      return `Hi ${nameSegment}, need help finding your assignments or checking your attendance?`;
+    }
+
+    return `Hello ${nameSegment}! Welcome to Learnova. How can I help you today?`;
+  }, [user]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState(() => [
+    {
+      id: 1
+  
+
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -300,6 +313,17 @@ const LearnovaChatbot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentCategory, setCurrentCategory] = useState("general");
 
+  useEffect(() => {
+    
+    setMessages([
+      {
+        id: Date.now(),
+        text: getContextWelcomeMessage(), 
+        isBot: true,
+        timestamp: new Date(),
+      }
+    ]);
+  }, [getContextWelcomeMessage]); 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -324,8 +348,27 @@ const LearnovaChatbot = () => {
     }
   };
 
+  useEffect(() => {
+   
+    setMessages([
+      {
+        id: Date.now(),
+        text: getContextWelcomeMessage(), 
+        isBot: true,
+        timestamp: new Date(),
+      }
+    ]);
+  }, [getContextWelcomeMessage]);
+  // ✅ 4. Re-applies the user role greeting when the chat window is cleared
   const clearChat = () => {
-    setMessages([INITIAL_MESSAGE]);
+    setMessages([
+      {
+        id: Date.now(),
+        text: getContextWelcomeMessage(),
+        isBot: true,
+        timestamp: new Date(),
+      }
+    ]);
     setCurrentCategory("general");
   };
 
