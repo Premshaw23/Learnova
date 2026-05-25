@@ -10,13 +10,15 @@ const setCookie = (name, value, days = 7) => {
   if (typeof window !== "undefined") {
     const expires = new Date();
     expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-    document.cookie = `${name}=${value}; expires=${expires.toUTCString()}; path=/; SameSite=Lax; Secure`;
+    const isSecure = process.env.NODE_ENV === "production";
+    document.cookie = `${name}=${value}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? "; Secure" : ""}`;
   }
 };
 
 const deleteCookie = (name) => {
   if (typeof window !== "undefined") {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure`;
+    const isSecure = process.env.NODE_ENV === "production";
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax${isSecure ? "; Secure" : ""}`;
   }
 };
 

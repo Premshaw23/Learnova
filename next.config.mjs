@@ -7,6 +7,9 @@ const withPWA = withPWAInit({
     document: "/~offline",
   },
   disable: process.env.NODE_ENV === "development",
+  fallbacks: {
+    document: "/offline.html",
+  },
   register: true,
   skipWaiting: true,
   reloadOnOnline: true,
@@ -16,6 +19,18 @@ const withPWA = withPWAInit({
     disableDevLogs: true,
     runtimeCaching: [
       {
+        urlPattern: /^https?:\/\/.*$/,
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "pages",
+          plugins: [
+            {
+              handlerDidError: async () => {
+                return caches.match("/offline.html", { ignoreSearch: true });
+              },
+            },
+          ],
+        },
         urlPattern: /\/api\/.*/i,
         handler: "NetworkOnly",
       },

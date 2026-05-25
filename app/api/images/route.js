@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
-import { requireAuth } from "@/lib/rbac";
+import { requireAuth, requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { AppError, ValidationError, NotFoundError } from "@/lib/errors";
 import { put } from "@vercel/blob";
@@ -23,7 +23,8 @@ export const GET = withErrorHandler(async (request) => {
       throw new ValidationError(firstError);
     }
 
-    await requireAuth(request);
+    // Authenticate the requester and capture the decoded token for ownership checks
+    const decodedToken = await requireAuth(request);
 
     const db = await connectDb();
     const users = db.collection("users");
@@ -38,11 +39,29 @@ export const GET = withErrorHandler(async (request) => {
 
     const user = await users.findOne(
       { _id: objectId },
-      { projection: { image: 1 } }
+      { projection: { image: 1, firebaseUid: 1 } }
     );
 
     if (!user || !user.image) {
       throw new NotFoundError("Image not found");
+    }
+
+    // Enforce object-level authorization: only the owner or privileged roles may fetch another user's image
+    const ownerUid = user.firebaseUid || null;
+    if (ownerUid && ownerUid !== decodedToken.uid) {
+      try {
+        // Allow admins or institute-level users to access other users' images
+        await requireRole(request, ["admin", "institute"]);
+      } catch (err) {
+        throw new AppError("Forbidden: insufficient permissions to access requested image", 403);
+      }
+    } else if (!ownerUid && ownerUid !== decodedToken.uid) {
+      // If there's no firebaseUid on the user doc, be conservative and deny access unless privileged
+      try {
+        await requireRole(request, ["admin", "institute"]);
+      } catch (err) {
+        throw new AppError("Forbidden: insufficient permissions to access requested image", 403);
+      }
     }
 
     let parsedUrl;
@@ -97,6 +116,16 @@ export const POST = withErrorHandler(async (request) => {
     const formData = await request.formData();
     const file = formData.get("file");
 
+    const rawFaceDescriptor = formData.get("faceDescriptor");
+    let faceDescriptor = null;
+    if (rawFaceDescriptor) {
+      try {
+        faceDescriptor = JSON.parse(rawFaceDescriptor);
+      } catch {
+        throw new ValidationError("Invalid face descriptor format");
+      }
+    }
+
     if (!file || typeof file === "string" || !file.type) {
       throw new ValidationError("File is required and must be a valid file");
     }
@@ -126,9 +155,13 @@ export const POST = withErrorHandler(async (request) => {
     // Update in MongoDB if exists
     const db = await connectDb();
     const users = db.collection("users");
+    const updatePayload = { image: blob.url };
+    if (faceDescriptor) {
+      updatePayload.faceDescriptor = faceDescriptor;
+    }
     await users.updateOne(
       { firebaseUid: decodedToken.uid },
-      { $set: { image: blob.url } }
+      { $set: updatePayload }
     );
 
     return NextResponse.json({ success: true, url: blob.url });

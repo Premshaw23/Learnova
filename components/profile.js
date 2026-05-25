@@ -5,7 +5,6 @@ import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import { User, AlertTriangle, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Navbar } from "./Navbar";
 import UniversalProfile from "@/components/universal-profile";
 
 export default function ProfilePage() {
@@ -22,7 +21,6 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex flex-col">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-white">
             <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -37,7 +35,6 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex flex-col">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-white">
             <div className="w-16 h-16 bg-gradient-to-r from-accent to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -55,7 +52,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 pt-20">
-      <Navbar />
       <UniversalProfile />
     </div>
   );

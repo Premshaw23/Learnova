@@ -771,7 +771,7 @@ export default function AboutPage() {
                     return (
                       <ItemWrapper
                         key={stat.id}
-                        href={stat.href || null}
+                        {...(isClickable ? { href: stat.href } : {})}
                         onMouseEnter={() => setHoveredRing(stat.id)}
                         onMouseLeave={() => setHoveredRing(null)}
                         className={`block p-5 border rounded-2xl transition-all duration-500 ${

@@ -99,6 +99,7 @@ export const GET = withErrorHandler(async (request) => {
             name: 1,
             email: 1,
             image: 1,
+            faceDescriptor: 1,
           },
         })
         .limit(50)
@@ -113,6 +114,7 @@ export const GET = withErrorHandler(async (request) => {
           ...rest,
           hasImage:
             !!image,
+          faceDescriptor: rest.faceDescriptor || [],
         })
       );
 

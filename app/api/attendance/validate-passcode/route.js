@@ -66,6 +66,20 @@ export const POST = withErrorHandler(async (request) => {
 
   const settings = settingsDoc.data();
 
+  if (!settings.active) {
+    return NextResponse.json(
+      { valid: false, error: "Attendance window is currently closed." },
+      { status: 403 }
+    );
+  }
+
+  if (settings.expiresAt && new Date(settings.expiresAt) < new Date()) {
+    return NextResponse.json(
+      { valid: false, error: "Attendance passcode has expired." },
+      { status: 410 }
+    );
+  }
+
   if (settings.passcode === passcode) {
     return NextResponse.json({ valid: true });
   }

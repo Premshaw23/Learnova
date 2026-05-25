@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useOptimistic } from "react";
+import { useState, useEffect, useRef, useOptimistic } from "react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -55,8 +55,8 @@ export default function ActivityPage() {
   const isDark = mounted ? theme === "dark" : true;
   const { user } = useAuth();
   const router = useRouter();
-  const [scrollY, setScrollY] = useState(0);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const orbRef = useRef(null);
+  const mouseMoveRaf = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLevel, setSelectedLevel] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,17 +85,21 @@ export default function ActivityPage() {
   });
 
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
     const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+      if (mouseMoveRaf.current) cancelAnimationFrame(mouseMoveRaf.current);
+      mouseMoveRaf.current = requestAnimationFrame(() => {
+        const orb = orbRef.current;
+        if (orb) {
+          orb.style.transform = `translate3d(${e.clientX - 192}px, ${e.clientY - 192}px, 0)`;
+        }
+      });
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("mousemove", handleMouseMove);
+      if (mouseMoveRaf.current) cancelAnimationFrame(mouseMoveRaf.current);
     };
   }, []);
 
@@ -347,11 +351,11 @@ export default function ActivityPage() {
 
         {/* Mouse-following gradient orb */}
         <div
-          className="absolute w-96 h-96 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-full blur-3xl"
+          ref={orbRef}
+          className="absolute w-96 h-96 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-full blur-3xl pointer-events-none"
           style={{
-            left: mousePosition.x - 192,
-            top: mousePosition.y - 192,
-            transition: "all 1.2s ease-out",
+            transform: "translate3d(-192px, -192px, 0)",
+            willChange: "transform",
           }}
         />
 
@@ -496,7 +500,7 @@ export default function ActivityPage() {
                           <Button 
                             disabled={activity.saving}
                             onClick={() => router.push(`/activity/${activity.id}`)}
-                            className="w-full bg-accent/10 hover:bg-accent/20 text-accent transition-all duration-300"
+                            className="w-full bg-accent/10 hover:bg-accent/20 text-accent transition-colors duration-300"
                           >
                             <Play className="w-4 h-4 mr-2" />
                             {activity.progress > 0 ? "Continue" : "Start Now"}
@@ -534,7 +538,7 @@ export default function ActivityPage() {
             <div className="grid lg:grid-cols-3 gap-8">
               {featuredActivities.map((activity, index) => (
                 <Reveal key={activity.id} delay={0.1 + index * 0.1}>
-                  <Card className="group bg-card backdrop-blur-xl border-border hover:border-accent/50 transition-all duration-700 hover:shadow-2xl hover:shadow-accent/25 overflow-hidden">
+                  <Card className="group bg-card backdrop-blur-xl border-border hover:border-accent/50 transition-transform duration-700 hover:shadow-2xl hover:shadow-accent/25 overflow-hidden">
                     <div
                       className={`h-2 bg-gradient-to-r ${activity.gradient}`}
                     />
@@ -585,7 +589,7 @@ export default function ActivityPage() {
 
                       <Button
                         onClick={() => handleEnrollActivity(activity)}
-                        className={`w-full bg-gradient-to-r ${activity.gradient} hover:shadow-lg hover:shadow-accent/25 transition-all duration-300 group-hover:scale-[1.02]`}
+                        className={`w-full bg-gradient-to-r ${activity.gradient} hover:shadow-lg hover:shadow-accent/25 transition-transform duration-300 group-hover:scale-[1.02]`}
                       >
                         <Sparkles className="w-4 h-4 mr-2" />
                         Enroll Now
@@ -603,7 +607,7 @@ export default function ActivityPage() {
         <section className="px-4 sm:px-6 lg:px-8 mb-16">
           <div className="max-w-7xl mx-auto">
             <Reveal delay={0.1}>
-              <div className="bg-card backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-border hover:border-accent/20 transition-all duration-300">
+              <div className="bg-card backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-border hover:border-accent/20 transition-border duration-300">
                 <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between mb-6">
                   <div className="flex items-center gap-4">
                     <h3 className="text-xl font-semibold text-foreground flex items-center">
@@ -648,7 +652,7 @@ export default function ActivityPage() {
                         <button
                           key={category.id}
                           onClick={() => setSelectedCategory(category.id)}
-                          className={`flex items-center justify-center px-3 py-2 min-h-[42px] text-xs sm:text-sm rounded-full whitespace-nowrap transition-all duration-300 ${
+                          className={`flex items-center justify-center px-3 py-2 min-h-[42px] text-xs sm:text-sm rounded-full whitespace-nowrap transition-colors duration-300 ${
                             selectedCategory === category.id
                               ? "bg-gradient-to-r from-accent to-purple-500 text-white shadow-lg shadow-accent/25"
                               : "bg-slate-100 dark:bg-black/30 text-slate-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-black/50 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10"
@@ -671,7 +675,7 @@ export default function ActivityPage() {
                         <button
                           key={level.id}
                           onClick={() => setSelectedLevel(level.id)}
-                          className={`px-4 py-2 rounded-full transition-all duration-300 text-sm ${
+                          className={`px-4 py-2 rounded-full transition-colors duration-300 text-sm ${
                             selectedLevel === level.id
                               ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25"
                               : "bg-slate-100 dark:bg-black/30 text-slate-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-black/50 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10"
@@ -711,7 +715,7 @@ export default function ActivityPage() {
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredActivities.map((activity, index) => (
                 <Reveal key={activity.id} delay={0.05 + index * 0.05}>
-                  <Card className="group bg-card backdrop-blur-xl border-border hover:border-accent/30 transition-all duration-500 hover:shadow-xl hover:shadow-accent/20">
+                  <Card className="group bg-card backdrop-blur-xl border-border hover:border-accent/30 transition-transform duration-500 hover:shadow-xl hover:shadow-accent/20">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between mb-3">
                         <div
@@ -770,7 +774,7 @@ export default function ActivityPage() {
                       <Button
                         size="sm"
                         onClick={() => handleEnrollActivity(activity)}
-                        className={`w-full bg-gradient-to-r ${activity.gradient} hover:shadow-md transition-all duration-300 text-xs sm:text-sm`}
+                        className={`w-full bg-gradient-to-r ${activity.gradient} hover:shadow-md transition-transform duration-300 text-xs sm:text-sm`}
                       >
                         <Sparkles className="w-3 h-3 mr-2" />
                         Enroll Now
@@ -811,7 +815,7 @@ export default function ActivityPage() {
         <section className="px-4 sm:px-6 lg:px-8 pb-20">
           <div className="max-w-4xl mx-auto">
             <Reveal>
-              <div className="bg-card rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
+              <div className="bg-card rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-border duration-700">
                 <Trophy className="w-16 h-16 text-accent mx-auto mb-6" />
                 <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 text-center">
                   Ready to Level Up Your Learning?
@@ -821,14 +825,14 @@ export default function ActivityPage() {
                   engaging through our interactive platform.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button className="bg-gradient-to-r from-accent to-purple-500 hover:shadow-xl hover:shadow-accent/25 transition-all duration-300 hover:scale-105 text-white font-semibold">
+                  <Button className="bg-gradient-to-r from-accent to-purple-500 hover:shadow-xl hover:shadow-accent/25 transition-transform duration-300 hover:scale-105 text-white font-semibold">
                     <Sparkles className="w-5 h-5 mr-2" />
                     Start Playing Now
                   </Button>
                   <Button
                     onClick={() => router.push('/leaderboards')}
                     variant="outline"
-                    className="border-border text-foreground bg-muted hover:bg-muted/80 transition-all duration-300"
+                    className="border-border text-foreground bg-muted hover:bg-muted/80 transition-colors duration-300"
                   >
                     View Leaderboards
                     <ChevronRight className="w-4 h-4 ml-2" />

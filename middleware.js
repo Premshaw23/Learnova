@@ -47,7 +47,7 @@ async function verifyIdToken(token) {
     
     // Validate standard JWT claims as required by the Firebase ID token spec
     const now = Math.floor(Date.now() / 1000);
-    if (!payload.sub || payload.iat > now + 300) {
+    if (!payload.sub || payload.iat > now) {
       return null;
     }
 
