@@ -114,23 +114,36 @@ export async function GET(request) {
           return controller.close();
         }
 
-        const entry = {
-          id: connId,
-          close() {
-            isConnected = false;
-            try { controller.close(); } catch {}
-          },
-        };
-
-        userStreams.set(userId, entry);
-        connectionCount++;
-
         const onNotice = (doc) => {
           if (!isConnected) return;
           if (doc.targetAudience && doc.targetAudience.includes(userRole)) {
             sendEvent("new-notice", { ...doc, id: doc._id.toString() });
           }
         };
+
+        const cleanup = () => {
+          const current = userStreams.get(userId);
+          if (current && current.id === connId) {
+            userStreams.delete(userId);
+            connectionCount = Math.max(0, connectionCount - 1);
+          }
+          isConnected = false;
+          clearInterval(heartbeatInterval);
+          if (pollInterval) clearInterval(pollInterval);
+          if (idleTimer) clearTimeout(idleTimer);
+          removeListener(userId, onNotice);
+          try { controller.close(); } catch {}
+        };
+
+        const entry = {
+          id: connId,
+          close() {
+            cleanup();
+          },
+        };
+
+        userStreams.set(userId, entry);
+        connectionCount++;
 
         addListener(userId, onNotice);
         const hasStream = await getSharedStream();
@@ -159,9 +172,7 @@ export async function GET(request) {
         const resetIdle = () => {
           if (idleTimer) clearTimeout(idleTimer);
           idleTimer = setTimeout(() => {
-            if (!isConnected) return;
-            isConnected = false;
-            try { controller.close(); } catch {}
+            cleanup();
           }, IDLE_TIMEOUT_MS);
         };
         resetIdle();
@@ -171,17 +182,7 @@ export async function GET(request) {
         }, 15000);
 
         request.signal.addEventListener("abort", () => {
-          const current = userStreams.get(userId);
-          if (current && current.id === connId) {
-            userStreams.delete(userId);
-            connectionCount = Math.max(0, connectionCount - 1);
-          }
-          isConnected = false;
-          clearInterval(heartbeatInterval);
-          if (pollInterval) clearInterval(pollInterval);
-          if (idleTimer) clearTimeout(idleTimer);
-          removeListener(userId, onNotice);
-          try { controller.close(); } catch {}
+          cleanup();
         });
       },
     });

@@ -6,6 +6,9 @@ import { Navbar } from "@/components/Navbar";
 import { motion, useMotionValue, useTransform, animate, useInView } from "framer-motion";
 import SplitText from "@/components/ui-block/SplitText";
 import DarkVeil from "@/components/ui-block/DarkVeil";
+import CommentSection from "@/components/CommentSection";
+
+
 import {
   Card,
   CardContent,
@@ -33,7 +36,6 @@ import {
 import Link from "next/link";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
-import LearnovaChatbot from "@/components/ChatBot";
 
 // Constants moved outside component for better performance
 const PARTICLES_DATA = [
@@ -436,7 +438,7 @@ export default function AboutPage() {
           <div className="max-w-6xl mx-auto">
             <Reveal className="mb-24 max-w-2xl">
               <SectionBadge icon={Sparkles} text={translations[language].mission} />
-              <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white mt-4 mb-6">
+              <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-black dark:text-white mt-4 mb-6">
                 Empowering Educational Excellence
               </h2>
               <p className="text-xl text-muted-foreground leading-relaxed">
@@ -454,7 +456,7 @@ export default function AboutPage() {
                     </div>
                     <span className="text-xs font-bold uppercase tracking-wider text-purple-400">01 / Workspace Focus</span>
                   </div>
-                  <h3 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
+                  <h3 className="text-2xl md:text-4xl font-bold text-black dark:text-white tracking-tight">
                     For Teachers: Teach Without Distractions
                   </h3>
                   <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
@@ -481,7 +483,7 @@ export default function AboutPage() {
                     </div>
                     <span className="text-xs font-bold uppercase tracking-wider text-accent">02 / Dynamic Training</span>
                   </div>
-                  <h3 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
+                  <h3 className="text-2xl md:text-4xl font-bold text-black dark:text-white tracking-tight">
                     For Students: Learn With Purpose
                   </h3>
                   <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
@@ -508,7 +510,7 @@ export default function AboutPage() {
                     </div>
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">03 / Centralized System</span>
                   </div>
-                  <h3 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
+                  <h3 className="text-2xl md:text-4xl font-bold text-black dark:text-white tracking-tight">
                     For Institutions: Thrive via Connected Insights
                   </h3>
                   <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
@@ -606,7 +608,7 @@ export default function AboutPage() {
                 text="Productivity Studio"
                 gradient="from-blue-500/20 to-purple-500/20"
                 borderClass="border-blue-500/30"
-                textColor="blue-300"
+                textClass="text-blue-300"
               />
               <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
                 Focus Tools Built for Modern Classrooms
@@ -769,7 +771,7 @@ export default function AboutPage() {
                     return (
                       <ItemWrapper
                         key={stat.id}
-                        href={stat.href || ""}
+                        {...(isClickable ? { href: stat.href } : {})}
                         onMouseEnter={() => setHoveredRing(stat.id)}
                         onMouseLeave={() => setHoveredRing(null)}
                         className={`block p-5 border rounded-2xl transition-all duration-500 ${
@@ -898,6 +900,24 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
+
+
+        {/* Community Feedback Section */}
+<section className="mx-auto mt-20 max-w-4xl px-6 py-12">
+  <div className="mb-8 text-center">
+    <h2 className="text-3xl font-bold text-black dark:text-white">
+      Community Feedback
+    </h2>
+
+    <p className="mt-3 text-slate-500 dark:text-slate-400">
+      Share your thoughts, feedback, and ideas about Learnova.
+    </p>
+  </div>
+
+  <div className="rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 p-6 shadow-sm dark:shadow-2xl">
+    <CommentSection noticeId="homepage" />
+  </div>
+</section>
 
         {/* CTA Section */}
         <section id="get-started" className="py-20 px-4 sm:px-6 lg:px-8">

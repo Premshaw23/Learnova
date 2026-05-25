@@ -39,6 +39,7 @@ export default function RegisterPage() {
     if (!registeredUser?._id) return;
 
     let cancelled = false;
+    let url = null;
 
     const loadImage = async () => {
       try {
@@ -50,8 +51,12 @@ export default function RegisterPage() {
         if (!res.ok || cancelled) return;
 
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        if (!cancelled) setRegisteredUserImageUrl(url);
+        url = URL.createObjectURL(blob);
+        if (!cancelled) {
+          setRegisteredUserImageUrl(url);
+        } else {
+          URL.revokeObjectURL(url);
+        }
       } catch {
         // silently fail
       }
@@ -61,8 +66,11 @@ export default function RegisterPage() {
 
     return () => {
       cancelled = true;
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
     };
-  }, [registeredUser]);
+  }, [registeredUser, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

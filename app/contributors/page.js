@@ -67,7 +67,7 @@ export default function ContributorsPage() {
       <div className="min-h-screen relative z-50">
         <Navbar />
 
-        <main className="px-4 pt-28 pb-20">
+        <div className="px-4 pt-28 pb-20">
           <div className="mx-auto max-w-5xl">
 
             <div className="mb-12 text-center">
@@ -101,7 +101,7 @@ export default function ContributorsPage() {
             </p>
 
           </div>
-        </main>
+        </div>
       </div>
     </>
   );

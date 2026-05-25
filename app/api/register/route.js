@@ -60,8 +60,8 @@ const registerSchema =
   z.object({
     name: z
       .string({
-        required_error:
-          "Name is required",
+        error: (issue) =>
+          issue.input === undefined ? "Name is required" : undefined,
       })
       .trim()
       .min(
@@ -72,8 +72,8 @@ const registerSchema =
 
     rollNo: z
       .string({
-        required_error:
-          "Roll number is required",
+        error: (issue) =>
+          issue.input === undefined ? "Roll number is required" : undefined,
       })
       .trim()
       .min(
@@ -84,8 +84,8 @@ const registerSchema =
 
     email: z
       .string({
-        required_error:
-          "Email is required",
+        error: (issue) =>
+          issue.input === undefined ? "Email is required" : undefined,
       })
       .trim()
       .email(

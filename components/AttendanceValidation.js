@@ -13,19 +13,19 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
-import { db } from "@/lib/firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
 
 const AttendanceValidation = ({ onValidationSuccess }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [location, setLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
   const [timeValid, setTimeValid] = useState(false);
+  const [countdownText, setCountdownText] = useState("");
   const [passcode, setPasscode] = useState("");
   const [passcodeError, setPasscodeError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState(null);
   const [locationDenied, setLocationDenied] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [modalLocationLoading, setModalLocationLoading] = useState(false);
@@ -42,41 +42,120 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     currentLocation: null, // Add this field
   });
 
-  // Load settings from secure API endpoint
-  useEffect(() => {
-    const loadSettings = async () => {
-      if (!user) return; // Wait for user to be authenticated
+  // Load settings from secure API endpoint (with error handling & retry)
+  const fetchSettings = async () => {
+    if (!user) return;
+    setSettingsLoading(true);
+    setSettingsError(null);
 
-      try {
-        const token = await user.getIdToken();
-        const response = await fetch("/api/attendance/settings", {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        
-        if (response.ok) {
-          const settingsData = await response.json();
-          setSettings(settingsData);
-          checkTimeValidity(settingsData.timeWindow);
-        }
-      } catch (error) {
-      } finally {
-        setSettingsLoading(false);
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/attendance/settings", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new Error(`HTTP ${response.status} ${response.statusText} ${text}`);
       }
-    };
 
-    loadSettings();
+      const settingsData = await response.json();
+      setSettings(settingsData);
+      setSettingsError(null);
+      checkTimeValidity(settingsData.timeWindow);
+    } catch (error) {
+      console.error("Error loading attendance settings:", error);
+      setSettings(null);
+      setSettingsError(error?.message || "Unknown error");
+      toast.error("Unable to load attendance settings. Check console for details.");
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    fetchSettings();
   }, [user]);
+
+  const getTimeWindowStatus = (timeWindow) => {
+    if (!timeWindow) {
+      return {
+        isValid: false,
+      };
+    }
+
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5);
+
+    const isValid =
+      currentTime >= timeWindow.start &&
+      currentTime <= timeWindow.end;
+
+    return {
+      isValid,
+    };
+  };
 
   const checkTimeValidity = (timeWindow) => {
     if (!timeWindow) return;
-    const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5);
-    const isValidTime =
-      currentTime >= timeWindow.start && currentTime <= timeWindow.end;
-    setTimeValid(isValidTime);
+    const { isValid } = getTimeWindowStatus(timeWindow);
+    setTimeValid(isValid);
   };
+
+  // Live countdown timer for the attendance window
+  useEffect(() => {
+    if (!settings?.timeWindow) return;
+
+    const updateTimer = () => {
+      const { start, end } = settings.timeWindow;
+      const now = new Date();
+
+      // Parse start and end times today
+      const [startH, startM] = start.split(":").map(Number);
+      const [endH, endM] = end.split(":").map(Number);
+
+      const startTime = new Date(now);
+      startTime.setHours(startH, startM, 0, 0);
+
+      const endTime = new Date(now);
+      endTime.setHours(endH, endM, 0, 0);
+
+      // Check current validity
+      const isValid = now >= startTime && now <= endTime;
+      setTimeValid((prev) => {
+        return prev !== isValid ? isValid : prev;
+      });
+
+      if (now < startTime) {
+        // Window is not open yet
+        const diffMs = startTime - now;
+        const h = Math.floor(diffMs / 3600000);
+        const m = Math.floor((diffMs % 3600000) / 60000);
+        const s = Math.floor((diffMs % 60000) / 1000);
+        const pad = (n) => String(n).padStart(2, "0");
+        setCountdownText(`Opens in ${pad(h)}h ${pad(m)}m ${pad(s)}s`);
+      } else if (now >= startTime && now <= endTime) {
+        // Window is open
+        const diffMs = endTime - now;
+        const h = Math.floor(diffMs / 3600000);
+        const m = Math.floor((diffMs % 3600000) / 60000);
+        const s = Math.floor((diffMs % 60000) / 1000);
+        const pad = (n) => String(n).padStart(2, "0");
+        setCountdownText(`Closes in ${pad(h)}h ${pad(m)}m ${pad(s)}s`);
+      } else {
+        // Window has expired
+        setCountdownText("Closed");
+      }
+    };
+
+    updateTimer(); // run immediately
+    const intervalId = setInterval(updateTimer, 1000); // update every second
+
+    return () => clearInterval(intervalId);
+  }, [settings]);
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3;
@@ -140,8 +219,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         setLocationError(
           `You are ${Math.round(
             distance,
-          )}m away from the valid location. You need to be within ${
-            settings.gpsLocation.radius
+          )}m away from the valid location. You need to be within ${settings.gpsLocation.radius
           }m to proceed.`,
         );
       }
@@ -368,14 +446,25 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
               Unable to load attendance settings. Please contact your
               administrator or try refreshing the page.
             </p>
+            {settingsError && (
+              <p className="text-sm text-red-400 mt-2 break-words">
+                {settingsError}
+              </p>
+            )}
           </div>
-          <Button
-            onClick={() => window.location.reload()}
-            className="bg-red-600 hover:bg-red-700 text-white"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh Page
-          </Button>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={fetchSettings} className="bg-red-600 hover:bg-red-700 text-white">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="text-white border border-white/10"
+            >
+              Hard Refresh
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -408,18 +497,16 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       <div className="space-y-4">
         {/* Time Status */}
         <div
-          className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
-            timeValid
+          className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${timeValid
               ? "border-green-500/50 bg-gradient-to-r from-green-500/10 to-emerald-500/10"
               : "border-red-500/50 bg-gradient-to-r from-red-500/10 to-orange-500/10"
-          }`}
+            }`}
         >
           <div className="p-6">
             <div className="flex items-center gap-4">
               <div
-                className={`p-3 rounded-xl ${
-                  timeValid ? "bg-green-500" : "bg-red-500"
-                }`}
+                className={`p-3 rounded-xl ${timeValid ? "bg-green-500" : "bg-red-500"
+                  }`}
               >
                 <Clock className="w-6 h-6 text-white" />
               </div>
@@ -428,14 +515,24 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                   Time Window
                 </h3>
                 <p
-                  className={`text-sm ${
-                    timeValid ? "text-green-300" : "text-red-300"
-                  }`}
+                  className={`text-sm ${timeValid ? "text-green-300" : "text-red-300"
+                    }`}
                 >
                   {timeValid
                     ? `✅ Perfect timing! Valid window: ${settings.timeWindow.start} - ${settings.timeWindow.end}`
                     : `⏰ Outside time window. Valid hours: ${settings.timeWindow.start} - ${settings.timeWindow.end}`}
                 </p>
+                {countdownText && (
+                  <div
+                    className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wider ${timeValid
+                        ? "bg-green-500/20 text-green-300 border border-green-500/30 animate-pulse"
+                        : "bg-red-500/20 text-red-300 border border-red-500/30"
+                      }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{countdownText}</span>
+                  </div>
+                )}
               </div>
               {timeValid ? (
                 <CheckCircle className="w-8 h-8 text-green-500" />
@@ -448,24 +545,22 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
         {/* Location Status */}
         <div
-          className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
-            location?.isValid
+          className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${location?.isValid
               ? "border-green-500/50 bg-gradient-to-r from-green-500/10 to-emerald-500/10"
               : location && !location.isValid
                 ? "border-red-500/50 bg-gradient-to-r from-red-500/10 to-orange-500/10"
                 : "border-gray-500/50 bg-gradient-to-r from-gray-500/10 to-slate-500/10"
-          }`}
+            }`}
         >
           <div className="p-6">
             <div className="flex items-center gap-4">
               <div
-                className={`p-3 rounded-xl ${
-                  location?.isValid
+                className={`p-3 rounded-xl ${location?.isValid
                     ? "bg-green-500"
                     : location && !location.isValid
                       ? "bg-red-500"
                       : "bg-gray-500"
-                }`}
+                  }`}
               >
                 <MapPin className="w-6 h-6 text-white" />
               </div>
@@ -474,13 +569,12 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                   GPS Location
                 </h3>
                 <p
-                  className={`text-sm ${
-                    location?.isValid
+                  className={`text-sm ${location?.isValid
                       ? "text-green-300"
                       : location && !location.isValid
                         ? "text-red-300"
                         : "text-gray-300"
-                  }`}
+                    }`}
                 >
                   {location?.isValid
                     ? `✅ Perfect! You are ${location.distance}m from the institution`
@@ -760,13 +854,12 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
               {[1, 2, 3].map((step) => (
                 <div key={step} className="flex items-center">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${
-                      step <= currentStep
+                    className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${step <= currentStep
                         ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-110"
                         : step === currentStep + 1
                           ? "bg-gray-600 text-gray-300 scale-105"
                           : "bg-gray-700 text-gray-500"
-                    }`}
+                      }`}
                   >
                     {step < currentStep ? (
                       <CheckCircle className="w-6 h-6" />
@@ -776,11 +869,10 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                   </div>
                   {step < 3 && (
                     <div
-                      className={`w-16 h-1 mx-2 transition-all duration-500 rounded-full ${
-                        step < currentStep
+                      className={`w-16 h-1 mx-2 transition-all duration-500 rounded-full ${step < currentStep
                           ? "bg-gradient-to-r from-purple-500 to-pink-500"
                           : "bg-gray-700"
-                      }`}
+                        }`}
                     ></div>
                   )}
                 </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as faceapi from "face-api.js";
+
 import { Button } from "@/components/ui/button";
 import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
@@ -27,7 +27,7 @@ const PROCESSING_INTERVAL_MS = 100; // ~10 FPS
  */
 export default function FaceRecognizer({ authUser }) {
   const isMounted = useRef(true);
-  const retryStreamRef = useRef(null);
+  const activeStreamRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const isSubmittingRef = useRef(false);
@@ -89,8 +89,8 @@ export default function FaceRecognizer({ authUser }) {
   const handleRetry = async () => {
     isSubmittingRef.current = false;
     try {
-      if (retryStreamRef.current) {
-        retryStreamRef.current.getTracks().forEach((t) => t.stop());
+      if (activeStreamRef.current) {
+        activeStreamRef.current.getTracks().forEach((t) => t.stop());
       }
       
       if (animationFrameId.current) {
@@ -104,12 +104,13 @@ export default function FaceRecognizer({ authUser }) {
         return;
       }
 
-      retryStreamRef.current = stream;
+      activeStreamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play();
+          if (!isMounted.current) return;
+          videoRef.current.play().catch(e => console.warn("Play interrupted", e));
           setIsLoading(false);
           
           // Reset Liveness State
@@ -141,10 +142,11 @@ export default function FaceRecognizer({ authUser }) {
   };
 
   useEffect(() => {
-    let stream;
-
     const loadModels = async () => {
       try {
+        setMessage("Downloading ML models...");
+        const faceapi = await import("face-api.js");
+
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -162,21 +164,25 @@ export default function FaceRecognizer({ authUser }) {
 
     const startVideo = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
 
         if (!isMounted.current) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
 
+        activeStreamRef.current = stream;
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.onloadedmetadata = () => {
-            videoRef.current.play();
+            if (!isMounted.current) return;
+            videoRef.current.play().catch(e => console.warn("Play interrupted", e));
+            setIsLoading(false);
             setMessage("Building face models...");
 
             buildFaceMatcher().then(() => {
-              setIsLoading(false);
+              if (!isMounted.current) return;
               setMessage("Looking for faces...");
               setLivenessState("DETECTING_FACE");
               
@@ -203,23 +209,28 @@ export default function FaceRecognizer({ authUser }) {
         cancelAnimationFrame(animationFrameId.current);
       }
 
-      if (retryStreamRef.current) {
-        retryStreamRef.current.getTracks().forEach((t) => t.stop());
-        retryStreamRef.current = null;
-      }
-
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      if (activeStreamRef.current) {
+        activeStreamRef.current.getTracks().forEach((t) => t.stop());
+        activeStreamRef.current = null;
       }
 
       if (videoRef.current) {
+        videoRef.current.pause();
         videoRef.current.srcObject = null;
+        videoRef.current.removeAttribute("src");
+        videoRef.current.load();
+      }
+
+      if (faceapi.tf?.disposeVariables) {
+        faceapi.tf.disposeVariables();
       }
     };
   }, [labelsLoading, error, labels]);
 
   const buildFaceMatcher = async () => {
     if (!labels || labels.length === 0) return;
+
+    const faceapi = await import("face-api.js");
 
     const labeledFaceDescriptors = (
       await Promise.all(
@@ -256,6 +267,7 @@ export default function FaceRecognizer({ authUser }) {
       return;
     }
 
+    if (!isMounted.current) return;
     faceMatcherRef.current = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
   };
 
@@ -269,6 +281,7 @@ export default function FaceRecognizer({ authUser }) {
       return;
     }
 
+    const faceapi = await import("face-api.js");
     const video = videoRef.current;
     
     // Ensure video is playing and has valid dimensions before processing

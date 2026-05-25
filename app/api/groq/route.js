@@ -27,7 +27,7 @@ const groqSchema = z.object({
     return message && message.trim().length <= 2000;
   },
   {
-    message: "Message too long (max 2000 characters)",
+    message: "Message too long",
   }
 );
 
