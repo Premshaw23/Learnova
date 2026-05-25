@@ -236,6 +236,12 @@ export default function FaceRecognizer({ authUser }) {
       await Promise.all(
         labels.map(async (student) => {
           try {
+            // Check if pre-calculated face descriptor exists in the database
+            if (student.faceDescriptor && Array.isArray(student.faceDescriptor) && student.faceDescriptor.length > 0) {
+              return new faceapi.LabeledFaceDescriptors(student.name, [new Float32Array(student.faceDescriptor)]);
+            }
+
+            // Fallback for legacy profiles: download image and extract descriptor
             if (!student.hasImage) return null;
             const imgUrl = `/api/images?id=${student._id}`;
             const img = await faceapi.fetchImage(imgUrl);

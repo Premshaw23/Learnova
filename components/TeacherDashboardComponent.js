@@ -51,6 +51,8 @@ import {
   PieChart,
   Activity,
   Zap,
+  Loader2,
+  XCircle,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
@@ -75,6 +77,8 @@ const TeacherDashboard = () => {
   const [attendanceWindow, setAttendanceWindow] = useState(false);
   const [currentPasscode, setCurrentPasscode] = useState("");
   const [passcodeGenerated, setPasscodeGenerated] = useState(false);
+  const [passcodeLoading, setPasscodeLoading] = useState(false);
+  const [passcodeExpiresAt, setPasscodeExpiresAt] = useState(null);
   const { user, userProfile } = useAuth();
   const [attendanceStats, setAttendanceStats] = useState({
     totalStudents: 0,
@@ -479,21 +483,75 @@ const TeacherDashboard = () => {
     };
   }, []);
 
-  const generatePasscode = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
-    let passcode = "";
-    for (let i = 0; i < 8; i++) {
-      passcode += chars.charAt(Math.floor(Math.random() * chars.length));
+  const generatePasscode = async () => {
+    setPasscodeLoading(true);
+    try {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      const randomValues = new Uint32Array(8);
+      crypto.getRandomValues(randomValues);
+      let passcode = "";
+      for (let i = 0; i < 8; i++) {
+        passcode += chars.charAt(randomValues[i] % chars.length);
+      }
+
+      const token = await user.getIdToken();
+      const res = await fetch("/api/attendance/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ passcode, expiresInMinutes: 10 }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save passcode");
+      }
+
+      setCurrentPasscode(passcode);
+      setPasscodeGenerated(true);
+      setAttendanceWindow(true);
+      setPasscodeExpiresAt(data.expiresAt);
+      setShowPasscodeModal(true);
+      toast.success("Attendance passcode generated and saved");
+    } catch (err) {
+      toast.error(err.message || "Failed to generate passcode");
+    } finally {
+      setPasscodeLoading(false);
     }
-    setCurrentPasscode(passcode);
-    setPasscodeGenerated(true);
-    setAttendanceWindow(true);
-    setShowPasscodeModal(true);
+  };
+
+  const closeAttendanceWindow = async () => {
+    setPasscodeLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/attendance/settings", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to close attendance window");
+      }
+
+      setAttendanceWindow(false);
+      setCurrentPasscode("");
+      setPasscodeGenerated(false);
+      setPasscodeExpiresAt(null);
+      toast.success("Attendance window closed");
+    } catch (err) {
+      toast.error(err.message || "Failed to close attendance window");
+    } finally {
+      setPasscodeLoading(false);
+    }
   };
 
   const copyPasscode = () => {
     navigator.clipboard.writeText(currentPasscode);
     setCopied(true);
+    toast.success("Passcode copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -543,49 +601,74 @@ const TeacherDashboard = () => {
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-400">Window closes in</div>
-              <div className="text-white font-semibold">
-                {10 - currentTime.getMinutes()}:
-                {String(currentTime.getSeconds() === 0 ? 0 : 60 - currentTime.getSeconds()).padStart(2, "0")} min
+            {passcodeExpiresAt && (
+              <div className="text-right">
+                <div className="text-sm text-gray-400">Expires at</div>
+                <div className="text-white font-semibold">
+                  {new Date(passcodeExpiresAt).toLocaleTimeString()}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {!passcodeGenerated ? (
             <button
               onClick={generatePasscode}
-              className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"
+              disabled={passcodeLoading}
+              className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               <span className="flex items-center justify-center space-x-2">
-                <Zap className="w-5 h-5" />
-                <span>Generate Attendance Passcode</span>
-                <Sparkles className="w-5 h-5" />
+                {passcodeLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Zap className="w-5 h-5" />
+                )}
+                <span>{passcodeLoading ? "Generating..." : "Generate Attendance Passcode"}</span>
+                {!passcodeLoading && <Sparkles className="w-5 h-5" />}
               </span>
             </button>
           ) : (
-            <div className="bg-black/20 rounded-xl p-4 border border-white/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-gray-400 mb-1">
-                    Active Passcode
+            <div className="space-y-3">
+              <div className="bg-black/20 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-400 mb-1">
+                      Active Passcode
+                    </div>
+                    <div className="text-2xl font-mono text-white font-bold tracking-wider">
+                      {currentPasscode}
+                    </div>
+                    {passcodeExpiresAt && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        Expires: {new Date(passcodeExpiresAt).toLocaleTimeString()}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-2xl font-mono text-white font-bold tracking-wider">
-                    {currentPasscode}
-                  </div>
+                  <button
+                    onClick={copyPasscode}
+                    aria-label="Copy passcode"
+                    className="bg-white/10 hover:bg-white/20 border border-white/20 text-white p-3 rounded-lg transition-colors"
+                  >
+                    {copied ? (
+                      <Check className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <Copy className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
-                <button
-                  onClick={copyPasscode}
-                  aria-label="Copy passcode"
-                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white p-3 rounded-lg transition-colors"
-                >
-                  {copied ? (
-                    <Check className="w-5 h-5 text-green-400" />
-                  ) : (
-                    <Copy className="w-5 h-5" />
-                  )}
-                </button>
               </div>
+              <button
+                onClick={closeAttendanceWindow}
+                disabled={passcodeLoading}
+                className="w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 font-semibold py-2 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {passcodeLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                <span>{passcodeLoading ? "Closing..." : "Close Attendance Window"}</span>
+              </button>
             </div>
           )}
         </div>

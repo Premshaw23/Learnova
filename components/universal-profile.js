@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
+import * as faceapi from "face-api.js";
 
 import {
   User,
@@ -73,6 +74,25 @@ export default function UniversalProfile() {
     pushNotifications: true,
     publicProfile: false,
   });
+
+  const MODEL_URL = "/models";
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
+      } catch (err) {
+        console.error("Failed to load face-api models:", err);
+      }
+    };
+    loadModels();
+  }, []);
 
   const [stats, setStats] = useState({});
 
@@ -277,6 +297,38 @@ export default function UniversalProfile() {
       return;
     }
 
+    if (!modelsLoaded) {
+      toast.error("Face models are still loading. Please wait a moment.");
+      return;
+    }
+
+    const detectToast = toast.loading("Analyzing photo for face verification...");
+    let faceDescriptorString = "";
+    try {
+      const fileUrl = URL.createObjectURL(file);
+      const img = await faceapi.fetchImage(fileUrl);
+      const detection = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      URL.revokeObjectURL(fileUrl);
+
+      if (!detection) {
+        toast.error("Could not detect a clear face. Please upload a clear headshot photo.", { id: detectToast });
+        e.target.value = "";
+        return;
+      }
+
+      faceDescriptorString = JSON.stringify(Array.from(detection.descriptor));
+      toast.success("Face successfully verified!", { id: detectToast });
+    } catch (err) {
+      console.error("Face detection error during profile update:", err);
+      toast.error("Error analyzing image file. Please ensure it is a valid face image.", { id: detectToast });
+      e.target.value = "";
+      return;
+    }
+
     const loadingToast = toast.loading(
       "Uploading profile picture..."
     );
@@ -287,6 +339,9 @@ export default function UniversalProfile() {
       const uploadFormData = new FormData();
 
       uploadFormData.append("file", file);
+      if (faceDescriptorString) {
+        uploadFormData.append("faceDescriptor", faceDescriptorString);
+      }
 
       const res = await fetch("/api/images", {
         method: "POST",

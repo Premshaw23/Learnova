@@ -232,6 +232,19 @@ export const POST =
           "photo"
         );
 
+      const rawFaceDescriptor = formData.get("faceDescriptor");
+      let faceDescriptor = null;
+      if (rawFaceDescriptor) {
+        try {
+          faceDescriptor = JSON.parse(rawFaceDescriptor);
+          if (!Array.isArray(faceDescriptor)) {
+            throw new Error();
+          }
+        } catch {
+          return jsonError("Invalid face descriptor format", 400);
+        }
+      }
+
       // Validate fields
       const validationResult =
         registerSchema.safeParse(
@@ -407,6 +420,10 @@ export const POST =
           firebaseUid:
             decodedToken.uid,
         };
+
+        if (faceDescriptor) {
+          user.faceDescriptor = faceDescriptor;
+        }
 
         const result =
           await users.insertOne(

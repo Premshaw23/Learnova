@@ -116,6 +116,16 @@ export const POST = withErrorHandler(async (request) => {
     const formData = await request.formData();
     const file = formData.get("file");
 
+    const rawFaceDescriptor = formData.get("faceDescriptor");
+    let faceDescriptor = null;
+    if (rawFaceDescriptor) {
+      try {
+        faceDescriptor = JSON.parse(rawFaceDescriptor);
+      } catch {
+        throw new ValidationError("Invalid face descriptor format");
+      }
+    }
+
     if (!file || typeof file === "string" || !file.type) {
       throw new ValidationError("File is required and must be a valid file");
     }
@@ -145,9 +155,13 @@ export const POST = withErrorHandler(async (request) => {
     // Update in MongoDB if exists
     const db = await connectDb();
     const users = db.collection("users");
+    const updatePayload = { image: blob.url };
+    if (faceDescriptor) {
+      updatePayload.faceDescriptor = faceDescriptor;
+    }
     await users.updateOne(
       { firebaseUid: decodedToken.uid },
-      { $set: { image: blob.url } }
+      { $set: updatePayload }
     );
 
     return NextResponse.json({ success: true, url: blob.url });
