@@ -67,6 +67,7 @@ async function handleSync(request) {
   }
 
   const serverIdentity = resolveAttendanceIdentity(decodedToken, userProfile);
+  const instituteId = userProfile?.instituteId || null;
   
   const successfulIds = [];
   
@@ -101,20 +102,15 @@ async function handleSync(request) {
     }
 
     // Check if attendance already exists in Firestore for this date
-    const attendanceQuery = await db.collection("attendance_records")
-      .where("userId", "==", decodedToken.uid)
-      .where("date", "==", recordDate)
-      .limit(1)
-      .get();
+    // Use the canonical deterministic doc id to stay consistent with the online flow.
+    const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
+    const existingAttendance = await newDocRef.get();
 
-    if (!attendanceQuery.empty) {
+    if (existingAttendance.exists) {
       successfulIds.push(record.id);
       processedUserDates.add(userDateKey);
       continue;
     }
-
-    // Prepare new document
-    const newDocRef = db.collection("attendance_records").doc();
 
     if (
       (record.studentName && record.studentName !== serverIdentity.studentName) ||
@@ -129,6 +125,7 @@ async function handleSync(request) {
       userId: decodedToken.uid,
       studentName: serverIdentity.studentName,
       email: serverIdentity.email,
+      instituteId,
       timestamp: FieldValue.serverTimestamp(),
       date: recordDate,
       status: "present",

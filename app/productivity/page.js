@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebaseConfig";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import {
   CalendarDays,
   CheckCircle2,
@@ -87,6 +90,9 @@ function parseTimeToMinutes(timeLabel) {
 }
 
 export default function ProductivityPage() {
+  const { user } = useAuth();
+  const [dataLoaded, setDataLoaded] = useState(false);
+
   const [mode, setMode] = useState("focus");
   const [sessionSeconds, setSessionSeconds] = useState(MODES.focus.seconds);
   const [timeLeft, setTimeLeft] = useState(MODES.focus.seconds);
@@ -129,27 +135,53 @@ export default function ProductivityPage() {
   }, [selectedDateKey]);
 
   useEffect(() => {
-    try {
-      const storedTasks = localStorage.getItem(TASKS_KEY);
-      const storedAgenda = localStorage.getItem(AGENDA_KEY);
-      if (storedTasks) {
-        setTasks(JSON.parse(storedTasks));
+    async function loadData() {
+      if (!user) {
+        setDataLoaded(true);
+        return;
       }
-      if (storedAgenda) {
-        setAgendaItems(JSON.parse(storedAgenda));
+      try {
+        const docRef = doc(db, "users", user.uid, "productivity_tasks", "data");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.tasks) setTasks(data.tasks);
+          if (data.agendaItems) setAgendaItems(data.agendaItems);
+        }
+      } catch (error) {
+        console.error("Failed to load productivity data from Firestore", error);
+      } finally {
+        setDataLoaded(true);
       }
-    } catch (error) {
-      console.error("Failed to load productivity storage", error);
     }
-  }, []);
+    loadData();
+  }, [user]);
 
   useEffect(() => {
-    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
-  }, [tasks]);
+    if (!user || !dataLoaded) return;
+    const saveTasks = async () => {
+      try {
+        const docRef = doc(db, "users", user.uid, "productivity_tasks", "data");
+        await setDoc(docRef, { tasks }, { merge: true });
+      } catch (e) {
+        console.error("Error saving tasks to Firestore", e);
+      }
+    };
+    saveTasks();
+  }, [tasks, user, dataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem(AGENDA_KEY, JSON.stringify(agendaItems));
-  }, [agendaItems]);
+    if (!user || !dataLoaded) return;
+    const saveAgenda = async () => {
+      try {
+        const docRef = doc(db, "users", user.uid, "productivity_tasks", "data");
+        await setDoc(docRef, { agendaItems }, { merge: true });
+      } catch (e) {
+        console.error("Error saving agenda to Firestore", e);
+      }
+    };
+    saveAgenda();
+  }, [agendaItems, user, dataLoaded]);
 
   useEffect(() => {
     if (!isRunning) {

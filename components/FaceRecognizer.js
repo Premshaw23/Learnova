@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as faceapi from "face-api.js";
+
 import { Button } from "@/components/ui/button";
 import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
@@ -144,6 +144,9 @@ export default function FaceRecognizer({ authUser }) {
   useEffect(() => {
     const loadModels = async () => {
       try {
+        setMessage("Downloading ML models...");
+        const faceapi = await import("face-api.js");
+
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -227,6 +230,8 @@ export default function FaceRecognizer({ authUser }) {
   const buildFaceMatcher = async () => {
     if (!labels || labels.length === 0) return;
 
+    const faceapi = await import("face-api.js");
+
     const labeledFaceDescriptors = (
       await Promise.all(
         labels.map(async (student) => {
@@ -276,6 +281,7 @@ export default function FaceRecognizer({ authUser }) {
       return;
     }
 
+    const faceapi = await import("face-api.js");
     const video = videoRef.current;
     
     // Ensure video is playing and has valid dimensions before processing

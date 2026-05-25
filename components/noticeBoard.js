@@ -6,6 +6,8 @@ import toast from "react-hot-toast";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useNotices } from "@/contexts/FirestoreContext";
+import { db } from "@/lib/firebaseConfig";
+import { doc, updateDoc } from "firebase/firestore";
 import { Navbar } from "./Navbar";
 import NoticeSearch from "./NoticeSearch";
 import NoticeFilters from "./NoticeFilters";
@@ -23,7 +25,7 @@ const CATEGORIES = [
 ];
 
 const SmartNoticeBoard = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
 
   // ── Consume the shared pooled subscription from FirestoreContext ──────────
   // No local onSnapshot — notices arrive from the global singleton listener.
@@ -114,39 +116,52 @@ const SmartNoticeBoard = () => {
     }
   }, [noticesError]);
 
-  // Load persisted read-state from localStorage
+  // Load read notices from user profile or local storage fallback
   useEffect(() => {
     if (!userId || userId === "anonymous") return;
-    try {
-      const saved = localStorage.getItem(`readNotices_${userId}`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) setReadNotices(new Set(parsed));
+    
+    if (userProfile && Array.isArray(userProfile.readNotices)) {
+      setReadNotices(new Set(userProfile.readNotices));
+    } else {
+      try {
+        const saved = localStorage.getItem(`readNotices_${userId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setReadNotices(new Set(parsed));
+        }
+      } catch (err) {
+        console.error("Failed to load read notices locally:", err);
       }
-    } catch (err) {
-      console.error(
-        "Failed to load read notices:",
-        err
-      );
     }
-  }, [userId]);
+  }, [userId, userProfile]);
 
   // Save read state
   const saveReadState = useCallback(
-    (state) => {
+    async (state) => {
+      const stateArray = [...state];
+      // Save locally as a fallback/cache
       try {
         localStorage.setItem(
           `readNotices_${userId}`,
-          JSON.stringify([...state])
+          JSON.stringify(stateArray)
         );
       } catch (err) {
-        console.error(
-          "Failed to save read state:",
-          err
-        );
+        console.error("Failed to save read state locally:", err);
+      }
+      
+      // Sync to Firestore
+      if (user && userId !== "anonymous") {
+        try {
+          const userRef = doc(db, "users", userId);
+          await updateDoc(userRef, {
+            readNotices: stateArray
+          });
+        } catch (err) {
+          console.error("Failed to sync read state to Firestore:", err);
+        }
       }
     },
-    [userId]
+    [userId, user]
   );
 
   // Mark as read
