@@ -161,11 +161,103 @@ const fallbackResponses = {
 };
 
 // ---------------------------------------------------------------------------
+// Custom Syntax Highlighting & Code Block Rendering
+// ---------------------------------------------------------------------------
+function highlightCode(code, language) {
+  if (!code) return "";
+  const lang = (language || "").toLowerCase();
+
+  const jsKeywords = /\b(const|let|var|function|return|import|export|class|if|else|for|while|try|catch|finally|true|false|null|undefined|new|this|typeof|instanceof|async|await|default|extends|from)\b/g;
+  const pyKeywords = /\b(def|class|return|if|elif|else|for|while|try|except|finally|import|from|as|in|is|not|and|or|True|False|None|lambda|pass|break|continue|with|assert)\b/g;
+  const cppKeywords = /\b(int|float|double|char|bool|void|class|struct|public|private|protected|template|typename|return|if|else|for|while|do|switch|case|default|break|continue|new|delete|namespace|using|std|cout|cin|endl)\b/g;
+  const bashKeywords = /\b(echo|exit|cd|ls|mkdir|rm|cp|mv|sudo|apt|git|if|then|else|fi|for|in|do|done|while|case|esac|function)\b/g;
+
+  let keywordRegex = jsKeywords;
+  if (lang === "python" || lang === "py") keywordRegex = pyKeywords;
+  else if (lang === "cpp" || lang === "c++" || lang === "c") keywordRegex = cppKeywords;
+  else if (lang === "bash" || lang === "sh") keywordRegex = bashKeywords;
+  else if (lang === "json") keywordRegex = /\b(true|false|null)\b/g;
+
+  const tokenRegex = new RegExp(
+    `(\\/\\/.*|#.*|\\/\\*[\\s\\S]*?\\*\\/)|` + // Group 1: Comments
+    `("(?:[^"\\\\\\n]|\\\\.)*"|'(?:[^'\\\\\\n]|\\\\.)*'|\`(?:[^\`\\\\\\n]|\\\\.)*\`)|` + // Group 2: Strings
+    `(\\b\\d+(?:\\.\\d+)?\\b)|` + // Group 3: Numbers
+    `(${keywordRegex.source})|` + // Group 4: Keywords
+    `(\\b[a-zA-Z_]\\w*(?=\\())`, // Group 5: Functions
+    "g"
+  );
+
+  const elements = [];
+  let lastIndex = 0;
+  let match;
+
+  tokenRegex.lastIndex = 0;
+
+  while ((match = tokenRegex.exec(code)) !== null) {
+    const textBefore = code.slice(lastIndex, match.index);
+    if (textBefore) {
+      elements.push(textBefore);
+    }
+
+    const matchedText = match[0];
+    if (match[1]) {
+      elements.push(<span key={match.index} className="text-gray-500 italic">{matchedText}</span>);
+    } else if (match[2]) {
+      elements.push(<span key={match.index} className="text-emerald-400">{matchedText}</span>);
+    } else if (match[3]) {
+      elements.push(<span key={match.index} className="text-amber-400">{matchedText}</span>);
+    } else if (match[4]) {
+      elements.push(<span key={match.index} className="text-pink-400 font-semibold">{matchedText}</span>);
+    } else if (match[5]) {
+      elements.push(<span key={match.index} className="text-sky-400">{matchedText}</span>);
+    } else {
+      elements.push(matchedText);
+    }
+
+    lastIndex = tokenRegex.lastIndex;
+  }
+
+  const textRemaining = code.slice(lastIndex);
+  if (textRemaining) {
+    elements.push(textRemaining);
+  }
+
+  return elements;
+}
+
+const CodeBlock = ({ language, code }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-3 overflow-hidden rounded-xl border border-white/10 bg-gray-950/90 shadow-lg shadow-purple-950/20 max-w-full">
+      <div className="flex items-center justify-between px-4 py-1.5 bg-gray-900/80 border-b border-white/5 text-[10px] text-gray-400 font-mono select-none">
+        <span className="uppercase tracking-wider">{language || "code"}</span>
+        <button
+          onClick={handleCopy}
+          className="hover:text-white transition-colors duration-150 px-2 py-0.5 rounded hover:bg-white/5 cursor-pointer"
+        >
+          {copied ? "Copied!" : "Copy"}
+        </button>
+      </div>
+      <pre className="p-4 overflow-x-auto font-mono text-xs leading-relaxed text-gray-200 scrollbar-none whitespace-pre select-text">
+        <code>{highlightCode(code, language)}</code>
+      </pre>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Markdown renderer components
 // ---------------------------------------------------------------------------
 const markdownComponents = {
   p: ({ children }) => (
-    <p className="my-1.5 text-sm leading-relaxed last:mb-0">{children}</p>
+    <p className="my-2 text-sm leading-relaxed text-gray-200 last:mb-0">{children}</p>
   ),
   strong: ({ children }) => (
     <strong className="font-semibold text-purple-400">{children}</strong>
@@ -173,20 +265,67 @@ const markdownComponents = {
   em: ({ children }) => (
     <em className="italic text-blue-400">{children}</em>
   ),
+  h1: ({ children }) => (
+    <h1 className="text-base font-bold mt-4 mb-2 text-white border-b border-white/10 pb-1">{children}</h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="text-sm font-semibold mt-3 mb-1.5 text-purple-300">{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="text-xs font-semibold mt-2.5 mb-1 text-blue-300">{children}</h3>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-4 border-purple-500 bg-purple-950/20 px-3 py-1.5 my-2 rounded-r-lg italic text-gray-300">
+      {children}
+    </blockquote>
+  ),
   ul: ({ children }) => (
-    <ul className="list-none space-y-1 my-2">{children}</ul>
+    <ul className="list-disc pl-5 space-y-1.5 my-2 text-sm">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="list-decimal pl-5 space-y-1.5 my-2 text-sm">{children}</ol>
   ),
   li: ({ children }) => (
-    <li className="flex items-start gap-1.5 text-sm">
-      <span className="mt-1 shrink-0 text-purple-400">•</span>
-      <span>{children}</span>
-    </li>
+    <li className="leading-relaxed text-sm text-gray-300">{children}</li>
   ),
-  code: ({ children }) => (
-    <code className="px-1 py-0.5 rounded text-xs bg-gray-700 text-yellow-300">
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-purple-400 hover:text-purple-300 underline underline-offset-4 decoration-purple-500/50 hover:decoration-purple-400 transition-colors duration-150 inline-flex items-center gap-0.5"
+    >
       {children}
-    </code>
+      <ExternalLink size={10} className="shrink-0" />
+    </a>
   ),
+  table: ({ children }) => (
+    <div className="my-3 overflow-x-auto rounded-lg border border-white/10 bg-gray-900/40 backdrop-blur-sm max-w-full scrollbar-none">
+      <table className="min-w-full divide-y divide-white/10 text-xs text-left">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-purple-950/40 text-purple-200">{children}</thead>,
+  tbody: ({ children }) => <tbody className="divide-y divide-white/5">{children}</tbody>,
+  tr: ({ children }) => <tr className="hover:bg-white/5 transition-colors duration-150">{children}</tr>,
+  th: ({ children }) => <th className="px-3 py-2 font-semibold border-b border-white/10">{children}</th>,
+  td: ({ children }) => <td className="px-3 py-2 text-gray-300 border-b border-white/5">{children}</td>,
+  code: ({ className, children, ...props }) => {
+    const match = /language-(\w+)/.exec(className || "");
+    const language = match ? match[1] : "";
+    const codeString = String(children).replace(/\n$/, "");
+
+    if (!match && !codeString.includes("\n")) {
+      return (
+        <code className="px-1.5 py-0.5 rounded-md text-xs bg-purple-950/40 text-purple-200 border border-purple-800/30 font-mono" {...props}>
+          {children}
+        </code>
+      );
+    }
+
+    return <CodeBlock language={language} code={codeString} />;
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -305,6 +444,7 @@ const LearnovaChatbot = () => {
 
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
+  const userHasScrolledUp = useRef(false);
 
   useEffect(() => {
     if (!inputMessage && textareaRef.current) {
@@ -312,15 +452,28 @@ const LearnovaChatbot = () => {
     }
   }, [inputMessage]);
 
+  // Handle manual scroll monitoring to pause/resume autoscroll
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    // If the scroll is near the bottom (within 40px), consider it at bottom and allow autoscroll
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 40;
+    userHasScrolledUp.current = !isAtBottom;
+  };
+
   // Auto scroll within the chat panel only (avoid scrolling the page)
   useEffect(() => {
     if (!isOpen || isMinimized) return;
+    if (userHasScrolledUp.current) return;
 
     const container = messagesContainerRef.current;
     if (container) {
-      container.scrollTop = container.scrollHeight;
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: "smooth"
+      });
     }
-  }, [messages, isOpen, isMinimized]);
+  }, [messages, isOpen, isMinimized, isLoading]);
 
   // Auto-resize textarea
   const handleInputChange = (e) => {
@@ -335,6 +488,7 @@ const LearnovaChatbot = () => {
   const clearChat = () => {
     setMessages([INITIAL_MESSAGE]);
     setCurrentCategory("general");
+    userHasScrolledUp.current = false;
   };
 
   const handleSendMessage = useCallback(
@@ -349,6 +503,7 @@ const LearnovaChatbot = () => {
         timestamp: new Date(),
       };
 
+      userHasScrolledUp.current = false;
       setMessages((prev) => [...prev, userMsg]);
       setInputMessage("");
       if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -376,6 +531,7 @@ const LearnovaChatbot = () => {
         timestamp: new Date(),
       };
 
+      userHasScrolledUp.current = false;
       setMessages((prev) => [...prev, botMsg]);
       setIsLoading(false);
 
@@ -392,27 +548,29 @@ const LearnovaChatbot = () => {
   };
 
   // ---------------------------------------------------------------------------
-  // Theme tokens
+  // Theme tokens - Enhanced for rich glassmorphism & premium UI spacing
   // ---------------------------------------------------------------------------
   const t = {
-    bg: isDarkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900",
-    header: "bg-gradient-to-r from-purple-700 via-blue-700 to-indigo-700",
-    border: isDarkMode ? "border-gray-700" : "border-gray-200",
+    bg: isDarkMode 
+      ? "bg-gray-950/90 backdrop-blur-xl text-white" 
+      : "bg-white/95 backdrop-blur-xl text-gray-900",
+    header: "bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-700 border-b border-white/10 shadow-lg shadow-purple-950/20",
+    border: isDarkMode ? "border-white/10" : "border-gray-200/80",
     botMsg: isDarkMode
-      ? "bg-gray-800 text-gray-200 border border-gray-700"
-      : "bg-gray-50 text-gray-800 border border-gray-200",
-    userMsg: "bg-gradient-to-r from-purple-600 to-blue-600 text-white",
-    botAvatar: isDarkMode ? "bg-purple-800 text-purple-300" : "bg-purple-100 text-purple-600",
-    userAvatar: isDarkMode ? "bg-blue-800 text-blue-300" : "bg-blue-100 text-blue-600",
+      ? "bg-white/[0.04] text-gray-200 border border-white/5 shadow-[0_4px_24px_rgba(139,92,246,0.15)]"
+      : "bg-gray-900/[0.03] text-gray-800 border border-black/5 shadow-[0_4px_20px_rgba(139,92,246,0.06)]",
+    userMsg: "bg-gradient-to-r from-purple-600 to-indigo-600 shadow-[0_4px_18px_rgba(139,92,246,0.25)] text-white border border-purple-500/10",
+    botAvatar: isDarkMode ? "bg-purple-800/80 text-purple-300 border border-purple-500/20" : "bg-purple-100 text-purple-600 border border-purple-200",
+    userAvatar: isDarkMode ? "bg-indigo-800/80 text-indigo-300 border border-indigo-500/20" : "bg-indigo-100 text-indigo-600 border border-indigo-200",
     input: isDarkMode
-      ? "bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:ring-purple-500"
-      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-purple-400",
-    catBtn: isDarkMode ? "hover:bg-gray-700 text-gray-300" : "hover:bg-gray-100 text-gray-600",
-    catBtnActive: isDarkMode ? "bg-purple-800 text-purple-200" : "bg-purple-100 text-purple-700",
+      ? "bg-white/[0.03] border-white/10 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+      : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-450 focus:ring-2 focus:ring-purple-400 focus:border-transparent",
+    catBtn: isDarkMode ? "hover:bg-white/[0.05] text-gray-300" : "hover:bg-gray-100 text-gray-600",
+    catBtnActive: isDarkMode ? "bg-purple-800/60 text-purple-200 border border-purple-500/30" : "bg-purple-100 text-purple-700 border border-purple-200",
     suggestion: isDarkMode
-      ? "bg-purple-900/50 text-purple-300 hover:bg-purple-800/60 border border-purple-800"
-      : "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200",
-    loading: isDarkMode ? "bg-gray-800" : "bg-gray-100",
+      ? "bg-purple-950/40 text-purple-300 hover:bg-purple-900/40 border border-purple-800/40 shadow-sm"
+      : "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 shadow-sm",
+    loading: isDarkMode ? "bg-white/[0.04] border border-white/5" : "bg-gray-50 border border-black/5",
     dot: isDarkMode ? "text-gray-400" : "text-gray-500",
   };
 
@@ -505,6 +663,7 @@ const LearnovaChatbot = () => {
           {/* ── Messages Area ─────────────────────────────────────────────── */}
           <div
             ref={messagesContainerRef}
+            onScroll={handleScroll}
             className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-none"
           >
             {messages.map((message) => (

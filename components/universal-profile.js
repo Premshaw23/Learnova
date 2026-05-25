@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { analytics, db } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import { updateProfile } from "firebase/auth";
@@ -103,12 +103,15 @@ export default function UniversalProfile() {
   }, [user]);
 
   useEffect(() => {
+    let active = true;
     const fetchProfileData = async () => {
       if (!user?.uid) return;
 
       try {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
+        
+        if (!active) return;
 
         if (userSnap.exists()) {
           const data = userSnap.data();
@@ -136,6 +139,8 @@ export default function UniversalProfile() {
         );
 
         const statsSnap = await getDoc(statsRef);
+        
+        if (!active) return;
 
         if (statsSnap.exists()) {
           setStats(statsSnap.data());
@@ -146,6 +151,7 @@ export default function UniversalProfile() {
     };
 
     fetchProfileData();
+    return () => { active = false; };
   }, [user]);
 
   const handleInputChange = (e) => {
@@ -314,7 +320,7 @@ export default function UniversalProfile() {
     return avatarUrl || user?.photoURL || null;
   };
 
-  const getUserInitials = (name) => {
+  const getUserInitials = useCallback((name) => {
     if (!name) return "U";
 
     return name
@@ -323,9 +329,9 @@ export default function UniversalProfile() {
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
+  }, []);
 
-  const getUserDisplayName = () => {
+  const getUserDisplayName = useCallback(() => {
     if (formData.displayName) {
       return formData.displayName;
     }
@@ -335,9 +341,9 @@ export default function UniversalProfile() {
     }
 
     return "User";
-  };
+  }, [formData.displayName, user?.email]);
 
-  const getMemberSince = () => {
+  const getMemberSince = useCallback(() => {
     if (!userData?.createdAt) {
       return "Just joined";
     }
@@ -350,7 +356,7 @@ export default function UniversalProfile() {
       month: "long",
       year: "numeric",
     }).format(date);
-  };
+  }, [userData?.createdAt]);
 
   const getRoleConfig = () => {
     const configs = {

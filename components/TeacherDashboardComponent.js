@@ -1,5 +1,5 @@
 import { toast } from "react-hot-toast";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Navbar } from "./Navbar";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,7 +58,7 @@ import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import SkeletonCard from "@/components/ui/SkeletonCard";
 import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
 import { db } from "@/lib/firebaseConfig";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -75,7 +75,7 @@ const TeacherDashboard = () => {
   const [attendanceWindow, setAttendanceWindow] = useState(false);
   const [currentPasscode, setCurrentPasscode] = useState("");
   const [passcodeGenerated, setPasscodeGenerated] = useState(false);
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [attendanceStats, setAttendanceStats] = useState({
     totalStudents: 0,
     presentToday: 0,
@@ -83,64 +83,65 @@ const TeacherDashboard = () => {
     lateToday: 0,
     averageAttendance: 0,
   });
-const fetchTodayAttendanceStats = async () => {
-  try {
-    const today = new Date().toISOString().slice(0, 10);
 
-    const attendanceQuery = query(
-      collection(db, "attendance_records"),
-      where("date", "==", today),
-    );
+  const fetchTodayAttendanceStats = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
 
-    const snapshot = await getDocs(attendanceQuery);
+      const attendanceQuery = query(
+        collection(db, "attendance_records"),
+        where("date", "==", today),
+      );
 
-    const records = snapshot.docs.map((doc) =>
-      doc.data(),
-    );
+      const snapshot = await getDocs(attendanceQuery);
 
-    const presentToday = records.filter(
-      (r) =>
-        r.status === "present" ||
-        !r.status,
-    ).length;
+      const records = snapshot.docs.map((doc) =>
+        doc.data(),
+      );
 
-    const lateToday = records.filter(
-      (r) => r.status === "late",
-    ).length;
+      const presentToday = records.filter(
+        (r) =>
+          r.status === "present" ||
+          !r.status,
+      ).length;
 
-    const absentToday = records.filter(
-      (r) => r.status === "absent",
-    ).length;
+      const lateToday = records.filter(
+        (r) => r.status === "late",
+      ).length;
 
-    const totalStudents = records.length;
+      const absentToday = records.filter(
+        (r) => r.status === "absent",
+      ).length;
 
-    const averageAttendance =
-      totalStudents > 0
-        ? Math.round(
-            ((presentToday + lateToday) /
-              totalStudents) *
-              1000,
-          ) / 10
-        : 0;
+      const totalStudents = records.length;
 
-    setAttendanceStats({
-      totalStudents,
-      presentToday,
-      absentToday,
-      lateToday,
-      averageAttendance,
-    });
-  } catch (err) {
-    console.error(
-      "Failed to fetch today's attendance stats:",
-      err,
-    );
-  }
-};
+      const averageAttendance =
+        totalStudents > 0
+          ? Math.round(
+              ((presentToday + lateToday) /
+                totalStudents) *
+                1000,
+            ) / 10
+          : 0;
 
-useEffect(() => {
-  fetchTodayAttendanceStats();
-}, []);
+      setAttendanceStats({
+        totalStudents,
+        presentToday,
+        absentToday,
+        lateToday,
+        averageAttendance,
+      });
+    } catch (err) {
+      console.error(
+        "Failed to fetch today's attendance stats:",
+        err,
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTodayAttendanceStats();
+  }, [fetchTodayAttendanceStats]);
     
   const [todayClasses, setTodayClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
@@ -156,154 +157,149 @@ useEffect(() => {
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState(null);
 
-  // Mock teacher data
-  const [teacher] = useState({
-    name: "Dr. Sarah Wilson",
-    id: "TCH001",
-    email: "sarah.wilson@learnova.edu",
-    department: "Computer Science",
-    designation: "Associate Professor",
-    subjects: ["Data Structures", "Web Development", "Database Systems"],
+  // Dynamic teacher data
+  const [teacher, setTeacher] = useState({
+    name: "Loading...",
+    id: "",
+    email: "",
+    department: "",
+    designation: "Teacher",
+    subjects: [],
     avatar: null,
   });
 
-  // Mock class schedule
-  const weeklySchedule = {
-    Monday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-      {
-        time: "11:00-12:30",
-        subject: "Web Development",
-        room: "Lab-3",
-        students: 42,
-        semester: "6th",
-        section: "B",
-      },
-      {
-        time: "14:00-15:30",
-        subject: "Database Systems",
-        room: "Lab-2",
-        students: 38,
-        semester: "5th",
-        section: "A",
-      },
-    ],
-    Tuesday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-      {
-        time: "11:00-12:30",
-        subject: "Database Systems",
-        room: "Lab-2",
-        students: 38,
-        semester: "5th",
-        section: "A",
-      },
-    ],
-    Wednesday: [
-      {
-        time: "09:00-10:30",
-        subject: "Web Development",
-        room: "Lab-3",
-        students: 42,
-        semester: "6th",
-        section: "B",
-      },
-      {
-        time: "14:00-15:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-    ],
-    Thursday: [
-      {
-        time: "09:00-10:30",
-        subject: "Database Systems",
-        room: "Lab-2",
-        students: 38,
-        semester: "5th",
-        section: "A",
-      },
-      {
-        time: "11:00-12:30",
-        subject: "Web Development",
-        room: "Lab-3",
-        students: 42,
-        semester: "6th",
-        section: "B",
-      },
-    ],
-    Friday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-    ],
-  };
+  const [weeklySchedule, setWeeklySchedule] = useState({});
+  const [studentAttendanceData, setStudentAttendanceData] = useState([]);
 
-  // Mock attendance data
-  const studentAttendanceData = [
-    {
-      id: 1,
-      name: "Alex Johnson",
-      rollNo: "CS21B1001",
-      status: "present",
-      time: "09:02",
-      confidence: 98,
-    },
-    {
-      id: 2,
-      name: "Emma Davis",
-      rollNo: "CS21B1002",
-      status: "present",
-      time: "09:01",
-      confidence: 95,
-    },
-    {
-      id: 3,
-      name: "Michael Chen",
-      rollNo: "CS21B1003",
-      status: "late",
-      time: "09:08",
-      confidence: 92,
-    },
-    {
-      id: 4,
-      name: "Sarah Wilson",
-      rollNo: "CS21B1004",
-      status: "absent",
-      time: "--",
-      confidence: 0,
-    },
-    {
-      id: 5,
-      name: "David Kumar",
-      rollNo: "CS21B1005",
-      status: "present",
-      time: "09:03",
-      confidence: 97,
-    },
-  ];
+  // Fetch Teacher Profile & Schedule
+  useEffect(() => {
+    if (userProfile) {
+      setTeacher({
+        name: userProfile.displayName || userProfile.name || userProfile.firstName + " " + userProfile.lastName || "Teacher",
+        id: userProfile.uid || user?.uid || "TCH001",
+        email: userProfile.email || user?.email || "",
+        department: userProfile.department || "General",
+        designation: userProfile.designation || "Teacher",
+        subjects: userProfile.subjects || [],
+        avatar: userProfile.avatar || null,
+      });
+    }
+
+    const fetchSchedule = async () => {
+      if (!user) return;
+      try {
+        const scheduleRef = collection(db, "schedules");
+        const q = query(scheduleRef, where("teacherId", "==", user.uid));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const docData = snapshot.docs[0].data();
+          if (docData.weeklySchedule) {
+            setWeeklySchedule(docData.weeklySchedule);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching schedule, falling back to mock:", error);
+      }
+      
+      // Fallback Mock Schedule
+      setWeeklySchedule({
+        Monday: [
+          { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+          { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+          { time: "14:00-15:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+        ],
+        Tuesday: [
+          { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+          { time: "11:00-12:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+        ],
+        Wednesday: [
+          { time: "09:00-10:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+          { time: "14:00-15:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+        ],
+        Thursday: [
+          { time: "09:00-10:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+          { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+        ],
+        Friday: [
+          { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+        ],
+      });
+    };
+    
+    fetchSchedule();
+  }, [user, userProfile]);
+
+  // Fetch Active Class Student Roster
+  useEffect(() => {
+    if (!user) return;
+    
+    let unsubscribe = () => {};
+
+    const fetchStudentsAndAttendance = async () => {
+      try {
+        const usersRef = collection(db, "users");
+        const qStudents = query(usersRef, where("role", "==", "student"));
+        const studentDocs = await getDocs(qStudents);
+        
+        const studentsList = studentDocs.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().displayName || doc.data().name || `${doc.data().firstName || ""} ${doc.data().lastName || ""}`.trim() || "Unknown",
+          rollNo: doc.data().rollNo || doc.data().studentId || "N/A",
+          email: doc.data().email,
+        }));
+
+        const today = new Date().toISOString().slice(0, 10);
+        const attendanceQuery = query(
+          collection(db, "attendance_records"),
+          where("date", "==", today)
+        );
+
+        unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+          const attendanceMap = new Map();
+          snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.userId) attendanceMap.set(data.userId, data);
+            else if (data.email) attendanceMap.set(data.email, data);
+          });
+
+          const mergedRoster = studentsList.map((student, index) => {
+            const record = attendanceMap.get(student.id) || attendanceMap.get(student.email);
+            return {
+              id: student.id || index,
+              name: student.name,
+              rollNo: student.rollNo,
+              status: record ? (record.status || "present") : "absent",
+              time: record && record.timestamp ? new Date(record.timestamp.toDate ? record.timestamp.toDate() : record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "--",
+              confidence: record ? (record.confidenceScore ? Math.round(record.confidenceScore * 100) : 100) : 0,
+            };
+          });
+
+          mergedRoster.sort((a, b) => a.name.localeCompare(b.name));
+          
+          if (mergedRoster.length > 0) {
+            setStudentAttendanceData(mergedRoster);
+          } else {
+             // Fallback to mock data if there are no registered students at all in the DB
+             setStudentAttendanceData([
+               { id: 1, name: "Alex Johnson", rollNo: "CS21B1001", status: "present", time: "09:02", confidence: 98 },
+               { id: 2, name: "Emma Davis", rollNo: "CS21B1002", status: "present", time: "09:01", confidence: 95 },
+               { id: 3, name: "Michael Chen", rollNo: "CS21B1003", status: "late", time: "09:08", confidence: 92 },
+               { id: 4, name: "Sarah Wilson", rollNo: "CS21B1004", status: "absent", time: "--", confidence: 0 },
+               { id: 5, name: "David Kumar", rollNo: "CS21B1005", status: "present", time: "09:03", confidence: 97 },
+             ]);
+          }
+        });
+
+      } catch (error) {
+        console.error("Error fetching students for roster:", error);
+      }
+    };
+    
+    fetchStudentsAndAttendance();
+
+    return () => unsubscribe();
+  }, [user]);
 
   const fetchAllRequests = async () => {
     if (!user) return;

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -78,8 +78,48 @@ export default function UniversalSettings() {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pushPermission, setPushPermission] = useState("default");
 
-  const getUserInitials = (name) => {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (!("Notification" in window)) {
+        setPushPermission("unsupported");
+      } else {
+        setPushPermission(Notification.permission);
+      }
+    }
+  }, []);
+
+  const handleTogglePush = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+
+    if (pushPermission === "granted") {
+      updateSetting("notifications", "pushNotifications", false);
+      toast.success("Push notifications muted in setting profile!");
+      setPushPermission("default");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setPushPermission(permission);
+      if (permission === "granted") {
+        updateSetting("notifications", "pushNotifications", true);
+        toast.success("Timetable push notifications activated! Reminders will trigger 10m before class.");
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("/sw.js")
+            .then((reg) => console.log("Service Worker registered:", reg.scope))
+            .catch((err) => console.error("SW Registration failed:", err));
+        }
+      } else if (permission === "denied") {
+        toast.error("Notifications blocked! Allow permission in site settings.");
+      }
+    } catch (err) {
+      console.error("Error setting notification permission:", err);
+    }
+  };
+
+  const getUserInitials = useCallback((name) => {
     if (!name) return "U";
     return name
       .split(" ")
@@ -87,22 +127,22 @@ export default function UniversalSettings() {
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
+  }, []);
 
-  const getUserPhoto = () => {
+  const getUserPhoto = useCallback(() => {
     return user?.photoURL || user?.avatar || null;
-  };
+  }, [user]);
 
-  const getUserDisplayName = () => {
+  const getUserDisplayName = useCallback(() => {
     if (user?.displayName) return user.displayName;
     if (user?.name) return user.name;
     if (user?.email) return user.email.split("@")[0];
     return "User";
-  };
+  }, [user]);
 
-  const getUserEmail = () => {
+  const getUserEmail = useCallback(() => {
     return user?.email || "";
-  };
+  }, [user]);
 
   const getRoleSpecificSettings = () => {
     const role = user?.role || "student";
@@ -605,30 +645,80 @@ export default function UniversalSettings() {
             )}
 
             {activeSection === "notifications" && (
-              <SettingCard
-                title="Notification Preferences"
-                description="Choose how you want to be notified"
-              >
-                <div className="space-y-2">
-                  {Object.entries(settings.notifications).map(
-                    ([key, value]) => (
-                      <ToggleSwitch
-                        key={key}
-                        enabled={value}
-                        onChange={(newValue) =>
-                          updateSetting("notifications", key, newValue)
+              <div className="space-y-6">
+                {/* Timetable Class Reminder Card */}
+                <SettingCard
+                  title="Timetable & Class Reminders"
+                  description="Get dynamic push notifications 10 minutes before your next class starts."
+                >
+                  <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          pushPermission === "granted" ? "bg-green-400 animate-pulse" :
+                          pushPermission === "denied" ? "bg-red-500" : "bg-yellow-400 animate-bounce"
+                        }`} />
+                        <span className="text-sm font-semibold text-white">
+                          Status: {
+                            pushPermission === "granted" ? "Notifications Enabled" :
+                            pushPermission === "denied" ? "Notifications Blocked" :
+                            pushPermission === "unsupported" ? "Browser Unsupported" : "Permission Required"
+                          }
+                        </span>
+                      </div>
+                      <p className="text-white/60 text-xs mt-1">
+                        {pushPermission === "granted" 
+                          ? "You are all set! Learnova will proactively notify you 10 minutes before classes."
+                          : pushPermission === "denied"
+                          ? "Please reset browser permissions in your URL bar to enable notifications."
+                          : pushPermission === "unsupported"
+                          ? "Push notifications are not supported in this browser."
+                          : "Enable browser push notifications to receive proactive class alerts."
                         }
-                        label={key
-                          .replace(/([A-Z])/g, " $1")
-                          .replace(/^./, (str) => str.toUpperCase())}
-                        description={`Receive ${key
-                          .replace(/([A-Z])/g, " $1")
-                          .toLowerCase()}`}
-                      />
-                    ),
-                  )}
-                </div>
-              </SettingCard>
+                      </p>
+                    </div>
+                    
+                    {pushPermission !== "unsupported" && (
+                      <button
+                        onClick={handleTogglePush}
+                        disabled={pushPermission === "denied"}
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 ${
+                          pushPermission === "granted"
+                            ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
+                            : "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-purple-500/20 hover:scale-105 active:scale-95 cursor-pointer"
+                        }`}
+                      >
+                        {pushPermission === "granted" ? "Mute Reminders" : "Enable Reminders"}
+                      </button>
+                    )}
+                  </div>
+                </SettingCard>
+
+                <SettingCard
+                  title="Notification Preferences"
+                  description="Choose how you want to be notified"
+                >
+                  <div className="space-y-2">
+                    {Object.entries(settings.notifications).map(
+                      ([key, value]) => (
+                        <ToggleSwitch
+                          key={key}
+                          enabled={value}
+                          onChange={(newValue) =>
+                            updateSetting("notifications", key, newValue)
+                          }
+                          label={key
+                            .replace(/([A-Z])/g, " $1")
+                            .replace(/^./, (str) => str.toUpperCase())}
+                          description={`Receive ${key
+                            .replace(/([A-Z])/g, " $1")
+                            .toLowerCase()}`}
+                        />
+                      ),
+                    )}
+                  </div>
+                </SettingCard>
+              </div>
             )}
 
             {/* ... existing code for other sections ... */}

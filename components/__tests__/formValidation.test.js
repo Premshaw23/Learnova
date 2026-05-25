@@ -90,8 +90,8 @@ describe("formValidation utilities", () => {
     });
 
     test("returns error for names containing numbers or special characters", () => {
-      expect(validateName("John123", "Full Name")).toBe("Full Name must only contain letters and spaces");
-      expect(validateName("John@Doe", "Full Name")).toBe("Full Name must only contain letters and spaces");
+      expect(validateName("John123", "Full Name")).toBe("Full Name must only contain letters, spaces, hyphens, and apostrophes");
+      expect(validateName("John@Doe", "Full Name")).toBe("Full Name must only contain letters, spaces, hyphens, and apostrophes");
     });
   });
 

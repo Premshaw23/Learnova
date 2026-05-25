@@ -13,8 +13,10 @@ export const dynamic = "force-dynamic";
 const passcodeSchema = z.object({
   passcode: z
     .string({
-      required_error: "Passcode is required",
-      invalid_type_error: "Passcode must be a string",
+      error: (issue) =>
+        issue.input === undefined
+          ? "Passcode is required"
+          : "Passcode must be a string",
     })
     .trim()
     .min(1, "Passcode is required"),
