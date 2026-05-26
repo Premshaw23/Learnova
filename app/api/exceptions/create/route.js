@@ -7,6 +7,9 @@ export async function POST(request) {
     const authorization = request.headers.get("authorization");
     const token = authorization?.split(" ")[1];
 
+    if (!token) {
+      return Response.json({ message: "No token provided" }, { status: 401 });
+    }
     // Verify Firebase token
     const decodedToken = await verifyFirebaseToken(token);
 
