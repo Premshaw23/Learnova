@@ -177,9 +177,17 @@ export default function SearchModal({ isOpen, onClose }) {
               return (
                 <div
                   key={item.label}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleNavigate(item.href)}
                   onMouseEnter={() => setSelectedIndex(index)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150 ${
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleNavigate(item.href);
+                    }
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150 focus:outline-none focus:bg-accent/20 focus:text-foreground ${
                     isSelected 
                       ? "bg-accent/20 text-foreground" 
                       : "text-white/70 hover:bg-white/5"

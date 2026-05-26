@@ -79,6 +79,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
         get: (name) => headers[name.toLowerCase()] || null,
       },
       json: jest.fn().mockResolvedValue(bodyData),
+      text: jest.fn().mockResolvedValue(JSON.stringify(bodyData)),
     };
   };
 

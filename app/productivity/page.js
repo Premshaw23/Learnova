@@ -29,6 +29,10 @@ import {
   Timer,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { TimerSection } from "@/components/productivity/TimerSection";
+import { TaskSection } from "@/components/productivity/TaskSection";
+import { CalendarSection } from "@/components/productivity/CalendarSection";
+import { AgendaListSection } from "@/components/productivity/AgendaListSection";
 
 const MODES = {
   focus: { label: "Focus", seconds: 25 * 60, accent: "text-cyan-300" },
@@ -651,336 +655,41 @@ export default function ProductivityPage() {
 
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <motion.div
-                className={`${isDark
-                  ? "bg-black/40 border  border-white/10 backdrop-blur-xl"
-                  : "bg-white/80 border border-slate-200 shadow-lg backdrop-blur-xl"
-                  } rounded-3xl p-6 md:p-8`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Pomodoro Timer</p>
-                    <h2 className="text-2xl font-semibold flex items-center gap-2">
-                      <Timer className="w-5 h-5 text-cyan-300" />
-                      {MODES[mode].label}
-                    </h2>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => switchMode("focus")}
-                      className={`px-4 py-2 rounded-full border text-sm transition ${mode === "focus"
-                          ? isDark
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
-                            : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                          : isDark
-                            ? "border-white/10 text-slate-300 hover:text-white"
-                            : "border-slate-300 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                      Focus
-                    </button>
-                    <button
-                      onClick={() => switchMode("short")}
-                      className={`px-4 py-2 rounded-full border text-sm transition ${mode === "focus"
-                          ? isDark
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
-                            : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                          : isDark
-                            ? "border-white/10 text-slate-300 hover:text-white"
-                            : "border-slate-300 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                      Short
-                    </button>
-                    <button
-                      className={`px-4 py-2 rounded-full border text-sm transition ${mode === "focus"
-                          ? isDark
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
-                            : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                          : isDark
-                            ? "border-white/10 text-slate-300 hover:text-white"
-                            : "border-slate-300 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                      Long
-                    </button>
-                  </div>
-                </div>
+              <TimerSection
+                mode={mode}
+                timeLeft={timeLeft}
+                sessionSeconds={sessionSeconds}
+                focusSessions={focusSessions}
+                focusMinutes={focusMinutes}
+                isRunning={isRunning}
+                recentCompleted={recentCompleted}
+                MODES={MODES}
+                switchMode={switchMode}
+                toggleTimer={toggleTimer}
+                resetTimer={resetTimer}
+                applyManualTime={applyManualTime}
+                manualMinutes={manualMinutes}
+                setManualMinutes={setManualMinutes}
+                isDark={isDark}
+              />
 
-                <div className="mt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-                  <div className="flex items-center gap-6">
-                    <div className="relative h-32 w-32">
-                      <div
-                        className="absolute inset-0 rounded-full border-4 border-slate-200/40 dark:border-white/10"
-                        aria-hidden="true"
-                      />
-                      <div
-                        className="absolute inset-0 rounded-full"
-                        style={{
-                          background: `conic-gradient(#38bdf8 ${(1 - timeLeft / sessionSeconds) * 360
-                            }deg, rgba(255,255,255,0.08) 0deg)`,
-                        }}
-                      />
-                      <div className="absolute inset-2 rounded-full bg-slate-100/90 dark:bg-slate-950/70 flex items-center justify-center">
-                        <span className={`text-3xl font-bold ${MODES[mode].accent}`}>
-                          {formatTime(timeLeft)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus sessions</p>
-                      <motion.div
-                        className="flex items-center gap-2 text-lg font-semibold"
-                        animate={recentCompleted ? { scale: [1, 1.12, 1] } : { scale: 1 }}
-                        transition={{ duration: 0.6 }}
-                      >
-                        <Flame className="w-5 h-5 text-orange-300" />
-                        {focusSessions} completed
-                      </motion.div>
-                      <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                        Focus minutes today: {focusMinutes} min
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={toggleTimer}
-                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500
-hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
-                    >
-                      {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                      {isRunning ? "Pause" : "Start"}
-                    </button>
-                    <button
-                      onClick={resetTimer}
-                      className={`px-5 py-3 rounded-2xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        } flex items-center gap-2`}
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      Reset
-                    </button>
-                    <form
-                      onSubmit={applyManualTime}
-                      className={`flex items-center gap-2 ${isDark
-                          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                          : "bg-white/80 border border-slate-200  shadow-xl backdrop-blur-xl"
-                        } rounded-2xl px-3 py-2`}
-                    >
-                      <label
-                        htmlFor="pomodoro-minutes"
-                        className="text-xs text-slate-700 dark:text-slate-300"
-                      >
-                        Minutes
-                      </label>
-                      <input
-                        id="pomodoro-minutes"
-                        type="number"
-                        min="1"
-                        max="180"
-                        value={manualMinutes}
-                        onChange={(event) => setManualMinutes(event.target.value)}
-                        className={`w-16 rounded-lg bg-transparent border border-white/10 px-2 py-1 text-sm ${isDark ? "text-white" : "text-slate-900"} focus:outline-none focus:ring-2 focus:ring-cyan-400/40`}
-                      />
-                      <button
-                        type="submit"
-                        className="px-3 py-1 rounded-xl bg-cyan-500/80 text-slate-900 text-xs font-semibold"
-                      >
-                        Set
-                      </button>
-                    </form>
-                  </div>
-                </div>
-                <div className={`mt-6 flex flex-wrap gap-3 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <FlameIcon className="w-4 h-4 text-orange-300" />
-                    Streak: {Math.max(1, focusSessions)} days
-                  </div>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <Clock className="w-4 h-4 text-cyan-300" />
-                    Next break in {Math.ceil(timeLeft / 60)} min
-                  </div>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    {ambientMode === "focus" ? (
-                      <Sun className="w-4 h-4 text-amber-300" />
-                    ) : (
-                      <Moon className="w-4 h-4 text-purple-300" />
-                    )}
-                    Ambient: {MODES[ambientMode]?.label || "Focus"}
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 md:p-8`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.05 }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-                  <div>
-                    <p className={`text-sm ${isDark ? "text-slate-200" : "text-slate-800"
-                      }`}
-                    >Calendar Pulse</p>
-                    <h2 className="text-2xl font-semibold flex items-center gap-2">
-                      <CalendarDays className="w-5 h-5 text-purple-300" />
-                      {monthLabel}
-                    </h2>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}>
-                      {selectedDateLabel} - {agendaSummaryForSelectedDate.total} items
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setMonthOffset((prev) => prev - 1)}
-                      className={`px-3 py-2 rounded-xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        }`}
-                    >
-                      Prev
-                    </button>
-                    <button
-                      onClick={() => setMonthOffset(0)}
-                      className={`px-3 py-2 rounded-xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        }`}
-                    >
-                      Today
-                    </button>
-                    <button
-                      onClick={() => setMonthOffset((prev) => prev + 1)}
-                      className={`px-3 py-2 rounded-xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        }`}
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mb-5">
-                  <button
-                    type="button"
-                    onClick={() => setCalendarFilter("all")}
-                    className={`px-3 py-1 rounded-full text-xs border transition ${calendarFilter === "all"
-                        ? "bg-white/10 border border-white/20 text-white"
-                        : " border border-white/10 text-slate-300"
-                      }`}
-                  >
-                    All
-                  </button>
-                  {TIME_BLOCKS.map((block) => (
-                    <button
-                      key={block.label}
-                      type="button"
-                      onClick={() => setCalendarFilter(block.label)}
-                      className={`px-3 py-1 rounded-full text-xs border transition ${calendarFilter === block.label
-                          ? "bg-white/10 border-white/20 text-white"
-                          : "border-white/10 text-slate-300"
-                        }`}
-                    >
-                      <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
-                      {block.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className={`grid grid-cols-7 gap-2 text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mb-3`}>
-                  {WEEK_DAYS.map((day) => (
-                    <div key={day} className="text-center">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-2">
-                  {calendar.cells.map((date, index) => {
-                    if (!date) {
-                      return <div key={`empty-${index}`} />;
-                    }
-                    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-                    const isToday = key === todayKey;
-                    const isSelected = key === selectedDateKey;
-                    const agendaListForDay = agendaItems[key] || [];
-                    const agendaCountForDay = agendaListForDay.length;
-                    const agendaCountsByLabel = agendaListForDay.reduce(
-                      (acc, item) => {
-                        acc[item.label] = (acc[item.label] || 0) + 1;
-                        return acc;
-                      },
-                      {}
-                    );
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setSelectedDateKey(key)}
-                        className={`h-16 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-sm transition hover:border-cyan-400/40 hover:${isDark ? "bg-cyan-500/10" : "bg-cyan-300/30"
-                          } focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${isToday
-                            ? isDark
-                              ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-100"
-                              : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                            : isSelected
-                              ? isDark
-                                ? "bg-purple-500/20 border-purple-400/40 text-purple-100"
-                                : "bg-purple-100 border-purple-300 text-purple-900"
-                              : isDark
-                                ? "bg-white/5 text-slate-200"
-                                : "bg-white/80 text-slate-900 border border-slate-200"
-                          }`}
-                      >
-                        <span className="font-semibold">{date.getDate()}</span>
-                        <div className="mt-1 flex items-center gap-1">
-                          {agendaCountForDay ? (
-                            <span className={`text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                              {agendaCountForDay} items
-                            </span>
-                          ) : (
-                            <span className={`text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus</span>
-                          )}
-                          <div className="flex gap-1">
-                            {TIME_BLOCKS.filter((block) => {
-                              if (calendarFilter === "all") return true;
-                              return calendarFilter === block.label;
-                            })
-                              .filter((block) => agendaCountsByLabel[block.label])
-                              .map((block) => (
-                                <span
-                                  key={`${key}-${block.label}`}
-                                  className={`h-1.5 w-1.5 rounded-full ${block.color} opacity-70`}
-                                  aria-hidden="true"
-                                />
-                              ))}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
+              <CalendarSection
+                calendar={calendar}
+                monthLabel={monthLabel}
+                selectedDateLabel={selectedDateLabel}
+                selectedDateKey={selectedDateKey}
+                setSelectedDateKey={setSelectedDateKey}
+                agendaItems={agendaItems}
+                agendaSummaryForSelectedDate={agendaSummaryForSelectedDate}
+                monthOffset={monthOffset}
+                setMonthOffset={setMonthOffset}
+                calendarFilter={calendarFilter}
+                setCalendarFilter={setCalendarFilter}
+                TIME_BLOCKS={TIME_BLOCKS}
+                WEEK_DAYS={WEEK_DAYS}
+                todayKey={todayKey}
+                isDark={isDark}
+              />
 
               <motion.div
                 className={`${isDark
@@ -1070,130 +779,20 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
             </div>
 
             <div className="space-y-8">
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <ListTodo className="w-5 h-5 text-emerald-300" />
-                  <h3 className="text-xl font-semibold">Tasks</h3>
-                </div>
-                <form onSubmit={addTask} className="flex flex-col gap-3 mb-4">
-                  <input
-                    value={taskInput}
-                    onChange={(event) => setTaskInput(event.target.value)}
-                    placeholder="Add a new task"
-                    className={`flex-1 rounded-xl ${isDark
-                        ? "bg-white/10 border border-white/10 text-white"
-                        : "bg-slate-100 border border-slate-300 text-slate-900"
-                      } px-3 py-2 text-sm ${isDark ? "text-white" : "text-slate-900"} placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40`}
-                  />
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-wrap gap-2">
-                      {PRIORITIES.map((priority) => (
-                        <button
-                          key={priority.value}
-                          type="button"
-                          onClick={() => setTaskPriority(priority.value)}
-                          className={`px-3 py-1 rounded-full text-xs border transition ${priority.color} ${taskPriority === priority.value
-                              ? "bg-white/10"
-                              : "bg-transparent"
-                            }`}
-                        >
-                          {priority.label}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="submit"
-                      className="ml-auto px-3 py-2 rounded-xl bg-cyan-500/80 text-slate-900"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </form>
-                <div className="mb-4">
-                  <div className={`flex items-center justify-between text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                    <span>Completion</span>
-                    <span>{taskCompletion}%</span>
-                  </div>
-                  <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
-                      style={{ width: `${taskCompletion}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {tasks.map((task, index) => (
-                    <div
-                      key={task.id}
-                      className={`flex items-center justify-between gap-3 ${isDark
-                          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                          : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                        } rounded-2xl px-3 py-2`}
-                    >
-                      <div className="flex items-center gap-2 text-sm">
-                        <button
-                          onClick={() => toggleTask(task.id)}
-                          className={`flex items-center gap-2 ${task.done
-                              ? "text-slate-500 line-through"
-                              : isDark
-                                ? "text-slate-200"
-                                : "text-slate-800"
-                            }`}
-                        >
-                          <CheckCircle2
-                            className={`flex items-center gap-2 ${task.done
-                                ? "text-slate-500 line-through"
-                                : isDark
-                                  ? "text-slate-200"
-                                  : "text-slate-800"
-                              }`}
-                          />
-                          {task.text}
-                        </button>
-                        <span
-                          className={`ml-2 px-2 py-0.5 rounded-full border text-[10px] uppercase ${PRIORITIES.find((priority) => priority.value === task.priority)?.color ||
-                            "border-white/20 text-slate-300"
-                            }`}
-                        >
-                          {task.priority}
-                        </span>
-                      </div>
-                      <div className={`flex items-center gap-1 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                        <button
-                          onClick={() => moveTask(task.id, -1)}
-                          disabled={index === 0}
-                          className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
-                        >
-                          <ChevronUp className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => moveTask(task.id, 1)}
-                          disabled={index === tasks.length - 1}
-                          className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
-                        >
-                          <ChevronDown className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => removeTask(task.id)}
-                          className="p-1 rounded-lg hover:text-red-300"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
+              <TaskSection
+                tasks={tasks}
+                taskInput={taskInput}
+                taskPriority={taskPriority}
+                setTaskInput={setTaskInput}
+                setTaskPriority={setTaskPriority}
+                addTask={addTask}
+                toggleTask={toggleTask}
+                moveTask={moveTask}
+                removeTask={removeTask}
+                taskCompletion={taskCompletion}
+                PRIORITIES={PRIORITIES}
+                isDark={isDark}
+              />
 
               <motion.div
                 className={`${isDark
@@ -1350,105 +949,19 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                 </div>
               </motion.div>
 
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 `}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.25 }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <CalendarDays className="w-5 h-5 text-purple-300" />
-                  <div>
-                    <h3 className="text-xl font-semibold">Agenda</h3>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>{selectedDateLabel}</p>
-                  </div>
-                </div>
-                <form onSubmit={addAgendaItem} className="flex flex-col gap-3 mb-4">
-                  <input
-                    value={agendaInput}
-                    onChange={(event) => setAgendaInput(event.target.value)}
-                    placeholder="Add agenda item"
-                    className={`flex-1 rounded-xl ${isDark
-                        ? "bg-white/10 border border-white/10 text-white"
-                        : "bg-slate-100 border border-slate-300 text-slate-900"
-                      } px-3 py-2 text-sm ${isDark ? "text-white" : "text-slate-900"} placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400/40`}
-                  />
-                  <div className="flex flex-wrap items-center gap-2">
-                    {TIME_BLOCKS.map((block) => (
-                      <button
-                        key={block.label}
-                        type="button"
-                        onClick={() => setAgendaLabel(block.label)}
-                        className={`px-3 py-1 rounded-full text-xs border transition ${agendaLabel === block.label
-                            ? "border bg-white/10 border-white/20 text-white"
-                            : "border border-white/10 text-slate-300"
-                          }`}
-                      >
-                        <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
-                        {block.label}
-                      </button>
-                    ))}
-                    <button
-                      type="submit"
-                      className="ml-auto px-3 py-2 rounded-xl bg-purple-500/80 text-slate-900"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </form>
-                <div className="space-y-3">
-                  {agendaForSelectedDate.length === 0 ? (
-                    <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                      No agenda yet. Add a focus item for this day.
-                    </div>
-                  ) : (
-                    agendaForSelectedDate.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className={`flex items-center justify-between gap-3 ${isDark
-                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                          } rounded-2xl px-3 py-2`}
-                      >
-                        <div className={`text-sm ${isDark ? "text-slate-200" : "text-slate-800"
-                          }`}
-                        >
-                          <p className="font-medium">{item.text}</p>
-                          <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>{item.time}</p>
-                          <p className="text-xs text-purple-200">{item.label}</p>
-                        </div>
-                        <div className={`flex items-center gap-1 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                          <button
-                            onClick={() => moveAgendaItem(item.id, -1)}
-                            disabled={index === 0}
-                            className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
-                          >
-                            <ChevronUp className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => moveAgendaItem(item.id, 1)}
-                            disabled={index === agendaForSelectedDate.length - 1}
-                            className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
-                          >
-                            <ChevronDown className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => removeAgendaItem(item.id)}
-                            className="p-1 rounded-lg hover:text-red-300"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
+              <AgendaListSection
+                selectedDateLabel={selectedDateLabel}
+                agendaForSelectedDate={agendaForSelectedDate}
+                TIME_BLOCKS={TIME_BLOCKS}
+                agendaInput={agendaInput}
+                setAgendaInput={setAgendaInput}
+                agendaLabel={agendaLabel}
+                setAgendaLabel={setAgendaLabel}
+                addAgendaItem={addAgendaItem}
+                moveAgendaItem={moveAgendaItem}
+                removeAgendaItem={removeAgendaItem}
+                isDark={isDark}
+              />
 
               <motion.div
                 className={`${isDark

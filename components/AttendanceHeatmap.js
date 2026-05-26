@@ -1,135 +1,299 @@
-import React, { useMemo } from "react";
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
-const STATUS_STYLES = {
-  present: "bg-green-500 hover:bg-green-400",
-  late: "bg-yellow-500 hover:bg-yellow-400",
-  absent: "bg-red-500 hover:bg-red-400",
-  none: "bg-gray-700/50 hover:bg-gray-600/60",
+const STATUS_CONFIG = {
+  present: { color: "bg-green-500", label: "Present", dot: "🟢" },
+  absent: { color: "bg-red-500", label: "Absent", dot: "🔴" },
+  late: { color: "bg-yellow-400", label: "Late", dot: "🟡" },
+  holiday: { color: "bg-gray-300", label: "Holiday", dot: "⬜" },
+  none: {
+    color: "bg-gray-100 dark:bg-gray-800",
+    label: "No class",
+    dot: "",
+  },
 };
 
-const STATUS_LABELS = {
-  present: "Present",
-  late: "Late",
-  absent: "Absent",
-  none: "No class",
-};
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
-function dateKey(date) {
-  return date.toISOString().slice(0, 10);
-}
+export default function AttendanceHeatmap() {
+  const { user } = useAuth();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [attendanceMap, setAttendanceMap] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [tooltip, setTooltip] = useState(null);
 
-function formatLabel(date) {
-  return date.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
+  const monthKey = `${currentDate.getFullYear()}-${String(
+    currentDate.getMonth() + 1
+  ).padStart(2, "0")}`;
 
-/** Deterministic mock status from ISO date when no activity row exists. */
-function mockStatusFromDate(isoDate, isWeekend) {
-  if (isWeekend) {
-    return "none";
-  }
-  const hash = isoDate.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-  const bucket = hash % 10;
-  if (bucket < 7) return "present";
-  if (bucket === 7) return "late";
-  if (bucket === 8) return "absent";
-  return "none";
-}
-
-function buildHeatmapDays(recentActivity) {
-  const statusByDate = {};
-  recentActivity.forEach((entry) => {
-    if (entry?.date && entry?.status) {
-      statusByDate[entry.date] = entry.status;
+  const fetchAttendance = useCallback(async () => {
+    if (!user?.uid) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/attendance/heatmap?userId=${user.uid}&month=${monthKey}`
+      );
+      const data = await res.json();
+      const map = {};
+      (data.attendance || []).forEach((record) => {
+        map[record.date] = record;
+      });
+      setAttendanceMap(map);
+    } catch {
+      setAttendanceMap({});
+    } finally {
+      setIsLoading(false);
     }
-  });
+  }, [user?.uid, monthKey]);
 
-  const days = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  useEffect(() => {
+    fetchAttendance();
+  }, [fetchAttendance]);
 
-  for (let offset = 83; offset >= 0; offset -= 1) {
-    const day = new Date(today);
-    day.setDate(today.getDate() - offset);
-    const key = dateKey(day);
-    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-    const status =
-      statusByDate[key] ?? mockStatusFromDate(key, isWeekend);
+  const prevMonth = () => {
+    setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+    setTooltip(null);
+  };
 
-    days.push({
-      date: key,
-      status,
-      label: formatLabel(day),
-    });
+  const nextMonth = () => {
+    setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+    setTooltip(null);
+  };
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const calendarCells = [];
+  for (let i = 0; i < firstDay; i++) {
+    calendarCells.push(null);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    calendarCells.push(d);
   }
 
-  return days;
-}
+  const stats = { present: 0, absent: 0, late: 0, holiday: 0 };
+  Object.values(attendanceMap).forEach((r) => {
+    if (stats[r.status] !== undefined) stats[r.status]++;
+  });
+  const total = stats.present + stats.absent + stats.late;
+  const attendancePct =
+    total > 0 ? ((stats.present / total) * 100).toFixed(1) : "0.0";
 
-const AttendanceHeatmap = ({ recentActivity = [] }) => {
-  const days = useMemo(
-    () => buildHeatmapDays(recentActivity),
-    [recentActivity],
-  );
+  const formatDateKey = (day) => {
+    return `${year}-${String(month + 1).padStart(2, "0")}-${String(
+      day
+    ).padStart(2, "0")}`;
+  };
 
-  const weeks = useMemo(() => {
-    const chunks = [];
-    for (let i = 0; i < days.length; i += 7) {
-      chunks.push(days.slice(i, i + 7));
-    }
-    return chunks;
-  }, [days]);
+  const handleDayClick = (day, e) => {
+    if (!day) return;
+    const dateKey = formatDateKey(day);
+    const record = attendanceMap[dateKey];
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltip(
+      tooltip?.date === dateKey
+        ? null
+        : {
+            date: dateKey,
+            status: record?.status || "none",
+            subject: record?.subject || "—",
+            markedAt: record?.markedAt
+              ? new Date(record.markedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "—",
+            x: rect.left,
+            y: rect.top,
+          }
+    );
+  };
 
   return (
-    <div className="mt-6 pt-6 border-t border-white/10">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-white">
-          12-week attendance
-        </h3>
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-sm bg-green-500" />
-            Present
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="bg-white dark:bg-gray-900 rounded-2xl shadow-md p-6 w-full"
+    >
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-indigo-500" />
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            Attendance Heatmap
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={prevMonth}
+            aria-label="Previous month"
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          </button>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[130px] text-center">
+            {MONTHS[month]} {year}
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-sm bg-yellow-500" />
-            Late
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-sm bg-red-500" />
-            Absent
-          </span>
+          <button
+            onClick={nextMonth}
+            aria-label="Next month"
+            disabled={
+              year === new Date().getFullYear() &&
+              month === new Date().getMonth()
+            }
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 
+                       transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          </button>
         </div>
       </div>
 
-      <div
-        className="flex gap-1 overflow-x-auto pb-1"
-        role="img"
-        aria-label="Attendance heatmap for the last twelve weeks"
-      >
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="flex flex-col gap-1">
-            {week.map((day) => (
+      {isLoading ? (
+        <div className="flex justify-center items-center h-40">
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent 
+                          rounded-full animate-spin" />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-7 mb-2">
+            {DAYS.map((d) => (
               <div
-                key={day.date}
-                title={`${day.label}: ${STATUS_LABELS[day.status] ?? day.status}`}
-                className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm transition-colors cursor-default ${
-                  STATUS_STYLES[day.status] ?? STATUS_STYLES.none
-                }`}
-              />
+                key={d}
+                className="text-center text-xs font-medium 
+                                      text-gray-400 dark:text-gray-500 py-1"
+              >
+                {d}
+              </div>
             ))}
           </div>
-        ))}
-      </div>
-      <p className="text-xs text-gray-500 mt-2">
-        Hover a cell for date and status. Recent activity rows override mock
-        data.
-      </p>
-    </div>
-  );
-};
 
-export default AttendanceHeatmap;
+          <div className="grid grid-cols-7 gap-1">
+            {calendarCells.map((day, idx) => {
+              if (!day) {
+                return <div key={`empty-${idx}`} />;
+              }
+              const dateKey = formatDateKey(day);
+              const record = attendanceMap[dateKey];
+              const status = record?.status || "none";
+              const config = STATUS_CONFIG[status];
+              const isToday =
+                day === new Date().getDate() &&
+                month === new Date().getMonth() &&
+                year === new Date().getFullYear();
+              const isSelected = tooltip?.date === dateKey;
+
+              return (
+                <button
+                  key={dateKey}
+                  onClick={(e) => handleDayClick(day, e)}
+                  aria-label={`${dateKey}: ${config.label}`}
+                  className={`
+                    aspect-square rounded-lg text-xs font-medium
+                    flex items-center justify-center cursor-pointer
+                    transition-all duration-150 select-none
+                    ${config.color}
+                    ${
+                      status === "none"
+                        ? "text-gray-500 dark:text-gray-400"
+                        : "text-white"
+                    }
+                    ${isToday ? "ring-2 ring-indigo-500 ring-offset-1" : ""}
+                    ${isSelected ? "scale-110 shadow-lg" : "hover:scale-105"}
+                  `}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          {tooltip && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mt-4 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 
+                         border border-gray-200 dark:border-gray-700 text-sm"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-gray-800 dark:text-gray-100">
+                  {tooltip.date}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium text-white
+                  ${STATUS_CONFIG[tooltip.status]?.color}`}
+                >
+                  {STATUS_CONFIG[tooltip.status]?.label}
+                </span>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">
+                Subject: <span className="font-medium">{tooltip.subject}</span>
+              </p>
+              <p className="text-gray-600 dark:text-gray-400">
+                Marked at:{" "}
+                <span className="font-medium">{tooltip.markedAt}</span>
+              </p>
+            </motion.div>
+          )}
+
+          <div className="flex flex-wrap gap-3 mt-4">
+            {Object.entries(STATUS_CONFIG)
+              .filter(([k]) => k !== "none")
+              .map(([key, cfg]) => (
+                <div key={key} className="flex items-center gap-1.5">
+                  <div className={`w-3 h-3 rounded-sm ${cfg.color}`} />
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {cfg.label}
+                  </span>
+                </div>
+              ))}
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: "Present", value: stats.present, color: "text-green-600" },
+                { label: "Absent", value: stats.absent, color: "text-red-500" },
+                { label: "Late", value: stats.late, color: "text-yellow-500" },
+                {
+                  label: "Attendance",
+                  value: `${attendancePct}%`,
+                  color: "text-indigo-600",
+                },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center"
+                >
+                  <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {s.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </motion.div>
+  );
+}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { z } from "zod";
@@ -22,8 +22,7 @@ async function publishNotice(request) {
 
   const body = await parseJSON(request, 1024 * 50);
   const validData = noticeSchema.parse(body);
-
-
+  const adminDb = getAdminDb();
 
   const newNotice = {
     ...validData,
@@ -40,7 +39,7 @@ async function publishNotice(request) {
 
   return NextResponse.json({
     success: true,
-    notice: { id: result.id, ...newData }
+    notice: { id: result.id, ...newNotice }
   });
 }
 

@@ -4,3 +4,4 @@ export const CONTACT_INFO = {
     website: "https://learnova-web.vercel.app",
     demo: "https://learnova-web.vercel.app/contact",
 };
+

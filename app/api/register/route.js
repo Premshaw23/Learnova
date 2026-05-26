@@ -8,6 +8,17 @@ import {
   jsonSuccess,
 } from "@/lib/api-response";
 
+// Ensure unique indexes are created exactly once per process lifetime.
+// This is the database-level safety net that prevents duplicate users
+// even when concurrent requests bypass the application-layer findOne() check.
+let _indexesEnsured = false;
+async function ensureUserIndexes(collection) {
+  if (_indexesEnsured) return;
+  await collection.createIndex({ email: 1 }, { unique: true, sparse: true });
+  await collection.createIndex({ rollNo: 1 }, { unique: true, sparse: true });
+  _indexesEnsured = true;
+}
+
 import {
   withErrorHandler,
   authenticateRequest,
@@ -363,7 +374,10 @@ export const POST =
           "users"
         );
 
-      // Existing user
+      // Ensure unique indexes exist (idempotent, runs once per process)
+      await ensureUserIndexes(users);
+
+      // Application-layer duplicate check (fast path — avoids unnecessary blob upload)
       const existingUser =
         await users.findOne({
           $or: [
@@ -395,7 +409,7 @@ export const POST =
 
       const fileName = `labels/${safeName}/${randomUUID()}.${fileExtension}`;
 
-      // Upload
+      // Upload blob
       const blob =
         await put(
           fileName,
@@ -452,6 +466,7 @@ export const POST =
           201
         );
       } catch (dbError) {
+        // Clean up orphaned blob upload on any DB failure
         try {
           if (blob?.url) {
             await del(
@@ -464,6 +479,16 @@ export const POST =
           console.error(
             "Failed cleanup:",
             cleanupError
+          );
+        }
+
+        // Handle MongoDB E11000 duplicate key error from the unique index.
+        // This is the database-level safety net that catches races where two
+        // concurrent requests both pass the findOne() check above.
+        if (dbError?.code === 11000) {
+          throw new AppError(
+            "User already registered",
+            409
           );
         }
 

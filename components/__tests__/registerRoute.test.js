@@ -53,6 +53,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
       collection: jest.fn().mockReturnValue({
         findOne: mockFindOne,
         insertOne: mockInsertOne,
+        createIndex: jest.fn().mockResolvedValue({}),
       }),
     });
 
@@ -242,6 +243,31 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
     expect(response.status).toBe(500);
     expect(body.error).toBe("Internal server error");
+    expect(put).toHaveBeenCalled();
+    expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
+  });
+
+  test("handles MongoDB unique index duplicate key error (E11000) by returning 409 and rolling back blob upload", async () => {
+    mockFindOne.mockResolvedValue(null);
+    
+    // Simulate a race condition: another request finished inserting after our findOne check,
+    // so MongoDB throws a duplicate key error (code 11000) on our insertOne call.
+    const duplicateKeyError = new Error("E11000 duplicate key error collection: users index: email_1 dup key");
+    duplicateKeyError.code = 11000;
+    mockInsertOne.mockRejectedValue(duplicateKeyError);
+
+    const req = createMockRequest({
+      name: "John Doe",
+      rollNo: "123456",
+      email: "user@domain.com",
+      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
+    });
+
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.error).toBe("User already registered");
     expect(put).toHaveBeenCalled();
     expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
   });
