@@ -21,6 +21,8 @@ export default function AuthForm({
   setFullName,
   instituteName,
   setInstituteName,
+  inviteCode,
+  setInviteCode,
   errors,
   setErrors,
   isLoading,
@@ -48,6 +50,8 @@ export default function AuthForm({
       result = validateName(value, "Full Name");
     } else if (field === "instituteName") {
       result = validateRequired(value, "Institute Name");
+    } else if (field === "inviteCode") {
+      result = validateRequired(value, "Invite Code");
     } else if (field === "email") {
       result = validateEmail(value);
     } else if (field === "password") {
@@ -172,6 +176,38 @@ export default function AuthForm({
                   {errors.instituteName && (
                     <p className="text-red-400 text-sm mt-1">
                       {errors.instituteName}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {(selectedRole === USER_ROLES.TEACHER || selectedRole === USER_ROLES.INSTITUTE) && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2 flex items-center justify-between">
+                    <span>Invite Code</span>
+                    <span className="text-xs text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-full border border-border">Required for elevated access</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter your registration code"
+                    value={inviteCode}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setInviteCode(value);
+                      if (errors.inviteCode) {
+                        validateField("inviteCode", value);
+                      }
+                    }}
+                    onBlur={(e) => validateField("inviteCode", e.target.value)}
+                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+                      errors.inviteCode
+                        ? "border-red-500/50"
+                        : "border-border"
+                    }`}
+                  />
+                  {errors.inviteCode && (
+                    <p className="text-red-400 text-sm mt-1">
+                      {errors.inviteCode}
                     </p>
                   )}
                 </div>

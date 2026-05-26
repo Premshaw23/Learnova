@@ -64,7 +64,12 @@ export default function NotificationBell() {
     setError("");
 
     try {
-      const response = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`);
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
 
       if (!response.ok) {
         throw new Error("Unable to load notifications");
@@ -100,7 +105,7 @@ export default function NotificationBell() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid]);
+  }, [user]);
 
   const markNotificationsAsRead = useCallback(async () => {
     if (!user?.uid) {
@@ -108,10 +113,12 @@ export default function NotificationBell() {
     }
 
     try {
+      const token = await user.getIdToken();
       const response = await fetch("/api/notifications", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ userId: user.uid }),
       });
@@ -130,7 +137,7 @@ export default function NotificationBell() {
     } catch {
       setError("Unable to update notifications");
     }
-  }, [user?.uid]);
+  }, [user]);
 
   useEffect(() => {
     if (loading) {

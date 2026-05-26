@@ -150,26 +150,29 @@ export const PATCH = withErrorHandler(async (request) => {
       { $set: updatePayload },
       { upsert: true }
     );
-
-    // Sync profile updates to Firestore to prevent split-brain desync
-    if (settings.profile) {
-      initializeFirebase();
-      const firestoreProfileUpdate = {};
-      
-      // Map standard settings profile fields to Firestore fields
-      if (settings.profile.name !== undefined) firestoreProfileUpdate.displayName = settings.profile.name;
-      if (settings.profile.bio !== undefined) firestoreProfileUpdate.bio = settings.profile.bio;
-      if (settings.profile.phone !== undefined) firestoreProfileUpdate.phone = settings.profile.phone;
-      if (settings.profile.avatar !== undefined) firestoreProfileUpdate.avatar = settings.profile.avatar;
-      
-      if (Object.keys(firestoreProfileUpdate).length > 0) {
-        await admin.firestore().collection("users").doc(targetUserId).update(firestoreProfileUpdate);
-        console.log(`[Firestore Sync] Profile synced for user: ${targetUserId}`);
-      }
-    }
   } catch (error) {
     console.error("Settings sync error:", error);
     throw new AppError("Failed to update user settings database entry.", 500);
+  }
+
+  // Sync profile updates to Firestore to prevent split-brain desync
+  if (settings.profile) {
+    initializeFirebase();
+    const firestoreProfileUpdate = {};
+    
+    if (settings.profile.name !== undefined) firestoreProfileUpdate.displayName = settings.profile.name;
+    if (settings.profile.bio !== undefined) firestoreProfileUpdate.bio = settings.profile.bio;
+    if (settings.profile.phone !== undefined) firestoreProfileUpdate.phone = settings.profile.phone;
+    if (settings.profile.avatar !== undefined) firestoreProfileUpdate.avatar = settings.profile.avatar;
+    
+    if (Object.keys(firestoreProfileUpdate).length > 0) {
+      try {
+        await admin.firestore().collection("users").doc(targetUserId).update(firestoreProfileUpdate);
+        console.log(`[Firestore Sync] Profile synced for user: ${targetUserId}`);
+      } catch (syncError) {
+        console.error("Firestore profile sync failed:", syncError);
+      }
+    }
   }
 
   console.log(`[Audit Log] Settings updated successfully for target user: ${targetUserId} by operator: ${decodedToken.uid} (Role: ${isOperatorAdmin ? "admin" : "owner"})`);

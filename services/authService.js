@@ -20,6 +20,30 @@ import { ROLE_CONFIG } from "@/constants/userRoles";
 const FIREBASE_CONFIG_ERROR =
   "Firebase is not configured. Please add your Firebase environment variables to .env.local and restart the development server.";
 
+const syncCustomClaims = async ({ user, role, fullName }) => {
+  try {
+    const token = await user.getIdToken();
+    const response = await fetch("/api/auth/set-role", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        role,
+        fullName: fullName?.trim() || "",
+      }),
+    });
+
+    if (response.ok) {
+      // Force refresh token so the custom claims are present in the client-side session immediately
+      await user.getIdToken(true).catch(() => {});
+    }
+  } catch {
+    // Keep login non-blocking if claim migration fails.
+  }
+};
+
 /**
  * Authenticates a user using email and password credentials.
  * @param {string} email - The user's email address.
@@ -69,25 +93,10 @@ export const loginWithEmail = async (email, password, selectedRole) => {
 
       // Migrate existing users to have cryptographically signed custom
       // claims.  Fire-and-forget — the login succeeds regardless.
-      user.getIdToken().then((token) => {
-        fetch("/api/auth/set-role", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            role: userData.role,
-            fullName: userData.fullName || "",
-          }),
-        })
-        .then((res) => {
-          if (res.ok) {
-            // Force refresh token so the custom claims are present in the client-side session immediately
-            user.getIdToken(true).catch(() => {});
-          }
-        })
-        .catch(() => {});
+      void syncCustomClaims({
+        user,
+        role: userData.role,
+        fullName: userData.fullName,
       });
 
       return { success: true, userData };
@@ -247,25 +256,10 @@ export const loginWithGoogle = async (
 
       // Migrate existing users to have cryptographically signed custom
       // claims.  Fire-and-forget — the login succeeds regardless.
-      user.getIdToken().then((token) => {
-        fetch("/api/auth/set-role", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            role: userData.role,
-            fullName: userData.fullName || "",
-          }),
-        })
-        .then((res) => {
-          if (res.ok) {
-            // Force refresh token so the custom claims are present in the client-side session immediately
-            user.getIdToken(true).catch(() => {});
-          }
-        })
-        .catch(() => {});
+      void syncCustomClaims({
+        user,
+        role: userData.role,
+        fullName: userData.fullName,
       });
     }
 

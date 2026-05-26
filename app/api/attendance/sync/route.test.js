@@ -88,6 +88,7 @@ describe("attendance sync route", () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       syncedIds: [1],
+      rejectedIds: [],
     });
 
     expect(getUserProfile).toHaveBeenCalledWith("user-123");
@@ -150,10 +151,14 @@ describe("attendance sync route", () => {
   });
 
   test("normalizes confidence scores into the valid range", () => {
-    expect(normalizeConfidenceScore(-2)).toBe(0);
-    expect(normalizeConfidenceScore(0.42)).toBe(0.42);
+    // Values below the 60% minimum threshold are rejected
+    expect(normalizeConfidenceScore(-2)).toBeNull();
+    expect(normalizeConfidenceScore(0.42)).toBeNull();
+    expect(normalizeConfidenceScore(Number.NaN)).toBeNull();
+
+    // Valid scores above threshold
     expect(normalizeConfidenceScore(75)).toBe(0.75);
     expect(normalizeConfidenceScore(150)).toBe(1);
-    expect(normalizeConfidenceScore(Number.NaN)).toBe(0);
+    expect(normalizeConfidenceScore(0.85)).toBe(0.85);
   });
 });

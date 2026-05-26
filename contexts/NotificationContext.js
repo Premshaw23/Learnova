@@ -44,16 +44,20 @@ export function NotificationProvider({ children }) {
   };
 
   const clearNotifications = () => {
+    // Cancel any pending auto-remove timeouts so callbacks cannot fire
+    // after the notifications have already been cleared.
+    timersRef.current.forEach((timerId) => clearTimeout(timerId));
+    timersRef.current.clear();
     setNotifications([]);
   };
 
   const markAsRead = (id) => {
     setNotifications((prev) =>
-        prev.map((notification) =>
+      prev.map((notification) =>
         notification.id === id
-            ? { ...notification, read: true }
-            : notification
-        )
+          ? { ...notification, read: true }
+          : notification
+      )
     );
   };
 

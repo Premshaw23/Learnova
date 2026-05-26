@@ -1,23 +1,20 @@
-// 1. Enhanced layout.js with proper structured data for sitelinks
-
-import { NotificationProvider } from "@/contexts/NotificationContext";
-import { FirestoreProvider } from "@/contexts/FirestoreContext";
 import React from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ThemeProvider } from "@/components/ThemeProvider";
 import ClientLayout from "@/components/ClientLayout";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
 import ScrollToTop from "@/components/ScrollToTop";
-import BackToTop from "@/components/BackToTop";
+import BackToTop from "@/components/ui/BackToTop";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ScrollProgress from "@/components/ui/ScrollProgress";
+import AllProviders from "./providers/AllProviders";
+import { metadata } from "@/lib/seo/siteMetadata";
+import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 import NextTopLoader from "nextjs-toploader";
-
+import RouteAnnouncer from "@/components/RouteAnnouncer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,181 +28,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
   display: "swap",
 });
-
-export const metadata = {
-  title: {
-    default: "Learnova - Smart Student Engagement & Attendance Platform",
-    template: "%s | Learnova",
-  },
-  description: "AI-powered student engagement platform with smart attendance tracking, classroom management, and analytics. Trusted by 10,000+ schools worldwide for modern education technology.",
-  keywords: [
-    "student engagement",
-    "attendance platform",
-    "online learning",
-    "education",
-    "courses",
-    "e-learning",
-    "classroom management",
-    "school software",
-    "teacher tools",
-    "smart attendance",
-    "Learnova",
-  ],
-  authors: [{ name: "Learnova Team" }],
-  creator: "Prem Shaw",
-  publisher: "Learnova",
-  applicationName: "Learnova",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Learnova",
-    startupImage: ["/icons/apple-touch-icon.png"],
-  },
-  formatDetection: {
-    telephone: false,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-  alternates: {
-    canonical: "https://learnova-web.vercel.app",
-  },
-  openGraph: {
-    title: "Learnova - Smart Student Engagement & Attendance Platform",
-    description: "AI-powered education platform with smart attendance, student engagement tools, and comprehensive analytics. Join 10,000+ schools using Learnova.",
-    url: "https://learnova-web.vercel.app",
-    siteName: "Learnova",
-    images: [
-      {
-        url: "/og-image.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Learnova - Smart Education Platform",
-        type: "image/jpeg",
-      },
-    ],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Learnova - Smart Student Engagement Platform",
-    description: "Transform education with AI-powered tools. Smart attendance, engagement tracking, and analytics for modern classrooms.",
-    site: "@learnova",
-    creator: "@learnova",
-    images: ["/og-image.jpg"],
-  },
-  other: {
-    "google-site-verification": "3qjYnT7GW81-zwJBwv3wJABvxbiSOgDyAlTCKxh9nEs",
-  },
-};
-
-const jsonLd = [
-  {
-    "@context": "https://schema.org",
-    "@type": "website",
-    name: "Learnova",
-    alternateName: "Learnova Education Platform",
-    url: "https://learnova-web.vercel.app",
-    description:
-      "AI-powered student engagement and smart attendance platform",
-    inLanguage: "en-US",
-    mainEntity: {
-      "@type": "Organization",
-      name: "Learnova",
-      url: "https://learnova-web.vercel.app",
-      logo: "https://learnova-web.vercel.app/logo.png",
-      sameAs: [
-        "https://twitter.com/learnova",
-        "https://facebook.com/learnova",
-        "https://linkedin.com/company/learnova",
-        "https://youtube.com/@learnova",
-      ],
-    },
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Learnova",
-    description:
-      "Smart student engagement and attendance platform for modern education",
-    url: "https://learnova-web.vercel.app",
-    applicationCategory: "EducationalApplication",
-    operatingSystem: "Web Browser",
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
-      description: "Free trial available",
-    },
-    featureList: [
-      "Smart Attendance Tracking",
-      "Student Engagement Analytics",
-      "Classroom Management Tools",
-      "Teacher Dashboard",
-      "Real-time Reporting",
-    ],
-  },
-  // Site Navigation Structure for Sitelinks
-  {
-    "@context": "https://schema.org",
-    "@type": "SiteNavigationElement",
-    name: "Main Navigation",
-    url: "https://learnova-web.vercel.app",
-    hasPart: [
-      {
-        "@type": "SiteNavigationElement",
-        name: "Sign up",
-        description:
-          "Discover smart attendance tracking, student engagement tools, and classroom management features",
-        url: "https://learnova-web.vercel.app/auth",
-      },
-      {
-        "@type": "SiteNavigationElement",
-        name: "Login",
-        description:
-          "Simple, transparent pricing plans for schools of all sizes. Start free, upgrade anytime",
-        url: "https://learnova-web.vercel.app/auth",
-      },
-      {
-        "@type": "SiteNavigationElement",
-        name: "Getting Started",
-        description:
-          "Quick setup guide for teachers and administrators. Get started in under 5 minutes",
-        url: "https://learnova-web.vercel.app/",
-      },
-      {
-        "@type": "SiteNavigationElement",
-        name: "Activity Centre",
-        description:
-          "Documentation, tutorials, and support resources for Learnova users",
-        url: "https://learnova-web.vercel.app/activity",
-      },
-      {
-        "@type": "SiteNavigationElement",
-        name: "About Learnova",
-        description:
-          "Learn about our mission to transform education through technology",
-        url: "https://learnova-web.vercel.app/about",
-      },
-      {
-        "@type": "SiteNavigationElement",
-        name: "Contact",
-        description:
-          "Real success stories from schools using Learnova to improve engagement",
-        url: "https://learnova-web.vercel.app/contact",
-      },
-    ],
-  },
-];
 
 export const viewport = {
   width: "device-width",
@@ -232,7 +54,7 @@ export default function RootLayout({ children }) {
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }}
         />
       </head>
       <body
@@ -247,7 +69,7 @@ export default function RootLayout({ children }) {
         </a>
           {/* Cursor glow removed per UX preference */}
           
-        <ThemeProvider>
+        <AllProviders>
           <ScrollProgress />
           <NextTopLoader
             color="#4f46e5"
@@ -260,33 +82,28 @@ export default function RootLayout({ children }) {
             speed={200}
             shadow="0 0 10px #4f46e5,0 0 5px #4f46e5"
           />
-          <AuthProvider>
-            <FirestoreProvider>
-              <NotificationProvider>
-                <Suspense fallback={null}>
-                  <main id="main-content" className="outline-none" tabIndex="-1">
-                    <PageTransition>{children}</PageTransition>
-                  </main>
+          <Suspense fallback={null}>
+            <main id="main-content" className="outline-none" tabIndex="-1">
+              <PageTransition>{children}</PageTransition>
+            </main>
 
-                  <ScrollToTop />
+            <ScrollToTop />
 
-                  <Footer />
-                  <ClientLayout />
-                  <BackToTop />
+            <Footer />
+            <ClientLayout />
+            <BackToTop />
+            <RouteAnnouncer />
 
-                  <Toaster
-                    position="top-right"
-                    toastOptions={{
-                      duration: 4000,
-                      style: { fontWeight: 600 },
-                    }}
-                  />
-                  <OfflineIndicator />
-                </Suspense>
-              </NotificationProvider>
-            </FirestoreProvider>
-          </AuthProvider>
-        </ThemeProvider>
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: { fontWeight: 600 },
+              }}
+            />
+            <OfflineIndicator />
+          </Suspense>
+        </AllProviders>
       </body>
     </html>
   );

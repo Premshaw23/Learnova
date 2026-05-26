@@ -43,6 +43,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
       headers: {
         get: (name) => headers[name.toLowerCase()] || null,
       },
+      json: jest.fn().mockResolvedValue(bodyData),
       text: jest.fn().mockResolvedValue(rawText),
     };
   };

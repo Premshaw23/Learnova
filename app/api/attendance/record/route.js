@@ -3,6 +3,7 @@ import { withErrorHandler, authenticateRequest, parseJSON } from "@/lib/error-ha
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { awardXp } from "@/lib/gamification-service";
+import { getLocalDateKey } from "@/lib/dateUtils";
 
 export const POST = withErrorHandler(async (request) => {
   // 1. Secure token validation ensures only logged-in users can ping this route
@@ -10,7 +11,7 @@ export const POST = withErrorHandler(async (request) => {
 
   const body = await parseJSON(request, 1024);
   const { userId, studentName, email, confidenceScore, date } = body;
-  const normalizedDate = (date || new Date().toISOString().slice(0, 10)).toString();
+  const normalizedDate = (date || getLocalDateKey()).toString();
 
   // 2. Ensure they are only submitting attendance for their own UID!
   if (decodedToken.uid !== userId) {
@@ -34,7 +35,7 @@ export const POST = withErrorHandler(async (request) => {
   const normalizedConfidence = parsedConfidence / 100;
 
   // 4. Write attendance to Firestore (single source of truth).
-  // Use a deterministic doc id to prevent duplicates and match client duplicate checks.
+  // Use a deterministic doc id and a transaction to prevent duplicates and match client duplicate checks.
   initFirebaseAdmin();
   const db = getFirestore();
   const userProfile = await getUserProfile(decodedToken.uid);
@@ -42,10 +43,18 @@ export const POST = withErrorHandler(async (request) => {
   const resolvedName = userProfile?.fullName || userProfile?.displayName || studentName;
   const resolvedEmail = userProfile?.email || email;
 
-  await db
-    .collection("attendance_records")
-    .doc(`${userId}_${normalizedDate}`)
-    .set(
+  const docRef = db.collection("attendance_records").doc(`${userId}_${normalizedDate}`);
+
+  let alreadyRecorded = false;
+  await db.runTransaction(async (transaction) => {
+    const existingDoc = await transaction.get(docRef);
+    if (existingDoc.exists) {
+      alreadyRecorded = true;
+      return;
+    }
+
+    transaction.set(
+      docRef,
       {
         userId,
         studentName: resolvedName,
@@ -59,14 +68,19 @@ export const POST = withErrorHandler(async (request) => {
       },
       { merge: true },
     );
+  });
+
+  if (alreadyRecorded) {
+    return jsonSuccess({ alreadyRecorded: true }, 200);
+  }
 
   // Gamification is a side effect — failures must not block attendance recording
   try {
     await awardXp(userId, "attendance_marked", {
       attendanceHour: new Date().getHours(),
     });
-  } catch (_) {
-    // Silently swallow — attendance record is already saved
+  } catch (error) {
+    console.error("Failed to award XP after attendance:", error);
   }
 
   return jsonSuccess({ alreadyRecorded: false }, 201);

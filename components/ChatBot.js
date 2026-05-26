@@ -358,17 +358,20 @@ const markdownComponents = {
   h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-1 text-purple-400">{children}</h1>,
   h2: ({ children }) => <h2 className="text-sm font-bold mt-2.5 mb-1 text-purple-400">{children}</h2>,
   h3: ({ children }) => <h3 className="text-xs font-bold mt-2 mb-0.5 text-purple-400">{children}</h3>,
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-400 hover:underline inline-flex items-center gap-0.5"
-    >
-      {children}
-      <ExternalLink size={12} className="inline shrink-0" />
-    </a>
-  ),
+  a: ({ href, children }) => {
+    const isInternal = href && href.startsWith("/");
+    return (
+      <a
+        href={href}
+        target={isInternal ? "_self" : "_blank"}
+        rel={isInternal ? undefined : "noopener noreferrer"}
+        className="text-blue-400 hover:underline inline-flex items-center gap-0.5"
+      >
+        {children}
+        {!isInternal && <ExternalLink size={12} className="inline shrink-0" />}
+      </a>
+    );
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -391,10 +394,26 @@ export default function LearnovaChatbot() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState(() => [INITIAL_MESSAGE]);
+  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentCategory, setCurrentCategory] = useState("general");
+  const [isScrolling, setIsScrolling] = useState(false);
+
+  useEffect(() => {
+    let scrollTimeout;
+    const handleScroll = () => {
+      if (typeof window !== "undefined" && window.innerWidth >= 768) return;
+      setIsScrolling(true);
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => setIsScrolling(false), 500);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
 
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
@@ -482,7 +501,7 @@ export default function LearnovaChatbot() {
       let botText = "";
       try {
         if (!user) {
-          botText = "**Please sign in** to use the AI chatbot.";
+          botText = "[**Please sign in**](/auth) to use the AI chatbot.";
         } else {
           const idToken = await user.getIdToken();
           botText = await generateBotResponse(text, currentCategory, idToken, [...messages, userMsg]);
@@ -514,23 +533,34 @@ export default function LearnovaChatbot() {
     }
   };
 
-  const t = {
-    bg: isDarkMode 
-      ? "bg-gray-950/90 backdrop-blur-xl text-white" 
+  // ---------------------------------------------------------------------------
+  // Theme tokens - Enhanced for rich glassmorphism & premium UI spacing
+  // ---------------------------------------------------------------------------
+  const themeTokens = {
+    bg: isDarkMode
+      ? "bg-gray-950/90 backdrop-blur-xl text-white"
       : "bg-white/95 backdrop-blur-xl text-gray-900",
-    header: "bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-700 border-b border-white/10 shadow-lg shadow-purple-950/20",
+    header:
+      "bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-700 border-b border-white/10 shadow-lg shadow-purple-950/20",
     border: isDarkMode ? "border-white/10" : "border-gray-200/80",
     botMsg: isDarkMode
       ? "bg-white/[0.04] text-gray-200 border border-white/5 shadow-[0_4px_24px_rgba(139,92,246,0.15)]"
       : "bg-gray-900/[0.03] text-gray-800 border border-black/5 shadow-[0_4px_20px_rgba(139,92,246,0.06)]",
-    userMsg: "bg-gradient-to-r from-purple-600 to-indigo-600 shadow-[0_4px_18px_rgba(139,92,246,0.25)] text-white border border-purple-500/10",
-    botAvatar: isDarkMode ? "bg-purple-800/80 text-purple-300 border border-purple-500/20" : "bg-purple-100 text-purple-600 border border-purple-200",
-    userAvatar: isDarkMode ? "bg-indigo-800/80 text-indigo-300 border border-indigo-500/20" : "bg-indigo-100 text-indigo-600 border border-indigo-200",
+    userMsg:
+      "bg-gradient-to-r from-purple-600 to-indigo-600 shadow-[0_4px_18px_rgba(139,92,246,0.25)] text-white border border-purple-500/10",
+    botAvatar: isDarkMode
+      ? "bg-purple-800/80 text-purple-300 border border-purple-500/20"
+      : "bg-purple-100 text-purple-600 border border-purple-200",
+    userAvatar: isDarkMode
+      ? "bg-indigo-800/80 text-indigo-300 border border-indigo-500/20"
+      : "bg-indigo-100 text-indigo-600 border border-indigo-200",
     input: isDarkMode
       ? "bg-white/[0.03] border-white/10 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
       : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-450 focus:ring-2 focus:ring-purple-400 focus:border-transparent",
     catBtn: isDarkMode ? "hover:bg-white/[0.05] text-gray-300" : "hover:bg-gray-100 text-gray-600",
-    catBtnActive: isDarkMode ? "bg-purple-800/60 text-purple-200 border border-purple-500/30" : "bg-purple-100 text-purple-700 border border-purple-200",
+    catBtnActive: isDarkMode
+      ? "bg-purple-800/60 text-purple-200 border border-purple-500/30"
+      : "bg-purple-100 text-purple-700 border border-purple-200",
     suggestion: isDarkMode
       ? "bg-purple-950/40 text-purple-300 hover:bg-purple-900/40 border border-purple-800/40 shadow-sm"
       : "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 shadow-sm",
@@ -543,7 +573,7 @@ export default function LearnovaChatbot() {
   // ---------------------------------------------------------------------------
   if (!isOpen) {
     return (
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className={`fixed z-50 transition-all duration-300 right-4 md:right-6 ${isScrolling ? 'bottom-16 opacity-40 scale-90 md:bottom-6 md:opacity-100 md:scale-100' : 'bottom-24 md:bottom-6 opacity-100 scale-100'}`}>
         <button
           onClick={() => setIsOpen(true)}
           className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300 group"
@@ -567,13 +597,11 @@ export default function LearnovaChatbot() {
   return (
     <div
       className={`fixed z-50 flex flex-col ${t.bg} shadow-2xl transition-all duration-300 border ${t.border} ${
-        isMinimized 
-          ? "bottom-6 right-6 w-72 h-16 overflow-hidden rounded-xl" 
-          : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
+        isMinimized ? "bottom-24 md:bottom-6 right-4 md:right-6 w-72 h-16 overflow-hidden rounded-xl" : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
       }`}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className={`${t.header} text-white p-4 rounded-t-xl flex items-center justify-between shrink-0`}>
+      <div className={`${themeTokens.header} text-white p-4 rounded-t-xl flex items-center justify-between shrink-0`}>
         <div className="flex items-center space-x-3">
           <div className="relative">
             <Bot className="text-yellow-300" size={22} />
@@ -588,13 +616,13 @@ export default function LearnovaChatbot() {
         </div>
 
         <div className="flex items-center space-x-1">
-          <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Clear chat">
+          <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Clear chat" aria-label="Clear chat">
             <RefreshCw size={16} />
           </button>
-          <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme">
+          <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme" aria-label="Toggle theme">
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title={isMinimized ? "Expand" : "Minimize"}>
+          <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title={isMinimized ? "Expand" : "Minimize"} aria-label={isMinimized ? "Expand chat" : "Minimize chat"}>
             {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
           </button>
           <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-2 sm:p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Close" aria-label="Close chat">
@@ -607,7 +635,7 @@ export default function LearnovaChatbot() {
       {!isMinimized && (
         <>
           {/* ── Category Tabs ────────────────────────────────────────────── */}
-          <div className={`p-2 border-b ${t.border} shrink-0`}>
+          <div className={`p-2 border-b ${themeTokens.border} shrink-0`}>
             <div className="flex space-x-1 overflow-x-auto scrollbar-none">
               {categories.map((cat) => {
                 const IconComponent = cat.icon;
@@ -616,7 +644,7 @@ export default function LearnovaChatbot() {
                     key={cat.id}
                     onClick={() => setCurrentCategory(cat.id)}
                     className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${
-                      currentCategory === cat.id ? t.catBtnActive : t.catBtn
+                      currentCategory === cat.id ? themeTokens.catBtnActive : themeTokens.catBtn
                     }`}
                   >
                     <IconComponent size={14} />
@@ -635,10 +663,10 @@ export default function LearnovaChatbot() {
           >
             {messages.map((msg) => (
               <div key={msg.id} className={`flex items-start space-x-2.5 ${msg.isBot ? "" : "flex-row-reverse space-x-reverse"}`}>
-                <div className={`p-2 rounded-xl shrink-0 ${msg.isBot ? t.botAvatar : t.userAvatar}`}>
+                <div className={`p-2 rounded-xl shrink-0 ${msg.isBot ? themeTokens.botAvatar : themeTokens.userAvatar}`}>
                   {msg.isBot ? <Bot size={16} /> : <User size={16} />}
                 </div>
-                <div className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm transition-all duration-200 ${msg.isBot ? t.botMsg : t.userMsg}`}>
+                <div className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm transition-all duration-200 ${msg.isBot ? themeTokens.botMsg : themeTokens.userMsg}`}>
                   {msg.isBot ? (
                     <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                   ) : (
@@ -651,14 +679,14 @@ export default function LearnovaChatbot() {
             {/* Loading / Typing Animation Indicator */}
             {isLoading && (
               <div className="flex items-start space-x-2.5">
-                <div className={`p-2 rounded-xl shrink-0 ${t.botAvatar}`}>
+                <div className={`p-2 rounded-xl shrink-0 ${themeTokens.botAvatar}`}>
                   <Bot size={16} />
                 </div>
-                <div className={`rounded-2xl px-4 py-3 shadow-sm ${t.loading}`}>
+                <div className={`rounded-2xl px-4 py-3 shadow-sm ${themeTokens.loading}`}>
                   <div className="flex space-x-1.5 items-center h-4">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                     <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                     <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
                   </div>
                 </div>
               </div>
@@ -666,12 +694,12 @@ export default function LearnovaChatbot() {
           </div>
 
           {/* ── Context Suggestions Layer ─────────────────────────────────── */}
-          <div className={`px-4 py-2 bg-transparent overflow-x-auto whitespace-nowrap scrollbar-none flex gap-2 border-t ${t.border} shrink-0`}>
+          <div className={`px-4 py-2 bg-transparent overflow-x-auto whitespace-nowrap scrollbar-none flex gap-2 border-t ${themeTokens.border} shrink-0`}>
             {suggestedQuestions[currentCategory]?.map((q, idx) => (
               <button
                 key={idx}
                 onClick={() => handleSendMessage(q)}
-                className={`text-xs px-3 py-1.5 rounded-full transition-all duration-150 border active:scale-95 text-left truncate max-w-xs cursor-pointer ${t.suggestion}`}
+                className={`text-xs px-3 py-1.5 rounded-full transition-all duration-150 border active:scale-95 text-left truncate max-w-xs cursor-pointer ${themeTokens.suggestion}`}
               >
                 {q}
               </button>
@@ -679,7 +707,7 @@ export default function LearnovaChatbot() {
           </div>
 
           {/* ── Input Interaction Area ───────────────────────────────────── */}
-          <div className={`p-3 border-t ${t.border} shrink-0`}>
+          <div className={`p-3 border-t ${themeTokens.border} shrink-0`}>
             <div className="flex items-end space-x-2">
               <div className="relative flex-1">
                 <textarea
@@ -689,7 +717,7 @@ export default function LearnovaChatbot() {
                   onKeyDown={handleKeyDown}
                   placeholder={`Ask Nova about ${currentCategory}...`}
                   rows={1}
-                  className={`w-full max-h-32 pr-10 pl-3 py-2.5 rounded-xl text-sm font-normal resize-none overflow-y-auto border outline-none transition-all duration-200 focus:outline-none ${t.input}`}
+                  className={`w-full max-h-32 pr-10 pl-3 py-2.5 rounded-xl text-sm font-normal resize-none overflow-y-auto border outline-none transition-all duration-200 focus:outline-none ${themeTokens.input}`}
                   style={{ minHeight: "40px" }}
                 />
               </div>

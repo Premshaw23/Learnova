@@ -6,6 +6,7 @@ import { ValidationError } from "@/lib/errors";
 import { z } from "zod";
 
 const MAX_ITEMS = 500;
+const MAX_AGENDA_DAYS = 60;
 
 const taskSchema = z.object({
   id: z.union([z.string(), z.number()]),
@@ -28,6 +29,9 @@ const postSchema = z.object({
   agendaItems: z.record(
     z.string(),
     z.array(agendaItemSchema).max(MAX_ITEMS, `Agenda items per day cannot exceed ${MAX_ITEMS}`)
+  ).refine(
+    (record) => Object.keys(record).length <= MAX_AGENDA_DAYS,
+    { message: `Cannot sync more than ${MAX_AGENDA_DAYS} days of agenda items` }
   ),
 });
 

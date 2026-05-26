@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
-import { requireRole } from "@/lib/rbac";
 import { ValidationError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
+import { verifyPasscode } from "@/utils/passcodeUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +80,7 @@ export const POST = withErrorHandler(async (request) => {
     );
   }
 
-  if (settings.passcode === passcode) {
+  if (verifyPasscode(passcode, settings.passcode)) {
     return NextResponse.json({ valid: true });
   }
 

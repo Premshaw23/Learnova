@@ -16,6 +16,9 @@ import {
   CheckCircle2,
   Info
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebaseConfig";
+import { doc, updateDoc } from "firebase/firestore";
 
 export default function StreaksPage() {
   const [streak, setStreak] = useState(0);
@@ -23,21 +26,30 @@ export default function StreaksPage() {
   const [history, setHistory] = useState([]);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMsg, setNotificationMsg] = useState("");
+  const { user, userProfile } = useAuth();
 
-  // Load and initialize data from localStorage
+  // Load and initialize data from Firestore or localStorage
   const loadStreakData = () => {
     if (typeof window === "undefined") return;
 
     try {
-      const storedStreak = parseInt(localStorage.getItem("learnova_site_streak") || "0", 10);
-      const storedLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
+      let storedStreak = 0;
+      let storedLastVisit = "";
       let storedHistory = [];
-      
-      try {
-        const historyStr = localStorage.getItem("learnova_site_visit_history");
-        storedHistory = historyStr ? JSON.parse(historyStr) : [];
-      } catch (e) {
-        storedHistory = [];
+
+      if (userProfile) {
+        storedStreak = userProfile.siteStreak || 0;
+        storedLastVisit = userProfile.siteLastVisit || "";
+        storedHistory = userProfile.siteVisitHistory || [];
+      } else {
+        storedStreak = parseInt(localStorage.getItem("learnova_site_streak") || "0", 10);
+        storedLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
+        try {
+          const historyStr = localStorage.getItem("learnova_site_visit_history");
+          storedHistory = historyStr ? JSON.parse(historyStr) : [];
+        } catch (e) {
+          storedHistory = [];
+        }
       }
 
       setStreak(storedStreak);
@@ -50,6 +62,9 @@ export default function StreaksPage() {
 
   useEffect(() => {
     loadStreakData();
+  }, [userProfile]);
+
+  useEffect(() => {
     document.title = "Consistency Streaks | Learnova";
   }, []);
 
@@ -85,7 +100,7 @@ export default function StreaksPage() {
   };
 
   // Simulator actions for user testing and demonstration
-  const handleSimulateConsecutive = () => {
+  const handleSimulateConsecutive = async () => {
     if (typeof window === "undefined") return;
 
     try {
@@ -122,6 +137,15 @@ export default function StreaksPage() {
       setStreak(newStreak);
       setLastVisit(todayDateStr);
       setHistory(newHistory);
+
+      if (user?.uid) {
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, {
+          siteStreak: newStreak,
+          siteLastVisit: todayDateStr,
+          siteVisitHistory: newHistory,
+        });
+      }
       
       triggerToast(`🔥 Streak incremented to ${newStreak} days!`);
     } catch (e) {
@@ -129,7 +153,7 @@ export default function StreaksPage() {
     }
   };
 
-  const handleSimulateFullWeek = () => {
+  const handleSimulateFullWeek = async () => {
     if (typeof window === "undefined") return;
 
     try {
@@ -156,13 +180,22 @@ export default function StreaksPage() {
       setLastVisit(todayDateStr);
       setHistory(historyList);
 
+      if (user?.uid) {
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, {
+          siteStreak: 7,
+          siteLastVisit: todayDateStr,
+          siteVisitHistory: historyList,
+        });
+      }
+
       triggerToast("🎯 Simulated a full 7-day streak history!");
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleResetStreak = () => {
+  const handleResetStreak = async () => {
     if (typeof window === "undefined") return;
 
     try {
@@ -178,6 +211,15 @@ export default function StreaksPage() {
       setStreak(1);
       setLastVisit(todayDateStr);
       setHistory([todayDateStr]);
+
+      if (user?.uid) {
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, {
+          siteStreak: 1,
+          siteLastVisit: todayDateStr,
+          siteVisitHistory: [todayDateStr],
+        });
+      }
 
       triggerToast("🔄 Streak reset to 1 day.");
     } catch (e) {

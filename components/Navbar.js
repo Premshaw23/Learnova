@@ -10,7 +10,6 @@ import { getUserDisplayName, getUserInitials } from "@/lib/avatar";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTheme } from "next-themes";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 
 import {
@@ -29,18 +28,9 @@ import {
   Sun,
   Moon,
   Keyboard,
-  Languages,
   Search,
   MessageSquareWarning,
 } from "lucide-react";
-
-const languageMap = {
-  English: "en",
-  Español: "es",
-  Français: "fr",
-  Deutsch: "de",
-  "हिन्दी": "hi",
-};
 
 // ── Animation Variants ──────────────────────────────────────────────────────
 
@@ -94,19 +84,17 @@ function NavLink({ href, label, isActive }) {
         />
       )}
       <span className="absolute inset-0 rounded-xl bg-zinc-200/0 group-hover:bg-zinc-200/60 dark:group-hover:bg-white/5 transition-colors duration-300 ease-out" />
-      <span className={`relative z-10 ${
-        isActive
+      <span className={`relative z-10 ${isActive
           ? "text-blue-600 dark:text-blue-400"
           : "text-zinc-700 dark:text-zinc-300 group-hover:text-blue-600 dark:group-hover:text-blue-300"
-      }`}>
+        }`}>
         {label}
       </span>
       <span
-        className={`absolute bottom-1 left-3 right-3 h-[3px] origin-center rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-violet-500 shadow-sm shadow-blue-500/30 transition-all duration-300 ease-out ${
-          isActive
+        className={`absolute bottom-1 left-3 right-3 h-[3px] origin-center rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-violet-500 shadow-sm shadow-blue-500/30 transition-all duration-300 ease-out ${isActive
             ? "scale-x-100 opacity-100"
             : "scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-90"
-        }`}
+          }`}
       />
     </Link>
   );
@@ -118,18 +106,14 @@ export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isLangOpen, setIsLangOpen] = useState(false);
-  const [currentLang, setCurrentLang] = useState("English");
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const { i18n } = useTranslation();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { user, userProfile, signOut, isAuthenticated, loading } = useAuthContext();
 
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
-  const langRef = useRef(null);
   const pathname = usePathname();
   const { theme, setTheme, resolvedTheme } = useTheme();
 
@@ -150,9 +134,6 @@ export function Navbar() {
     if (notifRef.current && !notifRef.current.contains(e.target)) {
       setIsNotificationOpen(false);
     }
-    if (langRef.current && !langRef.current.contains(e.target)) {
-      setIsLangOpen(false);
-    }
   }, []);
 
   useEffect(() => {
@@ -166,7 +147,6 @@ export function Navbar() {
         setIsDropdownOpen(false);
         setIsNotificationOpen(false);
         setIsMenuOpen(false);
-        setIsLangOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -181,7 +161,6 @@ export function Navbar() {
   useEffect(() => {
     setIsMenuOpen(false);
     setIsDropdownOpen(false);
-    setIsLangOpen(false);
   }, [pathname]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -192,6 +171,7 @@ export function Navbar() {
     await signOut();
   };
 
+<<<<<<< HEAD
   const handleLangSelect = (lang) => {
     setCurrentLang(lang);
     setIsLangOpen(false);
@@ -201,6 +181,21 @@ export function Navbar() {
 
   const displayName = getUserDisplayName({ user, userProfile });
   const initials = getUserInitials(displayName);
+=======
+  const getUserInitials = (name) => {
+    if (!name) return "U";
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  };
+
+  const getUserDisplayName = () => {
+    if (userProfile?.fullName) return userProfile.fullName;
+    if (user?.displayName) return user.displayName;
+    if (user?.email) return user.email.split("@")[0];
+    return "User";
+  };
+
+  const getUserPhoto = () => user?.photoURL || null;
+>>>>>>> upstream/master
 
   const getUserRole = () => {
     if (!userProfile?.role) return "User";
@@ -209,29 +204,40 @@ export function Navbar() {
 
   const getDashboardLink = () => {
     switch (userProfile?.role) {
-      case "student":   return "/student/dashboard";
-      case "teacher":   return "/teacher/dashboard";
+      case "student": return "/student/dashboard";
+      case "teacher": return "/teacher/dashboard";
       case "institute": return "/institute/dashboard";
-      case "admin":     return "/admin/dashboard";
-      default:          return "/profile";
+      case "admin": return "/admin/dashboard";
+      default: return "/profile";
     }
   };
 
   const navigationItems = [
-    { href: "/",            label: "Home",       icon: Home },
-    { href: "/productivity",label: "Focus",      icon: Sparkles },
-    { href: "/activity",    label: "Activities", icon: Activity },
-    { href: "/complaints",  label: "Complaints", icon: MessageSquareWarning },
-    { href: "/contact",     label: "Contact",    icon: Mail },
+    { href: "/", label: "Home", icon: Home },
+    { href: "/productivity", label: "Focus", icon: Sparkles },
+    { href: "/activity", label: "Activities", icon: Activity },
+    { href: "/complaints", label: "Complaints", icon: MessageSquareWarning },
+    { href: "/contact", label: "Contact", icon: Mail },
   ];
 
   const userMenuItems = [
-    { href: "/profile",       icon: User,     label: "Profile",   key: "profile" },
-    { href: getDashboardLink(),icon: Activity, label: "Dashboard", key: "dashboard" },
-    { href: "/settings",      icon: Settings, label: "Settings",  key: "settings" },
+    { href: "/profile", icon: User, label: "Profile", key: "profile" },
+    { href: getDashboardLink(), icon: Activity, label: "Dashboard", key: "dashboard" },
+    { href: "/settings", icon: Settings, label: "Settings", key: "settings" },
   ].filter((item) => !(item.key === "dashboard" && item.href === "/profile"));
+<<<<<<< HEAD
 
   const languagesList = ["English", "Español", "Français", "Deutsch", "हिन्दी"];
+=======
+  const handleImageError = (e) => {
+    const img = e.target;
+    const fallback = img.parentElement?.querySelector(".fallback-avatar");
+    if (img && fallback) {
+      img.style.display = "none";
+      fallback.style.display = "flex";
+    }
+  };
+>>>>>>> upstream/master
 
   // ── Shared style helpers ────────────────────────────────────────────────────
 
@@ -243,7 +249,7 @@ export function Navbar() {
       : scrolled ? "rgba(255,255,255,0.94)" : "rgba(255,255,255,0.72)",
     borderBottom: isDark
       ? scrolled ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.05)"
-      : scrolled ? "1px solid rgba(0,0,0,0.07)"       : "1px solid rgba(0,0,0,0.04)",
+      : scrolled ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(0,0,0,0.04)",
     boxShadow: scrolled
       ? isDark
         ? "0 4px 32px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) inset"
@@ -346,52 +352,6 @@ export function Navbar() {
                 </kbd>
               </motion.button>
 
-              {/* Language Selector */}
-              <div className="relative" ref={langRef}>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setIsLangOpen(!isLangOpen)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100/80 dark:hover:bg-white/8 transition-colors border border-zinc-200/40 dark:border-white/8"
-                  aria-label="Select language"
-                >
-                  <Languages className="h-4 w-4 text-zinc-400" />
-                  <span className="hidden md:inline text-xs">{currentLang}</span>
-                  <motion.span
-                    animate={{ rotate: isLangOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex"
-                  >
-                    <ChevronDown className="h-3 w-3 opacity-50" />
-                  </motion.span>
-                </motion.button>
-
-                <AnimatePresence>
-                  {isLangOpen && (
-                    <motion.div
-                      variants={dropdownVariants}
-                      initial="hidden" animate="visible" exit="exit"
-                      className={`${dropdownPanel} w-36 py-1.5`}
-                      style={glassPanelStyle}
-                    >
-                      {languagesList.map((lang) => (
-                        <button
-                          key={lang}
-                          onClick={() => handleLangSelect(lang)}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                            currentLang === lang
-                              ? "text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/60 dark:bg-blue-600/10"
-                              : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5"
-                          }`}
-                        >
-                          {lang}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
               {/* Theme Toggle */}
               {mounted && (
                 <motion.button
@@ -426,16 +386,34 @@ export function Navbar() {
                       className={iconBtn}
                       aria-label="Notifications"
                     >
-                      <Bell className="h-[18px] w-[18px]" />
-                      <AnimatePresence>
-                        {unreadCount > 0 && (
-                          <motion.span
-                            initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                            className="absolute top-1.5 right-1.5 bg-red-500 rounded-full h-2 w-2 ring-2 ring-white dark:ring-zinc-950"
-                          />
-                        )}
-                      </AnimatePresence>
+
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && <span className="absolute top-2 right-2 bg-red-500 rounded-full h-2 w-2" />}
                     </motion.button>
+
+                    {isNotificationOpen && (
+                      <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-[80] overflow-hidden">
+                        <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50">
+                          <h3 className="text-zinc-900 dark:text-zinc-100 font-bold text-sm">Notifications</h3>
+                          {unreadCount > 0 && (
+                            <button onClick={markAllAsRead} aria-label="Mark all notifications as read" className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                              Mark all as read
+                            </button>
+                          )}
+                        </div>
+                        <div className="max-h-60 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-900">
+                          {notifications.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-zinc-400">No new notices</div>
+                          ) : (
+                            notifications.map((n) => (
+                              <div key={n.id} onClick={() => markAsRead(n.id)} className={`p-3 text-left cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/40 ${!n.read ? "bg-blue-50/30" : ""}`}>
+                                <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{n.message}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <AnimatePresence>
                       {isNotificationOpen && (
@@ -471,11 +449,13 @@ export function Navbar() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+
                   </div>
 
                   {/* Profile Dropdown */}
                   <div className="relative" ref={dropdownRef}>
                     <motion.button
+                      type="button"
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96 }}
                       onClick={() => {
@@ -485,7 +465,10 @@ export function Navbar() {
                       className="flex items-center gap-2 p-1.5 pl-2 pr-3 rounded-xl hover:bg-zinc-100/80 dark:hover:bg-white/6 border border-transparent hover:border-zinc-200/50 dark:hover:border-white/8 transition-all duration-200"
                       aria-haspopup="true"
                       aria-expanded={isDropdownOpen}
+                      aria-controls="profile-menu"
+                      aria-label="Toggle profile menu"
                     >
+<<<<<<< HEAD
                       <UserAvatar
                         user={user}
                         userProfile={userProfile}
@@ -495,6 +478,40 @@ export function Navbar() {
                         initials={initials}
                         className="ring-blue-500/30"
                       />
+=======
+                      <div className="relative w-7 h-7 shrink-0">
+                        {getUserPhoto() ? (
+                          <Image
+                            src={getUserPhoto()} alt={`${getUserDisplayName()} profile photo`}
+                            width={28} height={28}
+                            className="rounded-full object-cover ring-2 ring-blue-500/30"
+                            onError={handleImageError}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
+                            {getUserInitials(getUserDisplayName())}
+                          </div>
+                        )}
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-emerald-400 rounded-full ring-2 ring-white dark:ring-zinc-950" />
+                      </div>
+
+                      <ChevronDown className="h-4 w-4 text-zinc-400" />
+
+                    {isDropdownOpen && (
+                      <div className="absolute right-0 mt-3 w-48 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-[80]">
+                        {userMenuItems.map((item) => (
+                          <Link key={item.key} href={item.href} onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                            <item.icon className="h-4 w-4 mr-2.5 text-zinc-400" /> {item.label}
+                          </Link>
+                        ))}
+                        <hr className="my-1 border-zinc-100 dark:border-zinc-900" />
+                        <button onClick={handleLogout} aria-label="Logout" className="w-full flex items-center px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
+                          <LogOut className="h-4 w-4 mr-2.5" /> Logout
+                        </button>
+                      </div>
+                    )}
+
+>>>>>>> upstream/master
                       <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200 hidden md:inline max-w-[80px] truncate">
                         {displayName.split(" ")[0]}
                       </span>
@@ -510,6 +527,8 @@ export function Navbar() {
                     <AnimatePresence>
                       {isDropdownOpen && (
                         <motion.div
+                          id="profile-menu"
+                          role="menu"
                           variants={dropdownVariants}
                           initial="hidden" animate="visible" exit="exit"
                           className={`${dropdownPanel} w-52 py-1.5`}
@@ -523,6 +542,7 @@ export function Navbar() {
                             <Link
                               key={item.key}
                               href={item.href}
+                              role="menuitem"
                               onClick={() => setIsDropdownOpen(false)}
                               className="flex items-center px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors gap-2.5"
                             >
@@ -532,6 +552,8 @@ export function Navbar() {
                           ))}
                           <div className="my-1 border-t border-zinc-100/60 dark:border-white/6" />
                           <button
+                            type="button"
+                            role="menuitem"
                             onClick={handleLogout}
                             className="w-full flex items-center px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/8 transition-colors gap-2.5"
                           >
@@ -540,6 +562,7 @@ export function Navbar() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+
                   </div>
                 </div>
               ) : (
@@ -634,6 +657,7 @@ export function Navbar() {
               {/* User strip */}
               {isAuthenticated && (
                 <div className="flex items-center gap-3 p-2.5 bg-zinc-50/60 dark:bg-white/4 rounded-xl border border-zinc-100/60 dark:border-white/6">
+<<<<<<< HEAD
                   <UserAvatar
                     user={user}
                     userProfile={userProfile}
@@ -642,6 +666,18 @@ export function Navbar() {
                     name={displayName}
                     initials={initials}
                   />
+=======
+                  <div className="relative w-9 h-9 shrink-0">
+                    {getUserPhoto() ? (
+                      <Image src={getUserPhoto()} alt={`${getUserDisplayName()} profile photo`} width={36} height={36} className="rounded-full object-cover" onError={handleImageError} />
+                    ) : (
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
+                        {getUserInitials(getUserDisplayName())}
+                      </div>
+                    )}
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-emerald-400 rounded-full ring-2 ring-white dark:ring-zinc-950" />
+                  </div>
+>>>>>>> upstream/master
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">{displayName}</p>
                     <p className="text-[11px] text-zinc-400">{getUserRole()}</p>
@@ -662,11 +698,10 @@ export function Navbar() {
                       <Link
                         href={item.href}
                         onClick={() => setIsMenuOpen(false)}
-                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                          isActive
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
                             ? "bg-blue-50 dark:bg-blue-600/15 text-blue-600 dark:text-blue-400"
                             : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5"
-                        }`}
+                          }`}
                       >
                         <item.icon className={`h-4 w-4 ${isActive ? "text-blue-500" : "text-zinc-400"}`} />
                         {item.label}
@@ -676,26 +711,6 @@ export function Navbar() {
                   );
                 })}
               </motion.div>
-
-              {/* Language grid */}
-              <div className="pt-2 border-t border-zinc-100/60 dark:border-white/8">
-                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2 px-1">Language</span>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {languagesList.slice(0, 4).map((lang) => (
-                    <button
-                      key={lang}
-                      onClick={() => handleLangSelect(lang)}
-                      className={`text-xs p-2 rounded-xl border text-center transition-all font-medium ${
-                        currentLang === lang
-                          ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
-                          : "bg-zinc-50 dark:bg-white/4 border-zinc-200/60 dark:border-white/8 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/8"
-                      }`}
-                    >
-                      {lang}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Account links */}
               {isAuthenticated && (

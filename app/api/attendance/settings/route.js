@@ -5,6 +5,7 @@ import { ValidationError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { z } from "zod";
+import { hashPasscode } from "@/utils/passcodeUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export const POST = withErrorHandler(async (request) => {
     .doc("current_settings")
     .set(
       {
-        passcode,
+        passcode: hashPasscode(passcode),
         active: true,
         createdAt: now.toISOString(),
         expiresAt: expiresAt.toISOString(),

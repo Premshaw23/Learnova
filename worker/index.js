@@ -39,11 +39,14 @@ async function syncAttendanceSW() {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.syncedIds) {
-          for (const id of data.syncedIds) {
+        if (data.success) {
+          for (const id of data.syncedIds ?? []) {
             await removeFromOutbox(id);
           }
-          totalSynced += data.syncedIds.length;
+          totalSynced += data.syncedIds?.length ?? 0;
+          for (const id of data.rejectedIds ?? []) {
+            await removeFromOutbox(id);
+          }
         }
       } else {
         throw new Error(`Failed to sync batch: ${response.status} ${response.statusText}`);

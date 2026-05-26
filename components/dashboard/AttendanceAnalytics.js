@@ -18,7 +18,7 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { getWeekdaysSince } from "@/services/statsService";
+import { getWeekdaysSince } from "@/lib/dateUtils";
 
 ChartJS.register(
   CategoryScale,

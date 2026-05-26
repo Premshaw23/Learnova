@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectDb } from "@/lib/mongodb";
-import { requireAuth, requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
+<<<<<<< HEAD
 import { AppError, ValidationError, NotFoundError } from "@/lib/errors";
 import {
   getImageExtensionFromMime,
@@ -13,26 +13,30 @@ import admin from "firebase-admin";
 import { put } from "@vercel/blob";
 import { randomUUID } from "crypto";
 import { z } from "zod";
+=======
+import { del, put } from "@vercel/blob";
+import {
+  extractImageFileFromFormData,
+  fetchAndValidateImage,
+  getImageResponseHeaders,
+  getUserImageFromDb,
+  updateUserImageInDb,
+  uploadAvatarToBlob,
+} from "@/lib/images/imagesService";
+>>>>>>> upstream/master
 
 export const dynamic = "force-dynamic";
 
-const getImageSchema = z.object({
-  id: z.string().min(1, "Missing user id parameter"),
-});
-
 export const GET = withErrorHandler(async (request) => {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
 
-    const validation = getImageSchema.safeParse({ id });
-    if (!validation.success) {
-      const firstError = validation.error.issues?.[0]?.message || "Invalid request parameter";
-      throw new ValidationError(firstError);
-    }
+  await requireAuth(request);
 
-    // Authenticate the requester and capture the decoded token for ownership checks
-    const decodedToken = await requireAuth(request);
+  const imageUrl = await getUserImageFromDb({ id });
+  const { imageBuffer, contentType } = await fetchAndValidateImage(imageUrl);
 
+<<<<<<< HEAD
     const db = await connectDb();
     const users = db.collection("users");
 
@@ -158,19 +162,39 @@ export const GET = withErrorHandler(async (request) => {
         "X-Content-Type-Options": "nosniff",
       },
     });
+=======
+  return new NextResponse(imageBuffer, {
+    status: 200,
+    headers: getImageResponseHeaders(contentType),
+  });
+>>>>>>> upstream/master
 });
 
 export const POST = withErrorHandler(async (request) => {
-    const decodedToken = await requireAuth(request);
+  const decodedToken = await requireAuth(request);
 
-    const formData = await request.formData();
-    const file = formData.get("file");
+  const formData = await request.formData();
+  const file = extractImageFileFromFormData(formData);
 
+  const { blobUrl } = await uploadAvatarToBlob({
+    file,
+    uid: decodedToken.uid,
+  });
+
+  await updateUserImageInDb({
+    firebaseUid: decodedToken.uid,
+    imageUrl: blobUrl,
+  });
     const rawFaceDescriptor = formData.get("faceDescriptor");
     let faceDescriptor = null;
     if (rawFaceDescriptor) {
+      if (typeof rawFaceDescriptor !== "string" || rawFaceDescriptor.length > 20000) {
+        throw new ValidationError("Face descriptor payload too large");
+      }
       try {
-        faceDescriptor = JSON.parse(rawFaceDescriptor);
+        const parsed = JSON.parse(rawFaceDescriptor);
+        const faceDescriptorSchema = z.array(z.number()).length(128);
+        faceDescriptor = faceDescriptorSchema.parse(parsed);
       } catch {
         throw new ValidationError("Invalid face descriptor format");
       }
@@ -232,6 +256,7 @@ export const POST = withErrorHandler(async (request) => {
     if (faceDescriptor) {
       updatePayload.faceDescriptor = faceDescriptor;
     }
+<<<<<<< HEAD
     await users.updateOne(
       { firebaseUid: decodedToken.uid },
       { $set: updatePayload },
@@ -262,4 +287,17 @@ export const POST = withErrorHandler(async (request) => {
       url: blob.url,
       id: decodedToken.uid,
     });
+=======
+    try {
+      await users.updateOne(
+        { firebaseUid: decodedToken.uid },
+        { $set: updatePayload }
+      );
+    } catch (error) {
+      await del(blob.url).catch(() => {});
+      throw error;
+    }
+
+  return NextResponse.json({ success: true, url: blobUrl });
+>>>>>>> upstream/master
 });

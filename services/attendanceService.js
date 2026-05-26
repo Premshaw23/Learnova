@@ -13,9 +13,10 @@ import { db } from "@/lib/firebaseConfig";
 import { recalculateAttendanceRate } from "./statsService";
 import { saveToOutbox } from "@/lib/offlineStore";
 import { registerBackgroundSync } from "@/lib/syncService";
+import { getTodayKeyLocal } from "@/lib/dateUtils";
 
 function getTodayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return getTodayKeyLocal();
 }
 
 /**
@@ -112,10 +113,13 @@ export async function recordAttendance({
     );
   }
 
-  const newRate = await recalculateAttendanceRate(userId);
+  const data = await response.json();
+  const isAlreadyRecorded = !!(data && data.alreadyRecorded);
+
+  const newRate = isAlreadyRecorded ? null : await recalculateAttendanceRate(userId);
 
   return {
-    alreadyRecorded: false,
+    alreadyRecorded: isAlreadyRecorded,
     newRate,
   };
 }

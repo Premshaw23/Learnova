@@ -702,8 +702,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
             type="password"
             value={passcode}
             onChange={(e) => {
-              const val = e.target.value.replace(/\D/g, "");
-              setPasscode(val);
+              setPasscode(e.target.value);
             }}
             placeholder="• • • • • •"
             className="w-full bg-white/5 border-2 border-white/20 rounded-2xl px-8 py-6 text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/50 focus:border-purple-500 text-center text-3xl tracking-[0.5em] font-bold transition-all duration-300"
