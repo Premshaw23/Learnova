@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Key, Check, Copy } from "lucide-react";
 
 export const AttendancePasscodeModal = ({
@@ -8,11 +8,36 @@ export const AttendancePasscodeModal = ({
   copyPasscode,
   copied,
 }) => {
+  const modalRef = useRef(null);
+
+  useEffect(() => {
+  if (!showPasscodeModal) return;
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      setShowPasscodeModal(false);
+    }
+  };
+
+  document.addEventListener("keydown", handleKeyDown);
+  document.body.style.overflow = "hidden";
+
+  return () => {
+    document.removeEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "unset";
+  };
+}, [showPasscodeModal, setShowPasscodeModal]);
   if (!showPasscodeModal) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-white/20 rounded-2xl p-8 max-w-md w-full">
+      <div
+      ref={modalRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      className="bg-gray-900 border border-white/20 rounded-2xl p-8 max-w-md w-full outline-none"
+      >
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Key className="w-8 h-8 text-white" />
