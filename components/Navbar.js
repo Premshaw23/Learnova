@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
 
 import { useTheme } from "next-themes";
+import ThemeToggle from "@/components/ThemeToggle";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -340,15 +341,7 @@ export function Navbar() {
               </div>
 
               {/* Theme Toggle */}
-              {mounted && (
-                <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-xl text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
-                  aria-label="Toggle theme"
-                >
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </button>
-              )}
+              <ThemeToggle />
 
               {loading ? (
                 <div className="w-24 h-10 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />

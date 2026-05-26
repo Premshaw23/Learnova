@@ -265,7 +265,7 @@ const StudentDashboard = () => {
         return "text-yellow-400 bg-yellow-500/10 border-yellow-500/30";
 
       default:
-        return "text-gray-400 bg-gray-500/10 border-gray-500/30";
+        return "text-muted-foreground dark:text-gray-400 bg-gray-500/10 border-gray-500/30";
     }
   };
 
@@ -292,7 +292,7 @@ const StudentDashboard = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black relative overflow-hidden flex items-center justify-center">
-        <div className="relative z-10 text-center text-white px-4">
+        <div className="relative z-10 text-center text-foreground dark:text-white px-4">
           <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-10 h-10 text-red-400" />
           </div>
@@ -301,7 +301,7 @@ const StudentDashboard = () => {
             Error Loading Dashboard
           </h2>
 
-          <p className="text-gray-400 mb-6">
+          <p className="text-muted-foreground dark:text-gray-400 mb-6">
             {error}
           </p>
 
@@ -309,7 +309,7 @@ const StudentDashboard = () => {
             onClick={() =>
               window.location.reload()
             }
-            className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"
+            className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-foreground dark:text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"
           >
             <RefreshCw className="w-5 h-5 mr-2 inline" />
             Retry
@@ -325,7 +325,7 @@ const StudentDashboard = () => {
 
       <div className="relative z-10">
         <div className="max-w-7xl mx-auto pt-20 pb-6 px-6">
-          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6 shadow-2xl">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="relative">
@@ -339,7 +339,7 @@ const StudentDashboard = () => {
                     />
                   ) : (
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-accent/30">
-                      <span className="text-sm font-bold text-white">
+                      <span className="text-sm font-bold text-foreground dark:text-white">
                         {getUserInitials()}
                       </span>
                     </div>
@@ -355,14 +355,14 @@ const StudentDashboard = () => {
                       "Student"}
                   </h1>
 
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-muted-foreground dark:text-gray-400">
                     {user?.email || "No email"}
                   </div>
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="text-xl font-mono text-white">
+                <div className="text-xl font-mono text-foreground dark:text-white">
                   {currentTime?.toLocaleTimeString(
                     [],
                     {
@@ -372,7 +372,7 @@ const StudentDashboard = () => {
                   )}
                 </div>
 
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-muted-foreground dark:text-gray-400">
                   {currentTime?.toLocaleDateString(
                     [],
                     {
@@ -437,12 +437,12 @@ const QuickStat = ({
     <div className="flex items-center space-x-2">
       {icon}
 
-      <span className="text-gray-300 text-sm">
+      <span className="text-muted-foreground dark:text-gray-300 text-sm">
         {label}
       </span>
     </div>
 
-    <span className="text-white font-semibold">
+    <span className="text-foreground dark:text-white font-semibold">
       {value}
     </span>
   </div>
@@ -456,7 +456,7 @@ const SecurityItem = ({
     <div className="flex items-center space-x-2">
       <CheckCircle className="w-4 h-4 text-green-400" />
 
-      <span className="text-gray-300 text-sm">
+      <span className="text-muted-foreground dark:text-gray-300 text-sm">
         {label}
       </span>
     </div>

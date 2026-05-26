@@ -524,11 +524,11 @@ const SmartNoticeBoard = () => {
   // Loading UI
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white">
+      <div className="min-h-screen bg-background text-foreground dark:text-white">
         <Navbar />
 
         <div className="mx-auto max-w-7xl px-4 py-8">
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <div className="rounded-3xl border border-border dark:border-slate-800 bg-card/60 dark:bg-slate-900/60 p-6">
             <NoticeSkeleton count={4} />
           </div>
         </div>
@@ -537,12 +537,12 @@ const SmartNoticeBoard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-background text-foreground dark:text-white">
       <Navbar />
 
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Header */}
-        <div className="mb-8 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+        <div className="mb-8 rounded-3xl border border-border dark:border-slate-800 bg-card/60 dark:bg-slate-900/60 p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="mb-2 text-sm uppercase tracking-[0.3em] text-indigo-300">
@@ -553,7 +553,7 @@ const SmartNoticeBoard = () => {
                 Smart Notice Board
               </h1>
 
-              <p className="mt-3 text-slate-400">
+              <p className="mt-3 text-muted-foreground dark:text-slate-400">
                 Search, filter, and manage
                 notices in real-time.
               </p>
@@ -565,7 +565,7 @@ const SmartNoticeBoard = () => {
                 {
                   label: "Total",
                   value: notices.length,
-                  color: "text-white",
+                  color: "text-foreground dark:text-white",
                 },
                 {
                   label: "Unread",
@@ -590,7 +590,7 @@ const SmartNoticeBoard = () => {
               ].map((stat) => (
                 <div
                   key={stat.label}
-                  className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4 text-center"
+                  className="rounded-2xl border border-border dark:border-slate-700 bg-muted/70 dark:bg-slate-800/70 p-4 text-center"
                 >
                   <p
                     className={`text-3xl font-bold ${stat.color}`}
@@ -598,7 +598,7 @@ const SmartNoticeBoard = () => {
                     {stat.value}
                   </p>
 
-                  <p className="mt-2 text-xs uppercase tracking-widest text-slate-400">
+                  <p className="mt-2 text-xs uppercase tracking-widest text-muted-foreground dark:text-slate-400">
                     {stat.label}
                   </p>
                 </div>
@@ -609,15 +609,15 @@ const SmartNoticeBoard = () => {
 
         {/* Tab Selection */}
         <div className="mb-6 flex justify-start">
-          <div className="flex space-x-2 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800">
+          <div className="flex space-x-2 bg-card/80 dark:bg-slate-900/80 p-1.5 rounded-2xl border border-border dark:border-slate-800">
             <button
               onClick={() =>
                 setActiveTab("notices")
               }
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${
                 activeTab === "notices"
-                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-foreground dark:text-white shadow-lg"
+                  : "text-muted-foreground dark:text-slate-400 hover:text-foreground dark:text-white"
               }`}
             >
               Active Notices
@@ -629,8 +629,8 @@ const SmartNoticeBoard = () => {
               }
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${
                 activeTab === "overview"
-                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-foreground dark:text-white shadow-lg"
+                  : "text-muted-foreground dark:text-slate-400 hover:text-foreground dark:text-white"
               }`}
             >
               Activity Feed Overview
@@ -640,9 +640,9 @@ const SmartNoticeBoard = () => {
 
         {/* Main Content */}
         {activeTab === "overview" ? (
-          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6">
+          <div className="bg-card/60 dark:bg-slate-900/60 border border-border dark:border-slate-800 rounded-3xl p-6 space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">
+              <h2 className="text-2xl font-bold text-foreground dark:text-white">
                 Recent Notice Activity
               </h2>
 
@@ -660,16 +660,16 @@ const SmartNoticeBoard = () => {
                       key={
                         item?.id || index
                       }
-                      className="flex items-start justify-between bg-slate-800/40 rounded-2xl p-4 border border-slate-700/50"
+                      className="flex items-start justify-between bg-muted/40 dark:bg-slate-800/40 rounded-2xl p-4 border border-border dark:border-border/50 dark:border-slate-700/50"
                     >
                       <div>
-                        <p className="text-white font-medium">
+                        <p className="text-foreground dark:text-white font-medium">
                           {item?.title}
                         </p>
 
-                        <p className="text-slate-400 text-xs mt-1">
+                        <p className="text-muted-foreground dark:text-slate-400 text-xs mt-1">
                           By{" "}
-                          <span className="text-slate-300 font-semibold">
+                          <span className="text-foreground dark:text-slate-300 font-semibold">
                             {item?.user}
                           </span>{" "}
                           •{" "}
@@ -687,13 +687,13 @@ const SmartNoticeBoard = () => {
                 )}
               </div>
             ) : (
-              <div className="text-center py-16 bg-slate-950/40 rounded-2xl border border-dashed border-slate-800">
-                <p className="text-slate-500 text-base">
+              <div className="text-center py-16 bg-background/40 rounded-2xl border border-dashed border-border dark:border-slate-800">
+                <p className="text-muted-foreground dark:text-slate-500 text-base">
                   No recent activity
                   available
                 </p>
 
-                <p className="text-slate-600 text-xs mt-1">
+                <p className="text-muted-foreground dark:text-slate-600 text-xs mt-1">
                   Check back later for
                   system logs and notice
                   actions.
@@ -849,22 +849,22 @@ const SmartNoticeBoard = () => {
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="mt-8 flex items-center justify-between border-t border-slate-800 pt-6">
-                      <p className="text-sm text-slate-400">
+                    <div className="mt-8 flex items-center justify-between border-t border-border dark:border-slate-800 pt-6">
+                      <p className="text-sm text-muted-foreground dark:text-slate-400">
                         Showing{" "}
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-foreground dark:text-white">
                           {indexOfFirstItem +
                             1}
                         </span>{" "}
                         to{" "}
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-foreground dark:text-white">
                           {Math.min(
                             indexOfLastItem,
                             filteredNotices.length
                           )}
                         </span>{" "}
                         of{" "}
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-foreground dark:text-white">
                           {
                             filteredNotices.length
                           }
@@ -887,7 +887,7 @@ const SmartNoticeBoard = () => {
                             safeCurrentPage ===
                             1
                           }
-                          className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm font-medium transition-all hover:bg-slate-800 disabled:opacity-40"
+                          className="rounded-xl border border-border dark:border-slate-700 bg-slate-800/50 px-4 py-2 text-sm font-medium transition-all hover:bg-slate-800 disabled:opacity-40"
                         >
                           Previous
                         </button>
@@ -906,7 +906,7 @@ const SmartNoticeBoard = () => {
                             safeCurrentPage ===
                             totalPages
                           }
-                          className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm font-medium transition-all hover:bg-slate-800 disabled:opacity-40"
+                          className="rounded-xl border border-border dark:border-slate-700 bg-slate-800/50 px-4 py-2 text-sm font-medium transition-all hover:bg-slate-800 disabled:opacity-40"
                         >
                           Next
                         </button>

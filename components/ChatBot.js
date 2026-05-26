@@ -293,8 +293,7 @@ const LearnovaChatbot = () => {
     timestamp: new Date(),
   };
 
-  const { theme, resolvedTheme, setTheme } = useTheme();
-  const isDarkMode = resolvedTheme === "dark" || theme === "dark";
+  const { theme, setTheme } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -411,25 +410,19 @@ const LearnovaChatbot = () => {
   // Theme tokens
   // ---------------------------------------------------------------------------
   const t = {
-    bg: isDarkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900",
+    bg: "bg-white dark:bg-gray-900 text-gray-900 dark:text-white",
     header: "bg-gradient-to-r from-purple-700 via-blue-700 to-indigo-700",
-    border: isDarkMode ? "border-gray-700" : "border-gray-200",
-    botMsg: isDarkMode
-      ? "bg-gray-800 text-gray-200 border border-gray-700"
-      : "bg-gray-50 text-gray-800 border border-gray-200",
+    border: "border-gray-200 dark:border-gray-700",
+    botMsg: "bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700",
     userMsg: "bg-gradient-to-r from-purple-600 to-blue-600 text-white",
-    botAvatar: isDarkMode ? "bg-purple-800 text-purple-300" : "bg-purple-100 text-purple-600",
-    userAvatar: isDarkMode ? "bg-blue-800 text-blue-300" : "bg-blue-100 text-blue-600",
-    input: isDarkMode
-      ? "bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:ring-purple-500"
-      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-purple-400",
-    catBtn: isDarkMode ? "hover:bg-gray-700 text-gray-300" : "hover:bg-gray-100 text-gray-600",
-    catBtnActive: isDarkMode ? "bg-purple-800 text-purple-200" : "bg-purple-100 text-purple-700",
-    suggestion: isDarkMode
-      ? "bg-purple-900/50 text-purple-300 hover:bg-purple-800/60 border border-purple-800"
-      : "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200",
-    loading: isDarkMode ? "bg-gray-800" : "bg-gray-100",
-    dot: isDarkMode ? "text-gray-400" : "text-gray-500",
+    botAvatar: "bg-purple-100 dark:bg-purple-800 text-purple-600 dark:text-purple-300",
+    userAvatar: "bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300",
+    input: "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-purple-400 dark:focus:ring-purple-500",
+    catBtn: "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300",
+    catBtnActive: "bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-200",
+    suggestion: "bg-purple-50 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-800/60 border border-purple-200 dark:border-purple-800",
+    loading: "bg-gray-100 dark:bg-gray-800",
+    dot: "text-gray-500 dark:text-gray-400",
   };
 
   // ---------------------------------------------------------------------------
@@ -485,8 +478,8 @@ const LearnovaChatbot = () => {
           <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Clear chat">
             <RefreshCw size={16} />
           </button>
-          <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme">
-            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+          <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme">
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
           </button>
           <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title={isMinimized ? "Expand" : "Minimize"}>
             {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
@@ -561,7 +554,7 @@ const LearnovaChatbot = () => {
             {/* Suggested questions — shown only with the welcome message */}
             {messages.length === 1 && (
               <div className="space-y-2">
-                <p className={`text-xs font-medium text-center ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+                <p className={`text-xs font-medium text-center text-gray-500 dark:text-gray-400`}>
                   💡 Popular questions about{" "}
                   {categories.find((c) => c.id === currentCategory)?.label}:
                 </p>
@@ -592,8 +585,7 @@ const LearnovaChatbot = () => {
                       ))}
                     </div>
                     <span
-                      className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
+                      className={`text-xs text-gray-500 dark:text-gray-400`}
                     >
                       Analyzing your question...
                     </span>
@@ -609,14 +601,14 @@ const LearnovaChatbot = () => {
             <div className="flex items-center justify-center space-x-4 text-xs">
               <a
                 href={`mailto:${CONTACT_INFO.email}`}
-                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-blue-400" : "text-blue-600"}`}
+                className={`flex items-center space-x-1 hover:underline text-blue-600 dark:text-blue-400`}
               >
                 <Mail size={12} />
                 <span>Email</span>
               </a>
               <a
                 href={`tel:${CONTACT_INFO.phone}`}
-                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-green-400" : "text-green-600"}`}
+                className={`flex items-center space-x-1 hover:underline text-green-600 dark:text-green-400`}
               >
                 <Phone size={12} />
                 <span>Call</span>
@@ -625,7 +617,7 @@ const LearnovaChatbot = () => {
                 href={CONTACT_INFO.demo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-purple-400" : "text-purple-600"}`}
+                className={`flex items-center space-x-1 hover:underline text-purple-600 dark:text-purple-400`}
               >
                 <ExternalLink size={12} />
                 <span>Demo</span>
@@ -656,7 +648,7 @@ const LearnovaChatbot = () => {
                 <Send size={18} />
               </button>
             </div>
-            <p className={`text-xs mt-2 text-center ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>
+            <p className={`text-xs mt-2 text-center text-gray-400 dark:text-gray-500`}>
               Powered by Nova AI · Shift + Enter for new line
             </p>
           </div>
