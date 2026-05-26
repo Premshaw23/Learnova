@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTheme } from "next-themes";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 
 import {
@@ -28,18 +27,9 @@ import {
   Sun,
   Moon,
   Keyboard,
-  Languages,
   Search,
   MessageSquareWarning,
 } from "lucide-react";
-
-const languageMap = {
-  English: "en",
-  Español: "es",
-  Français: "fr",
-  Deutsch: "de",
-  "हिन्दी": "hi",
-};
 
 // ── Animation Variants ──────────────────────────────────────────────────────
 
@@ -117,18 +107,14 @@ export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isLangOpen, setIsLangOpen] = useState(false);
-  const [currentLang, setCurrentLang] = useState("English");
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const { i18n } = useTranslation();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { user, userProfile, signOut, isAuthenticated, loading } = useAuthContext();
 
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
-  const langRef = useRef(null);
   const pathname = usePathname();
   const { theme, setTheme, resolvedTheme } = useTheme();
 
@@ -149,9 +135,6 @@ export function Navbar() {
     if (notifRef.current && !notifRef.current.contains(e.target)) {
       setIsNotificationOpen(false);
     }
-    if (langRef.current && !langRef.current.contains(e.target)) {
-      setIsLangOpen(false);
-    }
   }, []);
 
   useEffect(() => {
@@ -165,7 +148,6 @@ export function Navbar() {
         setIsDropdownOpen(false);
         setIsNotificationOpen(false);
         setIsMenuOpen(false);
-        setIsLangOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -180,7 +162,6 @@ export function Navbar() {
   useEffect(() => {
     setIsMenuOpen(false);
     setIsDropdownOpen(false);
-    setIsLangOpen(false);
   }, [pathname]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -189,13 +170,6 @@ export function Navbar() {
     setIsDropdownOpen(false);
     setIsMenuOpen(false);
     await signOut();
-  };
-
-  const handleLangSelect = (lang) => {
-    setCurrentLang(lang);
-    setIsLangOpen(false);
-    setIsMenuOpen(false);
-    if (i18n?.changeLanguage) i18n.changeLanguage(languageMap[lang]);
   };
 
   const getUserInitials = (name) => {
@@ -240,9 +214,6 @@ export function Navbar() {
     { href: getDashboardLink(),icon: Activity, label: "Dashboard", key: "dashboard" },
     { href: "/settings",      icon: Settings, label: "Settings",  key: "settings" },
   ].filter((item) => !(item.key === "dashboard" && item.href === "/profile"));
-
-  const languagesList = ["English", "Español", "Français", "Deutsch", "हिन्दी"];
-
   const handleImageError = (e) => {
     const img = e.target;
     const fallback = img.parentElement?.querySelector(".fallback-avatar");
@@ -364,52 +335,6 @@ export function Navbar() {
                   Ctrl K
                 </kbd>
               </motion.button>
-
-              {/* Language Selector */}
-              <div className="relative" ref={langRef}>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setIsLangOpen(!isLangOpen)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100/80 dark:hover:bg-white/8 transition-colors border border-zinc-200/40 dark:border-white/8"
-                  aria-label="Select language"
-                >
-                  <Languages className="h-4 w-4 text-zinc-400" />
-                  <span className="hidden md:inline text-xs">{currentLang}</span>
-                  <motion.span
-                    animate={{ rotate: isLangOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex"
-                  >
-                    <ChevronDown className="h-3 w-3 opacity-50" />
-                  </motion.span>
-                </motion.button>
-
-                <AnimatePresence>
-                  {isLangOpen && (
-                    <motion.div
-                      variants={dropdownVariants}
-                      initial="hidden" animate="visible" exit="exit"
-                      className={`${dropdownPanel} w-36 py-1.5`}
-                      style={glassPanelStyle}
-                    >
-                      {languagesList.map((lang) => (
-                        <button
-                          key={lang}
-                          onClick={() => handleLangSelect(lang)}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                            currentLang === lang
-                              ? "text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/60 dark:bg-blue-600/10"
-                              : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5"
-                          }`}
-                        >
-                          {lang}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
 
               {/* Theme Toggle */}
               {mounted && (
@@ -703,26 +628,6 @@ export function Navbar() {
                   );
                 })}
               </motion.div>
-
-              {/* Language grid */}
-              <div className="pt-2 border-t border-zinc-100/60 dark:border-white/8">
-                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2 px-1">Language</span>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {languagesList.slice(0, 4).map((lang) => (
-                    <button
-                      key={lang}
-                      onClick={() => handleLangSelect(lang)}
-                      className={`text-xs p-2 rounded-xl border text-center transition-all font-medium ${
-                        currentLang === lang
-                          ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
-                          : "bg-zinc-50 dark:bg-white/4 border-zinc-200/60 dark:border-white/8 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/8"
-                      }`}
-                    >
-                      {lang}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Account links */}
               {isAuthenticated && (

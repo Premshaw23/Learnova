@@ -382,6 +382,64 @@ export default function UniversalSettings() {
     setHasChanges(false);
   };
 
+  const handleResetToDefaults = () => {
+    try {
+      // 1. Clear settings-related keys in localStorage safely
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.removeItem("theme");
+        window.localStorage.removeItem("settings");
+        window.localStorage.removeItem("learnova_settings");
+      }
+
+      // 2. Revert theme in next-themes provider to default 'dark'
+      setTheme("dark");
+
+      // 3. Reset settings state to initial default values
+      setSettings({
+        profile: {
+          name: getUserDisplayName(),
+          email: getUserEmail(),
+          phone: user?.phone || "",
+          bio:
+            user?.bio ||
+            "Passionate learner exploring new technologies and skills.",
+          avatar: getUserPhoto() || "/user-avatar.jpg",
+        },
+        notifications: roleSpecificSettings.notifications,
+        privacy: {
+          profileVisibility: "public",
+          showProgress: true,
+          showAchievements: true,
+          allowMessages: true,
+          dataCollection: true,
+        },
+        learning: roleSpecificSettings.learning,
+        appearance: {
+          theme: "dark",
+          language: "English",
+          timezone: "UTC-8",
+        },
+      });
+
+      // 4. Mark change indicators as false
+      setHasChanges(false);
+
+      // 5. Show beautiful success notification
+      toast.success("Settings restored to system defaults!", {
+        icon: "🔄",
+        style: {
+          borderRadius: "16px",
+          background: "#1e293b",
+          color: "#fff",
+          border: "1px solid rgba(255,255,255,0.1)",
+        },
+      });
+    } catch (err) {
+      console.error("Failed to reset settings to defaults:", err);
+      toast.error("Failed to reset settings. Please try again.");
+    }
+  };
+
   const sections = [
     { id: "profile", label: "Profile", icon: User },
     { id: "notifications", label: "Notifications", icon: Bell },
@@ -1080,6 +1138,30 @@ export default function UniversalSettings() {
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Clear
+                      </Button>
+                    </div>
+                  </div>
+                </SettingCard>
+
+                <SettingCard
+                  title="Preference Reset"
+                  description="Restore all settings, appearance parameters, and notification choices to system defaults"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                      <div>
+                        <p className="text-white font-medium">Reset Settings</p>
+                        <p className="text-white/60 text-sm">
+                          Revert all configurations back to system default values
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleResetToDefaults}
+                        variant="outline"
+                        className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 bg-transparent"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset to Defaults
                       </Button>
                     </div>
                   </div>

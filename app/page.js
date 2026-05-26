@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { TrendingUp, ArrowRight, Award, MessageSquare, ShieldCheck, Zap } from "lucide-react";
+import { Navbar } from "@/components/Navbar";
 
 // --- Mock Data & Constants ---
 const STATS_ITEMS = [
@@ -149,7 +150,9 @@ export default function Page() {
 
   return (
     <>
+      <Navbar />
       <div className="min-h-screen bg-background text-foreground selection:bg-purple-500/30">
+        <Navbar />
         
         {/* Premium Infographic Concentric Rings Stats Section */}
         <section

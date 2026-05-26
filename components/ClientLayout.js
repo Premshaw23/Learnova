@@ -69,11 +69,9 @@ export default function ClientLayout() {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
       />
-      <div className="z-50">
-        <ErrorBoundary>
-          <LearnovaChatbot />
-        </ErrorBoundary>
-      </div>
+      <ErrorBoundary>
+        <LearnovaChatbot />
+      </ErrorBoundary>
     </>
   );
 }

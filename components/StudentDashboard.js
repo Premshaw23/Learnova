@@ -405,10 +405,12 @@ setRecentActivity(mapped);
         </div>
       </div>
 
-      {/* MAIN CONTENT CONTINUES */}
-
-      {/* Keep all your remaining JSX exactly same below this */}
-
+      {/* Attendance Heatmap */}
+      <div className="relative z-10 mt-8">
+        <div className="max-w-7xl mx-auto px-6">
+          <AttendanceHeatmap />
+        </div>
+      </div>
     </div>
   );
 };

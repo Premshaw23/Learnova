@@ -5,9 +5,6 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-const GROQ_API_URL =
-  "https://api.groq.com/openai/v1/chat/completions";
-
 import { checkRateLimit } from "@/lib/rateLimit";
 import { detectInjection, sanitizeMessage, buildSecureMessages } from "@/utils/promptGuard";
 

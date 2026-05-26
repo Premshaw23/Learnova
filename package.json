@@ -55,6 +55,7 @@
     "react-i18next": "^17.0.8",
     "react-markdown": "^10.1.0",
     "react-window": "^2.2.7",
+    "remark-gfm": "^3.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "winston": "^3.19.0",

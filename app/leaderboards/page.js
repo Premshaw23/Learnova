@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { collection, query, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +34,33 @@ const Reveal = ({ children, className = "", delay = 0, y = 20 }) => (
   </motion.div>
 );
 
+// Reusable Avatar component utilizing Next.js Image optimization and robust fallbacks
+function AvatarRenderer({ avatar, name, size = 80, priority = false }) {
+  const [imgSrc, setImgSrc] = useState(
+    avatar && (avatar.startsWith("http") || avatar.startsWith("/")) ? avatar : null
+  );
+
+  useEffect(() => {
+    setImgSrc(avatar && (avatar.startsWith("http") || avatar.startsWith("/")) ? avatar : null);
+  }, [avatar]);
+
+  if (imgSrc) {
+    return (
+      <Image
+        src={imgSrc}
+        alt={`${name}'s avatar`}
+        width={size}
+        height={size}
+        priority={priority}
+        className="w-full h-full object-cover rounded-full"
+        onError={() => setImgSrc(null)}
+      />
+    );
+  }
+
+  return <span className="flex items-center justify-center w-full h-full">{avatar || "👩‍🎓"}</span>;
+}
+
 // Dummy Data
 const LEADERBOARD_DATA = [
   { id: 1, name: "Sarah Chen", score: 9850, avatar: "👩‍🎓", rank: 1, change: "up", streak: 45, badges: 12 },
@@ -63,10 +91,7 @@ export default function LeaderboardsPage() {
         const q = query(collection(db, "userStats"), orderBy("totalXp", "desc"), limit(50));
         const snapshot = await getDocs(q);
         
-        const fetchedData = [];
-        let currentRank = 1;
-        
-        for (const docSnap of snapshot.docs) {
+        const fetchedData = await Promise.all(snapshot.docs.map(async (docSnap, index) => {
           const stats = docSnap.data();
           const userId = docSnap.id;
           
@@ -79,20 +104,18 @@ export default function LeaderboardsPage() {
             console.warn("Could not fetch user details for", userId);
           }
           
-          fetchedData.push({
+          return {
             id: userId,
             name: userData.displayName || "Unknown Learner",
             score: stats.totalXp || stats.score || 0,
-            avatar: userData.photoURL ? (
-              <img src={userData.photoURL} alt="avatar" className="w-full h-full rounded-full object-cover" />
-            ) : "👩‍🎓",
-            rank: currentRank++,
+            avatar: userData.photoURL || "👩‍🎓",
+            rank: index + 1,
             change: "same",
             streak: stats.currentStreak || stats.streak || 0,
             badges: stats.badges || (stats.unlockedBadges ? stats.unlockedBadges.length : 0),
             isCurrentUser: user?.uid === userId
-          });
-        }
+          };
+        }));
         
         if (fetchedData.length > 0) {
           setLeaderboardData(fetchedData);
@@ -241,7 +264,7 @@ export default function LeaderboardsPage() {
                             </motion.div>
                           )}
                           <div className={`w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center text-3xl sm:text-4xl bg-gray-800 rounded-full border-4 ${style.border} shadow-lg mb-2 z-10 ${isFirst ? 'scale-110' : ''} overflow-hidden`}>
-                            {user.avatar}
+                            <AvatarRenderer avatar={user.avatar} name={user.name} size={isFirst ? 80 : 64} priority={true} />
                           </div>
                           <span className="font-bold text-foreground text-xs sm:text-sm text-center truncate w-full px-2">{user.name}</span>
                           <span className={`font-black ${style.color} text-sm sm:text-base`}>{user.score} pts</span>
@@ -282,7 +305,7 @@ export default function LeaderboardsPage() {
                           
                           <div className="col-span-7 sm:col-span-5 flex items-center gap-3">
                             <div className="w-10 h-10 flex items-center justify-center text-xl bg-gray-800 rounded-full border border-gray-600 overflow-hidden">
-                              {user.avatar}
+                              <AvatarRenderer avatar={user.avatar} name={user.name} size={40} />
                             </div>
                             <div className="flex flex-col">
                               <span className={`font-semibold ${(user.name && user.name.includes("You")) || user.isCurrentUser ? "text-purple-400" : "text-foreground"}`}>
@@ -331,7 +354,7 @@ export default function LeaderboardsPage() {
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <div className="w-12 h-12 flex items-center justify-center text-2xl bg-gradient-to-r from-purple-500 to-blue-500 rounded-full border-2 border-white shadow-lg overflow-hidden">
-                    {currentUser.avatar}
+                    <AvatarRenderer avatar={currentUser.avatar} name={currentUser.name} size={48} />
                   </div>
                   <div className="absolute -top-2 -right-2 bg-gray-800 text-white text-xs font-bold px-2 py-0.5 rounded-full border border-gray-600">
                     #{currentUser.rank}
