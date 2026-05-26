@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import { User, AlertTriangle, RefreshCw } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import UniversalProfile from "@/components/universal-profile";
 
 export default function ProfilePage() {

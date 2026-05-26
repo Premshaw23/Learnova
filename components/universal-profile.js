@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { analytics, db } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import { updateProfile } from "firebase/auth";
-import Image from "next/image";
 import toast from "react-hot-toast";
+import { UserAvatar } from "@/components/ui/UserAvatar";
+import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 
 import {
   doc,
@@ -14,7 +15,6 @@ import {
 } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
-import * as faceapi from "face-api.js";
 
 import {
   User,
@@ -25,7 +25,6 @@ import {
   Edit3,
   Save,
   X,
-  Camera,
   Star,
   Award,
   Clock,
@@ -46,20 +45,15 @@ import {
   Smartphone,
 } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "./Navbar";
 
 export default function UniversalProfile() {
   const { user, userProfile, loading } = useAuth();
 
-  const fileInputRef = useRef(null);
-
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-
-  const [avatarUrl, setAvatarUrl] = useState(null);
-  const [imageError, setImageError] = useState(false);
 
   const [role, setRole] = useState(
     userProfile?.role || "student"
@@ -75,26 +69,8 @@ export default function UniversalProfile() {
     publicProfile: false,
   });
 
-  const MODEL_URL = "/models";
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        ]);
-        setModelsLoaded(true);
-      } catch (err) {
-        console.error("Failed to load face-api models:", err);
-      }
-    };
-    loadModels();
-  }, []);
-
   const [stats, setStats] = useState({});
+  const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
 
   const [formData, setFormData] = useState({
     displayName: "",
@@ -115,11 +91,16 @@ export default function UniversalProfile() {
     }
   }, []);
 
+  const { previewUrl, isUploading, uploadAvatar, clearPreview } = useAvatarUpload({
+    user,
+    onUploaded: () => setAvatarRefreshKey(Date.now()),
+  });
+
   useEffect(() => {
-    if (user?.photoURL) {
-      setAvatarUrl(user.photoURL);
+    if (userProfile?.avatar || userProfile?.photoURL) {
+      clearPreview();
     }
-  }, [user]);
+  }, [userProfile?.avatar, userProfile?.photoURL, clearPreview]);
 
   useEffect(() => {
     if (!user) return;
@@ -269,142 +250,9 @@ export default function UniversalProfile() {
     }
   };
 
-  const handleImageUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error(
-        "Please upload a valid image file."
-      );
-      return;
-    }
-
-    const MAX_SIZE = 5 * 1024 * 1024;
-
-    if (file.size > MAX_SIZE) {
-      toast.error(
-        "File size exceeds 5MB limit."
-      );
-
-      e.target.value = "";
-
-      return;
-    }
-
-    if (!modelsLoaded) {
-      toast.error("Face models are still loading. Please wait a moment.");
-      return;
-    }
-
-    const detectToast = toast.loading("Analyzing photo for face verification...");
-    let faceDescriptorString = "";
-    try {
-      const fileUrl = URL.createObjectURL(file);
-      const img = await faceapi.fetchImage(fileUrl);
-      const detection = await faceapi
-        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      URL.revokeObjectURL(fileUrl);
-
-      if (!detection) {
-        toast.error("Could not detect a clear face. Please upload a clear headshot photo.", { id: detectToast });
-        e.target.value = "";
-        return;
-      }
-
-      faceDescriptorString = JSON.stringify(Array.from(detection.descriptor));
-      toast.success("Face successfully verified!", { id: detectToast });
-    } catch (err) {
-      console.error("Face detection error during profile update:", err);
-      toast.error("Error analyzing image file. Please ensure it is a valid face image.", { id: detectToast });
-      e.target.value = "";
-      return;
-    }
-
-    const loadingToast = toast.loading(
-      "Uploading profile picture..."
-    );
-
-    try {
-      const token = await user.getIdToken();
-
-      const uploadFormData = new FormData();
-
-      uploadFormData.append("file", file);
-      if (faceDescriptorString) {
-        uploadFormData.append("faceDescriptor", faceDescriptorString);
-      }
-
-      const res = await fetch("/api/images", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: uploadFormData,
-      });
-
-      if (!res.ok) {
-        const errorData = await res
-          .json()
-          .catch(() => ({}));
-
-        throw new Error(
-          errorData.error ||
-            "Failed to upload image"
-        );
-      }
-
-      const data = await res.json();
-
-      if (data.success && data.url) {
-        await updateProfile(user, {
-          photoURL: data.url,
-        });
-
-        const userRef = doc(
-          db,
-          "users",
-          user.uid
-        );
-
-        await updateDoc(userRef, {
-          photoURL: data.url,
-        });
-
-        setAvatarUrl(data.url);
-
-        toast.success(
-          "Profile picture updated successfully!",
-          {
-            id: loadingToast,
-          }
-        );
-      } else {
-        throw new Error(
-          data.error || "Upload failed"
-        );
-      }
-    } catch (error) {
-      toast.error(
-        error.message ||
-          "Failed to update profile picture.",
-        {
-          id: loadingToast,
-        }
-      );
-    }
-  };
-
-  const getUserPhoto = () => {
-    return avatarUrl || user?.photoURL || null;
+  const handleAvatarFileSelect = async (file) => {
+    if (!file || !user) return;
+    await uploadAvatar(file);
   };
 
   const getUserInitials = useCallback((name) => {
@@ -575,45 +423,31 @@ export default function UniversalProfile() {
         <div className="bg-black/20 backdrop-blur-2xl rounded-3xl border border-white/10 p-6">
           <div className="flex flex-col md:flex-row gap-8">
             {/* Profile Image */}
-            <div className="relative group">
-              {getUserPhoto() && !imageError ? (
-                <Image
-                  src={getUserPhoto()}
-                  alt="Profile"
-                  width={120}
-                  height={120}
-                  onError={() =>
-                    setImageError(true)
-                  }
-                  className="w-28 h-28 rounded-full object-cover border-4 border-white/20"
-                />
-              ) : (
-                <div
-                  className={`w-28 h-28 rounded-full bg-gradient-to-br ${roleConfig.color} flex items-center justify-center border-4 border-white/20`}
-                >
-                  <span className="text-3xl font-bold">
-                    {getUserInitials(
-                      getUserDisplayName()
-                    )}
-                  </span>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleImageUpload}
-                className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-2"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
-
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handleFileChange}
+            <div className="relative group z-10">
+              <UserAvatar
+                user={user}
+                userProfile={userProfile}
+                previewUrl={previewUrl}
+                cacheVersion={avatarRefreshKey || undefined}
+                size="xl"
+                editable
+                isUploading={isUploading}
+                onFileSelect={handleAvatarFileSelect}
+                name={getUserDisplayName()}
+                initials={getUserInitials(getUserDisplayName())}
+                fallbackClassName={`bg-gradient-to-br ${roleConfig.color}`}
               />
+
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  aria-label="Edit profile"
+                  className="absolute top-0 right-0 bg-blue-600 hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/70 rounded-full p-2 shadow-lg border border-white/10 transition-colors"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
             {/* Profile Info */}
@@ -667,17 +501,7 @@ export default function UniversalProfile() {
                         Cancel
                       </Button>
                     </div>
-                  ) : (
-                    <Button
-                      onClick={() =>
-                        setIsEditing(true)
-                      }
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Edit3 className="w-4 h-4 mr-2" />
-                      Edit Profile
-                    </Button>
-                  )}
+                  ) : null}
                 </div>
               </div>
 

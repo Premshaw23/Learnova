@@ -1,7 +1,6 @@
 import { toast } from "react-hot-toast";
 import React, { useState, useEffect, useCallback } from "react";
 import { Navbar } from "./Navbar";
-import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Calendar,
@@ -62,6 +61,8 @@ import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
 import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
 import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
 import { db } from "@/lib/firebaseConfig";
+import { UserAvatar } from "@/components/ui/UserAvatar";
+import { getUserDisplayName, getUserInitials } from "@/lib/avatar";
 import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 
 const AttendanceTrendsChart = dynamic(
@@ -570,16 +571,8 @@ const TeacherDashboard = () => {
     }
   };
 
-  const getUserInitials = () => {
-    if (user?.displayName) {
-      return user.displayName
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase();
-    }
-    return user?.email?.[0]?.toUpperCase() || "T";
-  };
+  const displayName = getUserDisplayName({ user, userProfile, fallback: "Teacher" });
+  const initials = getUserInitials(displayName);
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -1034,35 +1027,22 @@ const TeacherDashboard = () => {
               {/* Left - Teacher Profile */}
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  {user?.photoURL ? (
-                    <Image
-                      src={user.photoURL}
-                      alt="Profile"
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-accent/30">
-                      <span className="text-sm font-bold text-white">
-                        {user?.displayName
-                          ? user.displayName
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase()
-                          : user?.email?.[0]?.toUpperCase() || "T"}
-                      </span>
-                    </div>
-                  )}
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-black" />
+                  <UserAvatar
+                    user={user}
+                    userProfile={userProfile}
+                    size="md"
+                    shape="rounded"
+                    showStatusDot
+                    name={displayName}
+                    initials={initials}
+                    fallbackClassName="bg-gradient-to-br from-accent to-blue-500"
+                    className="border-accent/30"
+                  />
                 </div>
 
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-accent bg-clip-text text-transparent">
-                    {user?.displayName ||
-                      user?.email?.split("@")[0] ||
-                      "Teacher"}
+                    {displayName}
                   </h1>
                   <div className="text-sm text-gray-400">{user?.email}</div>
                 </div>

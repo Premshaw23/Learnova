@@ -1,8 +1,10 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
+import { UserAvatar } from "@/components/ui/UserAvatar";
+import { useAvatarUpload } from "@/hooks/useAvatarUpload";
+import { resolveAvatarUrl } from "@/lib/avatar";
 import {
   Settings,
   User,
@@ -30,7 +32,7 @@ import {
   Sparkles,
   RefreshCw,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "./Navbar";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
@@ -55,23 +57,21 @@ const ToggleSwitch = ({ enabled, onChange, label, description }) => (
     </div>
     <button
       onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
-        enabled
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${enabled
           ? "bg-gradient-to-r from-blue-500 to-purple-600"
           : "bg-white/20"
-      }`}
+        }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-          enabled ? "translate-x-6" : "translate-x-1"
-        }`}
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${enabled ? "translate-x-6" : "translate-x-1"
+          }`}
       />
     </button>
   </div>
 );
 
 export default function UniversalSettings() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { setTheme } = useTheme();
   const [activeSection, setActiveSection] = useState("profile");
   const [showPassword, setShowPassword] = useState(false);
@@ -80,6 +80,10 @@ export default function UniversalSettings() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pushPermission, setPushPermission] = useState("default");
+
+  const avatarFileInputRef = useRef(null);
+  const { previewUrl, isUploading: isAvatarUploading, uploadAvatar } =
+    useAvatarUpload({ user });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -130,16 +134,19 @@ export default function UniversalSettings() {
       .slice(0, 2);
   }, []);
 
-  const getUserPhoto = useCallback(() => {
-    return user?.photoURL || user?.avatar || null;
-  }, [user]);
+  const getResolvedAvatar = useCallback(
+    () => resolveAvatarUrl({ user, userProfile }),
+    [user, userProfile]
+  );
 
   const getUserDisplayName = useCallback(() => {
+    if (userProfile?.fullName) return userProfile.fullName;
+    if (userProfile?.displayName) return userProfile.displayName;
     if (user?.displayName) return user.displayName;
     if (user?.name) return user.name;
     if (user?.email) return user.email.split("@")[0];
     return "User";
-  }, [user]);
+  }, [user, userProfile]);
 
   const getUserEmail = useCallback(() => {
     return user?.email || "";
@@ -274,7 +281,7 @@ export default function UniversalSettings() {
       bio:
         user?.bio ||
         "Passionate learner exploring new technologies and skills.",
-      avatar: getUserPhoto() || "/user-avatar.jpg",
+      avatar: getResolvedAvatar() || "",
     },
     notifications: roleSpecificSettings.notifications,
     privacy: {
@@ -297,7 +304,7 @@ export default function UniversalSettings() {
       try {
         setIsInitialLoading(true);
         setError(null);
-        
+
         if (user) {
           setSettings((prev) => ({
             ...prev,
@@ -307,7 +314,7 @@ export default function UniversalSettings() {
               email: getUserEmail(),
               phone: user.phone || prev.profile.phone,
               bio: user.bio || prev.profile.bio,
-              avatar: getUserPhoto() || prev.profile.avatar,
+              avatar: getResolvedAvatar() || prev.profile.avatar,
             },
           }));
         }
@@ -318,7 +325,7 @@ export default function UniversalSettings() {
         setIsInitialLoading(false);
       }
     };
-    
+
     loadSettings();
   }, [user]);
 
@@ -331,6 +338,13 @@ export default function UniversalSettings() {
       },
     }));
     setHasChanges(true);
+  };
+
+  const handleAvatarFileSelect = async (file) => {
+    const result = await uploadAvatar(file);
+    if (result?.success && result.url) {
+      updateSetting("profile", "avatar", result.url);
+    }
   };
 
   const saveSettings = async () => {
@@ -354,6 +368,7 @@ export default function UniversalSettings() {
   };
 
   const resetSettings = () => {
+    setAvatarPreview(null);
     setSettings({
       profile: {
         name: getUserDisplayName(),
@@ -362,7 +377,7 @@ export default function UniversalSettings() {
         bio:
           user?.bio ||
           "Passionate learner exploring new technologies and skills.",
-        avatar: getUserPhoto() || "/user-avatar.jpg",
+        avatar: getResolvedAvatar() || "",
       },
       notifications: roleSpecificSettings.notifications,
       privacy: {
@@ -394,6 +409,8 @@ export default function UniversalSettings() {
       // 2. Revert theme in next-themes provider to default 'dark'
       setTheme("dark");
 
+      setAvatarPreview(null);
+
       // 3. Reset settings state to initial default values
       setSettings({
         profile: {
@@ -403,7 +420,7 @@ export default function UniversalSettings() {
           bio:
             user?.bio ||
             "Passionate learner exploring new technologies and skills.",
-          avatar: getUserPhoto() || "/user-avatar.jpg",
+          avatar: getResolvedAvatar() || "",
         },
         notifications: roleSpecificSettings.notifications,
         privacy: {
@@ -534,11 +551,10 @@ export default function UniversalSettings() {
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                      activeSection === section.id
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${activeSection === section.id
                         ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
                         : "text-white/70 hover:text-white hover:bg-white/10"
-                    }`}
+                      }`}
                   >
                     <section.icon className="h-5 w-5" />
                     <span>{section.label}</span>
@@ -558,39 +574,29 @@ export default function UniversalSettings() {
                 >
                   <div className="space-y-4">
                     <div className="flex items-center space-x-6">
-                      <div className="relative">
-                        {getUserPhoto() ? (
-                          <Image
-                            src={getUserPhoto() || "/placeholder.svg"}
-                            alt="Profile"
-                            width={200}
-                            height={200}
-                            className="w-20 h-20 rounded-full border-2 border-white/20 object-cover"
-                            onError={(e) => {
-                              const target = e.target;
-                              target.style.display = "none";
-                              const fallback = target.nextElementSibling;
-                              if (fallback) fallback.style.display = "flex";
-                            }}
-                          />
-                        ) : null}
-                        <div
-                          className={`w-20 h-20 rounded-full border-2 border-white/20 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl ${
-                            getUserPhoto() ? "hidden" : "flex"
-                          }`}
-                        >
-                          {getUserInitials(getUserDisplayName())}
-                        </div>
-                        <button className="absolute -bottom-1 -right-1 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-colors">
-                          <User className="h-4 w-4" />
-                        </button>
-                      </div>
+                      <UserAvatar
+                        user={user}
+                        userProfile={userProfile}
+                        previewUrl={previewUrl}
+                        size="lg"
+                        editable
+                        isUploading={isAvatarUploading}
+                        onFileSelect={handleAvatarFileSelect}
+                        inputRef={avatarFileInputRef}
+                        name={getUserDisplayName()}
+                        initials={getUserInitials(getUserDisplayName())}
+                      />
                       <div className="flex-1">
+                        <p className="text-white/60 text-sm mb-2">
+                          JPG, JPEG, PNG, or WEBP up to 5MB
+                        </p>
                         <Button
                           variant="outline"
                           className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                          disabled={isAvatarUploading}
+                          onClick={() => avatarFileInputRef.current?.click()}
                         >
-                          Change Avatar
+                          {isAvatarUploading ? "Uploading..." : "Change Avatar"}
                         </Button>
                       </div>
                     </div>
@@ -713,39 +719,37 @@ export default function UniversalSettings() {
                   <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${
-                          pushPermission === "granted" ? "bg-green-400 animate-pulse" :
-                          pushPermission === "denied" ? "bg-red-500" : "bg-yellow-400 animate-bounce"
-                        }`} />
+                        <span className={`w-2.5 h-2.5 rounded-full ${pushPermission === "granted" ? "bg-green-400 animate-pulse" :
+                            pushPermission === "denied" ? "bg-red-500" : "bg-yellow-400 animate-bounce"
+                          }`} />
                         <span className="text-sm font-semibold text-white">
                           Status: {
                             pushPermission === "granted" ? "Notifications Enabled" :
-                            pushPermission === "denied" ? "Notifications Blocked" :
-                            pushPermission === "unsupported" ? "Browser Unsupported" : "Permission Required"
+                              pushPermission === "denied" ? "Notifications Blocked" :
+                                pushPermission === "unsupported" ? "Browser Unsupported" : "Permission Required"
                           }
                         </span>
                       </div>
                       <p className="text-white/60 text-xs mt-1">
-                        {pushPermission === "granted" 
+                        {pushPermission === "granted"
                           ? "You are all set! Learnova will proactively notify you 10 minutes before classes."
                           : pushPermission === "denied"
-                          ? "Please reset browser permissions in your URL bar to enable notifications."
-                          : pushPermission === "unsupported"
-                          ? "Push notifications are not supported in this browser."
-                          : "Enable browser push notifications to receive proactive class alerts."
+                            ? "Please reset browser permissions in your URL bar to enable notifications."
+                            : pushPermission === "unsupported"
+                              ? "Push notifications are not supported in this browser."
+                              : "Enable browser push notifications to receive proactive class alerts."
                         }
                       </p>
                     </div>
-                    
+
                     {pushPermission !== "unsupported" && (
                       <button
                         onClick={handleTogglePush}
                         disabled={pushPermission === "denied"}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 ${
-                          pushPermission === "granted"
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 ${pushPermission === "granted"
                             ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
                             : "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-purple-500/20 hover:scale-105 active:scale-95 cursor-pointer"
-                        }`}
+                          }`}
                       >
                         {pushPermission === "granted" ? "Mute Reminders" : "Enable Reminders"}
                       </button>
@@ -1005,11 +1009,10 @@ export default function UniversalSettings() {
                               updateSetting("appearance", "theme", themeOpt.value);
                               setTheme(themeOpt.value);
                             }}
-                            className={`group flex flex-col items-center space-y-3 p-5 rounded-2xl border transition-all duration-300 cursor-pointer text-center relative overflow-hidden ${
-                              isSelected
+                            className={`group flex flex-col items-center space-y-3 p-5 rounded-2xl border transition-all duration-300 cursor-pointer text-center relative overflow-hidden ${isSelected
                                 ? "border-blue-500/80 bg-blue-500/10 text-white shadow-[0_0_20px_rgba(59,130,246,0.25)]"
                                 : "border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]"
-                            }`}
+                              }`}
                             whileHover="hover"
                             whileTap="tap"
                             animate={isSelected ? "selected" : "unselected"}
@@ -1027,11 +1030,10 @@ export default function UniversalSettings() {
                                 hover: { scale: 1.15, rotate: themeOpt.value === "light" ? 45 : themeOpt.value === "dark" ? -15 : 0 }
                               }}
                               transition={{ type: "spring", stiffness: 200, damping: 12 }}
-                              className={`p-2.5 rounded-xl ${
-                                isSelected 
-                                  ? "bg-blue-500/20" 
+                              className={`p-2.5 rounded-xl ${isSelected
+                                  ? "bg-blue-500/20"
                                   : "bg-white/5 group-hover:bg-white/10"
-                              } transition-colors duration-300`}
+                                } transition-colors duration-300`}
                             >
                               <themeOpt.icon className={`h-6 w-6 transition-colors duration-300 ${isSelected ? "text-white" : themeOpt.color}`} />
                             </motion.div>

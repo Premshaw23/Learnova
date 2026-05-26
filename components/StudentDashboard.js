@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Image from "next/image";
 import dynamic from "next/dynamic";
 
 import {
@@ -57,9 +56,11 @@ import StreakCounter from "./gamification/StreakCounter";
 import XpProgressBar from "./gamification/XpProgressBar";
 import BadgeGallery from "./gamification/BadgeGallery";
 import ComplaintForm from "@/components/ComplaintForm";
+import { UserAvatar } from "@/components/ui/UserAvatar";
+import { getUserDisplayName, getUserInitials } from "@/lib/avatar";
 
 const StudentDashboard = () => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -286,21 +287,8 @@ setRecentActivity(mapped);
     }
   };
 
-  const getUserInitials = () => {
-    if (!user?.displayName && !user?.email) {
-      return "U";
-    }
-
-    return (
-      user?.displayName
-        ?.split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase() ||
-      user?.email?.[0]?.toUpperCase() ||
-      "U"
-    );
-  };
+  const displayName = getUserDisplayName({ user, userProfile });
+  const initials = getUserInitials(displayName);
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -346,23 +334,17 @@ setRecentActivity(mapped);
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  {user?.photoURL ? (
-                    <Image
-                      src={user.photoURL}
-                      alt="Profile"
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-accent/30">
-                      <span className="text-sm font-bold text-white">
-                        {getUserInitials()}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-black" />
+                  <UserAvatar
+                    user={user}
+                    userProfile={userProfile}
+                    size="md"
+                    shape="rounded"
+                    showStatusDot
+                    name={displayName}
+                    initials={initials}
+                    fallbackClassName="bg-gradient-to-br from-accent to-blue-500"
+                    className="border-accent/30"
+                  />
                 </div>
 
                 <div>

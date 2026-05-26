@@ -19,6 +19,9 @@ jest.mock("mongodb", () => ({
     toString() {
       return String(this.id);
     }
+    static isValid(id) {
+      return typeof id === "string" && id.length > 0;
+    }
   },
 }));
 
@@ -40,6 +43,23 @@ jest.mock("@/lib/errors", () => ({
   },
   ValidationError: class ValidationError extends Error {},
   NotFoundError: class NotFoundError extends Error {},
+}));
+
+jest.mock("@vercel/blob", () => ({
+  put: jest.fn(),
+}));
+
+jest.mock("firebase-admin", () => ({
+  firestore: {
+    FieldValue: {
+      serverTimestamp: jest.fn(),
+    },
+  },
+}));
+
+jest.mock("@/lib/firebase-admin", () => ({
+  initializeFirebase: jest.fn(),
+  getUserProfile: jest.fn(),
 }));
 
 const { GET } = require("@/app/api/images/route");

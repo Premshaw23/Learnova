@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/UserAvatar";
+import { getUserDisplayName, getUserInitials } from "@/lib/avatar";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTheme } from "next-themes";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -198,19 +199,8 @@ export function Navbar() {
     if (i18n?.changeLanguage) i18n.changeLanguage(languageMap[lang]);
   };
 
-  const getUserInitials = (name) => {
-    if (!name) return "U";
-    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-  };
-
-  const getUserDisplayName = () => {
-    if (userProfile?.fullName) return userProfile.fullName;
-    if (user?.displayName) return user.displayName;
-    if (user?.email) return user.email.split("@")[0];
-    return "User";
-  };
-
-  const getUserPhoto = () => user?.photoURL || null;
+  const displayName = getUserDisplayName({ user, userProfile });
+  const initials = getUserInitials(displayName);
 
   const getUserRole = () => {
     if (!userProfile?.role) return "User";
@@ -242,15 +232,6 @@ export function Navbar() {
   ].filter((item) => !(item.key === "dashboard" && item.href === "/profile"));
 
   const languagesList = ["English", "Español", "Français", "Deutsch", "हिन्दी"];
-
-  const handleImageError = (e) => {
-    const img = e.target;
-    const fallback = img.parentElement?.querySelector(".fallback-avatar");
-    if (img && fallback) {
-      img.style.display = "none";
-      fallback.style.display = "flex";
-    }
-  };
 
   // ── Shared style helpers ────────────────────────────────────────────────────
 
@@ -505,23 +486,17 @@ export function Navbar() {
                       aria-haspopup="true"
                       aria-expanded={isDropdownOpen}
                     >
-                      <div className="relative w-7 h-7 shrink-0">
-                        {getUserPhoto() ? (
-                          <Image
-                            src={getUserPhoto()} alt="Profile"
-                            width={28} height={28}
-                            className="rounded-full object-cover ring-2 ring-blue-500/30"
-                            onError={handleImageError}
-                          />
-                        ) : (
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
-                            {getUserInitials(getUserDisplayName())}
-                          </div>
-                        )}
-                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-emerald-400 rounded-full ring-2 ring-white dark:ring-zinc-950" />
-                      </div>
+                      <UserAvatar
+                        user={user}
+                        userProfile={userProfile}
+                        size="xs"
+                        showStatusDot
+                        name={displayName}
+                        initials={initials}
+                        className="ring-blue-500/30"
+                      />
                       <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200 hidden md:inline max-w-[80px] truncate">
-                        {getUserDisplayName().split(" ")[0]}
+                        {displayName.split(" ")[0]}
                       </span>
                       <motion.span
                         animate={{ rotate: isDropdownOpen ? 180 : 0 }}
@@ -541,7 +516,7 @@ export function Navbar() {
                           style={glassPanelStyle}
                         >
                           <div className="px-4 py-3 border-b border-zinc-100/60 dark:border-white/6">
-                            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{getUserDisplayName()}</p>
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{displayName}</p>
                             <p className="text-xs text-zinc-400 mt-0.5">{getUserRole()}</p>
                           </div>
                           {userMenuItems.map((item) => (
@@ -659,18 +634,16 @@ export function Navbar() {
               {/* User strip */}
               {isAuthenticated && (
                 <div className="flex items-center gap-3 p-2.5 bg-zinc-50/60 dark:bg-white/4 rounded-xl border border-zinc-100/60 dark:border-white/6">
-                  <div className="relative w-9 h-9 shrink-0">
-                    {getUserPhoto() ? (
-                      <Image src={getUserPhoto()} alt="Profile" width={36} height={36} className="rounded-full object-cover" onError={handleImageError} />
-                    ) : (
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
-                        {getUserInitials(getUserDisplayName())}
-                      </div>
-                    )}
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-emerald-400 rounded-full ring-2 ring-white dark:ring-zinc-950" />
-                  </div>
+                  <UserAvatar
+                    user={user}
+                    userProfile={userProfile}
+                    size="sm"
+                    showStatusDot
+                    name={displayName}
+                    initials={initials}
+                  />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">{getUserDisplayName()}</p>
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">{displayName}</p>
                     <p className="text-[11px] text-zinc-400">{getUserRole()}</p>
                   </div>
                 </div>
