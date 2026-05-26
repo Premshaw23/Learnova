@@ -3,7 +3,7 @@ name: Contributor Guidelines Reminder
 on:
   issues:
     types: [opened]
-  pull_request:
+  pull_request_target:
     types: [opened]
 
 permissions:
@@ -32,20 +32,17 @@ jobs:
               state: 'open'
             });
 
-            // Query open PRs by this contributor
-            const prs = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              creator: author,
-              state: 'open'
-            });
-
             // Query ALL open PRs in the repository
             const allPRs = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open'
             });
+
+            // Filter open PRs by this contributor
+            const prs = { data: allPRs.data.filter(pr => pr.user && pr.user.login === author) };
+
+
 
             const PER_PERSON_LIMIT = 3;
             const GLOBAL_PR_LIMIT = 30;

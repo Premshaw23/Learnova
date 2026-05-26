@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
+import * as faceapi from "face-api.js";
 
 import {
   User,
@@ -40,6 +41,9 @@ import {
   Users,
   Building,
   UserCheck,
+  Bell,
+  Eye,
+  Smartphone,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -64,6 +68,31 @@ export default function UniversalProfile() {
   const [userData, setUserData] = useState(
     userProfile || null
   );
+
+  const [settings, setSettings] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    publicProfile: false,
+  });
+
+  const MODEL_URL = "/models";
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
+      } catch (err) {
+        console.error("Failed to load face-api models:", err);
+      }
+    };
+    loadModels();
+  }, []);
 
   const [stats, setStats] = useState({});
 
@@ -103,12 +132,15 @@ export default function UniversalProfile() {
   }, [user]);
 
   useEffect(() => {
+    let active = true;
     const fetchProfileData = async () => {
       if (!user?.uid) return;
 
       try {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
+        
+        if (!active) return;
 
         if (userSnap.exists()) {
           const data = userSnap.data();
@@ -127,6 +159,12 @@ export default function UniversalProfile() {
             linkedin: data.linkedin || "",
             twitter: data.twitter || "",
           }));
+
+          setSettings({
+            emailNotifications: data.settings?.emailNotifications ?? true,
+            pushNotifications: data.settings?.pushNotifications ?? true,
+            publicProfile: data.settings?.publicProfile ?? false,
+          });
         }
 
         const statsRef = doc(
@@ -136,6 +174,8 @@ export default function UniversalProfile() {
         );
 
         const statsSnap = await getDoc(statsRef);
+        
+        if (!active) return;
 
         if (statsSnap.exists()) {
           setStats(statsSnap.data());
@@ -146,6 +186,7 @@ export default function UniversalProfile() {
     };
 
     fetchProfileData();
+    return () => { active = false; };
   }, [user]);
 
   const handleInputChange = (e) => {
@@ -153,6 +194,23 @@ export default function UniversalProfile() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  };
+
+  const handleToggleSetting = async (key) => {
+    if (!user) return;
+    const newValue = !settings[key];
+    setSettings((prev) => ({ ...prev, [key]: newValue }));
+
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        [`settings.${key}`]: newValue,
+      });
+      toast.success("Settings updated");
+    } catch (error) {
+      toast.error("Failed to update settings");
+      setSettings((prev) => ({ ...prev, [key]: !newValue }));
+    }
   };
 
   const handleSave = async () => {
@@ -239,6 +297,38 @@ export default function UniversalProfile() {
       return;
     }
 
+    if (!modelsLoaded) {
+      toast.error("Face models are still loading. Please wait a moment.");
+      return;
+    }
+
+    const detectToast = toast.loading("Analyzing photo for face verification...");
+    let faceDescriptorString = "";
+    try {
+      const fileUrl = URL.createObjectURL(file);
+      const img = await faceapi.fetchImage(fileUrl);
+      const detection = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      URL.revokeObjectURL(fileUrl);
+
+      if (!detection) {
+        toast.error("Could not detect a clear face. Please upload a clear headshot photo.", { id: detectToast });
+        e.target.value = "";
+        return;
+      }
+
+      faceDescriptorString = JSON.stringify(Array.from(detection.descriptor));
+      toast.success("Face successfully verified!", { id: detectToast });
+    } catch (err) {
+      console.error("Face detection error during profile update:", err);
+      toast.error("Error analyzing image file. Please ensure it is a valid face image.", { id: detectToast });
+      e.target.value = "";
+      return;
+    }
+
     const loadingToast = toast.loading(
       "Uploading profile picture..."
     );
@@ -249,6 +339,9 @@ export default function UniversalProfile() {
       const uploadFormData = new FormData();
 
       uploadFormData.append("file", file);
+      if (faceDescriptorString) {
+        uploadFormData.append("faceDescriptor", faceDescriptorString);
+      }
 
       const res = await fetch("/api/images", {
         method: "POST",
@@ -762,22 +855,97 @@ export default function UniversalProfile() {
             )}
 
             {activeTab === "activity" && (
-              <div className="text-center py-12">
-                <Activity className="w-12 h-12 mx-auto text-white/40 mb-4" />
-
-                <h3 className="text-xl font-semibold">
-                  Detailed Activity Coming Soon
-                </h3>
+              <div>
+                <h3 className="text-2xl font-bold mb-6">Detailed Activity</h3>
+                <div className="relative border-l border-white/10 ml-4 space-y-8 pb-4">
+                  {recentActivity.map((item, index) => (
+                    <div key={item.id} className="relative pl-8">
+                      <div className="absolute -left-3 top-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center border-4 border-gray-900">
+                        <Activity className="w-3 h-3 text-white" />
+                      </div>
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-semibold text-lg">{item.title}</h4>
+                          <span className="text-xs text-white/50 bg-black/30 px-2 py-1 rounded-full">{item.time}</span>
+                        </div>
+                        <p className="text-white/70 text-sm mb-3">
+                          {item.type === "course" && "Completed a module with excellent accuracy."}
+                          {item.type === "achievement" && "Unlocked a new milestone in your learning journey."}
+                          {item.type === "attendance" && "Successfully marked presence using GPS validation."}
+                        </p>
+                        <div className="w-full bg-black/40 rounded-full h-1.5">
+                          <div className="bg-blue-400 h-1.5 rounded-full" style={{ width: `${item.progress}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {activeTab === "settings" && (
-              <div className="text-center py-12">
-                <Edit3 className="w-12 h-12 mx-auto text-white/40 mb-4" />
+              <div>
+                <h3 className="text-2xl font-bold mb-6">Account Settings</h3>
+                <div className="space-y-6">
+                  
+                  {/* Email Notifications */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-blue-500/20 p-3 rounded-lg">
+                        <Bell className="w-6 h-6 text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">Email Notifications</h4>
+                        <p className="text-sm text-white/60">Receive daily summaries and alerts via email.</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleToggleSetting("emailNotifications")}
+                      className={`w-12 h-6 rounded-full transition-colors relative ${settings.emailNotifications ? "bg-blue-500" : "bg-gray-600"}`}
+                    >
+                      <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.emailNotifications ? "translate-x-7" : "translate-x-1"}`} />
+                    </button>
+                  </div>
 
-                <h3 className="text-xl font-semibold">
-                  Settings Panel Coming Soon
-                </h3>
+                  {/* Push Notifications */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-purple-500/20 p-3 rounded-lg">
+                        <Smartphone className="w-6 h-6 text-purple-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">Push Notifications</h4>
+                        <p className="text-sm text-white/60">Receive real-time alerts on your devices.</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleToggleSetting("pushNotifications")}
+                      className={`w-12 h-6 rounded-full transition-colors relative ${settings.pushNotifications ? "bg-purple-500" : "bg-gray-600"}`}
+                    >
+                      <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.pushNotifications ? "translate-x-7" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+
+                  {/* Public Profile */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-green-500/20 p-3 rounded-lg">
+                        <Eye className="w-6 h-6 text-green-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">Public Profile</h4>
+                        <p className="text-sm text-white/60">Allow others to view your profile and achievements.</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleToggleSetting("publicProfile")}
+                      className={`w-12 h-6 rounded-full transition-colors relative ${settings.publicProfile ? "bg-green-500" : "bg-gray-600"}`}
+                    >
+                      <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.publicProfile ? "translate-x-7" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+
+                </div>
               </div>
             )}
           </div>

@@ -9,6 +9,36 @@ const JWKS_URL = new URL(
 const JWKS = createRemoteJWKSet(JWKS_URL);
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+
+function buildPageCsp() {
+  const frameSrc = [
+    "'self'",
+    "https://accounts.google.com",
+    "https://*.google.com",
+    "https://*.firebaseapp.com",
+  ];
+
+  if (FIREBASE_AUTH_DOMAIN) {
+    frameSrc.push(`https://${FIREBASE_AUTH_DOMAIN}`);
+  }
+
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com https://www.google-analytics.com",
+    "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.public.blob.vercel-storage.com https://api.emailjs.com",
+    "media-src 'self' blob:",
+    "worker-src 'self' blob:",
+    `frame-src ${Array.from(new Set(frameSrc)).join(" ")}`,
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
 
 /**
  * Verifies a Firebase ID token's RS256 signature and all standard claims.
@@ -31,7 +61,7 @@ async function verifyIdToken(token) {
     
     // Validate standard JWT claims as required by the Firebase ID token spec
     const now = Math.floor(Date.now() / 1000);
-    if (!payload.sub || payload.iat > now + 300) {
+    if (!payload.sub || payload.iat > now) {
       return null;
     }
 
@@ -50,38 +80,7 @@ export async function middleware(request) {
                  !pathname.startsWith("/api") && 
                  !pathname.match(/\.(?:png|jpg|jpeg|gif|svg|ico|css|js|woff2?|json)$/);
 
-  let nonce;
-  let contentSecurityPolicyHeaderValue;
-
-  if (isPage) {
-    // Generate a cryptographic nonce (base-64 encoded UUID)
-    nonce = btoa(crypto.randomUUID());
-    
-    // Construct the CSP string using the generated nonce
-    const csp = [
-      "default-src 'self'",
-      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://apis.google.com https://www.gstatic.com`,
-      `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com",
-      "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.public.blob.vercel-storage.com https://api.emailjs.com",
-      "media-src 'self' blob:",
-      "worker-src 'self' blob:",
-      "frame-src 'none'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "upgrade-insecure-requests",
-    ].join("; ");
-
-    contentSecurityPolicyHeaderValue = csp;
-  }
-
-  // Set standard headers on request so Next.js can read the x-nonce
   const requestHeaders = new Headers(request.headers);
-  if (isPage) {
-    requestHeaders.set("x-nonce", nonce);
-  }
 
   // Retrieve token from Authorization header or cookies
   let authToken = null;
@@ -113,9 +112,7 @@ export async function middleware(request) {
           const res = await fetch(
             `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${payload.sub}`,
             {
-              headers: { Authorization: `Bearer ${authToken}` },
-              cache: "force-cache",
-              next: { revalidate: 300 } // Cache securely at the edge for 5 minutes
+              headers: { Authorization: `Bearer ${authToken}` }
             }
           );
           if (res.ok) {
@@ -210,7 +207,7 @@ export async function middleware(request) {
   });
 
   if (isPage) {
-    response.headers.set("Content-Security-Policy", contentSecurityPolicyHeaderValue);
+    response.headers.set("Content-Security-Policy", buildPageCsp());
   }
 
   return response;

@@ -1,4 +1,5 @@
 import { POST, normalizeConfidenceScore } from "./route";
+import { parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
@@ -30,6 +31,7 @@ jest.mock("next/server", () => ({
 
 jest.mock("@/lib/error-handler", () => ({
   withErrorHandler: (handler) => handler,
+  parseJSON: jest.fn(),
 }));
 
 describe("attendance sync route", () => {
@@ -44,43 +46,43 @@ describe("attendance sync route", () => {
       name: "Auth Name",
     });
 
+    parseJSON.mockResolvedValue({
+      records: [
+        {
+          id: 1,
+          userId: "user-123",
+          studentName: "Tampered Name",
+          email: "tampered@example.com",
+          confidenceScore: 85,
+          queuedAt: Date.now(),
+        },
+      ],
+    });
+
     getUserProfile.mockResolvedValue({
       fullName: "Server Name",
       email: "server@example.com",
     });
 
-    const batch = {
-      set: jest.fn(),
-      commit: jest.fn().mockResolvedValue(undefined),
-    };
+    let transactionGet;
+    let transactionSet;
 
-    const attendanceQuery = { empty: true };
+    const docRef = {};
+
     const collectionRef = {
-      where: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue(attendanceQuery),
-      doc: jest.fn(() => ({})),
+      doc: jest.fn(() => docRef),
     };
 
     getFirestore.mockReturnValue({
-      batch: jest.fn(() => batch),
+      runTransaction: jest.fn(async (callback) => {
+        transactionSet = jest.fn();
+        transactionGet = jest.fn().mockResolvedValue({ exists: false });
+        return callback({ get: transactionGet, set: transactionSet });
+      }),
       collection: jest.fn(() => collectionRef),
     });
 
-    const response = await POST({
-      json: async () => ({
-        records: [
-          {
-            id: 1,
-            userId: "user-123",
-            studentName: "Tampered Name",
-            email: "tampered@example.com",
-            confidenceScore: 1.7,
-            queuedAt: Date.now(),
-          },
-        ],
-      }),
-    });
+    const response = await POST({});
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -89,13 +91,15 @@ describe("attendance sync route", () => {
     });
 
     expect(getUserProfile).toHaveBeenCalledWith("user-123");
-    expect(batch.set).toHaveBeenCalledWith(
+    expect(collectionRef.doc).toHaveBeenCalledWith(expect.stringMatching(/^user-123_\d{4}-\d{2}-\d{2}$/));
+    expect(transactionGet).toHaveBeenCalledTimes(1);
+    expect(transactionSet).toHaveBeenCalledWith(
       expect.any(Object),
       expect.objectContaining({
         userId: "user-123",
         studentName: "Server Name",
         email: "server@example.com",
-        confidenceScore: 1,
+        confidenceScore: 0.85,
         timestamp: FieldValue.serverTimestamp.mock.results[0].value,
         offlineSynced: true,
       }),
@@ -109,53 +113,47 @@ describe("attendance sync route", () => {
       name: "Auth Name",
     });
 
+    parseJSON.mockResolvedValue({
+      records: [
+        {
+          id: 2,
+          userId: "user-123",
+          studentName: "Tampered Name",
+          email: "tampered@example.com",
+          confidenceScore: 0.5,
+          queuedAt: Date.now(),
+        },
+      ],
+    });
+
     getUserProfile.mockResolvedValue(null);
 
-    const batch = {
-      set: jest.fn(),
-      commit: jest.fn().mockResolvedValue(undefined),
+    const collectionRef = {
+      doc: jest.fn(() => ({ get: jest.fn() })),
     };
 
-    const collectionRef = {
-      where: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn(),
-      doc: jest.fn(() => ({})),
-    };
+    const runTransaction = jest.fn();
 
     getFirestore.mockReturnValue({
-      batch: jest.fn(() => batch),
+      runTransaction,
       collection: jest.fn(() => collectionRef),
     });
 
-    const response = await POST({
-      json: async () => ({
-        records: [
-          {
-            id: 2,
-            userId: "user-123",
-            studentName: "Tampered Name",
-            email: "tampered@example.com",
-            confidenceScore: 0.5,
-            queuedAt: Date.now(),
-          },
-        ],
-      }),
-    });
+    const response = await POST({});
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "User profile not found for attendance sync.",
     });
-    expect(batch.set).not.toHaveBeenCalled();
-    expect(batch.commit).not.toHaveBeenCalled();
+    expect(runTransaction).not.toHaveBeenCalled();
   });
 
   test("normalizes confidence scores into the valid range", () => {
     expect(normalizeConfidenceScore(-2)).toBe(0);
     expect(normalizeConfidenceScore(0.42)).toBe(0.42);
-    expect(normalizeConfidenceScore(3.5)).toBe(1);
+    expect(normalizeConfidenceScore(75)).toBe(0.75);
+    expect(normalizeConfidenceScore(150)).toBe(1);
     expect(normalizeConfidenceScore(Number.NaN)).toBe(0);
   });
 });

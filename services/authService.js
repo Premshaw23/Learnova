@@ -9,7 +9,7 @@ import {
   signOut,
   deleteUser,
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import {
   createUserProfile,
   getErrorMessage,
@@ -61,10 +61,33 @@ export const loginWithEmail = async (email, password, selectedRole) => {
         };
       }
 
-      // Update last login
-      await setDoc(doc(db, "users", user.uid), {
-        ...userData,
+      // Update last login — use updateDoc to avoid overwriting the
+      // entire document (including role) with potentially stale data
+      await updateDoc(doc(db, "users", user.uid), {
         lastLogin: new Date(),
+      });
+
+      // Migrate existing users to have cryptographically signed custom
+      // claims.  Fire-and-forget — the login succeeds regardless.
+      user.getIdToken().then((token) => {
+        fetch("/api/auth/set-role", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            role: userData.role,
+            fullName: userData.fullName || "",
+          }),
+        })
+        .then((res) => {
+          if (res.ok) {
+            // Force refresh token so the custom claims are present in the client-side session immediately
+            user.getIdToken(true).catch(() => {});
+          }
+        })
+        .catch(() => {});
       });
 
       return { success: true, userData };
@@ -191,6 +214,8 @@ export const loginWithGoogle = async (
             ...additionalData,
             fullName: nameToUse,
           });
+          // Force refresh the token to immediately acquire the new custom claims (role) on the client side
+          await user.getIdToken(true);
         } catch (profileError) {
           await deleteUser(user).catch(() => {});
           throw profileError;
@@ -216,9 +241,31 @@ export const loginWithGoogle = async (
 
     // Update last login for existing users
     if (userData) {
-      await setDoc(doc(db, "users", user.uid), {
-        ...userData,
+      await updateDoc(doc(db, "users", user.uid), {
         lastLogin: new Date(),
+      });
+
+      // Migrate existing users to have cryptographically signed custom
+      // claims.  Fire-and-forget — the login succeeds regardless.
+      user.getIdToken().then((token) => {
+        fetch("/api/auth/set-role", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            role: userData.role,
+            fullName: userData.fullName || "",
+          }),
+        })
+        .then((res) => {
+          if (res.ok) {
+            // Force refresh token so the custom claims are present in the client-side session immediately
+            user.getIdToken(true).catch(() => {});
+          }
+        })
+        .catch(() => {});
       });
     }
 
@@ -237,96 +284,34 @@ export const loginWithGoogle = async (
 };
 
 /**
- * Validates and checks client-side rate limits for password reset requests.
- * @param {string} email - The target email address.
- * @returns {Object} Validation result { allowed: boolean, error?: string }
- */
-const checkClientRateLimit = (email) => {
-  if (typeof window === "undefined") {
-    return { allowed: true };
-  }
-
-  try {
-    const now = Date.now();
-    const emailKey = `pw_reset_limit_${email}`;
-    const globalKey = `pw_reset_limit_global`;
-    const windowMs = 15 * 60 * 1000; // 15 minutes window
-    const maxEmailRequests = 3;
-    const maxGlobalRequests = 5;
-
-    // 1. Check Global Limit
-    const globalDataStr = localStorage.getItem(globalKey);
-    let globalData = globalDataStr ? JSON.parse(globalDataStr) : null;
-    if (globalData && now - globalData.firstRequest < windowMs) {
-      if (globalData.count >= maxGlobalRequests) {
-        const timeLeft = Math.ceil((globalData.firstRequest + windowMs - now) / 1000 / 60);
-        return {
-          allowed: false,
-          error: `Too many password reset requests from this browser. Please try again in ${timeLeft} minutes.`,
-        };
-      }
-    }
-
-    // 2. Check Per-Email Limit
-    const emailDataStr = localStorage.getItem(emailKey);
-    let emailData = emailDataStr ? JSON.parse(emailDataStr) : null;
-    if (emailData && now - emailData.firstRequest < windowMs) {
-      if (emailData.count >= maxEmailRequests) {
-        const timeLeft = Math.ceil((emailData.firstRequest + windowMs - now) / 1000 / 60);
-        return {
-          allowed: false,
-          error: `Too many password reset requests for this email. Please try again in ${timeLeft} minutes.`,
-        };
-      }
-    }
-
-    // Update global counter
-    if (!globalData || now - globalData.firstRequest >= windowMs) {
-      localStorage.setItem(globalKey, JSON.stringify({ count: 1, firstRequest: now }));
-    } else {
-      globalData.count += 1;
-      localStorage.setItem(globalKey, JSON.stringify(globalData));
-    }
-
-    // Update email counter
-    if (!emailData || now - emailData.firstRequest >= windowMs) {
-      localStorage.setItem(emailKey, JSON.stringify({ count: 1, firstRequest: now }));
-    } else {
-      emailData.count += 1;
-      localStorage.setItem(emailKey, JSON.stringify(emailData));
-    }
-
-    return { allowed: true };
-  } catch (e) {
-    return { allowed: true }; // Fallback if localStorage is disabled/fails
-  }
-};
-
-/**
- * Sends a password reset email to the user with client-side rate limiting.
+ * Triggers a password reset email via the secure backend API route.
  * @param {string} email - The user's email address.
  * @returns {Promise<Object>} Result of the password reset request.
  */
 export const resetPassword = async (email) => {
   try {
-    if (!auth) {
-      return { success: false, error: FIREBASE_CONFIG_ERROR };
-    }
-
     const sanitizedEmail = email.trim().toLowerCase();
-    const rateLimitCheck = checkClientRateLimit(sanitizedEmail);
-    if (!rateLimitCheck.allowed) {
-      return { success: false, error: rateLimitCheck.error };
+    const response = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: sanitizedEmail }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || getErrorMessage(data.error) || "Failed to send reset email. Please try again.",
+      };
     }
 
-    await sendPasswordResetEmail(auth, sanitizedEmail);
     return { success: true };
   } catch (err) {
+    console.error("Reset password fetch error:", err);
     return {
       success: false,
-      error:
-        getErrorMessage(err.code) ||
-        "Failed to send reset email. Please try again.",
+      error: "An unexpected error occurred while communicating with the server.",
     };
   }
 };
