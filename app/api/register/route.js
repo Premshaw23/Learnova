@@ -60,8 +60,8 @@ const registerSchema =
   z.object({
     name: z
       .string({
-        error: (issue) =>
-          issue.input === undefined ? "Name is required" : undefined,
+        required_error:
+          "Name is required",
       })
       .trim()
       .min(
@@ -72,8 +72,8 @@ const registerSchema =
 
     rollNo: z
       .string({
-        error: (issue) =>
-          issue.input === undefined ? "Roll number is required" : undefined,
+        required_error:
+          "Roll number is required",
       })
       .trim()
       .min(
@@ -84,8 +84,8 @@ const registerSchema =
 
     email: z
       .string({
-        error: (issue) =>
-          issue.input === undefined ? "Email is required" : undefined,
+        required_error:
+          "Email is required",
       })
       .trim()
       .email(
@@ -231,19 +231,6 @@ export const POST =
         formData.get(
           "photo"
         );
-
-      const rawFaceDescriptor = formData.get("faceDescriptor");
-      let faceDescriptor = null;
-      if (rawFaceDescriptor) {
-        try {
-          faceDescriptor = JSON.parse(rawFaceDescriptor);
-          if (!Array.isArray(faceDescriptor)) {
-            throw new Error();
-          }
-        } catch {
-          return jsonError("Invalid face descriptor format", 400);
-        }
-      }
 
       // Validate fields
       const validationResult =
@@ -420,10 +407,6 @@ export const POST =
           firebaseUid:
             decodedToken.uid,
         };
-
-        if (faceDescriptor) {
-          user.faceDescriptor = faceDescriptor;
-        }
 
         const result =
           await users.insertOne(

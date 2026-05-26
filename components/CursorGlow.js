@@ -12,7 +12,6 @@ export default function CursorGlow() {
     let mouseY = 0;
     let glowX = 0;
     let glowY = 0;
-    let animationFrameId = null;
 
     const move = (e) => {
       mouseX = e.clientX;
@@ -29,16 +28,13 @@ export default function CursorGlow() {
         glow.style.top = `${glowY}px`;
       }
 
-      animationFrameId = requestAnimationFrame(animate);
+      requestAnimationFrame(animate);
     }
 
     animate();
 
     return () => {
       document.removeEventListener("mousemove", move);
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
     };
   }, []);
 

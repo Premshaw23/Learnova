@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -28,99 +28,18 @@ import {
   X,
   AlertTriangle,
   Sparkles,
-  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
-import { useTheme } from "next-themes";
-import { motion } from "framer-motion";
-
-const SettingCard = ({ children, title, description }) => (
-  <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 hover:bg-black/30 transition-all duration-300">
-    <div className="mb-4">
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
-      {description && (
-        <p className="text-white/60 text-sm mt-1">{description}</p>
-      )}
-    </div>
-    {children}
-  </div>
-);
-
-const ToggleSwitch = ({ enabled, onChange, label, description }) => (
-  <div className="flex items-center justify-between py-3">
-    <div className="flex-1">
-      <p className="text-white font-medium">{label}</p>
-      {description && <p className="text-white/60 text-sm">{description}</p>}
-    </div>
-    <button
-      onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
-        enabled
-          ? "bg-gradient-to-r from-blue-500 to-purple-600"
-          : "bg-white/20"
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-          enabled ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
-    </button>
-  </div>
-);
 
 export default function UniversalSettings() {
   const { user } = useAuth();
-  const { setTheme } = useTheme();
   const [activeSection, setActiveSection] = useState("profile");
   const [showPassword, setShowPassword] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [pushPermission, setPushPermission] = useState("default");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (!("Notification" in window)) {
-        setPushPermission("unsupported");
-      } else {
-        setPushPermission(Notification.permission);
-      }
-    }
-  }, []);
-
-  const handleTogglePush = async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-
-    if (pushPermission === "granted") {
-      updateSetting("notifications", "pushNotifications", false);
-      toast.success("Push notifications muted in setting profile!");
-      setPushPermission("default");
-      return;
-    }
-
-    try {
-      const permission = await Notification.requestPermission();
-      setPushPermission(permission);
-      if (permission === "granted") {
-        updateSetting("notifications", "pushNotifications", true);
-        toast.success("Timetable push notifications activated! Reminders will trigger 10m before class.");
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("/sw.js")
-            .then((reg) => console.log("Service Worker registered:", reg.scope))
-            .catch((err) => console.error("SW Registration failed:", err));
-        }
-      } else if (permission === "denied") {
-        toast.error("Notifications blocked! Allow permission in site settings.");
-      }
-    } catch (err) {
-      console.error("Error setting notification permission:", err);
-    }
-  };
-
-  const getUserInitials = useCallback((name) => {
+  const getUserInitials = (name) => {
     if (!name) return "U";
     return name
       .split(" ")
@@ -128,22 +47,22 @@ export default function UniversalSettings() {
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  }, []);
+  };
 
-  const getUserPhoto = useCallback(() => {
+  const getUserPhoto = () => {
     return user?.photoURL || user?.avatar || null;
-  }, [user]);
+  };
 
-  const getUserDisplayName = useCallback(() => {
+  const getUserDisplayName = () => {
     if (user?.displayName) return user.displayName;
     if (user?.name) return user.name;
     if (user?.email) return user.email.split("@")[0];
     return "User";
-  }, [user]);
+  };
 
-  const getUserEmail = useCallback(() => {
+  const getUserEmail = () => {
     return user?.email || "";
-  }, [user]);
+  };
 
   const getRoleSpecificSettings = () => {
     const role = user?.role || "student";
@@ -293,33 +212,19 @@ export default function UniversalSettings() {
   });
 
   useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        setIsInitialLoading(true);
-        setError(null);
-        
-        if (user) {
-          setSettings((prev) => ({
-            ...prev,
-            profile: {
-              ...prev.profile,
-              name: getUserDisplayName(),
-              email: getUserEmail(),
-              phone: user.phone || prev.profile.phone,
-              bio: user.bio || prev.profile.bio,
-              avatar: getUserPhoto() || prev.profile.avatar,
-            },
-          }));
-        }
-      } catch (err) {
-        setError("Failed to load settings. Please try again.");
-        console.error("Error loading settings:", err);
-      } finally {
-        setIsInitialLoading(false);
-      }
-    };
-    
-    loadSettings();
+    if (user) {
+      setSettings((prev) => ({
+        ...prev,
+        profile: {
+          ...prev.profile,
+          name: getUserDisplayName(),
+          email: getUserEmail(),
+          phone: user.phone || prev.profile.phone,
+          bio: user.bio || prev.profile.bio,
+          avatar: getUserPhoto() || prev.profile.avatar,
+        },
+      }));
+    }
   }, [user]);
 
   const updateSetting = (section, key, value) => {
@@ -335,7 +240,6 @@ export default function UniversalSettings() {
 
   const saveSettings = async () => {
     setIsLoading(true);
-    setError(null);
     try {
       const response = await fetch("/api/settings", {
         method: "PATCH",
@@ -346,7 +250,6 @@ export default function UniversalSettings() {
       setHasChanges(false);
       toast.success("Settings updated successfully!");
     } catch (error) {
-      setError("Failed to save settings. Please try again.");
       toast.error("Failed to save settings. Please try again.");
     } finally {
       setIsLoading(false);
@@ -382,63 +285,40 @@ export default function UniversalSettings() {
     setHasChanges(false);
   };
 
-  const handleResetToDefaults = () => {
-    try {
-      // 1. Clear settings-related keys in localStorage safely
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.removeItem("theme");
-        window.localStorage.removeItem("settings");
-        window.localStorage.removeItem("learnova_settings");
-      }
+  const SettingCard = ({ children, title, description }) => (
+    <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 hover:bg-black/30 transition-all duration-300">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        {description && (
+          <p className="text-white/60 text-sm mt-1">{description}</p>
+        )}
+      </div>
+      {children}
+    </div>
+  );
 
-      // 2. Revert theme in next-themes provider to default 'dark'
-      setTheme("dark");
-
-      // 3. Reset settings state to initial default values
-      setSettings({
-        profile: {
-          name: getUserDisplayName(),
-          email: getUserEmail(),
-          phone: user?.phone || "",
-          bio:
-            user?.bio ||
-            "Passionate learner exploring new technologies and skills.",
-          avatar: getUserPhoto() || "/user-avatar.jpg",
-        },
-        notifications: roleSpecificSettings.notifications,
-        privacy: {
-          profileVisibility: "public",
-          showProgress: true,
-          showAchievements: true,
-          allowMessages: true,
-          dataCollection: true,
-        },
-        learning: roleSpecificSettings.learning,
-        appearance: {
-          theme: "dark",
-          language: "English",
-          timezone: "UTC-8",
-        },
-      });
-
-      // 4. Mark change indicators as false
-      setHasChanges(false);
-
-      // 5. Show beautiful success notification
-      toast.success("Settings restored to system defaults!", {
-        icon: "🔄",
-        style: {
-          borderRadius: "16px",
-          background: "#1e293b",
-          color: "#fff",
-          border: "1px solid rgba(255,255,255,0.1)",
-        },
-      });
-    } catch (err) {
-      console.error("Failed to reset settings to defaults:", err);
-      toast.error("Failed to reset settings. Please try again.");
-    }
-  };
+  const ToggleSwitch = ({ enabled, onChange, label, description }) => (
+    <div className="flex items-center justify-between py-3">
+      <div className="flex-1">
+        <p className="text-white font-medium">{label}</p>
+        {description && <p className="text-white/60 text-sm">{description}</p>}
+      </div>
+      <button
+        onClick={() => onChange(!enabled)}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+          enabled
+            ? "bg-gradient-to-r from-blue-500 to-purple-600"
+            : "bg-white/20"
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+            enabled ? "translate-x-6" : "translate-x-1"
+          }`}
+        />
+      </button>
+    </div>
+  );
 
   const sections = [
     { id: "profile", label: "Profile", icon: User },
@@ -449,38 +329,6 @@ export default function UniversalSettings() {
     { id: "data", label: "Data & Storage", icon: Database },
     { id: "help", label: "Help & Support", icon: HelpCircle },
   ];
-
-  if (isInitialLoading) {
-    return (
-      <div className="min-h-screen relative rounded-2xl bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading settings...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen relative rounded-2xl bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
-        <div className="text-center text-white px-4">
-          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="w-10 h-10 text-red-400" />
-          </div>
-          <h2 className="text-2xl font-bold mb-2">Error Loading Settings</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
-          >
-            <RefreshCw className="w-4 h-4 mr-2 inline" />
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen relative rounded-2xl bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950">
@@ -704,80 +552,30 @@ export default function UniversalSettings() {
             )}
 
             {activeSection === "notifications" && (
-              <div className="space-y-6">
-                {/* Timetable Class Reminder Card */}
-                <SettingCard
-                  title="Timetable & Class Reminders"
-                  description="Get dynamic push notifications 10 minutes before your next class starts."
-                >
-                  <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${
-                          pushPermission === "granted" ? "bg-green-400 animate-pulse" :
-                          pushPermission === "denied" ? "bg-red-500" : "bg-yellow-400 animate-bounce"
-                        }`} />
-                        <span className="text-sm font-semibold text-white">
-                          Status: {
-                            pushPermission === "granted" ? "Notifications Enabled" :
-                            pushPermission === "denied" ? "Notifications Blocked" :
-                            pushPermission === "unsupported" ? "Browser Unsupported" : "Permission Required"
-                          }
-                        </span>
-                      </div>
-                      <p className="text-white/60 text-xs mt-1">
-                        {pushPermission === "granted" 
-                          ? "You are all set! Learnova will proactively notify you 10 minutes before classes."
-                          : pushPermission === "denied"
-                          ? "Please reset browser permissions in your URL bar to enable notifications."
-                          : pushPermission === "unsupported"
-                          ? "Push notifications are not supported in this browser."
-                          : "Enable browser push notifications to receive proactive class alerts."
+              <SettingCard
+                title="Notification Preferences"
+                description="Choose how you want to be notified"
+              >
+                <div className="space-y-2">
+                  {Object.entries(settings.notifications).map(
+                    ([key, value]) => (
+                      <ToggleSwitch
+                        key={key}
+                        enabled={value}
+                        onChange={(newValue) =>
+                          updateSetting("notifications", key, newValue)
                         }
-                      </p>
-                    </div>
-                    
-                    {pushPermission !== "unsupported" && (
-                      <button
-                        onClick={handleTogglePush}
-                        disabled={pushPermission === "denied"}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 ${
-                          pushPermission === "granted"
-                            ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
-                            : "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-purple-500/20 hover:scale-105 active:scale-95 cursor-pointer"
-                        }`}
-                      >
-                        {pushPermission === "granted" ? "Mute Reminders" : "Enable Reminders"}
-                      </button>
-                    )}
-                  </div>
-                </SettingCard>
-
-                <SettingCard
-                  title="Notification Preferences"
-                  description="Choose how you want to be notified"
-                >
-                  <div className="space-y-2">
-                    {Object.entries(settings.notifications).map(
-                      ([key, value]) => (
-                        <ToggleSwitch
-                          key={key}
-                          enabled={value}
-                          onChange={(newValue) =>
-                            updateSetting("notifications", key, newValue)
-                          }
-                          label={key
-                            .replace(/([A-Z])/g, " $1")
-                            .replace(/^./, (str) => str.toUpperCase())}
-                          description={`Receive ${key
-                            .replace(/([A-Z])/g, " $1")
-                            .toLowerCase()}`}
-                        />
-                      ),
-                    )}
-                  </div>
-                </SettingCard>
-              </div>
+                        label={key
+                          .replace(/([A-Z])/g, " $1")
+                          .replace(/^./, (str) => str.toUpperCase())}
+                        description={`Receive ${key
+                          .replace(/([A-Z])/g, " $1")
+                          .toLowerCase()}`}
+                      />
+                    ),
+                  )}
+                </div>
+              </SettingCard>
             )}
 
             {/* ... existing code for other sections ... */}
@@ -951,10 +749,10 @@ export default function UniversalSettings() {
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
                       >
-                        <option value="beginner" className="bg-slate-950 text-white">Beginner</option>
-                        <option value="intermediate" className="bg-slate-950 text-white">Intermediate</option>
-                        <option value="advanced" className="bg-slate-950 text-white">Advanced</option>
-                        <option value="expert" className="bg-slate-950 text-white">Expert</option>
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                        <option value="expert">Expert</option>
                       </select>
                     </div>
 
@@ -993,54 +791,27 @@ export default function UniversalSettings() {
                     </label>
                     <div className="grid grid-cols-3 gap-4">
                       {[
-                        { value: "light", label: "Light", icon: Sun, color: "text-amber-400 group-hover:text-amber-300" },
-                        { value: "dark", label: "Dark", icon: Moon, color: "text-violet-400 group-hover:text-violet-300" },
-                        { value: "system", label: "System", icon: Monitor, color: "text-blue-400 group-hover:text-blue-300" },
-                      ].map((themeOpt) => {
-                        const isSelected = settings.appearance.theme === themeOpt.value;
-                        return (
-                          <motion.button
-                            key={themeOpt.value}
-                            onClick={() => {
-                              updateSetting("appearance", "theme", themeOpt.value);
-                              setTheme(themeOpt.value);
-                            }}
-                            className={`group flex flex-col items-center space-y-3 p-5 rounded-2xl border transition-all duration-300 cursor-pointer text-center relative overflow-hidden ${
-                              isSelected
-                                ? "border-blue-500/80 bg-blue-500/10 text-white shadow-[0_0_20px_rgba(59,130,246,0.25)]"
-                                : "border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]"
-                            }`}
-                            whileHover="hover"
-                            whileTap="tap"
-                            animate={isSelected ? "selected" : "unselected"}
-                            variants={{
-                              hover: { scale: 1.04, y: -2 },
-                              tap: { scale: 0.96 }
-                            }}
-                          >
-                            {/* Glow spot */}
-                            {isSelected && (
-                              <span className="absolute -inset-px rounded-2xl bg-gradient-to-tr from-blue-500/10 to-purple-500/10 opacity-100 pointer-events-none" />
-                            )}
-                            <motion.div
-                              variants={{
-                                hover: { scale: 1.15, rotate: themeOpt.value === "light" ? 45 : themeOpt.value === "dark" ? -15 : 0 }
-                              }}
-                              transition={{ type: "spring", stiffness: 200, damping: 12 }}
-                              className={`p-2.5 rounded-xl ${
-                                isSelected 
-                                  ? "bg-blue-500/20" 
-                                  : "bg-white/5 group-hover:bg-white/10"
-                              } transition-colors duration-300`}
-                            >
-                              <themeOpt.icon className={`h-6 w-6 transition-colors duration-300 ${isSelected ? "text-white" : themeOpt.color}`} />
-                            </motion.div>
-                            <span className="text-sm font-semibold tracking-wide block">
-                              {themeOpt.label}
-                            </span>
-                          </motion.button>
-                        );
-                      })}
+                        { value: "light", label: "Light", icon: Sun },
+                        { value: "dark", label: "Dark", icon: Moon },
+                        { value: "system", label: "System", icon: Monitor },
+                      ].map((theme) => (
+                        <button
+                          key={theme.value}
+                          onClick={() =>
+                            updateSetting("appearance", "theme", theme.value)
+                          }
+                          className={`flex flex-col items-center space-y-2 p-4 rounded-lg border transition-all duration-200 ${
+                            settings.appearance.theme === theme.value
+                              ? "border-blue-500 bg-blue-500/20"
+                              : "border-white/20 bg-white/5 hover:bg-white/10"
+                          }`}
+                        >
+                          <theme.icon className="h-6 w-6 text-white" />
+                          <span className="text-white text-sm font-medium">
+                            {theme.label}
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
 
@@ -1060,11 +831,11 @@ export default function UniversalSettings() {
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
                       >
-                        <option value="English" className="bg-slate-950 text-white">English</option>
-                        <option value="Spanish" className="bg-slate-950 text-white">Español</option>
-                        <option value="French" className="bg-slate-950 text-white">Français</option>
-                        <option value="German" className="bg-slate-950 text-white">Deutsch</option>
-                        <option value="Chinese" className="bg-slate-950 text-white">中文</option>
+                        <option value="English">English</option>
+                        <option value="Spanish">Español</option>
+                        <option value="French">Français</option>
+                        <option value="German">Deutsch</option>
+                        <option value="Chinese">中文</option>
                       </select>
                     </div>
                     <div>
@@ -1082,15 +853,15 @@ export default function UniversalSettings() {
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
                       >
-                        <option value="UTC-8" className="bg-slate-950 text-white">Pacific Time (UTC-8)</option>
-                        <option value="UTC-5" className="bg-slate-950 text-white">Eastern Time (UTC-5)</option>
-                        <option value="UTC+0" className="bg-slate-950 text-white">
+                        <option value="UTC-8">Pacific Time (UTC-8)</option>
+                        <option value="UTC-5">Eastern Time (UTC-5)</option>
+                        <option value="UTC+0">
                           Greenwich Mean Time (UTC+0)
                         </option>
-                        <option value="UTC+1" className="bg-slate-950 text-white">
+                        <option value="UTC+1">
                           Central European Time (UTC+1)
                         </option>
-                        <option value="UTC+8" className="bg-slate-950 text-white">
+                        <option value="UTC+8">
                           China Standard Time (UTC+8)
                         </option>
                       </select>
@@ -1138,30 +909,6 @@ export default function UniversalSettings() {
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Clear
-                      </Button>
-                    </div>
-                  </div>
-                </SettingCard>
-
-                <SettingCard
-                  title="Preference Reset"
-                  description="Restore all settings, appearance parameters, and notification choices to system defaults"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
-                      <div>
-                        <p className="text-white font-medium">Reset Settings</p>
-                        <p className="text-white/60 text-sm">
-                          Revert all configurations back to system default values
-                        </p>
-                      </div>
-                      <Button
-                        onClick={handleResetToDefaults}
-                        variant="outline"
-                        className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 bg-transparent"
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reset to Defaults
                       </Button>
                     </div>
                   </div>

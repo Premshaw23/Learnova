@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
-import { getUserProfile, initializeFirebase } from "@/lib/firebase-admin";
-import admin from "firebase-admin";
+import { getUserProfile } from "@/lib/firebase-admin";
 import { jsonSuccess } from "@/lib/api-response";
 import { z } from "zod";
-import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { ValidationError, ForbiddenError, AppError } from "@/lib/errors";
 
@@ -101,7 +100,7 @@ const settingsSchema = z
 export const PATCH = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
 
-  const body = await parseJSON(request, 1024 * 100);
+  const body = await request.json();
   const parsed = settingsSchema.safeParse(body);
 
   if (!parsed.success) {
@@ -150,25 +149,7 @@ export const PATCH = withErrorHandler(async (request) => {
       { $set: updatePayload },
       { upsert: true }
     );
-
-    // Sync profile updates to Firestore to prevent split-brain desync
-    if (settings.profile) {
-      initializeFirebase();
-      const firestoreProfileUpdate = {};
-      
-      // Map standard settings profile fields to Firestore fields
-      if (settings.profile.name !== undefined) firestoreProfileUpdate.displayName = settings.profile.name;
-      if (settings.profile.bio !== undefined) firestoreProfileUpdate.bio = settings.profile.bio;
-      if (settings.profile.phone !== undefined) firestoreProfileUpdate.phone = settings.profile.phone;
-      if (settings.profile.avatar !== undefined) firestoreProfileUpdate.avatar = settings.profile.avatar;
-      
-      if (Object.keys(firestoreProfileUpdate).length > 0) {
-        await admin.firestore().collection("users").doc(targetUserId).update(firestoreProfileUpdate);
-        console.log(`[Firestore Sync] Profile synced for user: ${targetUserId}`);
-      }
-    }
   } catch (error) {
-    console.error("Settings sync error:", error);
     throw new AppError("Failed to update user settings database entry.", 500);
   }
 

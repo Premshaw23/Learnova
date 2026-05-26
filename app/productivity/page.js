@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import { motion } from "framer-motion";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "react-hot-toast";
 import {
   CalendarDays,
   CheckCircle2,
@@ -28,7 +26,6 @@ import {
   Moon,
   Timer,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 
 const MODES = {
   focus: { label: "Focus", seconds: 25 * 60, accent: "text-cyan-300" },
@@ -90,9 +87,6 @@ function parseTimeToMinutes(timeLabel) {
 }
 
 export default function ProductivityPage() {
-  const { user } = useAuth();
-  const [dataLoaded, setDataLoaded] = useState(false);
-
   const [mode, setMode] = useState("focus");
   const [sessionSeconds, setSessionSeconds] = useState(MODES.focus.seconds);
   const [timeLeft, setTimeLeft] = useState(MODES.focus.seconds);
@@ -106,7 +100,11 @@ export default function ProductivityPage() {
   const [calendarFilter, setCalendarFilter] = useState("all");
   const [taskInput, setTaskInput] = useState("");
   const [taskPriority, setTaskPriority] = useState("medium");
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState([
+    { id: 1, text: "Prep lesson plan", done: false, priority: "medium" },
+    { id: 2, text: "Review student analytics", done: true, priority: "low" },
+    { id: 3, text: "Create quick quiz", done: false, priority: "high" },
+  ]);
   const [agendaInput, setAgendaInput] = useState("");
   const [agendaLabel, setAgendaLabel] = useState("Focus");
   const [agendaItems, setAgendaItems] = useState({});
@@ -116,8 +114,6 @@ export default function ProductivityPage() {
   const [recentCompleted, setRecentCompleted] = useState(false);
   const audioContextRef = useRef(null);
   const soundscapeRef = useRef(null);
-  const syncTimerRef = useRef(null);
-  const isSyncingRef = useRef(false);
 
   const calendar = useMemo(() => buildCalendar(monthOffset), [monthOffset]);
   const now = new Date();
@@ -132,112 +128,28 @@ export default function ProductivityPage() {
     });
   }, [selectedDateKey]);
 
-  /** Syncs current tasks and agenda to the API. Writes to localStorage first for instant persistence. */
-  const syncToApi = useCallback(
-    async (currentTasks, currentAgenda) => {
-      try {
-        localStorage.setItem(TASKS_KEY, JSON.stringify(currentTasks));
-        localStorage.setItem(AGENDA_KEY, JSON.stringify(currentAgenda));
-      } catch (_) {
-        // localStorage may be full or unavailable
-      }
-
-      if (!user || isSyncingRef.current) return;
-      isSyncingRef.current = true;
-
-      try {
-        const token = await user.getIdToken();
-        await fetch("/api/productivity", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ tasks: currentTasks, agendaItems: currentAgenda }),
-        });
-      } catch (_) {
-        // Offline or API error — localStorage already has the data
-      } finally {
-        isSyncingRef.current = false;
-      }
-    },
-    [user]
-  );
-
-  /** Schedules a debounced API sync. Cancels any pending sync to avoid spamming. */
-  const debouncedSync = useCallback(
-    (currentTasks, currentAgenda) => {
-      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-      syncTimerRef.current = setTimeout(() => {
-        syncToApi(currentTasks, currentAgenda);
-      }, 2000);
-    },
-    [syncToApi]
-  );
-
   useEffect(() => {
-    async function loadData() {
-      if (!user) {
-        try {
-          const savedTasks = localStorage.getItem(TASKS_KEY);
-          const savedAgenda = localStorage.getItem(AGENDA_KEY);
-          if (savedTasks) setTasks(JSON.parse(savedTasks));
-          if (savedAgenda) setAgendaItems(JSON.parse(savedAgenda));
-        } catch (_) {
-          // Corrupted localStorage — use empty defaults
-        }
-        setDataLoaded(true);
-        return;
+    try {
+      const storedTasks = localStorage.getItem(TASKS_KEY);
+      const storedAgenda = localStorage.getItem(AGENDA_KEY);
+      if (storedTasks) {
+        setTasks(JSON.parse(storedTasks));
       }
-
-      try {
-        const token = await user.getIdToken();
-        const res = await fetch("/api/productivity", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.tasks?.length > 0) setTasks(data.tasks);
-          if (data.agendaItems && Object.keys(data.agendaItems).length > 0) {
-            setAgendaItems(data.agendaItems);
-          }
-        } else {
-          throw new Error("API returned non-ok");
-        }
-      } catch (_) {
-        try {
-          const savedTasks = localStorage.getItem(TASKS_KEY);
-          const savedAgenda = localStorage.getItem(AGENDA_KEY);
-          if (savedTasks) setTasks(JSON.parse(savedTasks));
-          if (savedAgenda) setAgendaItems(JSON.parse(savedAgenda));
-        } catch (__) {
-          // Corrupted localStorage — use empty defaults
-        }
-      } finally {
-        setDataLoaded(true);
+      if (storedAgenda) {
+        setAgendaItems(JSON.parse(storedAgenda));
       }
+    } catch (error) {
+      console.error("Failed to load productivity storage", error);
     }
-
-    loadData();
-  }, [user]);
+  }, []);
 
   useEffect(() => {
-    if (!dataLoaded) return;
-    debouncedSync(tasks, agendaItems);
-  }, [tasks, agendaItems, dataLoaded, debouncedSync]);
+    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  }, [tasks]);
 
   useEffect(() => {
-    /** Re-sync pending localStorage data when the browser comes back online. */
-    function handleOnline() {
-      if (dataLoaded) {
-        syncToApi(tasks, agendaItems);
-      }
-    }
-
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, [tasks, agendaItems, dataLoaded, syncToApi]);
+    localStorage.setItem(AGENDA_KEY, JSON.stringify(agendaItems));
+  }, [agendaItems]);
 
   useEffect(() => {
     if (!isRunning) {
@@ -256,52 +168,17 @@ export default function ProductivityPage() {
     return () => clearInterval(timerId);
   }, [isRunning]);
 
-  /** Records a completed Pomodoro session to the API. */
-  const recordSession = useCallback(
-    async (duration, type) => {
-      if (!user) return;
-      try {
-        const token = await user.getIdToken();
-        const res = await fetch("/api/productivity/session", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            duration,
-            completedAt: new Date().toISOString(),
-            type,
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.xpAwarded > 0) {
-            toast.success(`+${data.xpAwarded} XP earned!`);
-          }
-        }
-      } catch (_) {
-        // Offline — session not recorded, but timer continues
-      }
-    },
-    [user]
-  );
-
   useEffect(() => {
     if (timeLeft !== 0) {
       return;
     }
 
     setIsRunning(false);
-    const sessionDuration = Math.round(sessionSeconds / 60);
-
     if (mode === "focus") {
       const nextFocusCount = focusSessions + 1;
       setFocusSessions(nextFocusCount);
       setRecentCompleted(true);
       setTimeout(() => setRecentCompleted(false), 1400);
-      recordSession(sessionDuration, "focus");
       const nextMode = nextFocusCount % 4 === 0 ? "long" : "short";
       const nextSeconds = MODES[nextMode].seconds;
       setMode(nextMode);
@@ -309,14 +186,13 @@ export default function ProductivityPage() {
       setManualMinutes(String(Math.round(nextSeconds / 60)));
       setTimeLeft(nextSeconds);
     } else {
-      recordSession(sessionDuration, "break");
       const focusSeconds = MODES.focus.seconds;
       setMode("focus");
       setSessionSeconds(focusSeconds);
       setManualMinutes(String(Math.round(focusSeconds / 60)));
       setTimeLeft(focusSeconds);
     }
-  }, [timeLeft, mode, focusSessions, sessionSeconds, recordSession]);
+  }, [timeLeft, mode, focusSessions]);
 
   useEffect(() => {
     setAmbientMode(mode);
@@ -458,20 +334,12 @@ export default function ProductivityPage() {
     );
   }, [agendaForSelectedDate]);
 
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-
-  const ambientGradient = isDark
-    ? ambientMode === "focus"
-      ? "from-[#0B1020] via-[#1E1B4B] to-[#312E81]"
+  const ambientGradient =
+    ambientMode === "focus"
+      ? "from-slate-950 via-slate-900 to-indigo-950"
       : ambientMode === "short"
-        ? "from-[#052e2b] via-[#0f172a] to-[#134e4a]"
-        : "from-[#2E1065] via-[#1E1B4B] to-[#312E81]"
-    : ambientMode === "focus"
-      ? "from-[#F8FAFC] via-[#EEF2FF] to-[#E0E7FF]"
-      : ambientMode === "short"
-        ? "from-[#ECFDF5] via-[#F0FDFA] to-[#CCFBF1]"
-        : "from-[#FAF5FF] via-[#F3E8FF] to-[#EDE9FE]";
+      ? "from-emerald-950 via-slate-900 to-teal-950"
+      : "from-purple-950 via-slate-900 to-indigo-950";
 
   const SoundscapeIcon =
     SOUNDSCAPES.find((item) => item.value === soundscape)?.icon || Volume2;
@@ -612,38 +480,32 @@ export default function ProductivityPage() {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${isDark ? "text-white" : "text-slate-900"
-        } relative overflow-hidden transition-all duration-500`}
+      className={`min-h-screen bg-linear-to-br ${ambientGradient} text-white relative overflow-hidden`}
     >
+      <Navbar />
       <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
-        {isDark && <DarkVeil />}
+        <DarkVeil />
       </div>
 
       <div className="absolute inset-0 pointer-events-none z-0">
-        <div className={`absolute -top-32 -right-32 w-72 h-72 rounded-full ${isDark ? "bg-cyan-500/10" : "bg-cyan-300/30"} blur-3xl`} />
-        <div className={`absolute bottom-0 left-0 w-72 h-72 rounded-full ${isDark ? "bg-cyan-500/10" : "bg-cyan-300/30"
-          } blur-3xl`} />
+        <div className="absolute -top-32 -right-32 w-72 h-72 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-purple-500/10 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.04),transparent_55%)]" />
       </div>
 
-      <div className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10 ">
+      <div className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-6xl mx-auto space-y-12">
-          <Navbar />
           <section className="text-center space-y-4">
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${isDark
-                ? "bg-white/10 border border-white/10 text-white"
-                : "bg-slate-100 border border-slate-300 text-slate-900"
-              }`}>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10">
               <Sparkles className="w-4 h-4 text-cyan-300" />
-              <span className={`text-sm uppercase tracking-[0.3em] ${isDark ? "text-cyan-200" : "text-cyan-700"
-                }`}>
+              <span className="text-sm uppercase tracking-[0.3em] text-cyan-200">
                 Productivity Suite
               </span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-bold">
               Stay in Flow. Track What Matters.
             </h1>
-            <p className={`text-lg ${isDark ? "text-slate-300" : "text-slate-600"} max-w-2xl mx-auto`}>
+            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
               A productivity workspace designed for educators and learners.
               Plan your day, protect focus blocks, and keep tasks moving.
             </p>
@@ -652,10 +514,7 @@ export default function ProductivityPage() {
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
               <motion.div
-                className={`${isDark
-                  ? "bg-black/40 border  border-white/10 backdrop-blur-xl"
-                  : "bg-white/80 border border-slate-200 shadow-lg backdrop-blur-xl"
-                  } rounded-3xl p-6 md:p-8`}
+                className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -664,7 +523,7 @@ export default function ProductivityPage() {
               >
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Pomodoro Timer</p>
+                    <p className="text-sm text-slate-400">Pomodoro Timer</p>
                     <h2 className="text-2xl font-semibold flex items-center gap-2">
                       <Timer className="w-5 h-5 text-cyan-300" />
                       {MODES[mode].label}
@@ -673,39 +532,31 @@ export default function ProductivityPage() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => switchMode("focus")}
-                      className={`px-4 py-2 rounded-full border text-sm transition ${mode === "focus"
-                          ? isDark
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
-                            : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                          : isDark
-                            ? "border-white/10 text-slate-300 hover:text-white"
-                            : "border-slate-300 text-slate-600 hover:text-slate-900"
-                        }`}
+                      className={`px-4 py-2 rounded-full border border-white/10 text-sm transition ${
+                        mode === "focus"
+                          ? "bg-cyan-500/20 text-cyan-200"
+                          : "text-slate-300 hover:text-white"
+                      }`}
                     >
                       Focus
                     </button>
                     <button
                       onClick={() => switchMode("short")}
-                      className={`px-4 py-2 rounded-full border text-sm transition ${mode === "focus"
-                          ? isDark
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
-                            : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                          : isDark
-                            ? "border-white/10 text-slate-300 hover:text-white"
-                            : "border-slate-300 text-slate-600 hover:text-slate-900"
-                        }`}
+                      className={`px-4 py-2 rounded-full border border-white/10 text-sm transition ${
+                        mode === "short"
+                          ? "bg-emerald-500/20 text-emerald-200"
+                          : "text-slate-300 hover:text-white"
+                      }`}
                     >
                       Short
                     </button>
                     <button
-                      className={`px-4 py-2 rounded-full border text-sm transition ${mode === "focus"
-                          ? isDark
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
-                            : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                          : isDark
-                            ? "border-white/10 text-slate-300 hover:text-white"
-                            : "border-slate-300 text-slate-600 hover:text-slate-900"
-                        }`}
+                      onClick={() => switchMode("long")}
+                      className={`px-4 py-2 rounded-full border border-white/10 text-sm transition ${
+                        mode === "long"
+                          ? "bg-purple-500/20 text-purple-200"
+                          : "text-slate-300 hover:text-white"
+                      }`}
                     >
                       Long
                     </button>
@@ -716,24 +567,25 @@ export default function ProductivityPage() {
                   <div className="flex items-center gap-6">
                     <div className="relative h-32 w-32">
                       <div
-                        className="absolute inset-0 rounded-full border-4 border-slate-200/40 dark:border-white/10"
+                        className="absolute inset-0 rounded-full border-4 border-white/10"
                         aria-hidden="true"
                       />
                       <div
                         className="absolute inset-0 rounded-full"
                         style={{
-                          background: `conic-gradient(#38bdf8 ${(1 - timeLeft / sessionSeconds) * 360
-                            }deg, rgba(255,255,255,0.08) 0deg)`,
+                          background: `conic-gradient(#38bdf8 ${
+                            (1 - timeLeft / sessionSeconds) * 360
+                          }deg, rgba(255,255,255,0.08) 0deg)`,
                         }}
                       />
-                      <div className="absolute inset-2 rounded-full bg-slate-100/90 dark:bg-slate-950/70 flex items-center justify-center">
+                      <div className="absolute inset-2 rounded-full bg-slate-950/70 flex items-center justify-center">
                         <span className={`text-3xl font-bold ${MODES[mode].accent}`}>
                           {formatTime(timeLeft)}
                         </span>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus sessions</p>
+                      <p className="text-sm text-slate-400">Focus sessions</p>
                       <motion.div
                         className="flex items-center gap-2 text-lg font-semibold"
                         animate={recentCompleted ? { scale: [1, 1.12, 1] } : { scale: 1 }}
@@ -742,7 +594,7 @@ export default function ProductivityPage() {
                         <Flame className="w-5 h-5 text-orange-300" />
                         {focusSessions} completed
                       </motion.div>
-                      <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                      <p className="text-sm text-slate-400">
                         Focus minutes today: {focusMinutes} min
                       </p>
                     </div>
@@ -751,32 +603,25 @@ export default function ProductivityPage() {
                   <div className="flex flex-wrap gap-3">
                     <button
                       onClick={toggleTimer}
-                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500
-hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
+                      className="px-5 py-3 rounded-2xl bg-linear-to-r from-cyan-400/80 to-blue-500/80 text-slate-900 font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
                     >
                       {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       {isRunning ? "Pause" : "Start"}
                     </button>
                     <button
                       onClick={resetTimer}
-                      className={`px-5 py-3 rounded-2xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        } flex items-center gap-2`}
+                      className="px-5 py-3 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center gap-2"
                     >
                       <RotateCcw className="w-4 h-4" />
                       Reset
                     </button>
                     <form
                       onSubmit={applyManualTime}
-                      className={`flex items-center gap-2 ${isDark
-                          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                          : "bg-white/80 border border-slate-200  shadow-xl backdrop-blur-xl"
-                        } rounded-2xl px-3 py-2`}
+                      className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-3 py-2"
                     >
                       <label
                         htmlFor="pomodoro-minutes"
-                        className="text-xs text-slate-700 dark:text-slate-300"
+                        className="text-xs text-slate-300"
                       >
                         Minutes
                       </label>
@@ -787,7 +632,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                         max="180"
                         value={manualMinutes}
                         onChange={(event) => setManualMinutes(event.target.value)}
-                        className={`w-16 rounded-lg bg-transparent border border-white/10 px-2 py-1 text-sm ${isDark ? "text-white" : "text-slate-900"} focus:outline-none focus:ring-2 focus:ring-cyan-400/40`}
+                        className="w-16 rounded-lg bg-transparent border border-white/10 px-2 py-1 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
                       />
                       <button
                         type="submit"
@@ -798,25 +643,16 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                     </form>
                   </div>
                 </div>
-                <div className={`mt-6 flex flex-wrap gap-3 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
+                <div className="mt-6 flex flex-wrap gap-3 text-xs text-slate-300">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10">
                     <FlameIcon className="w-4 h-4 text-orange-300" />
                     Streak: {Math.max(1, focusSessions)} days
                   </div>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10">
                     <Clock className="w-4 h-4 text-cyan-300" />
                     Next break in {Math.ceil(timeLeft / 60)} min
                   </div>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10">
                     {ambientMode === "focus" ? (
                       <Sun className="w-4 h-4 text-amber-300" />
                     ) : (
@@ -828,10 +664,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
               </motion.div>
 
               <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 md:p-8`}
+                className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -840,42 +673,31 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
               >
                 <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
                   <div>
-                    <p className={`text-sm ${isDark ? "text-slate-200" : "text-slate-800"
-                      }`}
-                    >Calendar Pulse</p>
+                    <p className="text-sm text-slate-400">Calendar Pulse</p>
                     <h2 className="text-2xl font-semibold flex items-center gap-2">
                       <CalendarDays className="w-5 h-5 text-purple-300" />
                       {monthLabel}
                     </h2>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}>
+                    <p className="text-xs text-slate-400 mt-1">
                       {selectedDateLabel} - {agendaSummaryForSelectedDate.total} items
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setMonthOffset((prev) => prev - 1)}
-                      className={`px-3 py-2 rounded-xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        }`}
+                      className="px-3 py-2 rounded-xl bg-white/10 border border-white/10"
                     >
                       Prev
                     </button>
                     <button
                       onClick={() => setMonthOffset(0)}
-                      className={`px-3 py-2 rounded-xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        }`}
+                      className="px-3 py-2 rounded-xl bg-white/10 border border-white/10"
                     >
                       Today
                     </button>
                     <button
                       onClick={() => setMonthOffset((prev) => prev + 1)}
-                      className={`px-3 py-2 rounded-xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        }`}
+                      className="px-3 py-2 rounded-xl bg-white/10 border border-white/10"
                     >
                       Next
                     </button>
@@ -886,10 +708,11 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   <button
                     type="button"
                     onClick={() => setCalendarFilter("all")}
-                    className={`px-3 py-1 rounded-full text-xs border transition ${calendarFilter === "all"
-                        ? "bg-white/10 border border-white/20 text-white"
-                        : " border border-white/10 text-slate-300"
-                      }`}
+                    className={`px-3 py-1 rounded-full text-xs border transition ${
+                      calendarFilter === "all"
+                        ? "bg-white/10 border-white/20 text-white"
+                        : "border-white/10 text-slate-300"
+                    }`}
                   >
                     All
                   </button>
@@ -898,10 +721,11 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                       key={block.label}
                       type="button"
                       onClick={() => setCalendarFilter(block.label)}
-                      className={`px-3 py-1 rounded-full text-xs border transition ${calendarFilter === block.label
+                      className={`px-3 py-1 rounded-full text-xs border transition ${
+                        calendarFilter === block.label
                           ? "bg-white/10 border-white/20 text-white"
                           : "border-white/10 text-slate-300"
-                        }`}
+                      }`}
                     >
                       <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
                       {block.label}
@@ -909,7 +733,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   ))}
                 </div>
 
-                <div className={`grid grid-cols-7 gap-2 text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mb-3`}>
+                <div className="grid grid-cols-7 gap-2 text-xs text-slate-400 mb-3">
                   {WEEK_DAYS.map((day) => (
                     <div key={day} className="text-center">
                       {day}
@@ -938,28 +762,22 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                         key={key}
                         type="button"
                         onClick={() => setSelectedDateKey(key)}
-                        className={`h-16 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-sm transition hover:border-cyan-400/40 hover:${isDark ? "bg-cyan-500/10" : "bg-cyan-300/30"
-                          } focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${isToday
-                            ? isDark
-                              ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-100"
-                              : "bg-cyan-100 border-cyan-300 text-cyan-900"
+                        className={`h-16 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-sm transition hover:border-cyan-400/40 hover:bg-cyan-500/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${
+                          isToday
+                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-100"
                             : isSelected
-                              ? isDark
-                                ? "bg-purple-500/20 border-purple-400/40 text-purple-100"
-                                : "bg-purple-100 border-purple-300 text-purple-900"
-                              : isDark
-                                ? "bg-white/5 text-slate-200"
-                                : "bg-white/80 text-slate-900 border border-slate-200"
-                          }`}
+                            ? "bg-purple-500/20 border-purple-400/40 text-purple-100"
+                            : "bg-white/5 text-slate-200"
+                        }`}
                       >
                         <span className="font-semibold">{date.getDate()}</span>
                         <div className="mt-1 flex items-center gap-1">
                           {agendaCountForDay ? (
-                            <span className={`text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                            <span className="text-[11px] text-slate-400">
                               {agendaCountForDay} items
                             </span>
                           ) : (
-                            <span className={`text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus</span>
+                            <span className="text-[11px] text-slate-400">Focus</span>
                           )}
                           <div className="flex gap-1">
                             {TIME_BLOCKS.filter((block) => {
@@ -983,10 +801,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
               </motion.div>
 
               <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 md:p-8 `}
+                className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -995,73 +810,61 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
               >
                 <div className="flex items-center justify-between gap-4 mb-6">
                   <div>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus Snapshot</p>
+                    <p className="text-sm text-slate-400">Focus Snapshot</p>
                     <h3 className="text-2xl font-semibold flex items-center gap-2">
                       <Flame className="w-5 h-5 text-orange-300" />
                       Today at a glance
                     </h3>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-xs border border-white/10 ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                  <div className="px-3 py-1 rounded-full text-xs border border-white/10 text-slate-300">
                     {selectedDateLabel}
                   </div>
                 </div>
 
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <div className={`rounded-2xl ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    } p-4`}>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>Agenda items</p>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs text-slate-400">Agenda items</p>
                     <div className="mt-2 text-2xl font-semibold text-cyan-200">
                       {agendaCount}
                     </div>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}>Scheduled today</p>
+                    <p className="text-xs text-slate-400 mt-1">Scheduled today</p>
                   </div>
-                  <div className={`rounded-2xl ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    } p-4`}>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>Task completion</p>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs text-slate-400">Task completion</p>
                     <div className="mt-2 text-2xl font-semibold text-emerald-200">
                       {taskCompletion}%
                     </div>
-                    <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
+                    <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
+                        className="h-full bg-linear-to-r from-emerald-400 to-cyan-400"
                         style={{ width: `${taskCompletion}%` }}
                       />
                     </div>
                   </div>
-                  <div className={`rounded-2xl ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    } p-4`}>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>Soundscape</p>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs text-slate-400">Soundscape</p>
                     <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
-                      <SoundscapeIcon className="w-4 h-4 text-purple-500" />
+                      <SoundscapeIcon className="w-4 h-4 text-purple-200" />
                       {soundscapeOn ? "On" : "Off"}
                     </div>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}>
+                    <p className="text-xs text-slate-400 mt-1">
                       {soundscapeOn ? soundscape : "Silent focus"}
                     </p>
                   </div>
                 </div>
 
-                <div className={`mt-6 rounded-2xl ${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } p-4`}>
-                  <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>Next focus block</p>
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs text-slate-400">Next focus block</p>
                   {nextFocusBlock ? (
                     <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
                       <Timer className="w-5 h-5 text-cyan-300" />
                       {nextFocusBlock.text}
-                      <span className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                      <span className="text-sm text-slate-400">
                         {nextFocusBlock.time}
                       </span>
                     </div>
                   ) : (
-                    <p className={`mt-2 text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                    <p className="mt-2 text-sm text-slate-400">
                       Add a focus item to see it here.
                     </p>
                   )}
@@ -1071,10 +874,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
 
             <div className="space-y-8">
               <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6`}
+                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -1090,10 +890,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                     value={taskInput}
                     onChange={(event) => setTaskInput(event.target.value)}
                     placeholder="Add a new task"
-                    className={`flex-1 rounded-xl ${isDark
-                        ? "bg-white/10 border border-white/10 text-white"
-                        : "bg-slate-100 border border-slate-300 text-slate-900"
-                      } px-3 py-2 text-sm ${isDark ? "text-white" : "text-slate-900"} placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40`}
+                    className="flex-1 rounded-xl bg-white/10 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
                   />
                   <div className="flex items-center gap-2">
                     <div className="flex flex-wrap gap-2">
@@ -1102,10 +899,11 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                           key={priority.value}
                           type="button"
                           onClick={() => setTaskPriority(priority.value)}
-                          className={`px-3 py-1 rounded-full text-xs border transition ${priority.color} ${taskPriority === priority.value
+                          className={`px-3 py-1 rounded-full text-xs border transition ${priority.color} ${
+                            taskPriority === priority.value
                               ? "bg-white/10"
                               : "bg-transparent"
-                            }`}
+                          }`}
                         >
                           {priority.label}
                         </button>
@@ -1120,13 +918,13 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   </div>
                 </form>
                 <div className="mb-4">
-                  <div className={`flex items-center justify-between text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                  <div className="flex items-center justify-between text-xs text-slate-400">
                     <span>Completion</span>
                     <span>{taskCompletion}%</span>
                   </div>
-                  <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
+                  <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
+                      className="h-full bg-linear-to-r from-emerald-400 to-cyan-400"
                       style={{ width: `${taskCompletion}%` }}
                     />
                   </div>
@@ -1135,51 +933,43 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   {tasks.map((task, index) => (
                     <div
                       key={task.id}
-                      className={`flex items-center justify-between gap-3 ${isDark
-                          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                          : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                        } rounded-2xl px-3 py-2`}
+                      className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 rounded-2xl px-3 py-2"
                     >
                       <div className="flex items-center gap-2 text-sm">
                         <button
                           onClick={() => toggleTask(task.id)}
-                          className={`flex items-center gap-2 ${task.done
-                              ? "text-slate-500 line-through"
-                              : isDark
-                                ? "text-slate-200"
-                                : "text-slate-800"
-                            }`}
+                          className={`flex items-center gap-2 ${
+                            task.done ? "text-slate-500 line-through" : "text-slate-200"
+                          }`}
                         >
                           <CheckCircle2
-                            className={`flex items-center gap-2 ${task.done
-                                ? "text-slate-500 line-through"
-                                : isDark
-                                  ? "text-slate-200"
-                                  : "text-slate-800"
-                              }`}
+                            className={`w-4 h-4 ${
+                              task.done ? "text-emerald-400" : "text-slate-500"
+                            }`}
                           />
                           {task.text}
                         </button>
                         <span
-                          className={`ml-2 px-2 py-0.5 rounded-full border text-[10px] uppercase ${PRIORITIES.find((priority) => priority.value === task.priority)?.color ||
+                          className={`ml-2 px-2 py-0.5 rounded-full border text-[10px] uppercase ${
+                            PRIORITIES.find((priority) => priority.value === task.priority)?.color ||
                             "border-white/20 text-slate-300"
-                            }`}
+                          }`}
                         >
                           {task.priority}
                         </span>
                       </div>
-                      <div className={`flex items-center gap-1 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                      <div className="flex items-center gap-1 text-xs text-slate-400">
                         <button
                           onClick={() => moveTask(task.id, -1)}
                           disabled={index === 0}
-                          className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
+                          className="p-1 rounded-lg hover:text-white disabled:opacity-40"
                         >
                           <ChevronUp className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => moveTask(task.id, 1)}
                           disabled={index === tasks.length - 1}
-                          className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
+                          className="p-1 rounded-lg hover:text-white disabled:opacity-40"
                         >
                           <ChevronDown className="w-3 h-3" />
                         </button>
@@ -1196,10 +986,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
               </motion.div>
 
               <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 space-y-4`}
+                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-4"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -1211,49 +998,37 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   <h3 className="text-xl font-semibold">Focus Insights</h3>
                 </div>
                 <div className="space-y-4">
-                  <div className={`rounded-2xl p-4 ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Energy level</p>
+                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                    <p className="text-sm text-slate-400">Energy level</p>
                     <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
-                      <div className="h-full w-3/4 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500" />
+                      <div className="h-full w-3/4 bg-linear-to-r from-cyan-400 to-purple-400" />
                     </div>
                   </div>
-                  <div className={`rounded-2xl p-4 ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Deep work streak</p>
+                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                    <p className="text-sm text-slate-400">Deep work streak</p>
                     <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
                       <Flame className="w-5 h-5 text-orange-300" />
                       6 days strong
                     </div>
                   </div>
-                  <div className={`rounded-2xl p-4 ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Next focus block</p>
+                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                    <p className="text-sm text-slate-400">Next focus block</p>
                     {nextFocusBlock ? (
                       <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
                         <Timer className="w-5 h-5 text-cyan-300" />
                         {nextFocusBlock.text}
-                        <span className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                        <span className="text-sm text-slate-400">
                           {nextFocusBlock.time}
                         </span>
                       </div>
                     ) : (
-                      <p className={`mt-2 text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                      <p className="mt-2 text-sm text-slate-400">
                         No focus blocks scheduled yet.
                       </p>
                     )}
                   </div>
-                  <div className={`rounded-2xl p-4 ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Soundscape</p>
+                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                    <p className="text-sm text-slate-400">Soundscape</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {SOUNDSCAPES.map((item) => {
                         const Icon = item.icon;
@@ -1262,15 +1037,11 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                             key={item.value}
                             type="button"
                             onClick={() => setSoundscape(item.value)}
-                            className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 transition-all duration-300 ${
-  soundscape === item.value
-    ? isDark
-      ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
-      : "border-cyan-300 bg-cyan-100 text-cyan-900"
-    : isDark
-      ? "border-white/10 text-slate-300 hover:text-white"
-      : "border-slate-300 text-slate-700 hover:text-slate-900 bg-white/60"
-}`}
+                            className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 ${
+                              soundscape === item.value
+                                ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
+                                : "border-white/10 text-slate-300"
+                            }`}
                           >
                             <Icon className="w-3 h-3" />
                             {item.label}
@@ -1279,40 +1050,34 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                       })}
                       <button
                         onClick={() => setSoundscapeOn((prev) => !prev)}
-                        className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 transition-all duration-300 ${
-  soundscapeOn
-    ? isDark
-      ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
-      : "border-emerald-300 bg-emerald-100 text-emerald-900"
-    : isDark
-      ? "border-white/10 text-slate-300 hover:text-white"
-      : "border-slate-300 text-slate-700 hover:text-slate-900 bg-white/60"
-}`}
+                        className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 ${
+                          soundscapeOn
+                            ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
+                            : "border-white/10 text-slate-300"
+                        }`}
                       >
                         {soundscapeOn ? "On" : "Off"}
                         <SoundscapeIcon className="w-3 h-3" />
                       </button>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
-                      <div className="h-2 flex-1 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
+                      <div className="h-2 flex-1 rounded-full bg-white/10 overflow-hidden">
                         <div
-                          className={`h-full w-2/3 ${soundscapeOn
-                              ? "bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
+                          className={`h-full w-2/3 ${
+                            soundscapeOn
+                              ? "bg-linear-to-r from-cyan-400 to-purple-400"
                               : "bg-white/10"
-                            }`}
+                          }`}
                         />
                       </div>
-                      <span className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>EQ</span>
+                      <span className="text-xs text-slate-400">EQ</span>
                     </div>
                   </div>
                 </div>
               </motion.div>
 
               <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 space-y-3`}
+                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-3"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -1323,7 +1088,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   <Sparkles className="w-5 h-5 text-purple-300" />
                   Creative Boosts
                 </h3>
-                <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                <p className="text-sm text-slate-300">
                   Try a 2-minute stretch, write one win, and reset your focus
                   before the next block.
                 </p>
@@ -1339,10 +1104,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                         setIsRunning(true);
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
-                      className={`px-3 py-1 rounded-full text-xs ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        } hover:bg-white/20 transition-colors cursor-pointer ${isDark ? "text-white" : "text-slate-900"}`}
+                      className="px-3 py-1 rounded-full text-xs bg-white/10 border border-white/10 hover:bg-white/20 transition-colors cursor-pointer text-white"
                     >
                       {item}
                     </button>
@@ -1351,10 +1113,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
               </motion.div>
 
               <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 `}
+                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -1365,7 +1124,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   <CalendarDays className="w-5 h-5 text-purple-300" />
                   <div>
                     <h3 className="text-xl font-semibold">Agenda</h3>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>{selectedDateLabel}</p>
+                    <p className="text-sm text-slate-400">{selectedDateLabel}</p>
                   </div>
                 </div>
                 <form onSubmit={addAgendaItem} className="flex flex-col gap-3 mb-4">
@@ -1373,10 +1132,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                     value={agendaInput}
                     onChange={(event) => setAgendaInput(event.target.value)}
                     placeholder="Add agenda item"
-                    className={`flex-1 rounded-xl ${isDark
-                        ? "bg-white/10 border border-white/10 text-white"
-                        : "bg-slate-100 border border-slate-300 text-slate-900"
-                      } px-3 py-2 text-sm ${isDark ? "text-white" : "text-slate-900"} placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400/40`}
+                    className="flex-1 rounded-xl bg-white/10 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400/40"
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     {TIME_BLOCKS.map((block) => (
@@ -1384,10 +1140,11 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                         key={block.label}
                         type="button"
                         onClick={() => setAgendaLabel(block.label)}
-                        className={`px-3 py-1 rounded-full text-xs border transition ${agendaLabel === block.label
-                            ? "border bg-white/10 border-white/20 text-white"
-                            : "border border-white/10 text-slate-300"
-                          }`}
+                        className={`px-3 py-1 rounded-full text-xs border transition ${
+                          agendaLabel === block.label
+                            ? "bg-white/10 border-white/20 text-white"
+                            : "border-white/10 text-slate-300"
+                        }`}
                       >
                         <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
                         {block.label}
@@ -1403,37 +1160,32 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                 </form>
                 <div className="space-y-3">
                   {agendaForSelectedDate.length === 0 ? (
-                    <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                    <div className="text-sm text-slate-400">
                       No agenda yet. Add a focus item for this day.
                     </div>
                   ) : (
                     agendaForSelectedDate.map((item, index) => (
                       <div
                         key={item.id}
-                        className={`flex items-center justify-between gap-3 ${isDark
-                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                          } rounded-2xl px-3 py-2`}
+                        className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 rounded-2xl px-3 py-2"
                       >
-                        <div className={`text-sm ${isDark ? "text-slate-200" : "text-slate-800"
-                          }`}
-                        >
+                        <div className="text-sm text-slate-200">
                           <p className="font-medium">{item.text}</p>
-                          <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>{item.time}</p>
+                          <p className="text-xs text-slate-400">{item.time}</p>
                           <p className="text-xs text-purple-200">{item.label}</p>
                         </div>
-                        <div className={`flex items-center gap-1 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                        <div className="flex items-center gap-1 text-xs text-slate-400">
                           <button
                             onClick={() => moveAgendaItem(item.id, -1)}
                             disabled={index === 0}
-                            className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
+                            className="p-1 rounded-lg hover:text-white disabled:opacity-40"
                           >
                             <ChevronUp className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => moveAgendaItem(item.id, 1)}
                             disabled={index === agendaForSelectedDate.length - 1}
-                            className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
+                            className="p-1 rounded-lg hover:text-white disabled:opacity-40"
                           >
                             <ChevronDown className="w-3 h-3" />
                           </button>
@@ -1451,10 +1203,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
               </motion.div>
 
               <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 `}
+                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -1467,24 +1216,24 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className={`${isDark ? "text-slate-300" : "text-slate-600"}`}>Tasks completed</span>
-                    <span className={`${isDark ? "text-slate-200" : "text-slate-800"}`}>
+                    <span className="text-slate-400">Tasks completed</span>
+                    <span className="text-slate-200">
                       {completedTasks} / {tasks.length}
                     </span>
                   </div>
-                  <div className="h-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
+                      className="h-full bg-linear-to-r from-cyan-400 to-purple-400"
                       style={{ width: `${taskCompletion}%` }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className={`${isDark ? "text-slate-300" : "text-slate-600"}`}>Agenda items</span>
-                    <span className={`${isDark ? "text-slate-200" : "text-slate-800"}`}>{agendaCount}</span>
+                    <span className="text-slate-400">Agenda items</span>
+                    <span className="text-slate-200">{agendaCount}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className={`${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus minutes</span>
-                    <span className={`${isDark ? "text-slate-200" : "text-slate-800"}`}>{focusMinutes} min</span>
+                    <span className="text-slate-400">Focus minutes</span>
+                    <span className="text-slate-200">{focusMinutes} min</span>
                   </div>
                 </div>
               </motion.div>
@@ -1508,10 +1257,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   setTaskInput("");
                   setAgendaInput("");
                 }}
-                className={`px-4 py-2 rounded-full ${isDark
-                    ? "bg-white/10 border border-white/10 text-white"
-                    : "bg-slate-100 border border-slate-300 text-slate-900"
-                  } text-sm`}
+                className="px-4 py-2 rounded-full bg-white/10 border border-white/10 text-sm"
               >
                 Quick Add Task
               </button>
@@ -1520,10 +1266,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   setShowQuickAdd(false);
                   setAgendaInput("");
                 }}
-                className={`px-4 py-2 rounded-full ${isDark
-                    ? "bg-white/10 border border-white/10 text-white"
-                    : "bg-slate-100 border border-slate-300 text-slate-900"
-                  } text-sm`}
+                className="px-4 py-2 rounded-full bg-white/10 border border-white/10 text-sm"
               >
                 Quick Add Agenda
               </button>
@@ -1532,10 +1275,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   setShowQuickAdd(false);
                   setIsRunning(true);
                 }}
-                className={`px-4 py-2 rounded-full ${isDark
-                    ? "bg-white/10 border border-white/10 text-white"
-                    : "bg-slate-100 border border-slate-300 text-slate-900"
-                  } text-sm`}
+                className="px-4 py-2 rounded-full bg-white/10 border border-white/10 text-sm"
               >
                 Start Focus
               </button>
@@ -1543,7 +1283,7 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
           )}
           <button
             onClick={() => setShowQuickAdd((prev) => !prev)}
-            className="h-12 w-12 rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-slate-900 flex items-center justify-center shadow-lg"
+            className="h-12 w-12 rounded-full bg-linear-to-r from-cyan-400 to-purple-500 text-slate-900 flex items-center justify-center shadow-lg"
             aria-label="Quick add"
           >
             <Plus className="w-5 h-5" />

@@ -8,11 +8,10 @@ import {
   Pin,
   Share2,
   User,
-  Copy,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
-import { useCallback, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useCallback } from "react";
+import { motion } from "framer-motion";
 
 const priorityStyles = {
   high: "bg-red-500/10 text-red-200 border border-red-500/30",
@@ -67,156 +66,34 @@ const createTextDownload = (content, fileName) => {
   URL.revokeObjectURL(fileUrl);
 };
 
-const createPdfDownload = (notice) => {
+const createPdfDownload = (notice, content) => {
   const doc = new jsPDF();
-  const margin = 20;
+  const margin = 16;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const contentWidth = pageWidth - margin * 2;
+  const maxWidth = pageWidth - margin * 2;
+  const lineHeight = 7;
+  const headingY = 18;
 
-  // 1. Branding Letterhead Header
-  doc.setFillColor(79, 70, 229); // indigo header background bar
-  doc.rect(0, 0, pageWidth, 4, "F");
-
-  // Institution Label
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139); // Slate-500
-  doc.text("LEARNOVA ACADEMY • CAMPUS NOTICE BOARD", margin, 18);
+  doc.setFontSize(16);
+  doc.text(notice.title || "Untitled notice", margin, headingY);
 
-  // Divider Slate Line
-  doc.setDrawColor(226, 232, 240); // Slate-200
-  doc.setLineWidth(0.5);
-  doc.line(margin, 22, pageWidth - margin, 22);
-
-  // 2. Notice Category Badge
-  const category = (notice.category || "General").toUpperCase();
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setFillColor(243, 244, 246); // light slate background
-  
-  // Calculate text width to make the badge width dynamic
-  const catWidth = doc.getTextWidth(category);
-  const badgeWidth = catWidth + 8;
-  doc.roundedRect(margin, 28, badgeWidth, 6, 1.5, 1.5, "F");
-  doc.setTextColor(79, 70, 229); // Indigo text
-  doc.text(category, margin + 4, 32.2);
-
-  // 3. Notice Title
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.setTextColor(15, 23, 42); // Slate-900 (highly readable dark text)
-  
-  // Split title to size to handle long titles wrapping
-  const wrappedTitle = doc.splitTextToSize(notice.title || "Untitled Notice", contentWidth);
-  let cursorY = 44;
-  wrappedTitle.forEach((line) => {
-    doc.text(line, margin, cursorY);
-    cursorY += 8;
-  });
-
-  // 4. Metadata Box
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139); // Slate-500
-  
-  const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
-  const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-  const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  
-  doc.text(`Author: ${notice.author || "Unknown"}`, margin, cursorY);
-  doc.text(`Published: ${dateStr} at ${timeStr}`, margin + 62, cursorY);
-  
-  // Color-coded priority badges matching UI
-  const priority = (notice.priority || "medium").toLowerCase();
-  doc.text("Priority:", margin + 130, cursorY);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  if (priority === "high") {
-    doc.setFillColor(254, 226, 226); // Red-100
-    doc.setTextColor(220, 38, 38);  // Red-600
-  } else if (priority === "low") {
-    doc.setFillColor(209, 250, 229); // Emerald-100
-    doc.setTextColor(5, 150, 105);   // Emerald-600
-  } else {
-    doc.setFillColor(254, 243, 199); // Amber-100
-    doc.setTextColor(217, 119, 6);   // Amber-600
-  }
-  doc.roundedRect(margin + 144, cursorY - 3.5, 18, 5, 1, 1, "F");
-  doc.text(priority.toUpperCase(), margin + 146, cursorY - 0.1);
-  
-  // Revert defaults
-  doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139);
-  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
 
-  // Render Tags row with styled pills
-  cursorY += 7;
-  const tags = notice.tags || [];
-  if (tags.length > 0) {
-    doc.text("Tags:", margin, cursorY);
-    let tagX = margin + 11;
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "bold");
-    tags.forEach((tag) => {
-      const tagText = `#${tag}`;
-      const tagWidth = doc.getTextWidth(tagText);
-      doc.setFillColor(243, 244, 246); // Slate-100
-      doc.setTextColor(71, 85, 105);   // Slate-600
-      doc.roundedRect(tagX, cursorY - 3.2, tagWidth + 4, 4.5, 1, 1, "F");
-      doc.text(tagText, tagX + 2, cursorY + 0.1);
-      tagX += tagWidth + 7;
-    });
-
-    // Revert defaults
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.setFont("helvetica", "normal");
-  }
-
-  // Horizontal Rule under Metadata
-  cursorY += 4;
-  doc.setDrawColor(226, 232, 240); // Slate-200
-  doc.line(margin, cursorY, pageWidth - margin, cursorY);
-  cursorY += 10;
-
-  // 5. Notice Body / Content
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10.5);
-  doc.setTextColor(51, 65, 85); // Slate-700
-  
-  const lines = doc.splitTextToSize(notice.content || "", contentWidth);
-  const lineHeight = 6.5;
+  const lines = doc.splitTextToSize(content, maxWidth);
+  let cursorY = headingY + 10;
 
   lines.forEach((line) => {
-    if (cursorY > pageHeight - margin - 15) {
-      // Add dynamic footer before creating a new page
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184);
-      doc.text("Official Notice Board • Learnova", margin, pageHeight - 10);
-      
+    if (cursorY > pageHeight - margin) {
       doc.addPage();
-      
-      // Indigo top bar on the second page
-      doc.setFillColor(79, 70, 229);
-      doc.rect(0, 0, pageWidth, 4, "F");
-      
-      cursorY = margin + 10;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10.5);
-      doc.setTextColor(51, 65, 85);
+      cursorY = margin;
     }
 
     doc.text(line, margin, cursorY);
     cursorY += lineHeight;
   });
-
-  // Footer for the final page
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(148, 163, 184);
-  doc.text("Official Campus Notice • Generated via Learnova Smart Notice Board", margin, pageHeight - 10);
 
   doc.save(buildNoticeFileName(notice, "pdf"));
 };
@@ -237,7 +114,6 @@ const highlightMatch = (text, query) => {
 };
 
 const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime }) => {
-  const [copyFeedback, setCopyFeedback] = useState(false);
   const relativeTime = getRelativeTime(notice.createdAt);
   const exportText = formatNoticeForExport(notice, isRead, relativeTime);
   const tags = notice.tags || [];
@@ -251,37 +127,8 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
   const handlePdfExportNotice = useCallback(() => {
     if (typeof window === "undefined") return;
 
-    createPdfDownload(notice);
-  }, [notice]);
-
-  const handleCopyMarkdown = useCallback(async () => {
-    if (typeof window === "undefined") return;
-
-    const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
-    const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-    const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-    const mdText = [
-      `# ${notice.title || "Untitled Notice"}`,
-      "",
-      `**Category:** ${notice.category || "General"}`,
-      `**Author:** ${notice.author || "Unknown"}`,
-      `**Published:** ${dateStr} at ${timeStr}`,
-      `**Priority:** ${notice.priority || "medium"}`,
-      "",
-      "---",
-      "",
-      notice.content || ""
-    ].join("\n");
-
-    try {
-      await navigator.clipboard.writeText(mdText);
-      setCopyFeedback(true);
-      setTimeout(() => setCopyFeedback(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy markdown to clipboard", err);
-    }
-  }, [notice]);
+    createPdfDownload(notice, exportText);
+  }, [exportText, notice]);
 
   const handleShareNotice = useCallback(async () => {
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
@@ -310,22 +157,6 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
       whileHover={{ y: -4 }}
       className="group relative overflow-hidden rounded-[2rem] border border-slate-800 bg-gradient-to-br from-slate-950/80 to-slate-900/60 p-6 shadow-2xl shadow-slate-950/20 transition duration-300 hover:shadow-2xl hover:border-slate-700"
     >
-      {/* Copied To Clipboard HUD Toast */}
-      <AnimatePresence>
-        {copyFeedback && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-4 left-4 z-40 bg-indigo-500/90 text-white border border-indigo-400/20 backdrop-blur-md px-3.5 py-2 rounded-full text-xs font-bold shadow-lg shadow-indigo-500/20 flex items-center gap-1.5"
-          >
-            <span>📋</span>
-            <span>Markdown Copied!</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {notice.isPinned && (
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
@@ -398,18 +229,6 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
           >
             <Download className="h-4 w-4" />
             PDF
-          </motion.button>
-
-          <motion.button
-            type="button"
-            onClick={handleCopyMarkdown}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center gap-2 rounded-3xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-100 transition hover:bg-indigo-500/20 active:scale-95"
-            aria-label={`Copy markdown representation of ${notice.title || "notice"}`}
-          >
-            <Copy className="h-4 w-4" />
-            Markdown
           </motion.button>
 
           <motion.button

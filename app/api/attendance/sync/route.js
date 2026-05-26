@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
-import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -12,65 +12,23 @@ const syncSchema = z.object({
     z.object({
       id: z.number().optional(), // IDB key
       userId: z.string(),
-      studentName: z.string().optional(),
-      email: z.string().optional(),
-      confidenceScore: z.number().optional(),
+      studentName: z.string(),
+      email: z.string(),
+      confidenceScore: z.number(),
       queuedAt: z.number(),
       date: z.string().optional(),
     })
   ).min(1),
 });
 
-export function normalizeConfidenceScore(confidenceScore) {
-  let parsedScore = Number(confidenceScore);
-
-  if (!Number.isFinite(parsedScore)) {
-    return 0;
-  }
-
-  if (parsedScore > 1) {
-    parsedScore = parsedScore / 100;
-  }
-
-  return Math.max(0, Math.min(1, parsedScore));
-}
-
-function resolveAttendanceIdentity(decodedToken, userProfile) {
-  const profileName = [userProfile?.fullName, userProfile?.displayName, decodedToken?.name]
-    .find((value) => typeof value === "string" && value.trim())
-    ?.trim();
-
-  const profileEmail = [userProfile?.email, decodedToken?.email]
-    .find((value) => typeof value === "string" && value.trim())
-    ?.trim();
-
-  return {
-    studentName: profileName || "Unknown User",
-    email: profileEmail || "",
-  };
-}
-
 async function handleSync(request) {
   const decodedToken = await requireAuth(request);
-  const body = await parseJSON(request, 1024 * 100);
+  const body = await request.json();
   const { records } = syncSchema.parse(body);
 
   initFirebaseAdmin();
   const db = getFirestore();
-  const userProfile = await getUserProfile(decodedToken.uid);
-
-  if (!userProfile) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "User profile not found for attendance sync.",
-      },
-      { status: 404 },
-    );
-  }
-
-  const serverIdentity = resolveAttendanceIdentity(decodedToken, userProfile);
-  const instituteId = userProfile?.instituteId || null;
+  const batch = db.batch();
   
   const successfulIds = [];
   
@@ -95,64 +53,47 @@ async function handleSync(request) {
       continue;
     }
 
-    // Force date to match the validated queuedAt timestamp, but respect local timezone
-    // to prevent UTC offset from logging attendance on the wrong day.
-    const timeZone = process.env.NEXT_PUBLIC_TIMEZONE || "Asia/Kolkata";
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    const parts = formatter.formatToParts(new Date(record.queuedAt));
-    const year = parts.find((p) => p.type === "year").value;
-    const month = parts.find((p) => p.type === "month").value;
-    const day = parts.find((p) => p.type === "day").value;
-    const recordDate = `${year}-${month}-${day}`;
-
-    const userDateKey = `${decodedToken.uid}_${recordDate}`;
+    // Force date to match the validated queuedAt timestamp, ignoring any spoofed client date
+    const recordDate = new Date(record.queuedAt).toISOString().slice(0, 10);
+    const userDateKey = `${record.userId}_${recordDate}`;
 
     if (processedUserDates.has(userDateKey)) {
       successfulIds.push(record.id); // Acknowledge as success to remove from local queue
       continue;
     }
 
-    // Atomic check-and-set using a Firestore transaction to prevent
-    // duplicate records under concurrent sync requests from multiple tabs or devices.
-    const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
+    // Check if attendance already exists in Firestore for this date
+    const attendanceQuery = await db.collection("attendance_records")
+      .where("userId", "==", record.userId)
+      .where("date", "==", recordDate)
+      .limit(1)
+      .get();
 
-    await db.runTransaction(async (transaction) => {
-      const existingAttendance = await transaction.get(newDocRef);
-      if (existingAttendance.exists) {
-        return;
-      }
+    if (!attendanceQuery.empty) {
+      successfulIds.push(record.id);
+      processedUserDates.add(userDateKey);
+      continue;
+    }
 
-      if (
-        (record.studentName && record.studentName !== serverIdentity.studentName) ||
-        (record.email && record.email !== serverIdentity.email)
-      ) {
-        console.warn(
-          `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
-        );
-      }
-
-      transaction.set(newDocRef, {
-        userId: decodedToken.uid,
-        studentName: serverIdentity.studentName,
-        email: serverIdentity.email,
-        instituteId,
-        timestamp: FieldValue.serverTimestamp(),
-        date: recordDate,
-        status: "present",
-        confidenceScore: normalizeConfidenceScore(record.confidenceScore),
-        offlineSynced: true,
-        queuedAt: new Date(record.queuedAt),
-      });
+    // Prepare new document
+    const newDocRef = db.collection("attendance_records").doc();
+    batch.set(newDocRef, {
+      userId: record.userId,
+      studentName: record.studentName,
+      email: record.email,
+      timestamp: FieldValue.serverTimestamp(),
+      date: recordDate,
+      status: "present",
+      confidenceScore: record.confidenceScore || 0,
+      offlineSynced: true,
+      queuedAt: new Date(record.queuedAt),
     });
 
     successfulIds.push(record.id);
     processedUserDates.add(userDateKey);
   }
+
+  await batch.commit();
 
   return NextResponse.json({
     success: true,

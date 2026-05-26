@@ -28,9 +28,6 @@ import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import SkeletonCard from "@/components/ui/SkeletonCard";
 
-// CRITICAL FIX: Imported missing useAuth hook to prevent ReferenceError crash
-import { useAuth } from "@/hooks/useAuth";
-
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
   { ssr: false, loading: () => <ChartSkeleton variant="chart" /> }

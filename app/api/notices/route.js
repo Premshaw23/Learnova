@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
-import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +20,11 @@ async function publishNotice(request) {
   const allowedRoles = ["teacher", "admin", "staff"];
   const { payload: decodedToken, profile } = await requireRole(request, allowedRoles);
 
-  const body = await parseJSON(request, 1024 * 50);
+  const body = await request.json();
   const validData = noticeSchema.parse(body);
 
-
-
+  const db = await connectDb();
+  
   const newNotice = {
     ...validData,
     author: decodedToken.name || decodedToken.email.split("@")[0],
@@ -34,13 +34,11 @@ async function publishNotice(request) {
     updatedAt: new Date(),
   };
 
-  const result = await adminDb
-    .collection("notices")
-    .add(newNotice);
+  const result = await db.collection("notices").insertOne(newNotice);
 
   return NextResponse.json({
     success: true,
-    notice: { id: result.id, ...newData }
+    notice: { id: result.insertedId, ...newNotice }
   });
 }
 

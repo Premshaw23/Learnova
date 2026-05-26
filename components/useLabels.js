@@ -9,58 +9,25 @@ export default function useLabels(user) {
 
   useEffect(() => {
     if (!user) {
-      setLoading(false);
       return;
     }
 
     const fetchLabels = async () => {
       try {
         const token = await user.getIdToken();
-
-        // Timeout controller
-        const controller = new AbortController();
-
-        const timeout = setTimeout(() => {
-          controller.abort();
-        }, 5000);
-
         const res = await fetch("/api/labels", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          signal: controller.signal,
         });
-
-        clearTimeout(timeout);
-
-        if (!res.ok) {
-          throw new Error("Service temporarily unavailable");
-        }
-
+        if (!res.ok) throw new Error("Failed to fetch labels");
         const data = await res.json();
-
         if (!data.success) {
-          throw new Error(
-            data.error || "Failed to load labels"
-          );
+          throw new Error(data.error || "Failed to fetch labels");
         }
-
         setLabels(Array.isArray(data.data) ? data.data : []);
-        setError(null);
-
       } catch (err) {
-        console.error("Label Fetch Error:", err);
-
-        if (err.name === "AbortError") {
-          setError("Request timed out. Please try again.");
-        } else {
-          setError(
-            "Service temporarily unavailable. Please try again later."
-          );
-        }
-
-        // graceful fallback
-        setLabels([]);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
@@ -69,9 +36,5 @@ export default function useLabels(user) {
     fetchLabels();
   }, [user]);
 
-  return {
-    labels,
-    loading,
-    error,
-  };
+  return { labels, loading: !user ? true : loading, error };
 }
