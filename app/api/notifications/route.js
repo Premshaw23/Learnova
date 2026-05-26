@@ -1,5 +1,7 @@
 import clientPromise from "@/lib/mongodb";
 import { parseJSON } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
+import { jsonError } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +13,11 @@ function serializeNotification(notification) {
 }
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
-
-  if (!userId) {
-    return Response.json({ notifications: [] });
+  let decodedToken;
+  try {
+    decodedToken = await requireAuth(request);
+  } catch {
+    return jsonError("Unauthorized", 401);
   }
 
   try {
@@ -23,7 +25,7 @@ export async function GET(request) {
     const db = client.db();
     const notifications = await db
       .collection("notifications")
-      .find({ userId })
+      .find({ userId: decodedToken.uid })
       .sort({ createdAt: -1 })
       .limit(10)
       .toArray();
@@ -37,18 +39,11 @@ export async function GET(request) {
 }
 
 export async function PATCH(request) {
-  let body = {};
-
+  let decodedToken;
   try {
-    body = await parseJSON(request, 1024);
+    decodedToken = await requireAuth(request);
   } catch {
-    body = {};
-  }
-
-  const { userId } = body;
-
-  if (!userId) {
-    return Response.json({ success: false });
+    return jsonError("Unauthorized", 401);
   }
 
   try {
@@ -56,7 +51,7 @@ export async function PATCH(request) {
     const db = client.db();
 
     await db.collection("notifications").updateMany(
-      { userId, read: false },
+      { userId: decodedToken.uid, read: false },
       { $set: { read: true } }
     );
 
