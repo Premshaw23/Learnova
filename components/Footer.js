@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -13,8 +14,83 @@ import {
 import { CONTACT_INFO } from "../constants/contact";
 
 
+
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      // Get current date string formatted as YYYY-MM-DD in local time
+      const today = new Date();
+      const offset = today.getTimezoneOffset();
+      const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+      const todayDateStr = localToday.toISOString().split("T")[0];
+
+      const lastVisit = localStorage.getItem("learnova_site_last_visit");
+      let streak = parseInt(localStorage.getItem("learnova_site_streak") || "0", 10);
+      let history = [];
+      
+      try {
+        const historyStr = localStorage.getItem("learnova_site_visit_history");
+        history = historyStr ? JSON.parse(historyStr) : [];
+      } catch (e) {
+        history = [];
+      }
+
+      // Ensure history consists of valid array
+      if (!Array.isArray(history)) {
+        history = [];
+      }
+
+      if (!lastVisit) {
+        // First visit ever
+        streak = 1;
+        history = [todayDateStr];
+        localStorage.setItem("learnova_site_streak", "1");
+        localStorage.setItem("learnova_site_last_visit", todayDateStr);
+        localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
+      } else if (lastVisit !== todayDateStr) {
+        const lastVisitDate = new Date(lastVisit);
+        const currentVisitDate = new Date(todayDateStr);
+        
+        // Calculate difference in calendar days
+        const diffTime = currentVisitDate.getTime() - lastVisitDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          // Consecutive day visit
+          streak += 1;
+        } else if (diffDays > 1) {
+          // Streak broken
+          streak = 1;
+        }
+        // If diffDays <= 0 (time traveler or same day), do nothing
+
+        if (!history.includes(todayDateStr)) {
+          history.push(todayDateStr);
+          // Keep only last 30 days to avoid cluttering localStorage
+          if (history.length > 30) {
+            history = history.slice(-30);
+          }
+        }
+
+        localStorage.setItem("learnova_site_streak", streak.toString());
+        localStorage.setItem("learnova_site_last_visit", todayDateStr);
+        localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
+      } else {
+        // Same day visit, ensure today is in history
+        if (!history.includes(todayDateStr)) {
+          history.push(todayDateStr);
+          localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update site visit streak:", error);
+    }
+  }, []);
+
   const quickLinks = [
     { label: "Home", href: "/" },
     { label: "Productivity", href: "/productivity" },
@@ -22,7 +98,10 @@ export default function Footer() {
     { label: "Contact", href: "/contact" },
     { label: "Register", href: "/register" },
     { label: "Contributors", href: "/contributors" },
+    { label: "Terms & Conditions", href: "/terms" },
+    { label: "Streaks", href: "/streaks" },
   ];
+
 
   const sectionLinks = [
     { label: "Mission", href: "/#mission" },
@@ -147,7 +226,7 @@ export default function Footer() {
             <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">
               Quick Links
             </h3>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-1 text-sm">
               {quickLinks.map((link) => (
                 <li key={link.href}>
                   <Link

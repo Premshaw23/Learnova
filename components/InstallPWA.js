@@ -34,10 +34,12 @@ export default function InstallPWA() {
       // Silently handle localStorage errors
     }
 
+    let timeoutId = null;
+
     const handler = (e) => {
       e.preventDefault();
       setInstallPrompt(e);
-      setTimeout(() => setIsVisible(true), 5000);
+      timeoutId = setTimeout(() => setIsVisible(true), 5000);
     };
 
     const appInstalledHandler = () => {
@@ -51,6 +53,7 @@ export default function InstallPWA() {
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", appInstalledHandler);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
 
@@ -82,8 +85,7 @@ export default function InstallPWA() {
 
   return (
     <div
-      className={`fixed bottom-4 right-4 z-50 transition-all duration-500 ease-out transform ${
-        isVisible
+       className={`fixed bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0 z-50 w-[92%] sm:w-auto transition-all duration-500 ease-out transform ${        isVisible
           ? "opacity-100 scale-100 translate-y-0"
           : "opacity-0 scale-95 translate-y-8 pointer-events-none"
       }`}
@@ -116,7 +118,8 @@ export default function InstallPWA() {
             </p>
 
             {/* Action Buttons */}
-            <div className="flex gap-2.5 mt-4">
+            <div className="flex flex-col sm:flex-row gap-2.5 mt-4">
+            
               <button
                 onClick={handleInstall}
                 className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold text-xs hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 cursor-pointer shadow-lg shadow-purple-600/20"

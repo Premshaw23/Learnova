@@ -165,7 +165,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toContain("expected string, received number");
+    expect(body.error).toContain("userMessage must be a string");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -185,7 +185,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toContain("expected string, received undefined");
+    expect(body.error).toContain("botMessage is required");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 

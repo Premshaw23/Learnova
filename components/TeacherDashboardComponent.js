@@ -51,14 +51,18 @@ import {
   PieChart,
   Activity,
   Zap,
+  Loader2,
+  XCircle,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import SkeletonCard from "@/components/ui/SkeletonCard";
 import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
+import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
+import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
 import { db } from "@/lib/firebaseConfig";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -75,7 +79,9 @@ const TeacherDashboard = () => {
   const [attendanceWindow, setAttendanceWindow] = useState(false);
   const [currentPasscode, setCurrentPasscode] = useState("");
   const [passcodeGenerated, setPasscodeGenerated] = useState(false);
-  const { user } = useAuth();
+  const [passcodeLoading, setPasscodeLoading] = useState(false);
+  const [passcodeExpiresAt, setPasscodeExpiresAt] = useState(null);
+  const { user, userProfile } = useAuth();
   const [attendanceStats, setAttendanceStats] = useState({
     totalStudents: 0,
     presentToday: 0,
@@ -157,154 +163,149 @@ const TeacherDashboard = () => {
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState(null);
 
-  // Mock teacher data
-  const [teacher] = useState({
-    name: "Dr. Sarah Wilson",
-    id: "TCH001",
-    email: "sarah.wilson@learnova.edu",
-    department: "Computer Science",
-    designation: "Associate Professor",
-    subjects: ["Data Structures", "Web Development", "Database Systems"],
+  // Dynamic teacher data
+  const [teacher, setTeacher] = useState({
+    name: "Loading...",
+    id: "",
+    email: "",
+    department: "",
+    designation: "Teacher",
+    subjects: [],
     avatar: null,
   });
 
-  // Mock class schedule
-  const weeklySchedule = {
-    Monday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-      {
-        time: "11:00-12:30",
-        subject: "Web Development",
-        room: "Lab-3",
-        students: 42,
-        semester: "6th",
-        section: "B",
-      },
-      {
-        time: "14:00-15:30",
-        subject: "Database Systems",
-        room: "Lab-2",
-        students: 38,
-        semester: "5th",
-        section: "A",
-      },
-    ],
-    Tuesday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-      {
-        time: "11:00-12:30",
-        subject: "Database Systems",
-        room: "Lab-2",
-        students: 38,
-        semester: "5th",
-        section: "A",
-      },
-    ],
-    Wednesday: [
-      {
-        time: "09:00-10:30",
-        subject: "Web Development",
-        room: "Lab-3",
-        students: 42,
-        semester: "6th",
-        section: "B",
-      },
-      {
-        time: "14:00-15:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-    ],
-    Thursday: [
-      {
-        time: "09:00-10:30",
-        subject: "Database Systems",
-        room: "Lab-2",
-        students: 38,
-        semester: "5th",
-        section: "A",
-      },
-      {
-        time: "11:00-12:30",
-        subject: "Web Development",
-        room: "Lab-3",
-        students: 42,
-        semester: "6th",
-        section: "B",
-      },
-    ],
-    Friday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-    ],
-  };
+  const [weeklySchedule, setWeeklySchedule] = useState({});
+  const [studentAttendanceData, setStudentAttendanceData] = useState([]);
 
-  // Mock attendance data
-  const studentAttendanceData = [
-    {
-      id: 1,
-      name: "Alex Johnson",
-      rollNo: "CS21B1001",
-      status: "present",
-      time: "09:02",
-      confidence: 98,
-    },
-    {
-      id: 2,
-      name: "Emma Davis",
-      rollNo: "CS21B1002",
-      status: "present",
-      time: "09:01",
-      confidence: 95,
-    },
-    {
-      id: 3,
-      name: "Michael Chen",
-      rollNo: "CS21B1003",
-      status: "late",
-      time: "09:08",
-      confidence: 92,
-    },
-    {
-      id: 4,
-      name: "Sarah Wilson",
-      rollNo: "CS21B1004",
-      status: "absent",
-      time: "--",
-      confidence: 0,
-    },
-    {
-      id: 5,
-      name: "David Kumar",
-      rollNo: "CS21B1005",
-      status: "present",
-      time: "09:03",
-      confidence: 97,
-    },
-  ];
+  // Fetch Teacher Profile & Schedule
+  useEffect(() => {
+    if (userProfile) {
+      setTeacher({
+        name: userProfile.displayName || userProfile.name || userProfile.firstName + " " + userProfile.lastName || "Teacher",
+        id: userProfile.uid || user?.uid || "TCH001",
+        email: userProfile.email || user?.email || "",
+        department: userProfile.department || "General",
+        designation: userProfile.designation || "Teacher",
+        subjects: userProfile.subjects || [],
+        avatar: userProfile.avatar || null,
+      });
+    }
+
+    const fetchSchedule = async () => {
+      if (!user) return;
+      try {
+        const scheduleRef = collection(db, "schedules");
+        const q = query(scheduleRef, where("teacherId", "==", user.uid));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const docData = snapshot.docs[0].data();
+          if (docData.weeklySchedule) {
+            setWeeklySchedule(docData.weeklySchedule);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching schedule, falling back to mock:", error);
+      }
+      
+      // Fallback Mock Schedule
+      setWeeklySchedule({
+        Monday: [
+          { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+          { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+          { time: "14:00-15:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+        ],
+        Tuesday: [
+          { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+          { time: "11:00-12:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+        ],
+        Wednesday: [
+          { time: "09:00-10:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+          { time: "14:00-15:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+        ],
+        Thursday: [
+          { time: "09:00-10:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+          { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+        ],
+        Friday: [
+          { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+        ],
+      });
+    };
+    
+    fetchSchedule();
+  }, [user, userProfile]);
+
+  // Fetch Active Class Student Roster
+  useEffect(() => {
+    if (!user) return;
+    
+    let unsubscribe = () => {};
+
+    const fetchStudentsAndAttendance = async () => {
+      try {
+        const usersRef = collection(db, "users");
+        const qStudents = query(usersRef, where("role", "==", "student"));
+        const studentDocs = await getDocs(qStudents);
+        
+        const studentsList = studentDocs.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().displayName || doc.data().name || `${doc.data().firstName || ""} ${doc.data().lastName || ""}`.trim() || "Unknown",
+          rollNo: doc.data().rollNo || doc.data().studentId || "N/A",
+          email: doc.data().email,
+        }));
+
+        const today = new Date().toISOString().slice(0, 10);
+        const attendanceQuery = query(
+          collection(db, "attendance_records"),
+          where("date", "==", today)
+        );
+
+        unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+          const attendanceMap = new Map();
+          snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.userId) attendanceMap.set(data.userId, data);
+            else if (data.email) attendanceMap.set(data.email, data);
+          });
+
+          const mergedRoster = studentsList.map((student, index) => {
+            const record = attendanceMap.get(student.id) || attendanceMap.get(student.email);
+            return {
+              id: student.id || index,
+              name: student.name,
+              rollNo: student.rollNo,
+              status: record ? (record.status || "present") : "absent",
+              time: record && record.timestamp ? new Date(record.timestamp.toDate ? record.timestamp.toDate() : record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "--",
+              confidence: record ? (record.confidenceScore ? Math.round(record.confidenceScore * 100) : 100) : 0,
+            };
+          });
+
+          mergedRoster.sort((a, b) => a.name.localeCompare(b.name));
+          
+          if (mergedRoster.length > 0) {
+            setStudentAttendanceData(mergedRoster);
+          } else {
+             // Fallback to mock data if there are no registered students at all in the DB
+             setStudentAttendanceData([
+               { id: 1, name: "Alex Johnson", rollNo: "CS21B1001", status: "present", time: "09:02", confidence: 98 },
+               { id: 2, name: "Emma Davis", rollNo: "CS21B1002", status: "present", time: "09:01", confidence: 95 },
+               { id: 3, name: "Michael Chen", rollNo: "CS21B1003", status: "late", time: "09:08", confidence: 92 },
+               { id: 4, name: "Sarah Wilson", rollNo: "CS21B1004", status: "absent", time: "--", confidence: 0 },
+               { id: 5, name: "David Kumar", rollNo: "CS21B1005", status: "present", time: "09:03", confidence: 97 },
+             ]);
+          }
+        });
+
+      } catch (error) {
+        console.error("Error fetching students for roster:", error);
+      }
+    };
+    
+    fetchStudentsAndAttendance();
+
+    return () => unsubscribe();
+  }, [user]);
 
   const fetchAllRequests = async () => {
     if (!user) return;
@@ -484,21 +485,75 @@ const TeacherDashboard = () => {
     };
   }, []);
 
-  const generatePasscode = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
-    let passcode = "";
-    for (let i = 0; i < 8; i++) {
-      passcode += chars.charAt(Math.floor(Math.random() * chars.length));
+  const generatePasscode = async () => {
+    setPasscodeLoading(true);
+    try {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      const randomValues = new Uint32Array(8);
+      crypto.getRandomValues(randomValues);
+      let passcode = "";
+      for (let i = 0; i < 8; i++) {
+        passcode += chars.charAt(randomValues[i] % chars.length);
+      }
+
+      const token = await user.getIdToken();
+      const res = await fetch("/api/attendance/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ passcode, expiresInMinutes: 10 }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save passcode");
+      }
+
+      setCurrentPasscode(passcode);
+      setPasscodeGenerated(true);
+      setAttendanceWindow(true);
+      setPasscodeExpiresAt(data.expiresAt);
+      setShowPasscodeModal(true);
+      toast.success("Attendance passcode generated and saved");
+    } catch (err) {
+      toast.error(err.message || "Failed to generate passcode");
+    } finally {
+      setPasscodeLoading(false);
     }
-    setCurrentPasscode(passcode);
-    setPasscodeGenerated(true);
-    setAttendanceWindow(true);
-    setShowPasscodeModal(true);
+  };
+
+  const closeAttendanceWindow = async () => {
+    setPasscodeLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/attendance/settings", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to close attendance window");
+      }
+
+      setAttendanceWindow(false);
+      setCurrentPasscode("");
+      setPasscodeGenerated(false);
+      setPasscodeExpiresAt(null);
+      toast.success("Attendance window closed");
+    } catch (err) {
+      toast.error(err.message || "Failed to close attendance window");
+    } finally {
+      setPasscodeLoading(false);
+    }
   };
 
   const copyPasscode = () => {
     navigator.clipboard.writeText(currentPasscode);
     setCopied(true);
+    toast.success("Passcode copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -554,7 +609,7 @@ const TeacherDashboard = () => {
                 {10 - currentTime.getMinutes()}:
                 {String(currentTime.getSeconds() === 0 ? 0 : 60 - currentTime.getSeconds()).padStart(2, "0")} min
               </div>
-            </div>
+            )}
           </div>
 
           {!passcodeGenerated ? (
@@ -563,9 +618,13 @@ const TeacherDashboard = () => {
               className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-foreground dark:text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"
             >
               <span className="flex items-center justify-center space-x-2">
-                <Zap className="w-5 h-5" />
-                <span>Generate Attendance Passcode</span>
-                <Sparkles className="w-5 h-5" />
+                {passcodeLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Zap className="w-5 h-5" />
+                )}
+                <span>{passcodeLoading ? "Generating..." : "Generate Attendance Passcode"}</span>
+                {!passcodeLoading && <Sparkles className="w-5 h-5" />}
               </span>
             </button>
           ) : (
@@ -578,6 +637,17 @@ const TeacherDashboard = () => {
                   <div className="text-2xl font-mono text-foreground dark:text-white font-bold tracking-wider">
                     {currentPasscode}
                   </div>
+                  <button
+                    onClick={copyPasscode}
+                    aria-label="Copy passcode"
+                    className="bg-white/10 hover:bg-white/20 border border-white/20 text-white p-3 rounded-lg transition-colors"
+                  >
+                    {copied ? (
+                      <Check className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <Copy className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
                 <button
                   onClick={copyPasscode}
@@ -591,6 +661,18 @@ const TeacherDashboard = () => {
                   )}
                 </button>
               </div>
+              <button
+                onClick={closeAttendanceWindow}
+                disabled={passcodeLoading}
+                className="w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 font-semibold py-2 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {passcodeLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                <span>{passcodeLoading ? "Closing..." : "Close Attendance Window"}</span>
+              </button>
             </div>
           )}
         </div>

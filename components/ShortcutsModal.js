@@ -18,6 +18,26 @@ const shortcuts = [
     mac: ["Esc"],
     description: "close modals and dropdowns",
   },
+  {
+    keys: ["Ctrl", "T"],
+    mac: ["⌘", "T"],
+    description: "toggle dark/light theme",
+  },
+  {
+    keys: ["Ctrl", "H"],
+    mac: ["⌘", "H"],
+    description: "go to home/dashboard",
+  },
+  {
+    keys: ["Ctrl", "L"],
+    mac: ["⌘", "L"],
+    description: "go to leaderboard",
+  },
+  {
+    keys: ["Ctrl", "N"],
+    mac: ["⌘", "N"],
+    description: "open notifications",
+  },
 ];
 
 export default function ShortcutsModal({ isOpen, onClose }) {

@@ -33,8 +33,8 @@ import AttendanceChart from "./AttendanceChart";
 
 import {
   weeklySchedule,
-  mockRecentActivity,
 } from "@/constants/mockData";
+import { getUserActivities } from "@/services/activityService";
 
 const AttendanceHeatmap = dynamic(
   () => import("./AttendanceHeatmap"),
@@ -78,6 +78,25 @@ const StudentDashboard = () => {
 
   const [showComplaint, setShowComplaint] =
     useState(false);
+
+    useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        if (!user?.uid) return;
+        const activities = await getUserActivities(user.uid);
+        const mapped = activities.map(a => ({
+         subject: a.title,
+          date: a.timestamp?.toLocaleDateString() || "",
+          status: a.progress >= 100 ? "present" : "late",
+          }));
+setRecentActivity(mapped);
+      } catch (err) {
+        console.error("Failed to load activity", err);
+      }
+    };
+
+    fetchActivity();
+  }, [user]);
 
   useEffect(() => {
     const fetchGamification = async () => {
@@ -166,7 +185,7 @@ const StudentDashboard = () => {
       setLoading(false);
     }, 1500);
 
-    const updateDashboard = () => {
+    const updateDashboard = async () => {
       try {
         const now = new Date();
 
@@ -224,8 +243,6 @@ const StudentDashboard = () => {
         });
 
         setUpcomingClass(upcoming || null);
-
-        setRecentActivity(mockRecentActivity);
 
         setError(null);
       } catch (err) {

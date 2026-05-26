@@ -81,8 +81,8 @@ export default function AuthForm({
                   >
                     <IconComponent className="w-6 h-6 text-white" />
                   </div>
-                  <div className="text-left">
-                    <h4 className="font-semibold text-white">{config.title}</h4>
+                    <div className="text-left">
+                    <h4 className="font-semibold text-card-foreground">{config.title}</h4>
                     <p className="text-muted-foreground text-sm">
                       Click to change role
                     </p>

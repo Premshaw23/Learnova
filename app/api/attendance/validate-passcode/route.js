@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { requireRole } from "@/lib/rbac";
 import { ValidationError } from "@/lib/errors";
@@ -13,8 +13,10 @@ export const dynamic = "force-dynamic";
 const passcodeSchema = z.object({
   passcode: z
     .string({
-      required_error: "Passcode is required",
-      invalid_type_error: "Passcode must be a string",
+      error: (issue) =>
+        issue.input === undefined
+          ? "Passcode is required"
+          : "Passcode must be a string",
     })
     .trim()
     .min(1, "Passcode is required"),
@@ -36,7 +38,7 @@ export const POST = withErrorHandler(async (request) => {
   // Initialize Firebase app to prevent cold-start crashes
   initializeFirebase();
 
-  const body = await request.json();
+  const body = await parseJSON(request, 1024);
   
   const validation = passcodeSchema.safeParse(body);
   if (!validation.success) {
@@ -63,6 +65,20 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   const settings = settingsDoc.data();
+
+  if (!settings.active) {
+    return NextResponse.json(
+      { valid: false, error: "Attendance window is currently closed." },
+      { status: 403 }
+    );
+  }
+
+  if (settings.expiresAt && new Date(settings.expiresAt) < new Date()) {
+    return NextResponse.json(
+      { valid: false, error: "Attendance passcode has expired." },
+      { status: 410 }
+    );
+  }
 
   if (settings.passcode === passcode) {
     return NextResponse.json({ valid: true });

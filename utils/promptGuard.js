@@ -67,9 +67,10 @@ export function sanitizeMessage(message) {
  * @param {string} baseSystemPrompt - The base system prompt for Nova.
  * @returns {Array<{role: string, content: string}>}
  */
-export function buildSecureMessages(userMessage, baseSystemPrompt) {
+export function buildSecureMessages(userMessage, baseSystemPrompt, history = []) {
   return [
     { role: "system", content: baseSystemPrompt },
+    ...history,
     { role: "user", content: userMessage },
     { role: "system", content: REINFORCEMENT_MESSAGE },
   ];

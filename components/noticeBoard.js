@@ -5,15 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useNotices } from "@/contexts/FirestoreContext";
 import { db } from "@/lib/firebaseConfig";
-
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-} from "firebase/firestore";
-
+import { doc, updateDoc } from "firebase/firestore";
 import { Navbar } from "./Navbar";
 import NoticeSearch from "./NoticeSearch";
 import NoticeFilters from "./NoticeFilters";
@@ -31,14 +25,11 @@ const CATEGORIES = [
 ];
 
 const SmartNoticeBoard = () => {
-  const {
-    user,
-    userProfile,
-    loading: authLoading,
-  } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
 
-  const [notices, setNotices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ── Consume the shared pooled subscription from FirestoreContext ──────────
+  // No local onSnapshot — notices arrive from the global singleton listener.
+  const { notices: rawNotices, loading: noticesLoading, error: noticesError } = useNotices();
 
   const [searchQuery, setSearchQuery] =
     useState("");
@@ -77,9 +68,22 @@ const SmartNoticeBoard = () => {
   const userId =
     user?.uid || user?.id || "anonymous";
 
-  const getUserRole = () => {
-    return userProfile?.role || "student";
-  };
+  // Normalise createdAt to a JS Date so downstream components can safely call
+  // getRelativeTime() regardless of whether it arrived as a Firestore Timestamp
+  // or was already converted by firestorePool's snapshot mapper.
+  const notices = useMemo(
+    () =>
+      rawNotices.map((n) => ({
+        ...n,
+        createdAt:
+          n.createdAt instanceof Date
+            ? n.createdAt
+            : n.createdAt?.toDate
+            ? n.createdAt.toDate()
+            : new Date(n.createdAt || Date.now()),
+      })),
+    [rawNotices]
+  );
 
   // Derived activity
   const derivedActivity = useMemo(() => {
@@ -103,109 +107,61 @@ const SmartNoticeBoard = () => {
       }));
   }, [activity, notices]);
 
-  // Load notices
+  const loading = authLoading || noticesLoading;
+
+  // Show toast once if the pool reports an error
   useEffect(() => {
-    if (authLoading) return;
-
-    if (!user) {
-      setLoading(false);
-      return;
+    if (noticesError) {
+      toast.error("Failed to load notices");
     }
+  }, [noticesError]);
 
-    const userRole = getUserRole();
-
-    const q = query(
-      collection(db, "notices"),
-      where(
-        "targetAudience",
-        "array-contains",
-        userRole
-      )
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const noticesData = snapshot.docs.map(
-          (doc) => {
-            const data = doc.data();
-
-            return {
-              id: doc.id,
-              ...data,
-              createdAt:
-                data.createdAt?.toDate
-                  ? data.createdAt.toDate()
-                  : new Date(
-                      data.createdAt ||
-                        Date.now()
-                    ),
-            };
-          }
-        );
-
-        setNotices(noticesData);
-        setLoading(false);
-      },
-      (error) => {
-        console.error(
-          "Error fetching notices:",
-          error
-        );
-
-        toast.error("Failed to load notices");
-
-        setLoading(false);
-      }
-    );
-
-    // Load read notices
-    try {
-      const savedReadNotices =
-        localStorage.getItem(
-          `readNotices_${userId}`
-        );
-
-      if (savedReadNotices) {
-        const parsed = JSON.parse(
-          savedReadNotices
-        );
-
-        if (Array.isArray(parsed)) {
-          setReadNotices(new Set(parsed));
+  // Load read notices from user profile or local storage fallback
+  useEffect(() => {
+    if (!userId || userId === "anonymous") return;
+    
+    if (userProfile && Array.isArray(userProfile.readNotices)) {
+      setReadNotices(new Set(userProfile.readNotices));
+    } else {
+      try {
+        const saved = localStorage.getItem(`readNotices_${userId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setReadNotices(new Set(parsed));
         }
+      } catch (err) {
+        console.error("Failed to load read notices locally:", err);
       }
-    } catch (err) {
-      console.error(
-        "Failed to load read notices:",
-        err
-      );
     }
-
-    return () => unsubscribe();
-  }, [
-    user,
-    userProfile,
-    authLoading,
-    userId,
-  ]);
+  }, [userId, userProfile]);
 
   // Save read state
   const saveReadState = useCallback(
-    (state) => {
+    async (state) => {
+      const stateArray = [...state];
+      // Save locally as a fallback/cache
       try {
         localStorage.setItem(
           `readNotices_${userId}`,
-          JSON.stringify([...state])
+          JSON.stringify(stateArray)
         );
       } catch (err) {
-        console.error(
-          "Failed to save read state:",
-          err
-        );
+        console.error("Failed to save read state locally:", err);
+      }
+      
+      // Sync to Firestore
+      if (user && userId !== "anonymous") {
+        try {
+          const userRef = doc(db, "users", userId);
+          await updateDoc(userRef, {
+            readNotices: stateArray
+          });
+        } catch (err) {
+          console.error("Failed to sync read state to Firestore:", err);
+        }
       }
     },
-    [userId]
+    [userId, user]
   );
 
   // Mark as read

@@ -25,8 +25,10 @@ const sanitizeText = (text) => {
 const conversationSchema = z.object({
   userMessage: z
     .string({
-      required_error: "userMessage is required",
-      invalid_type_error: "userMessage must be a string",
+      error: (issue) =>
+        issue.input === undefined
+          ? "userMessage is required"
+          : "userMessage must be a string",
     })
     .min(1, "userMessage cannot be empty")
     .max(10000, "userMessage must not exceed 10,000 characters")
@@ -34,8 +36,10 @@ const conversationSchema = z.object({
 
   botMessage: z
     .string({
-      required_error: "botMessage is required",
-      invalid_type_error: "botMessage must be a string",
+      error: (issue) =>
+        issue.input === undefined
+          ? "botMessage is required"
+          : "botMessage must be a string",
     })
     .min(1, "botMessage cannot be empty")
     .max(10000, "botMessage must not exceed 10,000 characters")

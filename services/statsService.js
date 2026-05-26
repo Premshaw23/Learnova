@@ -49,7 +49,8 @@ export const initializeUserStats = async (userId) => {
   try {
     await setDoc(statsRef, defaultStats);
   } catch (error) {
-    // Error initializing stats
+    console.error("Error initializing user stats:", error);
+    throw error;
   }
 };
 
@@ -80,7 +81,8 @@ export const updateUserStat = async (userId, statField, value = 1) => {
       lastUpdated: new Date(),
     });
   } catch (error) {
-    // Error updating stat field
+    console.error("Error updating user stat:", error);
+    throw error;
   }
 };
 

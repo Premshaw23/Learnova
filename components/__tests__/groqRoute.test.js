@@ -1,6 +1,6 @@
 import { POST } from "@/app/api/groq/route";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { connectDb } from "@/lib/mongodb";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 jest.mock("next/server", () => ({
   NextResponse: {
@@ -18,8 +18,8 @@ jest.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: jest.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+jest.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: jest.fn(),
 }));
 
 global.fetch = jest.fn();
@@ -41,6 +41,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     jest.clearAllMocks();
     process.env = { ...originalEnv };
     process.env.GROQ_API_KEY = "mock-groq-key";
+    checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
   });
 
 
@@ -109,12 +110,25 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Message too long");
+    expect(body.error).toBe("Message too long (max 2000 characters)");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   test("enforces rate limits per authenticated user and returns 429 Too Many Requests", async () => {
     verifyFirebaseToken.mockResolvedValue({ uid: "user-rate-limit-test", email: "user@example.com" });
+
+    checkRateLimit
+      .mockResolvedValueOnce({ allowed: true, remaining: 9 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 8 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 7 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 6 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 5 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 4 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 3 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 2 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 1 })
+      .mockResolvedValueOnce({ allowed: true, remaining: 0 })
+      .mockResolvedValueOnce({ allowed: false, remaining: 0 });
 
     global.fetch.mockResolvedValue({
       ok: true,
@@ -186,90 +200,49 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(504);
-    expect(body.error).toBe("Gateway Timeout: AI response took too long.");
+    expect(body.error).toBe("Gateway Timeout: Groq did not respond in time.");
     expect(global.fetch).toHaveBeenCalled();
   });
 
-  test("enforces rate limits per authenticated user via MongoDB distributed rate limiter", async () => {
-    // 1. Enable MongoDB URI
-    process.env.MONGODB_URI = "mongodb://mock-uri";
-    
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-mongo-rate-limit-test", email: "user@example.com" });
+  test("maps Groq upstream error payload to API error response", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-upstream-error", email: "user@example.com" });
+
     global.fetch.mockResolvedValue({
-      ok: true,
+      ok: false,
+      status: 429,
       json: jest.fn().mockResolvedValue({
-        choices: [{ message: { content: "AI response" } }],
+        error: { message: "Upstream quota exceeded" },
       }),
     });
 
-    // Mock MongoDB database responses
-    let storedRequests = [];
-    const mockFindOneAndUpdate = jest.fn().mockImplementation(async (query, update) => {
-      if (update.$push && update.$push.requests) {
-        storedRequests.push(...update.$push.requests.$each);
-      }
-      return { requests: storedRequests };
-    });
-
-    connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
-        findOneAndUpdate: mockFindOneAndUpdate,
-        createIndex: jest.fn(),
-      }),
-    });
-
-    // Make 10 requests which is the max allowed
-    for (let i = 0; i < 10; i++) {
-      const req = createMockRequest(
-        { authorization: "Bearer valid-token" },
-        { message: `Request ${i}` }
-      );
-      const res = await POST(req);
-      expect(res.status).toBe(200);
-      expect(mockFindOneAndUpdate).toHaveBeenCalled();
-    }
-
-    // The 11th request must be rate limited (429)
-    const req11 = createMockRequest(
+    const req = createMockRequest(
       { authorization: "Bearer valid-token" },
-      { message: "Request 11" }
+      { message: "Trigger upstream error" }
     );
-    const response = await POST(req11);
+    const response = await POST(req);
     const body = await response.json();
 
     expect(response.status).toBe(429);
-    expect(body.error).toBe("Too many requests. Please try again later.");
+    expect(body.error).toBe("Upstream quota exceeded");
   });
 
-  test("enforces in-memory rate limiting fallback when MongoDB is unavailable", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-mongo-down", email: "user@example.com" });
-
-    connectDb.mockRejectedValue(new Error("Connection refused"));
+  test("uses fallback message when Groq upstream error body is invalid", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-upstream-invalid-json", email: "user@example.com" });
 
     global.fetch.mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        choices: [{ message: { content: "AI response" } }],
-      }),
+      ok: false,
+      status: 500,
+      json: jest.fn().mockRejectedValue(new Error("Invalid JSON")),
     });
 
-    for (let i = 0; i < 10; i++) {
-      const req = createMockRequest(
-        { authorization: "Bearer valid-token" },
-        { message: `Request ${i}` }
-      );
-      const res = await POST(req);
-      expect(res.status).toBe(200);
-    }
-
-    const req11 = createMockRequest(
+    const req = createMockRequest(
       { authorization: "Bearer valid-token" },
-      { message: "Request 11" }
+      { message: "Trigger upstream parse fallback" }
     );
-    const response = await POST(req11);
+    const response = await POST(req);
     const body = await response.json();
 
-    expect(response.status).toBe(429);
-    expect(body.error).toBe("Too many requests. Please try again later.");
+    expect(response.status).toBe(500);
+    expect(body.error).toBe("Groq API request failed");
   });
 });
