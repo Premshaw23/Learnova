@@ -30,6 +30,13 @@ export const POST = withErrorHandler(async (request) => {
   const { role, fullName, instituteName } = validation.data;
 
   initializeFirebase();
+  const db = admin.firestore();
+
+  // Prevent privilege escalation: reject if a role is already set
+  const existingProfile = await db.collection("users").doc(decodedToken.uid).get();
+  if (existingProfile.exists || decodedToken.role) {
+    return jsonError("Forbidden: Role has already been set", 403);
+  }
 
   // Cryptographically sign the role into the Firebase token so the
   // middleware can verify it without touching Firestore
@@ -51,11 +58,10 @@ export const POST = withErrorHandler(async (request) => {
     userProfile.instituteName = instituteName;
   }
 
-  await admin
-    .firestore()
+  await db
     .collection("users")
     .doc(decodedToken.uid)
-    .set(userProfile);
+    .set(userProfile, { merge: true });
 
   return jsonSuccess({ userProfile }, 201);
 });

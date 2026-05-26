@@ -562,7 +562,7 @@ export default function UniversalSettings() {
                         {getUserPhoto() ? (
                           <Image
                             src={getUserPhoto() || "/placeholder.svg"}
-                            alt="Profile"
+                            alt={`${getUserDisplayName()} profile photo`}
                             width={200}
                             height={200}
                             className="w-20 h-20 rounded-full border-2 border-white/20 object-cover"

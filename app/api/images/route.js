@@ -139,8 +139,13 @@ export const POST = withErrorHandler(async (request) => {
     const rawFaceDescriptor = formData.get("faceDescriptor");
     let faceDescriptor = null;
     if (rawFaceDescriptor) {
+      if (typeof rawFaceDescriptor !== "string" || rawFaceDescriptor.length > 20000) {
+        throw new ValidationError("Face descriptor payload too large");
+      }
       try {
-        faceDescriptor = JSON.parse(rawFaceDescriptor);
+        const parsed = JSON.parse(rawFaceDescriptor);
+        const faceDescriptorSchema = z.array(z.number()).length(128);
+        faceDescriptor = faceDescriptorSchema.parse(parsed);
       } catch {
         throw new ValidationError("Invalid face descriptor format");
       }

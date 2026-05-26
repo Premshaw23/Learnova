@@ -112,10 +112,13 @@ export async function recordAttendance({
     );
   }
 
-  const newRate = await recalculateAttendanceRate(userId);
+  const data = await response.json();
+  const isAlreadyRecorded = !!(data && data.alreadyRecorded);
+
+  const newRate = isAlreadyRecorded ? null : await recalculateAttendanceRate(userId);
 
   return {
-    alreadyRecorded: false,
+    alreadyRecorded: isAlreadyRecorded,
     newRate,
   };
 }

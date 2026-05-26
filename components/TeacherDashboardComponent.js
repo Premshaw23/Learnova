@@ -351,10 +351,10 @@ const TeacherDashboard = () => {
 
   // Fetch exception requests
   useEffect(() => {
-    const fetchExceptionRequests = async () => {
+    const fetchExceptionRequests = async (isBackground = false) => {
       if (!user) return;
 
-      setIsLoadingRequests(true);
+      if (!isBackground) setIsLoadingRequests(true);
       setRequestsError(null);
 
       try {
@@ -392,14 +392,14 @@ const TeacherDashboard = () => {
       } catch (error) {
         setRequestsError(error.message);
       } finally {
-        setIsLoadingRequests(false);
+        if (!isBackground) setIsLoadingRequests(false);
       }
     };
 
     fetchExceptionRequests();
 
     // Poll for updates every 30 seconds
-    const interval = setInterval(fetchExceptionRequests, 30000);
+    const interval = setInterval(() => fetchExceptionRequests(true), 30000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -1341,7 +1341,7 @@ const TeacherDashboard = () => {
                   {user?.photoURL ? (
                     <Image
                       src={user.photoURL}
-                      alt="Profile"
+                      alt={`${user?.displayName || user?.email?.split("@")[0] || "Teacher"} profile photo`}
                       width={48}
                       height={48}
                       className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
