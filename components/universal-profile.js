@@ -174,7 +174,7 @@ export default function UniversalProfile() {
   };
 
   const getUserPhoto = () => {
-    return avatarUrl || user?.photoURL || null;
+    return previewUrl || avatarUrl || user?.photoURL || null;
   };
 
   const getUserInitials = (name) => {

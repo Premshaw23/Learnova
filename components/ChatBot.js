@@ -352,7 +352,7 @@ const LearnovaChatbot = () => {
       let botText = "";
       try {
         if (!user) {
-          botText = "**Please sign in** to use the AI chatbot.";
+          botText = "[**Please sign in**](/auth) to use the AI chatbot.";
         } else {
           const idToken = await user.getIdToken();
           botText = await generateBotResponse(text, currentCategory, idToken);

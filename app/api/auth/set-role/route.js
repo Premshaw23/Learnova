@@ -55,7 +55,7 @@ export const POST = withErrorHandler(async (request) => {
     .firestore()
     .collection("users")
     .doc(decodedToken.uid)
-    .set(userProfile);
+    .set(userProfile, { merge: true });
 
   return jsonSuccess({ userProfile }, 201);
 });

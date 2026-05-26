@@ -205,9 +205,6 @@ export function Navbar() {
     { href: getDashboardLink(), icon: Activity, label: "Dashboard", key: "dashboard" },
     { href: "/settings", icon: Settings, label: "Settings", key: "settings" },
   ].filter((item) => !(item.key === "dashboard" && item.href === "/profile"));
-
-  const languagesList = ["English", "Español", "Français", "Deutsch", "हिन्दी"];
-
   const handleImageError = (e) => {
     const img = e.target;
     const fallback = img.parentElement?.querySelector(".fallback-avatar");
