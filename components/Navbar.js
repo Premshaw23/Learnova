@@ -433,7 +433,7 @@ export function Navbar() {
                       <div className="relative w-7 h-7 shrink-0">
                         {getUserPhoto() ? (
                           <Image
-                            src={getUserPhoto()} alt="Profile"
+                            src={getUserPhoto()} alt={`${getUserDisplayName()} profile photo`}
                             width={28} height={28}
                             className="rounded-full object-cover ring-2 ring-blue-500/30"
                             onError={handleImageError}
@@ -586,7 +586,7 @@ export function Navbar() {
                 <div className="flex items-center gap-3 p-2.5 bg-zinc-50/60 dark:bg-white/4 rounded-xl border border-zinc-100/60 dark:border-white/6">
                   <div className="relative w-9 h-9 shrink-0">
                     {getUserPhoto() ? (
-                      <Image src={getUserPhoto()} alt="Profile" width={36} height={36} className="rounded-full object-cover" onError={handleImageError} />
+                      <Image src={getUserPhoto()} alt={`${getUserDisplayName()} profile photo`} width={36} height={36} className="rounded-full object-cover" onError={handleImageError} />
                     ) : (
                       <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
                         {getUserInitials(getUserDisplayName())}

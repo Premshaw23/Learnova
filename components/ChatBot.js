@@ -358,17 +358,20 @@ const markdownComponents = {
   h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-1 text-purple-400">{children}</h1>,
   h2: ({ children }) => <h2 className="text-sm font-bold mt-2.5 mb-1 text-purple-400">{children}</h2>,
   h3: ({ children }) => <h3 className="text-xs font-bold mt-2 mb-0.5 text-purple-400">{children}</h3>,
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-400 hover:underline inline-flex items-center gap-0.5"
-    >
-      {children}
-      <ExternalLink size={12} className="inline shrink-0" />
-    </a>
-  ),
+  a: ({ href, children }) => {
+    const isInternal = href && href.startsWith("/");
+    return (
+      <a
+        href={href}
+        target={isInternal ? "_self" : "_blank"}
+        rel={isInternal ? undefined : "noopener noreferrer"}
+        className="text-blue-400 hover:underline inline-flex items-center gap-0.5"
+      >
+        {children}
+        {!isInternal && <ExternalLink size={12} className="inline shrink-0" />}
+      </a>
+    );
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -482,7 +485,7 @@ export default function LearnovaChatbot() {
       let botText = "";
       try {
         if (!user) {
-          botText = "**Please sign in** to use the AI chatbot.";
+          botText = "[**Please sign in**](/auth) to use the AI chatbot.";
         } else {
           const idToken = await user.getIdToken();
           botText = await generateBotResponse(text, currentCategory, idToken, [...messages, userMsg]);

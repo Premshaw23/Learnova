@@ -349,7 +349,7 @@ setRecentActivity(mapped);
                   {user?.photoURL ? (
                     <Image
                       src={user.photoURL}
-                      alt="Profile"
+                      alt={`${user?.displayName || user?.email?.split("@")[0] || "Student"} profile photo`}
                       width={48}
                       height={48}
                       className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
