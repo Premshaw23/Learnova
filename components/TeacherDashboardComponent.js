@@ -609,7 +609,7 @@ const TeacherDashboard = () => {
                 {10 - currentTime.getMinutes()}:
                 {String(currentTime.getSeconds() === 0 ? 0 : 60 - currentTime.getSeconds()).padStart(2, "0")} min
               </div>
-            )}
+            </div>
           </div>
 
           {!passcodeGenerated ? (

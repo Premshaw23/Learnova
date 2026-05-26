@@ -371,7 +371,9 @@ const markdownComponents = {
   ),
 };
 
+export default function LearnovaChatbot() {
   const { theme, setTheme } = useTheme();
+  const { user } = useAuthContext();
 
   const getContextWelcomeMessage = useCallback(() => {
     if (!user) return "Hello! I'm Nova, your AI assistant for Learnova. How can I assist you today?";
@@ -714,9 +716,10 @@ const markdownComponents = {
                 rel="noopener noreferrer"
                 className={`flex items-center space-x-1 hover:underline text-purple-600 dark:text-purple-400`}
               >
-                {q}
-              </button>
-            ))}
+                <ExternalLink size={12} />
+                <span>Demo</span>
+              </a>
+            </div>
           </div>
 
           {/* ── Input Interaction Area ───────────────────────────────────── */}
