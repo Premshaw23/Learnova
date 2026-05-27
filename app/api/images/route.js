@@ -27,7 +27,7 @@ export const GET = withErrorHandler(async(request) => {
     const validation = getImageSchema.safeParse({ id });
     if (!validation.success) {
         const firstError =
-            validation.error.issues ? .[0] ? .message || "Invalid request parameter";
+            validation.error.issues?.[0]?.message || "Invalid request parameter";
         throw new ValidationError(firstError);
     }
 
@@ -48,8 +48,8 @@ export const GET = withErrorHandler(async(request) => {
         projection: { image: 1, firebaseUid: 1 },
     });
 
-    let imageUrl = user ? .image;
-    let ownerUid = user ? .firebaseUid || (ObjectId.isValid(id) ? null : id);
+    let imageUrl = user?.image;
+    let ownerUid = user?.firebaseUid || (ObjectId.isValid(id) ? null : id);
 
     if (!imageUrl && ownerUid) {
         const { getUserProfile } = require("@/lib/firebase-admin");
@@ -155,16 +155,11 @@ export const GET = withErrorHandler(async(request) => {
         throw new AppError("Image too large", 413);
     }
 
-    const isOwnAvatar = ownerUid && ownerUid === decodedToken.uid;
-    const cacheControl = isOwnAvatar ?
-        "private, max-age=600, stale-while-revalidate=3600" :
-        "private, max-age=300, stale-while-revalidate=1800";
-
     return new NextResponse(imageResponse.body, {
         status: 200,
         headers: {
             "Content-Type": contentType,
-            "Cache-Control": cacheControl,
+            "Cache-Control": "no-store, no-cache, must-revalidate",
             "X-Content-Type-Options": "nosniff",
         },
     });

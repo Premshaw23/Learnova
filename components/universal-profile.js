@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { analytics, db } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import { updateProfile } from "firebase/auth";
+import Image from "next/image";
 import toast from "react-hot-toast";
-import { UserAvatar } from "@/components/ui/UserAvatar";
-import { useAvatarUpload } from "@/hooks/useAvatarUpload";
-import { getUserInitials } from "@/lib/avatar";
 
 import {
   doc,
@@ -16,6 +14,8 @@ import {
 } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
+import * as faceapi from "face-api.js";
+
 import {
   User,
   Mail,
@@ -25,6 +25,7 @@ import {
   Edit3,
   Save,
   X,
+  Camera,
   Star,
   Award,
   Clock,
@@ -51,10 +52,16 @@ import { Navbar } from "./Navbar";
 export default function UniversalProfile() {
   const { user, userProfile, loading } = useAuth();
 
+  const fileInputRef = useRef(null);
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
+
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [imageError, setImageError] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
 
   const [role, setRole] = useState(
     userProfile?.role || "student"
@@ -70,18 +77,26 @@ export default function UniversalProfile() {
     publicProfile: false,
   });
 
-  const [stats, setStats] = useState({});
-
-  const { previewUrl, isUploading, uploadAvatar, clearPreview } = useAvatarUpload({
-    user,
-    onUploaded: () => setAvatarRefreshKey(Date.now()),
-  });
+  const MODEL_URL = "/models";
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   useEffect(() => {
-    if (userProfile?.avatar || userProfile?.photoURL) {
-      clearPreview();
-    }
-  }, [userProfile?.avatar, userProfile?.photoURL, clearPreview]);
+    const loadModels = async () => {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
+      } catch (err) {
+        console.error("Failed to load face-api models:", err);
+      }
+    };
+    loadModels();
+  }, []);
+
+  const [stats, setStats] = useState({});
 
   const [formData, setFormData] = useState({
     displayName: "",
@@ -101,6 +116,12 @@ export default function UniversalProfile() {
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (user?.photoURL) {
+      setAvatarUrl(user.photoURL);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -250,36 +271,177 @@ export default function UniversalProfile() {
     }
   };
 
-  const handleAvatarFileSelect = async (file) => {
-    if (!file || !user) return;
-    await uploadAvatar(file);
+  const handleImageUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+   
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+  if (!allowedTypes.includes(file.type)) {
+    toast.error("Invalid file type. Only JPG, PNG, WEBP are allowed.");
+    e.target.value = "";
+    return;
+  }
+
+  const MAX_SIZE = 2 * 1024 * 1024;
+
+  if (file.size > MAX_SIZE) {
+    toast.error("File size exceeds 2MB. Please select a smaller file.");
+    e.target.value = "";
+    return;
+  }
+
+  const loadingToast = toast.loading("Uploading profile picture...");
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
+
+      toast.success("Uploaded!");
+      e.target.value = ""; 
+    } catch (error) {
+      toast.error("Upload failed!");
+    } finally {
+      toast.dismiss(loadingToast);
+    }
+   
+
+    // Show preview before uploading
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setPendingFile(file);
+    setImageError(false);
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!pendingFile || !user) return;
+
+    if (!modelsLoaded) {
+      toast.error("Face models are still loading. Please wait a moment.");
+      return;
+    }
+
+    const detectToast = toast.loading("Analyzing photo for face verification...");
+    let faceDescriptorString = "";
+    try {
+      if (!faceapi.tf.getBackend()) {
+        await faceapi.tf.setBackend("cpu");
+      }
+      const fileUrl = URL.createObjectURL(pendingFile);
+      const img = await new Promise((resolve, reject) => {
+        const el = document.createElement("img");
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = fileUrl;
+      });
+      const detection = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+      URL.revokeObjectURL(fileUrl);
+
+      if (!detection) {
+        toast.error("Could not detect a clear face. Please upload a clear headshot photo.", { id: detectToast });
+        handleCancelPreview();
+        return;
+      }
+
+      faceDescriptorString = JSON.stringify(Array.from(detection.descriptor));
+      toast.success("Face successfully verified!", { id: detectToast });
+    } catch (err) {
+      console.error("Face detection error during profile update:", err);
+      toast.error("Error analyzing image file. Please ensure it is a valid face image.", { id: detectToast });
+      handleCancelPreview();
+      return;
+    }
+
+    const loadingToast = toast.loading("Uploading profile picture...");
+    try {
+      const token = await user.getIdToken();
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", pendingFile);
+      if (faceDescriptorString) {
+        uploadFormData.append("faceDescriptor", faceDescriptorString);
+      }
+
+      const res = await fetch("/api/images", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: uploadFormData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to upload image");
+      }
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        await updateProfile(user, { photoURL: data.url });
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, { photoURL: data.url });
+        setAvatarUrl(data.url);
+        toast.success("Profile picture updated successfully!", { id: loadingToast });
+      } else {
+        throw new Error(data.error || "Upload failed");
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to update profile picture.", { id: loadingToast });
+    } finally {
+      handleCancelPreview();
+    }
+  };
+
+  const handleCancelPreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPendingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleRemovePhoto = async () => {
     if (!user) return;
-
     const loadingToast = toast.loading("Removing profile picture...");
     try {
       await updateProfile(user, { photoURL: null });
       const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, {
-        photoURL: null,
-        avatar: null,
-        image: null,
-      });
-      clearPreview();
-      setAvatarRefreshKey(Date.now());
+      await updateDoc(userRef, { photoURL: null });
+      setAvatarUrl(null);
+      setImageError(false);
       toast.success("Profile picture removed.", { id: loadingToast });
     } catch (error) {
-      toast.error(error.message || "Failed to remove profile picture.", {
-        id: loadingToast,
-      });
+      toast.error(error.message || "Failed to remove profile picture.", { id: loadingToast });
     }
   };
 
-  const hasProfilePhoto = Boolean(
-    previewUrl || userProfile?.avatar || userProfile?.photoURL || user?.photoURL
-  );
+  const getUserPhoto = () => {
+    return previewUrl || avatarUrl || user?.photoURL || null;
+  };
+
+  const getUserInitials = useCallback((name) => {
+    if (!name) return "U";
+
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }, []);
 
   const getUserDisplayName = useCallback(() => {
     if (formData.displayName) {
@@ -439,25 +601,64 @@ export default function UniversalProfile() {
           <div className="flex flex-col md:flex-row gap-8">
             {/* Profile Image */}
             <div className="flex flex-col items-center gap-3">
-              <div className="relative z-10">
-                <UserAvatar
-                  user={user}
-                  userProfile={userProfile}
-                  previewUrl={previewUrl}
-                  cacheVersion={avatarRefreshKey || undefined}
-                  size="xl"
-                  priority
-                  editable
-                  isUploading={isUploading}
-                  onFileSelect={handleAvatarFileSelect}
-                  name={getUserDisplayName()}
-                  initials={getUserInitials(getUserDisplayName())}
-                  fallbackClassName={`bg-gradient-to-br ${roleConfig.color}`}
+              <div className="relative">
+                {getUserPhoto() && !imageError ? (
+                  <Image
+                    src={getUserPhoto()}
+                    alt={`${getUserDisplayName()} profile photo`}
+                    width={120}
+                    height={120}
+                    onError={() => setImageError(true)}
+                    className="w-28 h-28 rounded-full object-cover border-4 border-white/20"
+                  />
+                ) : (
+                  <div
+                    className={`w-28 h-28 rounded-full bg-gradient-to-br ${roleConfig.color} flex items-center justify-center border-4 border-white/20`}
+                  >
+                    <span className="text-3xl font-bold">
+                      {getUserInitials(getUserDisplayName())}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleImageUpload}
+                  className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-2"
+                  title="Change photo"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileChange}
                 />
               </div>
 
+              {/* Preview confirm/cancel */}
+              {previewUrl && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmUpload}
+                    className="text-xs bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full"
+                  >
+                    Save Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelPreview}
+                    className="text-xs bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded-full"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
               {/* Remove photo */}
-              {!previewUrl && hasProfilePhoto && (
+              {!previewUrl && (avatarUrl || user?.photoURL) && (
                 <button
                   type="button"
                   onClick={handleRemovePhoto}

@@ -5,6 +5,7 @@ import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import { useRouter, useSearchParams } from "next/navigation";
 
+// Components
 import { Navbar } from "@/components/Navbar";
 import RoleSelection from "@/components/RoleSelection";
 import AuthForm from "@/components/AuthForm";
@@ -13,11 +14,12 @@ import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import toast from "react-hot-toast";
 
+// Services and Utils
 import {
-  loginWithEmail,
-  signupWithEmail,
-  loginWithGoogle,
-  resetPassword,
+loginWithEmail,
+signupWithEmail,
+loginWithGoogle,
+resetPassword,
 } from "@/services/authService";
 
 import { validateForm, redirectBasedOnRole } from "@/utils/authUtils";
@@ -39,12 +41,14 @@ function AuthPageContent() {
   const [isLogin, setIsLogin] = useState(mode !== "signup");
   const [selectedRole, setSelectedRole] = useState("");
 
+  // Form state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [instituteName, setInstituteName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
 
+  // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -52,6 +56,7 @@ function AuthPageContent() {
 
   const router = useRouter();
 
+  // Sync isLogin state when URL query changes
   useEffect(() => {
     setIsLogin(mode !== "signup");
   }, [mode]);
@@ -79,11 +84,12 @@ function AuthPageContent() {
   };
 
   const handleToggleLogin = () => {
-    setIsLogin(!isLogin);
+    setIsLogin((prev) => !prev);
     setErrors({});
     setPassword("");
 
-    if (!isLogin) {
+    // When toggling back to login, clear signup-only fields.
+    if (isLogin) {
       setFullName("");
       setInstituteName("");
       setInviteCode("");
@@ -102,11 +108,7 @@ function AuthPageContent() {
       inviteCode,
     };
 
-    const { isValid, errors: validationErrors } = validateForm(
-      formData,
-      isLogin
-    );
-
+    const { isValid, errors: validationErrors } = validateForm(formData, isLogin);
     if (!isValid) {
       setErrors(validationErrors);
       return;
@@ -132,36 +134,31 @@ function AuthPageContent() {
         toast.success("Verification email sent! Please check your inbox.");
         setShowRoleSelection(true);
         router.push("/verify");
-      } else if (result.needsProfile) {
+        return;
+      }
+
+      if (result.needsProfile) {
         toast.success("Account created successfully!");
         setShowRoleSelection(true);
         router.push("/profile");
-      } else if (result.success) {
-        toast.success(
-          isLogin
-            ? "Successfully logged in!"
-            : "Account created successfully!"
-        );
+        return;
+      }
 
+      if (result.success) {
+        toast.success(isLogin ? "Successfully logged in!" : "Account created successfully!");
         setShowRoleSelection(true);
         redirectBasedOnRole(result.userData.role, router);
-      } else {
-        toast.error(
-          result.error || "Authentication failed. Please try again."
-        );
-
-        setErrors({
-          submit: result.error || "Something went wrong. Please try again.",
-        });
+        return;
       }
-    } catch {
-      toast.error(
-        "Authentication failed. Please verify your credentials and try again."
-      );
 
+      toast.error(result.error || "Authentication failed. Please try again.");
       setErrors({
-        submit:
-          "Authentication failed. Please verify your credentials and try again.",
+        submit: result.error || "Something went wrong. Please try again.",
+      });
+    } catch {
+      toast.error("Authentication failed. Please verify your credentials and try again.");
+      setErrors({
+        submit: "Authentication failed. Please verify your credentials and try again.",
       });
     } finally {
       setIsLoading(false);
@@ -174,11 +171,7 @@ function AuthPageContent() {
       return;
     }
 
-    if (
-      !isLogin &&
-      selectedRole === USER_ROLES.INSTITUTE &&
-      !instituteName.trim()
-    ) {
+    if (!isLogin && selectedRole === USER_ROLES.INSTITUTE && !instituteName.trim()) {
       setErrors({ instituteName: "Institute name is required" });
       return;
     }
@@ -195,26 +188,17 @@ function AuthPageContent() {
       if (result.success) {
         toast.success("Successfully logged in with Google!");
         redirectBasedOnRole(result.userData.role, router);
-      } else {
-        toast.error(
-          result.error ||
-            "Google sign-in could not be completed. Please try again."
-        );
-
-        setErrors({
-          submit:
-            result.error ||
-            "Google sign-in could not be completed. Please try again.",
-        });
+        return;
       }
-    } catch {
-      toast.error(
-        "An unexpected error occurred during Google authentication."
-      );
 
+      toast.error(result.error || "Google sign-in could not be completed. Please try again.");
       setErrors({
-        submit:
-          "An unexpected error occurred during Google authentication.",
+        submit: result.error || "Google sign-in could not be completed. Please try again.",
+      });
+    } catch {
+      toast.error("An unexpected error occurred during Google authentication.");
+      setErrors({
+        submit: "An unexpected error occurred during Google authentication.",
       });
     } finally {
       setIsLoading(false);
@@ -239,23 +223,17 @@ function AuthPageContent() {
       const result = await resetPassword(emailToReset);
 
       if (result.success) {
-        toast.success(
-          "Password reset email sent! Check your inbox and spam folder."
-        );
-
+        toast.success("Password reset email sent! Check your inbox and spam folder.");
         setShowForgotPassword(false);
         setForgotPasswordEmail("");
-      } else {
-        setErrors({ forgotEmail: result.error });
+        return;
       }
-    } catch {
-      toast.error(
-        "Password reset failed. Please verify your email and try again."
-      );
 
+      setErrors({ forgotEmail: result.error });
+    } catch {
+      toast.error("Password reset failed. Please verify your email and try again.");
       setErrors({
-        forgotEmail:
-          "Password reset failed. Please verify your email and try again.",
+        forgotEmail: "Password reset failed. Please verify your email and try again.",
       });
     } finally {
       setIsLoading(false);
@@ -284,6 +262,7 @@ function AuthPageContent() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+              {/* Left Side - Auth Form */}
               <div className="order-2 lg:order-1 w-full">
                 <ErrorBoundary>
                   <div className="w-full max-w-xl mx-auto">
@@ -313,6 +292,7 @@ function AuthPageContent() {
                 </ErrorBoundary>
               </div>
 
+              {/* Right Side - Hero Content */}
               <div className="order-1 lg:order-2 flex justify-center items-center">
                 <div className="w-full max-w-xl">
                   <HeroSection selectedRole={selectedRole} />

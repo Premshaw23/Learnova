@@ -1,13 +1,8 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import dynamic from "next/dynamic";
-import { UserAvatar } from "@/components/ui/UserAvatar";
-import { getUserDisplayName, getUserInitials } from "@/lib/avatar";
 
 import {
   Calendar,
@@ -32,26 +27,18 @@ import { useAuth } from "@/hooks/useAuth";
 import AchievementSection from "./AchievementSection";
 import AttendanceChart from "./AttendanceChart";
 
-import {
-  weeklySchedule,
-} from "@/constants/mockData";
+import { weeklySchedule } from "@/constants/mockData";
 import { getUserActivities } from "@/services/activityService";
 
-const AttendanceHeatmap = dynamic(
-  () => import("./AttendanceHeatmap"),
-  {
-    ssr: false,
-    loading: () => <ChartSkeleton variant="heatmap" />,
-  }
-);
+const AttendanceHeatmap = dynamic(() => import("./AttendanceHeatmap"), {
+  ssr: false,
+  loading: () => <ChartSkeleton variant="heatmap" />,
+});
 
-const AttendanceCalendar = dynamic(
-  () => import("./AttendanceCalendar"),
-  {
-    ssr: false,
-    loading: () => <ChartSkeleton variant="heatmap" />,
-  }
-);
+const AttendanceCalendar = dynamic(() => import("./AttendanceCalendar"), {
+  ssr: false,
+  loading: () => <ChartSkeleton variant="heatmap" />,
+});
 
 import AttendanceAnalytics from "./dashboard/AttendanceAnalytics";
 import StreakCounter from "./gamification/StreakCounter";
@@ -60,7 +47,7 @@ import BadgeGallery from "./gamification/BadgeGallery";
 import ComplaintForm from "@/components/ComplaintForm";
 
 const StudentDashboard = () => {
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -69,33 +56,23 @@ const StudentDashboard = () => {
   const [todayClasses, setTodayClasses] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [upcomingClass, setUpcomingClass] = useState(null);
-  const [isAttendanceWindow, setIsAttendanceWindow] =
-    useState(false);
-
-  const [gamificationData, setGamificationData] =
-    useState(null);
-
+  const [isAttendanceWindow, setIsAttendanceWindow] = useState(false);
+  const [gamificationData, setGamificationData] = useState(null);
   const [viewMode, setViewMode] = useState("heatmap");
+  const [showComplaint, setShowComplaint] = useState(false);
 
-  const [showComplaint, setShowComplaint] =
-    useState(false);
-
-    useEffect(() => {
+  useEffect(() => {
     const fetchActivity = async () => {
       try {
         if (!user?.uid) return;
         const activities = await getUserActivities(user.uid);
-        const mapped = activities.map(a => ({
-         subject: a.title,
+        const mapped = activities.map((a) => ({
+          subject: a.title,
           date: a.timestamp?.toLocaleDateString() || "",
           status:
-            a.progress >= 100
-              ? "present"
-              : a.progress > 0
-                ? "late"
-                : "absent",
-          }));
-setRecentActivity(mapped);
+            a.progress >= 100 ? "present" : a.progress > 0 ? "late" : "absent",
+        }));
+        setRecentActivity(mapped);
       } catch (err) {
         console.error("Failed to load activity", err);
       }
@@ -110,115 +87,70 @@ setRecentActivity(mapped);
     const fetchGamification = async () => {
       try {
         if (!user) return;
-
         const token = await user.getIdToken();
-
-        const res = await fetch(
-          "/api/student/gamification",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            signal: controller.signal,
-          }
-        );
-
+        const res = await fetch("/api/student/gamification", {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
           setGamificationData(data);
         }
       } catch (err) {
         if (err.name === "AbortError") return;
-        console.error(
-          "Failed to load gamification data",
-          err
-        );
+        console.error("Failed to load gamification data", err);
       }
     };
 
     fetchGamification();
-
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [user]);
 
-  // Attendance stats
   const attendanceStats = useMemo(() => {
     const counts = recentActivity.reduce(
       (acc, curr) => {
         const status = curr?.status?.toLowerCase();
-
         if (status === "present") acc.present++;
         else if (status === "absent") acc.absent++;
         else if (status === "late") acc.late++;
-
         return acc;
       },
-      {
-        present: 0,
-        absent: 0,
-        late: 0,
-      }
+      { present: 0, absent: 0, late: 0 }
     );
 
-    const total =
-      counts.present +
-      counts.absent +
-      counts.late;
-
+    const total = counts.present + counts.absent + counts.late;
     const percentage =
       total > 0
-        ? Math.round(
-            ((counts.present + counts.late) /
-              total) *
-              100
-          )
+        ? Math.round(((counts.present + counts.late) / total) * 100)
         : 0;
 
-    return {
-      ...counts,
-      total,
-      percentage,
-    };
+    return { ...counts, total, percentage };
   }, [recentActivity]);
 
-  // Achievement data
-  const attendancePerformance = useMemo(() => {
-    return {
-      attendancePercentage:
-        attendanceStats?.percentage ?? 0,
-
-      streakDays:
-        gamificationData?.currentStreak ?? 8,
-    };
-  }, [attendanceStats, gamificationData]);
+  const attendancePerformance = useMemo(
+    () => ({
+      attendancePercentage: attendanceStats?.percentage ?? 0,
+      streakDays: gamificationData?.currentStreak ?? 8,
+    }),
+    [attendanceStats, gamificationData]
+  );
 
   useEffect(() => {
-    const loadingTimer = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
+    const loadingTimer = setTimeout(() => setLoading(false), 1500);
 
     const updateDashboard = async () => {
       try {
         const now = new Date();
-
         const hour = now.getHours();
         const minute = now.getMinutes();
         const day = now.getDay();
 
         const isWeekday = day >= 1 && day <= 5;
-
-        const isAttendanceTime =
-          hour === 9 && minute <= 10;
-
-        const newIsAttendance =
-          isWeekday && isAttendanceTime;
+        const isAttendanceTime = hour === 9 && minute <= 10;
+        const newIsAttendance = isWeekday && isAttendanceTime;
 
         setIsAttendanceWindow((prev) =>
-          prev !== newIsAttendance
-            ? newIsAttendance
-            : prev
+          prev !== newIsAttendance ? newIsAttendance : prev
         );
 
         const dayNames = [
@@ -230,63 +162,48 @@ setRecentActivity(mapped);
           "Friday",
           "Saturday",
         ];
-
         const today = dayNames[day];
-
-        const classes =
-          weeklySchedule[today] || [];
-
+        const classes = weeklySchedule[today] || [];
         setTodayClasses(classes);
 
         const upcoming = classes.find((cls) => {
-          const [startTime] =
-            cls.time.split("-");
-
-          const [classHour, classMinute] =
-            startTime
-              .split(":")
-              .map(Number);
-
+          const [startTime] = cls.time.split("-");
+          const [classHour, classMinute] = startTime.split(":").map(Number);
           return (
-            hour < classHour ||
-            (hour === classHour &&
-              minute < classMinute)
+            hour < classHour || (hour === classHour && minute < classMinute)
           );
         });
-
         setUpcomingClass(upcoming || null);
-
         setError(null);
       } catch (err) {
-        setError(
-          "Failed to load dashboard data. Please try again."
-        );
-
-        console.error(
-          "Error updating dashboard:",
-          err
-        );
+        setError("Failed to load dashboard data. Please try again.");
+        console.error("Error updating dashboard:", err);
       }
     };
 
     updateDashboard();
 
-    const clockTimer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
+    const clockTimer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => {
       clearInterval(clockTimer);
       clearTimeout(loadingTimer);
     };
   }, []);
 
-  const displayName = getUserDisplayName({ user, userProfile });
-  const initials = getUserInitials(displayName);
+  const getUserInitials = () => {
+    if (!user?.displayName && !user?.email) return "U";
+    return (
+      user?.displayName
+        ?.split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase() ||
+      user?.email?.[0]?.toUpperCase() ||
+      "U"
+    );
+  };
 
-  if (loading) {
-    return <DashboardSkeleton />;
-  }
+  if (loading) return <DashboardSkeleton />;
 
   if (error) {
     return (
@@ -295,19 +212,10 @@ setRecentActivity(mapped);
           <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-10 h-10 text-red-400" />
           </div>
-
-          <h2 className="text-2xl font-bold mb-2">
-            Error Loading Dashboard
-          </h2>
-
-          <p className="text-gray-400 mb-6">
-            {error}
-          </p>
-
+          <h2 className="text-2xl font-bold mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
           <button
-            onClick={() =>
-              window.location.reload()
-            }
+            onClick={() => window.location.reload()}
             className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"
           >
             <RefreshCw className="w-5 h-5 mr-2 inline" />
@@ -323,28 +231,34 @@ setRecentActivity(mapped);
       <Navbar />
 
       <div className="relative z-10 max-w-7xl mx-auto pt-20 pb-12 px-6 space-y-6">
-
-        {/* ── Header: profile + live clock ── */}
+        {/* Header: profile + live clock */}
         <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <UserAvatar
-                  user={user}
-                  userProfile={userProfile}
-                  size="md"
-                  shape="rounded"
-                  showStatusDot
-                  name={displayName}
-                  initials={initials}
-                  fallbackClassName="bg-gradient-to-br from-accent to-blue-500"
-                  className="border-accent/30"
-                />
+                {user?.photoURL ? (
+                  <Image
+                    src={user.photoURL}
+                    alt={`${user?.displayName || user?.email?.split("@")[0] || "Student"} profile photo`}
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-accent/30">
+                    <span className="text-sm font-bold text-white">
+                      {getUserInitials()}
+                    </span>
+                  </div>
+                )}
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-black" />
               </div>
 
               <div>
                 <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-accent bg-clip-text text-transparent">
-                  {displayName}
+                  {user?.displayName ||
+                    user?.email?.split("@")[0] ||
+                    "Student"}
                 </h1>
                 <div className="text-sm text-gray-400">
                   {user?.email || "No email"}
@@ -354,16 +268,23 @@ setRecentActivity(mapped);
 
             <div className="text-right">
               <div className="text-xl font-mono text-white">
-                {currentTime?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {currentTime?.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </div>
               <div className="text-xs text-gray-400">
-                {currentTime?.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
+                {currentTime?.toLocaleDateString([], {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Gamification row: Streak · XP · Badges ── */}
+        {/* Gamification row: Streak · XP · Badges */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-4 shadow-xl">
             <StreakCounter streak={gamificationData?.currentStreak ?? 0} />
@@ -379,7 +300,7 @@ setRecentActivity(mapped);
           </div>
         </div>
 
-        {/* ── Attendance window banner ── */}
+        {/* Attendance window banner */}
         {isAttendanceWindow && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 flex items-center gap-3">
             <Camera className="w-5 h-5 text-green-400 flex-shrink-0" />
@@ -390,18 +311,21 @@ setRecentActivity(mapped);
           </div>
         )}
 
-        {/* ── Main content: schedule (left) + attendance (right) ── */}
+        {/* Main content: schedule (left) + attendance (right) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
           {/* Today's Schedule */}
           <div className="lg:col-span-1 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="w-5 h-5 text-accent" />
-              <h2 className="text-lg font-bold text-white">Today&apos;s Schedule</h2>
+              <h2 className="text-lg font-bold text-white">
+                Today&apos;s Schedule
+              </h2>
             </div>
 
             {todayClasses.length === 0 ? (
-              <p className="text-gray-500 text-sm">No classes scheduled today.</p>
+              <p className="text-gray-500 text-sm">
+                No classes scheduled today.
+              </p>
             ) : (
               <div className="space-y-3">
                 {todayClasses.map((cls, i) => (
@@ -417,7 +341,9 @@ setRecentActivity(mapped);
                       <Clock className="w-4 h-4 text-accent" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-white text-sm font-semibold truncate">{cls.subject}</p>
+                      <p className="text-white text-sm font-semibold truncate">
+                        {cls.subject}
+                      </p>
                       <p className="text-gray-400 text-xs">{cls.time}</p>
                       {cls.room && (
                         <p className="text-gray-500 text-xs flex items-center gap-1 mt-0.5">
@@ -442,14 +368,32 @@ setRecentActivity(mapped);
             <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="w-5 h-5 text-accent" />
-                <h2 className="text-lg font-bold text-white">Attendance Performance</h2>
+                <h2 className="text-lg font-bold text-white">
+                  Attendance Performance
+                </h2>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                <StatCard color="green" label="Present" value={attendanceStats.present} />
-                <StatCard color="red"   label="Absent"  value={attendanceStats.absent} />
-                <StatCard color="yellow" label="Late"   value={attendanceStats.late} />
-                <StatCard color="blue"  label="Rate"    value={`${attendanceStats.percentage}%`} />
+                <StatCard
+                  color="green"
+                  label="Present"
+                  value={attendanceStats.present}
+                />
+                <StatCard
+                  color="red"
+                  label="Absent"
+                  value={attendanceStats.absent}
+                />
+                <StatCard
+                  color="yellow"
+                  label="Late"
+                  value={attendanceStats.late}
+                />
+                <StatCard
+                  color="blue"
+                  label="Rate"
+                  value={`${attendanceStats.percentage}%`}
+                />
               </div>
 
               <AttendanceChart data={recentActivity} />
@@ -457,12 +401,14 @@ setRecentActivity(mapped);
           </div>
         </div>
 
-        {/* ── Attendance heatmap / calendar toggle ── */}
+        {/* Attendance heatmap / calendar toggle */}
         <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-accent" />
-              <h2 className="text-lg font-bold text-white">Attendance History</h2>
+              <h2 className="text-lg font-bold text-white">
+                Attendance History
+              </h2>
             </div>
             <div className="flex gap-2">
               <button
@@ -491,7 +437,7 @@ setRecentActivity(mapped);
           {viewMode === "heatmap" ? <AttendanceHeatmap /> : <AttendanceCalendar />}
         </div>
 
-        {/* ── Attendance Analytics ── */}
+        {/* Attendance Analytics */}
         <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="w-5 h-5 text-accent" />
@@ -500,7 +446,7 @@ setRecentActivity(mapped);
           <AttendanceAnalytics />
         </div>
 
-        {/* ── Achievements ── */}
+        {/* Achievements */}
         <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
           <div className="flex items-center gap-2 mb-4">
             <Award className="w-5 h-5 text-accent" />
@@ -509,7 +455,7 @@ setRecentActivity(mapped);
           <AchievementSection performance={attendancePerformance} />
         </div>
 
-        {/* ── Raise a complaint ── */}
+        {/* Raise a complaint */}
         <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -523,32 +469,21 @@ setRecentActivity(mapped);
               {showComplaint ? "Hide Form" : "Raise a Complaint"}
             </button>
           </div>
-
           {showComplaint && <ComplaintForm />}
         </div>
-
       </div>
     </div>
   );
 };
 
-const StatCard = ({
-  color,
-  label,
-  value,
-}) => {
+const StatCard = ({ color, label, value }) => {
   const styles = {
     green:
       "from-green-500/20 to-green-600/20 border-green-500/30 text-green-400",
-
-    red:
-      "from-red-500/20 to-red-600/20 border-red-500/30 text-red-400",
-
+    red: "from-red-500/20 to-red-600/20 border-red-500/30 text-red-400",
     yellow:
       "from-yellow-500/20 to-yellow-600/20 border-yellow-500/30 text-yellow-400",
-
-    blue:
-      "from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-400",
+    blue: "from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-400",
   };
 
   return (
@@ -556,10 +491,7 @@ const StatCard = ({
       className={`bg-gradient-to-r ${styles[color]} border rounded-xl p-4`}
     >
       <div className="text-sm">{label}</div>
-
-      <div className="text-xl font-bold">
-        {value}
-      </div>
+      <div className="text-xl font-bold">{value}</div>
     </div>
   );
 };

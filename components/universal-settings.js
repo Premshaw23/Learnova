@@ -1,10 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
-import { UserAvatar } from "@/components/ui/UserAvatar";
-import { useAvatarUpload } from "@/hooks/useAvatarUpload";
-import { resolveAvatarUrl, getUserDisplayName, getUserInitials } from "@/lib/avatar";
+import Image from "next/image";
 import {
   Settings,
   User,
@@ -73,10 +71,7 @@ const ToggleSwitch = ({ enabled, onChange, label, description }) => (
 );
 
 export default function UniversalSettings() {
-  const { user, userProfile } = useAuth();
-  const avatarFileInputRef = useRef(null);
-  const { previewUrl, isUploading: isAvatarUploading, uploadAvatar } =
-    useAvatarUpload({ user });
+  const { user } = useAuth();
   const { setTheme } = useTheme();
   const [activeSection, setActiveSection] = useState("profile");
   const [showPassword, setShowPassword] = useState(false);
@@ -125,13 +120,26 @@ export default function UniversalSettings() {
     }
   };
 
-  const getResolvedAvatar = useCallback(
-    () => resolveAvatarUrl({ user, userProfile }),
-    [user, userProfile]
-  );
+  const getUserInitials = useCallback((name) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }, []);
 
-  const displayName = getUserDisplayName({ user, userProfile });
-  const initials = getUserInitials(displayName);
+  const getUserPhoto = useCallback(() => {
+    return user?.photoURL || user?.avatar || null;
+  }, [user]);
+
+  const getUserDisplayName = useCallback(() => {
+    if (user?.displayName) return user.displayName;
+    if (user?.name) return user.name;
+    if (user?.email) return user.email.split("@")[0];
+    return "User";
+  }, [user]);
 
   const getUserEmail = useCallback(() => {
     return user?.email || "";
@@ -260,13 +268,13 @@ export default function UniversalSettings() {
 
   const [settings, setSettings] = useState({
     profile: {
-      name: displayName,
+      name: getUserDisplayName(),
       email: getUserEmail(),
       phone: user?.phone || "",
       bio:
         user?.bio ||
         "Passionate learner exploring new technologies and skills.",
-      avatar: getResolvedAvatar() || "",
+      avatar: getUserPhoto() || "/user-avatar.jpg",
     },
     notifications: roleSpecificSettings.notifications,
     privacy: {
@@ -295,11 +303,11 @@ export default function UniversalSettings() {
             ...prev,
             profile: {
               ...prev.profile,
-              name: displayName,
+              name: getUserDisplayName(),
               email: getUserEmail(),
               phone: user.phone || prev.profile.phone,
               bio: user.bio || prev.profile.bio,
-              avatar: getResolvedAvatar() || prev.profile.avatar,
+              avatar: getUserPhoto() || prev.profile.avatar,
             },
           }));
         }
@@ -325,13 +333,6 @@ export default function UniversalSettings() {
     setHasChanges(true);
   };
 
-  const handleAvatarFileSelect = async (file) => {
-    const result = await uploadAvatar(file);
-    if (result?.success && result.url) {
-      updateSetting("profile", "avatar", result.url);
-    }
-  };
-
   const saveSettings = async () => {
     setIsLoading(true);
     setError(null);
@@ -355,13 +356,13 @@ export default function UniversalSettings() {
   const resetSettings = () => {
     setSettings({
       profile: {
-        name: displayName,
+        name: getUserDisplayName(),
         email: getUserEmail(),
         phone: user?.phone || "",
         bio:
           user?.bio ||
           "Passionate learner exploring new technologies and skills.",
-        avatar: getResolvedAvatar() || "",
+        avatar: getUserPhoto() || "/user-avatar.jpg",
       },
       notifications: roleSpecificSettings.notifications,
       privacy: {
@@ -396,13 +397,13 @@ export default function UniversalSettings() {
       // 3. Reset settings state to initial default values
       setSettings({
         profile: {
-          name: displayName,
+          name: getUserDisplayName(),
           email: getUserEmail(),
           phone: user?.phone || "",
           bio:
             user?.bio ||
             "Passionate learner exploring new technologies and skills.",
-          avatar: getResolvedAvatar() || "",
+          avatar: getUserPhoto() || "/user-avatar.jpg",
         },
         notifications: roleSpecificSettings.notifications,
         privacy: {
@@ -557,31 +558,39 @@ export default function UniversalSettings() {
                 >
                   <div className="space-y-4">
                     <div className="flex items-center space-x-6">
-                      <UserAvatar
-                        user={user}
-                        userProfile={userProfile}
-                        previewUrl={previewUrl}
-                        size="lg"
-                        priority
-                        editable
-                        isUploading={isAvatarUploading}
-                        onFileSelect={handleAvatarFileSelect}
-                        inputRef={avatarFileInputRef}
-                        name={displayName}
-                        initials={initials}
-                      />
+                      <div className="relative">
+                        {getUserPhoto() ? (
+                          <Image
+                            src={getUserPhoto() || "/placeholder.svg"}
+                            alt={`${getUserDisplayName()} profile photo`}
+                            width={200}
+                            height={200}
+                            className="w-20 h-20 rounded-full border-2 border-white/20 object-cover"
+                            onError={(e) => {
+                              const target = e.target;
+                              target.style.display = "none";
+                              const fallback = target.nextElementSibling;
+                              if (fallback) fallback.style.display = "flex";
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className={`w-20 h-20 rounded-full border-2 border-white/20 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl ${
+                            getUserPhoto() ? "hidden" : "flex"
+                          }`}
+                        >
+                          {getUserInitials(getUserDisplayName())}
+                        </div>
+                        <button className="absolute -bottom-1 -right-1 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-colors">
+                          <User className="h-4 w-4" />
+                        </button>
+                      </div>
                       <div className="flex-1">
-                        <p className="text-white/60 text-sm mb-2">
-                          JPG, JPEG, PNG, or WEBP up to 5MB
-                        </p>
                         <Button
-                          type="button"
                           variant="outline"
                           className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-                          disabled={isAvatarUploading}
-                          onClick={() => avatarFileInputRef.current?.click()}
                         >
-                          {isAvatarUploading ? "Uploading..." : "Change Avatar"}
+                          Change Avatar
                         </Button>
                       </div>
                     </div>

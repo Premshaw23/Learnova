@@ -6,9 +6,8 @@ import React, {
   useMemo,
 } from "react";
 import { Navbar } from "./Navbar";
+import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
-import { UserAvatar } from "@/components/ui/UserAvatar";
-import { getUserDisplayName, getUserInitials } from "@/lib/avatar";
 import {
   Calendar,
   Clock,
@@ -91,12 +90,6 @@ const TeacherDashboard = () => {
   const [passcodeLoading, setPasscodeLoading] = useState(false);
   const [passcodeExpiresAt, setPasscodeExpiresAt] = useState(null);
   const { user, userProfile } = useAuth();
-  const displayName = getUserDisplayName({
-    user,
-    userProfile,
-    fallback: "Teacher",
-  });
-  const initials = getUserInitials(displayName);
   const [attendanceStats, setAttendanceStats] = useState({
     totalStudents: 0,
     presentToday: 0,
@@ -676,6 +669,17 @@ const TeacherDashboard = () => {
     }
   };
 
+  const getUserInitials = () => {
+    if (user?.displayName) {
+      return user.displayName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase();
+    }
+    return user?.email?.[0]?.toUpperCase() || "T";
+  };
+
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -1134,22 +1138,35 @@ const TeacherDashboard = () => {
               {/* Left - Teacher Profile */}
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <UserAvatar
-                    user={user}
-                    userProfile={userProfile}
-                    size="md"
-                    shape="rounded"
-                    showStatusDot
-                    name={displayName}
-                    initials={initials}
-                    fallbackClassName="bg-gradient-to-br from-accent to-blue-500"
-                    className="border-accent/30"
-                  />
+                  {user?.photoURL ? (
+                    <Image
+                      src={user.photoURL}
+                      alt={`${user?.displayName || user?.email?.split("@")[0] || "Teacher"} profile photo`}
+                      width={48}
+                      height={48}
+                      className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-accent/30">
+                      <span className="text-sm font-bold text-white">
+                        {user?.displayName
+                          ? user.displayName
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()
+                          : user?.email?.[0]?.toUpperCase() || "T"}
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-black" />
                 </div>
 
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-accent bg-clip-text text-transparent">
-                    {displayName}
+                    {user?.displayName ||
+                      user?.email?.split("@")[0] ||
+                      "Teacher"}
                   </h1>
                   <div className="text-sm text-gray-400">{user?.email}</div>
                 </div>

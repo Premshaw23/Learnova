@@ -64,7 +64,6 @@ function UserAvatarComponent({
   initials: initialsOverride,
   inputRef,
   cacheVersion,
-  priority = false,
 }) {
   const fileInputRef = useRef(null);
   const sizeStyle = SIZE_STYLES[size] || SIZE_STYLES.md;
@@ -92,9 +91,7 @@ function UserAvatarComponent({
   }, [displaySrc, imageSrc]);
 
   const showImage = Boolean(imageSrc) && !error && !imgLoadError;
-  const showSpinner =
-    isUploading || (loading && !previewUrl && !imageSrc);
-  const imgLoading = priority ? "eager" : "lazy";
+  const showSpinner = loading || isUploading;
 
   const handleEditClick = (event) => {
     event.preventDefault();
@@ -134,9 +131,8 @@ function UserAvatarComponent({
               "h-full w-full object-cover transition-opacity duration-300",
               showSpinner ? "opacity-60" : "opacity-100"
             )}
-            loading={imgLoading}
+            loading="lazy"
             decoding="async"
-            fetchPriority={priority ? "high" : "auto"}
             onError={() => setImgLoadError(true)}
           />
         ) : (
