@@ -1,0 +1,7 @@
+version: 2
+
+ignores:
+  - name: "False positive password field in React form"
+    match:
+      files:
+        - "components/AuthForm.js"
