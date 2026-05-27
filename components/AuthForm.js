@@ -15,16 +15,16 @@ export default function AuthForm({
   selectedRole,
   email,
   setEmail,
-  password,
-  setPassword,
+  userSecret,
+  setUserSecret,
   fullName,
   setFullName,
   instituteName,
   setInstituteName,
   inviteCode,
   setInviteCode,
-  confirmPassword,
-  setConfirmPassword,
+  confirmUserSecret,
+  setConfirmUserSecret,
   errors,
   setErrors,
   isLoading,
@@ -34,11 +34,11 @@ export default function AuthForm({
   onToggleLogin,
   onForgotPassword,
 }) {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const passwordStrength = useMemo(
-    () => getPasswordStrength(password),
-    [password]
+  const [showUserSecret, setShowUserSecret] = useState(false);
+  const [showConfirmUserSecret, setShowConfirmUserSecret] = useState(false);
+  const secretStrength = useMemo(
+    () => getPasswordStrength(userSecret),
+    [userSecret]
   );
 
   const clearError = (field) => {
@@ -57,8 +57,8 @@ export default function AuthForm({
       result = validateRequired(value, "Invite Code");
     } else if (field === "email") {
       result = validateEmail(value);
-    } else if (field === "password") {
-      result = isLogin ? validateRequired(value, "Password") : validatePassword(value);
+    } else if (field === "userSecret") {
+      result = isLogin ? validateRequired(value, "Secret") : validatePassword(value);
     }
 
     if (result !== true) {
@@ -221,100 +221,100 @@ export default function AuthForm({
 
   <div>
     <label className="block text-sm font-medium text-foreground mb-2">
-      Password
+      Secret
     </label>
     <div className="relative">
       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
       <input
-        type={showPassword ? "text" : "password"}
-        name="password"
+        type={showUserSecret ? "text" : "password"}
+        name="userSecret"
         autoComplete={isLogin ? "current-password" : "new-password"}
-        placeholder="Enter your password"
-        value={password}
+        placeholder="Enter your secret"
+        value={userSecret}
         onChange={(e) => {
           const value = e.target.value;
-          setPassword(value);
+          setUserSecret(value);
 
-          if (errors.password) {
-            validateField("password", value);
+          if (errors.userSecret) {
+            validateField("userSecret", value);
           }
         }}
-        onBlur={(e) => validateField("password", e.target.value)}
+        onBlur={(e) => validateField("userSecret", e.target.value)}
         className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
-          errors.password ? "border-red-500/50" : "border-border"
+          errors.userSecret ? "border-red-500/50" : "border-border"
         }`}
       />
       <button
         type="button"
-        onClick={() => setShowPassword(!showPassword)}
+        onClick={() => setShowUserSecret(!showUserSecret)}
         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
       >
-        {showPassword ? (
+        {showUserSecret ? (
           <EyeOff className="w-5 h-5" />
         ) : (
           <Eye className="w-5 h-5" />
         )}
       </button>
     </div>
-    {errors.password && (
-      <p className="text-red-400 text-sm mt-1">{errors.password}</p>
+    {errors.userSecret && (
+      <p className="text-red-400 text-sm mt-1">{errors.userSecret}</p>
     )}
-    {!isLogin && !errors.password && (
+    {!isLogin && !errors.userSecret && (
       <p className="text-gray-400 text-xs mt-1">
         Min 8 characters with upper, lower, number, and special character.
       </p>
     )}
     {!isLogin && (
       <div className="mt-3 space-y-1.5 text-xs bg-slate-950/20 p-3 rounded-lg border border-border/50">
-        <p className="font-semibold text-slate-400 mb-1">Password Requirements:</p>
+        <p className="font-semibold text-slate-400 mb-1">Secret Requirements:</p>
         <div className="flex items-center gap-2">
-          <span className={password.length >= 8 ? "text-green-400" : "text-gray-400"}>
-            {password.length >= 8 ? "✓" : "○"} 8+ characters
+          <span className={userSecret.length >= 8 ? "text-green-400" : "text-gray-400"}>
+            {userSecret.length >= 8 ? "✓" : "○"} 8+ characters
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={/[A-Z]/.test(password) ? "text-green-400" : "text-gray-400"}>
-            {/[A-Z]/.test(password) ? "✓" : "○"} At least one uppercase letter
+          <span className={/[A-Z]/.test(userSecret) ? "text-green-400" : "text-gray-400"}>
+            {/[A-Z]/.test(userSecret) ? "✓" : "○"} At least one uppercase letter
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={/[a-z]/.test(password) ? "text-green-400" : "text-gray-400"}>
-            {/[a-z]/.test(password) ? "✓" : "○"} At least one lowercase letter
+          <span className={/[a-z]/.test(userSecret) ? "text-green-400" : "text-gray-400"}>
+            {/[a-z]/.test(userSecret) ? "✓" : "○"} At least one lowercase letter
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={/\d/.test(password) ? "text-green-400" : "text-gray-400"}>
-            {/\d/.test(password) ? "✓" : "○"} At least one number
+          <span className={/\d/.test(userSecret) ? "text-green-400" : "text-gray-400"}>
+            {/\d/.test(userSecret) ? "✓" : "○"} At least one number
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={/[^A-Za-z0-9]/.test(password) ? "text-green-400" : "text-gray-400"}>
-            {/[^A-Za-z0-9]/.test(password) ? "✓" : "○"} At least one special character
+          <span className={/[^A-Za-z0-9]/.test(userSecret) ? "text-green-400" : "text-gray-400"}>
+            {/[^A-Za-z0-9]/.test(userSecret) ? "✓" : "○"} At least one special character
           </span>
         </div>
       </div>
     )}
-    {!isLogin && password && (
+    {!isLogin && userSecret && (
       <div className="mt-3 space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-400 font-medium">Password Strength:</span>
+          <span className="text-gray-400 font-medium">Secret Strength:</span>
           <span
-            data-testid="password-strength-label"
-            className={`font-semibold transition-colors duration-300 ${passwordStrength.textClass}`}
+            data-testid="secret-strength-label"
+            className={`font-semibold transition-colors duration-300 ${secretStrength.textClass}`}
           >
-            {passwordStrength.label}
+            {secretStrength.label}
           </span>
         </div>
         <div className="grid grid-cols-4 gap-1.5 h-1.5 w-full bg-gray-700/30 rounded-full overflow-hidden">
           {[0, 1, 2, 3].map((index) => {
-            const activeSegments = Math.min(passwordStrength.score + 1, 4);
+            const activeSegments = Math.min(secretStrength.score + 1, 4);
             const isFilled = index < activeSegments;
             return (
               <div
                 key={index}
-                data-testid={`password-strength-bar-${index}`}
+                data-testid={`secret-strength-bar-${index}`}
                 className={`h-full rounded-full transition-all duration-500 ease-out ${
-                  isFilled ? passwordStrength.barClass : "bg-gray-700/50"
+                  isFilled ? secretStrength.barClass : "bg-gray-700/50"
                 }`}
               />
             );
@@ -327,49 +327,49 @@ export default function AuthForm({
   {!isLogin && (
     <div>
       <label className="block text-sm font-medium text-foreground mb-2">
-        Confirm Password
+        Confirm Secret
       </label>
       <div className="relative">
         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
         <input
-          type={showConfirmPassword ? "text" : "password"}
-          name="confirmPassword"
+          type={showConfirmUserSecret ? "text" : "password"}
+          name="confirmUserSecret"
           autoComplete="new-password"
-          placeholder="Re-enter your password"
-          value={confirmPassword}
+          placeholder="Re-enter your secret"
+          value={confirmUserSecret}
           onChange={(e) => {
             const value = e.target.value;
-            setConfirmPassword(value);
+            setConfirmUserSecret(value);
 
-            if (errors.confirmPassword) {
-              setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+            if (errors.confirmUserSecret) {
+              setErrors((prev) => ({ ...prev, confirmUserSecret: "" }));
             }
           }}
           onBlur={(e) => {
-            if (e.target.value !== password) {
-              setErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }));
+            if (e.target.value !== userSecret) {
+              setErrors((prev) => ({ ...prev, confirmUserSecret: "Secrets do not match" }));
             } else {
-              setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+              setErrors((prev) => ({ ...prev, confirmUserSecret: "" }));
             }
           }}
           className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
-            errors.confirmPassword ? "border-red-500/50" : "border-border"
+            errors.confirmUserSecret ? "border-red-500/50" : "border-border"
           }`}
         />
         <button
           type="button"
-          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          onClick={() => setShowConfirmUserSecret(!showConfirmUserSecret)}
           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
         >
-          {showConfirmPassword ? (
+          {showConfirmUserSecret ? (
             <EyeOff className="w-5 h-5" />
           ) : (
             <Eye className="w-5 h-5" />
           )}
         </button>
       </div>
-      {errors.confirmPassword && (
-        <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>
+      {errors.confirmUserSecret && (
+        <p className="text-red-400 text-sm mt-1">{errors.confirmUserSecret}</p>
       )}
     </div>
   )}
@@ -381,7 +381,7 @@ export default function AuthForm({
         onClick={onForgotPassword}
         className="text-sm text-indigo-400 hover:text-indigo-300 font-medium"
       >
-        Forgot password?
+        Forgot secret?
       </button>
     </div>
   )}
