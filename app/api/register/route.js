@@ -206,7 +206,8 @@ export const POST =
   withErrorHandler(
     async (req) => {
       // Rate limiting
-      const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const rawIp = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const ip = rawIp.split(",")[0].trim();
       const rateLimitResult = await checkRateLimit(`register_ip_${ip}`);
 
       if (!rateLimitResult.allowed) {
