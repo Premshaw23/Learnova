@@ -1,9 +1,9 @@
 import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
 import { ForbiddenError } from "@/lib/errors";
-import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { success, fail } from "@/lib/apiResponse";
 
 export const GET = withErrorHandler(async (request) => {
   initFirebaseAdmin();
@@ -14,7 +14,7 @@ export const GET = withErrorHandler(async (request) => {
   const month = searchParams.get("month");
 
   if (!userId || !month) {
-    return NextResponse.json({ attendance: [] });
+    return success({ attendance: [] });
   }
 
   // 2. Ensure they are only querying attendance data for their own UID!
@@ -25,7 +25,7 @@ export const GET = withErrorHandler(async (request) => {
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`attendance_heatmap_${ip}_${userId}`);
   if (!rateLimitResult.allowed) {
-    return Response.json({ error: "Too many requests. Please slow down." }, { status: 429 });
+    return fail(429, "RATE_LIMIT_EXCEEDED", "Too many requests. Please slow down.");
   }
 
   const [year, monthNum] = month.split("-").map(Number);
@@ -51,5 +51,5 @@ export const GET = withErrorHandler(async (request) => {
     _id: r._id.toString(),
   }));
 
-  return NextResponse.json({ attendance });
+  return success({ attendance });
 });

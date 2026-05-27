@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { success, fail } from "@/lib/apiResponse";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth, requireRole } from "@/lib/rbac";
 import { ValidationError, AppError } from "@/lib/errors";
@@ -34,16 +34,13 @@ export const GET = withErrorHandler(async (request) => {
     .get();
 
   if (!settingsDoc.exists) {
-    return NextResponse.json(
-      { error: "Attendance settings not configured" },
-      { status: 404 }
-    );
+    return fail(404, "NOT_FOUND", "Attendance settings not configured");
   }
 
   const settings = settingsDoc.data();
   delete settings.passcode;
 
-  return NextResponse.json(settings);
+  return success(settings);
 });
 
 export const POST = withErrorHandler(async (request) => {
@@ -84,8 +81,7 @@ export const POST = withErrorHandler(async (request) => {
       { merge: true }
     );
 
-  return NextResponse.json({
-    success: true,
+  return success({
     expiresAt: expiresAt.toISOString(),
   });
 });
@@ -109,5 +105,5 @@ export const DELETE = withErrorHandler(async (request) => {
       closedAt: new Date().toISOString(),
     });
 
-  return NextResponse.json({ success: true });
+  return success({});
 });

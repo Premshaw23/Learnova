@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { success, fail } from "@/lib/apiResponse";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { ValidationError } from "@/lib/errors";
@@ -29,10 +29,7 @@ export const POST = withErrorHandler(async (request) => {
   const rateLimitResult = await checkRateLimit(`passcode_${ip}_${decodedToken?.uid}`);
 
   if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { valid: false, error: "Too many attempts. Please try again later." },
-      { status: 429 }
-    );
+    return fail(429, "RATE_LIMIT_EXCEEDED", "Too many attempts. Please try again later.", { valid: false });
   }
 
   // Initialize Firebase app to prevent cold-start crashes
@@ -43,10 +40,7 @@ export const POST = withErrorHandler(async (request) => {
   const validation = passcodeSchema.safeParse(body);
   if (!validation.success) {
     const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
-    return NextResponse.json(
-      { valid: false, error: firstError },
-      { status: 400 }
-    );
+    return fail(400, "BAD_REQUEST", firstError, { valid: false });
   }
   
   const { passcode } = validation.data;
@@ -58,34 +52,22 @@ export const POST = withErrorHandler(async (request) => {
     .get();
 
   if (!settingsDoc.exists) {
-    return NextResponse.json(
-      { valid: false, error: "Attendance settings not configured" },
-      { status: 404 }
-    );
+    return fail(404, "NOT_FOUND", "Attendance settings not configured", { valid: false });
   }
 
   const settings = settingsDoc.data();
 
   if (!settings.active) {
-    return NextResponse.json(
-      { valid: false, error: "Attendance window is currently closed." },
-      { status: 403 }
-    );
+    return fail(403, "FORBIDDEN", "Attendance window is currently closed.", { valid: false });
   }
 
   if (settings.expiresAt && new Date(settings.expiresAt) < new Date()) {
-    return NextResponse.json(
-      { valid: false, error: "Attendance passcode has expired." },
-      { status: 410 }
-    );
+    return fail(410, "GONE", "Attendance passcode has expired.", { valid: false });
   }
 
   if (verifyPasscode(passcode, settings.passcode)) {
-    return NextResponse.json({ valid: true });
+    return success({ valid: true });
   }
 
-  return NextResponse.json(
-    { valid: false, error: "Invalid passcode. Please contact your teacher for the correct code." },
-    { status: 401 }
-  );
+  return fail(401, "UNAUTHORIZED", "Invalid passcode. Please contact your teacher for the correct code.", { valid: false });
 });

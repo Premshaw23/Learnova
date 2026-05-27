@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { success, fail } from "@/lib/apiResponse";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
@@ -81,13 +81,7 @@ async function handleSync(request) {
   const userProfile = await getUserProfile(decodedToken.uid);
 
   if (!userProfile) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "User profile not found for attendance sync.",
-      },
-      { status: 404 },
-    );
+    return fail(404, "NOT_FOUND", "User profile not found for attendance sync.");
   }
 
   const serverIdentity = resolveAttendanceIdentity(decodedToken, userProfile);
@@ -196,10 +190,10 @@ async function handleSync(request) {
     }
   }
 
-  return NextResponse.json({
-    success: true,
+  return success({
     syncedIds: successfulIds,
     rejectedIds,
+  }, {
     ...(rejectedIds.length > 0 && {
       warning: "Some records were not synced because they exceeded the 48-hour offline window. These records have been removed from your local queue.",
     }),

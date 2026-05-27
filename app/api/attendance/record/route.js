@@ -1,4 +1,4 @@
-import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { success, fail } from "@/lib/apiResponse";
 import { withErrorHandler, authenticateRequest, parseJSON } from "@/lib/error-handler";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
@@ -22,7 +22,7 @@ export const POST = withErrorHandler(async (request) => {
 
   // 2. Ensure they are only submitting attendance for their own UID!
   if (decodedToken.uid !== userId) {
-    return jsonError("Forbidden: Cannot submit attendance for another user", 403);
+    return fail(403, "FORBIDDEN", "Forbidden: Cannot submit attendance for another user");
   }
 
   // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)
@@ -35,7 +35,7 @@ export const POST = withErrorHandler(async (request) => {
     parsedConfidence < 60 ||
     parsedConfidence > 100
   ) {
-    return jsonError("Bad Request: Invalid or spoofed confidence score", 400);
+    return fail(400, "BAD_REQUEST", "Bad Request: Invalid or spoofed confidence score");
   }
 
   // Normalize confidence score to 0-1 range for consistency across the DB and dashboards
@@ -78,7 +78,7 @@ export const POST = withErrorHandler(async (request) => {
   });
 
   if (alreadyRecorded) {
-    return jsonSuccess({ alreadyRecorded: true }, 200);
+    return success({ alreadyRecorded: true }, {}, 200);
   }
 
   // Gamification is a side effect — failures must not block attendance recording
@@ -90,5 +90,5 @@ export const POST = withErrorHandler(async (request) => {
     console.error("Failed to award XP after attendance:", error);
   }
 
-  return jsonSuccess({ alreadyRecorded: false }, 201);
+  return success({ alreadyRecorded: false }, {}, 201);
 });
