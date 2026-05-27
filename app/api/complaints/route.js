@@ -42,6 +42,7 @@ export const POST = withErrorHandler(async (req) => {
     subject,
     description,
     priority,
+    status: "pending",
     createdAt: new Date(),
   });
 

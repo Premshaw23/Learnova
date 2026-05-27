@@ -146,16 +146,29 @@ export async function middleware(request) {
 
   // Define role-protected dashboard routes
   const protectedDashboards = [
-    { prefix: "/student", role: "student", defaultPath: "/student/dashboard" },
-    { prefix: "/teacher", role: "teacher", defaultPath: "/teacher/dashboard" },
-    { prefix: "/admin", role: "admin", defaultPath: "/admin/dashboard" },
-    { prefix: "/institute", role: "institute", defaultPath: "/institute/dashboard" },
+    { prefix: "/student", apiPrefix: "/api/student", role: "student", defaultPath: "/student/dashboard" },
+    { prefix: "/teacher", apiPrefix: "/api/teacher", role: "teacher", defaultPath: "/teacher/dashboard" },
+    { prefix: "/admin", apiPrefix: "/api/admin", role: "admin", defaultPath: "/admin/dashboard" },
+    { prefix: "/institute", apiPrefix: "/api/institute", role: "institute", defaultPath: "/institute/dashboard" },
   ];
 
   // 1. If path is a protected dashboard route
   const matchedDashboard = protectedDashboards.find((dashboard) =>
-    pathname.startsWith(dashboard.prefix)
+    pathname.startsWith(dashboard.prefix) ||
+    (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
   );
+
+  // General API route protection (non-dashboard routes under /api/)
+  if (pathname.startsWith("/api/") && pathname !== "/api/check-groq-config") {
+    if (!matchedDashboard) {
+      if (!isTokenValid) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (!isEmailVerified) {
+        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
+      }
+    }
+  }
 
   if (matchedDashboard) {
     // Not logged in or invalid token -> redirect to /auth
@@ -168,6 +181,9 @@ export async function middleware(request) {
 
     // Email not verified -> redirect to /verify
     if (!isEmailVerified) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
+      }
       return NextResponse.redirect(new URL("/verify", request.url));
     }
 
@@ -234,7 +250,7 @@ export async function middleware(request) {
 // Next.js Middleware matcher configuration
 export const config = {
   matcher: [
-    // Match all HTML page routes. Exclude APIs, static assets, favicon, manifest, and service worker.
-    "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
+    // Match all HTML pages and API routes. Exclude static assets, favicon, manifest, and service worker.
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
   ],
 };

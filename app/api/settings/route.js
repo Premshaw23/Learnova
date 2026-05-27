@@ -174,14 +174,15 @@ export const PATCH = withErrorHandler(async (request) => {
     if (Object.keys(firestoreProfileUpdate).length > 0) {
       try {
         await admin.firestore().collection("users").doc(targetUserId).update(firestoreProfileUpdate);
-        console.log(`[Firestore Sync] Profile synced for user: ${targetUserId}`);
+
+                console.log(`[Firestore Sync] Profile synced for user: ${targetUserId}`);
       } catch (syncError) {
         console.error("Firestore profile sync failed:", syncError);
       }
     }
   }
 
-  console.log(`[Audit Log] Settings updated successfully for target user: ${targetUserId} by operator: ${decodedToken.uid} (Role: ${isOperatorAdmin ? "admin" : "owner"})`);
+  
 
   return NextResponse.json({ message: "Settings saved successfully" });
 });

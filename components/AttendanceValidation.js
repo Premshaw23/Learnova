@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast"; // or whatever toast library you're using
@@ -41,6 +41,108 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     studentName: "",
     currentLocation: null, // Add this field
   });
+
+  const modalContainerRef = useRef(null);
+  const triggerElementRef = useRef(null);
+
+  // Close exception modal on Escape key press
+  useEffect(() => {
+    if (!showExceptionModal) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setShowExceptionModal(false);
+        setExceptionForm({
+          reason: "",
+          details: "",
+          studentId: "",
+          studentName: "",
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showExceptionModal]);
+
+  // Trap focus and restore focus on close for exception modal
+  useEffect(() => {
+    if (showExceptionModal) {
+      // Save trigger element for focus restoration on close
+      if (!triggerElementRef.current) {
+        triggerElementRef.current = document.activeElement;
+      }
+
+      // Shift focus inside modal initially after paint
+      const focusTimer = setTimeout(() => {
+        if (modalContainerRef.current) {
+          const focusableElements = modalContainerRef.current.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusableElements.length > 0) {
+            focusableElements[0].focus();
+          }
+        }
+      }, 50);
+
+      const handleTabTrap = (e) => {
+        if (e.key !== "Tab") return;
+        if (!modalContainerRef.current) return;
+
+        const focusableElements = modalContainerRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          // Tab
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      };
+
+      window.addEventListener("keydown", handleTabTrap);
+      return () => {
+        window.removeEventListener("keydown", handleTabTrap);
+        clearTimeout(focusTimer);
+      };
+    } else {
+      // Restore focus on close
+      const target = triggerElementRef.current;
+      const restoreFocus = () => {
+        let activeTarget = target;
+        if (!activeTarget || activeTarget === document.body || !document.body.contains(activeTarget)) {
+          const buttons = Array.from(document.querySelectorAll("button"));
+          activeTarget = buttons.find((btn) => btn.getAttribute("class")?.includes("border-orange-500")) ||
+                         buttons.find((btn) => btn.textContent.includes("Request Exception"));
+        }
+        if (activeTarget && typeof activeTarget.focus === "function") {
+          activeTarget.focus();
+        }
+      };
+
+      // Run synchronously for standard browser flows
+      restoreFocus();
+      // Run asynchronously as backup to bypass JSDOM unmount focus resets after React batching settles
+      const restoreTimer = setTimeout(restoreFocus, 50);
+
+      triggerElementRef.current = null;
+      return () => clearTimeout(restoreTimer);
+    }
+  }, [showExceptionModal]);
 
   // Load settings from secure API endpoint (with error handling & retry)
   const fetchSettings = useCallback(async () => {
@@ -300,7 +402,13 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     onValidationSuccess();
   };
 
-  const submitTimeExceptionRequest = async () => {
+  const submitTimeExceptionRequest = async (e) => {
+    const target = e?.currentTarget || e?.target || document.activeElement;
+    if (target && target !== document.body) {
+      triggerElementRef.current = target;
+    } else {
+      triggerElementRef.current = document.querySelector('button[class*="border-orange-500"]') || document.activeElement;
+    }
     setExceptionForm((prev) => ({
       ...prev,
       studentId: user?.email || "",
@@ -930,7 +1038,10 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       {/* Exception Request Modal */}
       {showExceptionModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900/95 backdrop-blur-xl border-2 border-orange-500/50 rounded-2xl shadow-2xl max-w-md w-full">
+          <div 
+            ref={modalContainerRef}
+            className="bg-gray-900/95 backdrop-blur-xl border-2 border-orange-500/50 rounded-2xl shadow-2xl max-w-md w-full"
+          >
             <div className="p-6">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -981,10 +1092,14 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-2">
+                  <label 
+                    htmlFor="exception-reason"
+                    className="block text-xs font-semibold text-gray-200 mb-2"
+                  >
                     Reason for Exception
                   </label>
                   <select
+                    id="exception-reason"
                     value={exceptionForm.reason}
                     onChange={(e) =>
                       setExceptionForm((prev) => ({
@@ -1009,10 +1124,14 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-2">
+                  <label 
+                    htmlFor="exception-details"
+                    className="block text-xs font-semibold text-gray-200 mb-2"
+                  >
                     Additional Details
                   </label>
                   <textarea
+                    id="exception-details"
                     value={exceptionForm.details}
                     onChange={(e) =>
                       setExceptionForm((prev) => ({

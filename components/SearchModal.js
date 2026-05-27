@@ -120,6 +120,9 @@ export default function SearchModal({ isOpen, onClose }) {
   // Close on Escape or click outside
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Prevent keyboard events inside the search modal from bubbling up to the window object and triggering background handlers
+      e.stopPropagation();
+
       if (e.key === "Escape") {
         onClose();
       } else if (e.key === "ArrowDown") {
