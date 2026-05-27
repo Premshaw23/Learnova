@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth, requireRole } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
@@ -8,6 +8,23 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const CACHE_TTL = 300_000;
+const noticesCache = new Map();
+
+function getCachedNotices(userRole) {
+  const key = `notices:${userRole}`;
+  const entry = noticesCache.get(key);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
+    return entry.data;
+  }
+  if (entry) noticesCache.delete(key);
+  return null;
+}
+
+function setCachedNotices(userRole, data) {
+  noticesCache.set(`notices:${userRole}`, { data, timestamp: Date.now() });
+}
 
 const noticeSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -52,4 +69,32 @@ async function publishNotice(request) {
   });
 }
 
+async function getNotices(request) {
+  const { payload: decodedToken } = await requireAuth(request);
+  const userRole = decodedToken.role || "student";
+
+  const cached = getCachedNotices(userRole);
+  if (cached) {
+    return NextResponse.json({ success: true, data: { notices: cached, cached: true } });
+  }
+
+  const adminDb = getAdminDb();
+  const snapshot = await adminDb
+    .collection("notices")
+    .where("targetAudience", "array-contains", userRole)
+    .orderBy("isPinned", "desc")
+    .orderBy("createdAt", "desc")
+    .get();
+
+  const notices = snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt,
+  }));
+
+  setCachedNotices(userRole, notices);
+  return NextResponse.json({ success: true, data: { notices, cached: false } });
+}
+
+export const GET = withErrorHandler(getNotices);
 export const POST = withErrorHandler(publishNotice);

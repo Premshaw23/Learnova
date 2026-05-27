@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useState, useEffect, useRef } from "react";
+import { createContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { throttle } from "@/lib/throttle";
 
 export const NotificationContext = createContext();
 
@@ -9,7 +10,20 @@ export function NotificationProvider({ children }) {
   // Keep timers so we can clear on unmount
   const timersRef = useRef(new Map());
 
-  const addNotification = (notification) => {
+  const removeNotification = useCallback((id) => {
+    setNotifications((prev) =>
+      prev.filter((notification) => notification.id !== id)
+    );
+
+    // clear any pending timer for this notification
+    const t = timersRef.current.get(id);
+    if (t) {
+      clearTimeout(t);
+      timersRef.current.delete(id);
+    }
+  }, []);
+
+  const addNotificationRaw = useCallback((notification) => {
     const id = Date.now();
 
     const newNotification = {
@@ -28,30 +42,23 @@ export function NotificationProvider({ children }) {
     }, 5000);
 
     timersRef.current.set(id, timerId);
-  };
+  }, [removeNotification]);
 
-  const removeNotification = (id) => {
-    setNotifications((prev) =>
-      prev.filter((notification) => notification.id !== id)
-    );
+  const throttledAddRef = useRef(null);
+  if (!throttledAddRef.current) {
+    throttledAddRef.current = throttle((notif) => addNotificationRaw(notif), 200);
+  }
+  const addNotification = throttledAddRef.current;
 
-    // clear any pending timer for this notification
-    const t = timersRef.current.get(id);
-    if (t) {
-      clearTimeout(t);
-      timersRef.current.delete(id);
-    }
-  };
-
-  const clearNotifications = () => {
+  const clearNotifications = useCallback(() => {
     // Cancel any pending auto-remove timeouts so callbacks cannot fire
     // after the notifications have already been cleared.
     timersRef.current.forEach((timerId) => clearTimeout(timerId));
     timersRef.current.clear();
     setNotifications([]);
-  };
+  }, []);
 
-  const markAsRead = (id) => {
+  const markAsRead = useCallback((id) => {
     setNotifications((prev) =>
       prev.map((notification) =>
         notification.id === id
@@ -59,16 +66,17 @@ export function NotificationProvider({ children }) {
           : notification
       )
     );
-  };
+  }, []);
 
-  const markAllAsRead = () => {
+  const markAllAsRead = useCallback(() => {
     setNotifications((prev) =>
         prev.map((notification) => ({
         ...notification,
         read: true,
         }))
     );
-  };
+  }, []);
+
   useEffect(() => {
     return () => {
       // clear any remaining timeouts when provider unmounts

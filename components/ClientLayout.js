@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
@@ -47,9 +47,17 @@ const InstallPWA = dynamic(() => import("@/components/InstallPWA"), {
   loading: () => null,
 });
 
+function ChatBotFallback() {
+  return (
+    <div className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50">
+      <div className="w-14 h-14 rounded-full bg-gradient-to-r from-purple-600/50 via-blue-600/50 to-indigo-600/50 animate-pulse" />
+    </div>
+  );
+}
+
 const LearnovaChatbot = dynamic(() => import("@/components/ChatBot"), {
   ssr: false,
-  loading: () => null,
+  loading: () => <ChatBotFallback />,
 });
 
 export default function ClientLayout() {
@@ -85,10 +93,15 @@ export default function ClientLayout() {
   }, []);
 
   // Central Consistency Streak & Firestore Synchronization Hook
+  const lastStreakSyncRef = useRef(0);
+
   useEffect(() => {
     if (typeof window === "undefined" || !user) return;
 
     const syncStreak = async () => {
+      const now = Date.now();
+      if (now - lastStreakSyncRef.current < 200) return;
+      lastStreakSyncRef.current = now;
       try {
         const today = new Date();
         const offset = today.getTimezoneOffset();
@@ -232,7 +245,9 @@ export default function ClientLayout() {
         onClose={() => dispatch({ type: "CLOSE_ALL" })}
       />
       <ErrorBoundary>
-        <LearnovaChatbot />
+        <Suspense fallback={<ChatBotFallback />}>
+          <LearnovaChatbot />
+        </Suspense>
       </ErrorBoundary>
     </>
   );

@@ -1,7 +1,7 @@
 import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
 import { ForbiddenError } from "@/lib/errors";
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
+import { getFirestore } from "firebase-admin/firestore";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 
@@ -12,12 +12,13 @@ export const GET = withErrorHandler(async (request) => {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
   const month = searchParams.get("month");
+  const limitParam = searchParams.get("limit");
+  const cursor = searchParams.get("cursor");
 
   if (!userId || !month) {
     return NextResponse.json({ attendance: [] });
   }
 
-  // 2. Ensure they are only querying attendance data for their own UID!
   if (decodedToken.uid !== userId) {
     throw new ForbiddenError("Forbidden: Cannot query attendance for another user");
   }
@@ -29,27 +30,51 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   const [year, monthNum] = month.split("-").map(Number);
-  const firstDay = new Date(year, monthNum - 1, 1);
-  const lastDay = new Date(year, monthNum, 0, 23, 59, 59);
+  const pad = (n) => String(n).padStart(2, "0");
+  const firstDayStr = `${year}-${pad(monthNum)}-01`;
+  const lastDayDate = new Date(year, monthNum, 0);
+  const lastDayStr = `${year}-${pad(monthNum)}-${pad(lastDayDate.getDate())}`;
 
-  const client = await clientPromise;
-  const db = client.db();
-  const records = await db
-    .collection("attendance")
-    .find({
-      userId,
-      date: { $gte: firstDay, $lte: lastDay },
-    })
-    .sort({ date: 1 })
-    .toArray();
+  const pageLimit = Math.min(Math.max(parseInt(limitParam, 10) || 50, 1), 200);
 
-  const attendance = records.map((r) => ({
-    date: new Date(r.date).toISOString().split("T")[0],
-    status: r.status,
-    subject: r.subject || "",
-    markedAt: r.markedAt ? new Date(r.markedAt).toISOString() : null,
-    _id: r._id.toString(),
-  }));
+  const firestoreDb = getFirestore();
+  let query = firestoreDb
+    .collection("attendance_records")
+    .where("userId", "==", userId)
+    .where("date", ">=", firstDayStr)
+    .where("date", "<=", lastDayStr)
+    .orderBy("date", "asc");
 
-  return NextResponse.json({ attendance });
+  if (cursor) {
+    const cursorDoc = await firestoreDb
+      .collection("attendance_records")
+      .doc(cursor)
+      .get();
+    if (cursorDoc.exists) {
+      query = query.startAfter(cursorDoc);
+    }
+  }
+
+  const snapshot = await query.limit(pageLimit + 1).get();
+
+  const hasMore = snapshot.docs.length > pageLimit;
+  const docs = hasMore ? snapshot.docs.slice(0, -1) : snapshot.docs;
+
+  const attendance = docs.map((doc) => {
+    const data = doc.data();
+    return {
+      date: data.date,
+      status: data.status || "present",
+      subject: data.subject || "",
+      markedAt: data.timestamp
+        ? data.timestamp.toDate().toISOString()
+        : null,
+      _id: doc.id,
+    };
+  });
+
+  const nextCursor =
+    hasMore && docs.length > 0 ? docs[docs.length - 1].id : null;
+
+  return NextResponse.json({ attendance, nextCursor, hasMore });
 });

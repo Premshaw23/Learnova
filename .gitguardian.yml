@@ -1,0 +1,11 @@
+version: 2
+
+# GitGuardian configuration
+# False positive exclusions for Issue #458 optimization pass
+# AuthForm.js uses "password" only as a controlled input prop name — no hardcoded secrets.
+
+secret:
+  ignored-matches:
+    - match: password
+      detector: Generic Password
+      path: components/AuthForm.js
