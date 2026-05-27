@@ -119,9 +119,15 @@ export const PUT = withErrorHandler(async (request) => {
 
   if (result.matchedCount === 0) throw new NotFoundError("Exception not found");
 
-  console.log(
-  `[Audit Log] Exception ${exceptionId} ${status} by approver UID: ${decodedToken.uid} (${decodedToken.email}, Role: ${profile.role}) at ${new Date().toISOString()}`
-  );
+  await db.collection("audit_logs").insertOne({
+    timestamp: new Date(),
+    approverUid: decodedToken.uid,
+    approverEmail: decodedToken.email,
+    role: profile.role,
+    exceptionId: new ObjectId(exceptionId),
+    action: status,
+    module: "exceptions",
+  });
 
   return NextResponse.json({ message: "Exception updated successfully" });
 });

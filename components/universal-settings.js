@@ -34,6 +34,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
+import i18n from "@/lib/i18n";
+import { useTranslation } from "react-i18next";
 
 const SettingCard = ({ children, title, description }) => (
   <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 hover:bg-black/30 transition-all duration-300">
@@ -73,6 +75,7 @@ const ToggleSwitch = ({ enabled, onChange, label, description }) => (
 export default function UniversalSettings() {
   const { user } = useAuth();
   const { setTheme } = useTheme();
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState("profile");
   const [showPassword, setShowPassword] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -287,7 +290,7 @@ export default function UniversalSettings() {
     learning: roleSpecificSettings.learning,
     appearance: {
       theme: "dark",
-      language: "English",
+      language: "en",
       timezone: "UTC-8",
     },
   });
@@ -375,7 +378,7 @@ export default function UniversalSettings() {
       learning: roleSpecificSettings.learning,
       appearance: {
         theme: "dark",
-        language: "English",
+        language: "en",
         timezone: "UTC-8",
       },
     });
@@ -416,7 +419,7 @@ export default function UniversalSettings() {
         learning: roleSpecificSettings.learning,
         appearance: {
           theme: "dark",
-          language: "English",
+          language: "en",
           timezone: "UTC-8",
         },
       });
@@ -494,7 +497,7 @@ export default function UniversalSettings() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
               <Settings className="h-8 w-8 mr-3 text-blue-400" />
-              Settings
+              {t("settings")}
               <Sparkles className="ml-3 h-6 w-6 text-yellow-400 animate-pulse" />
             </h1>
             <p className="text-white/60">
@@ -1051,20 +1054,17 @@ export default function UniversalSettings() {
                       </label>
                       <select
                         value={settings.appearance.language}
-                        onChange={(e) =>
-                          updateSetting(
-                            "appearance",
-                            "language",
-                            e.target.value,
-                          )
-                        }
+                        onChange={(e) => {
+                          updateSetting("appearance", "language", e.target.value);
+                          i18n.changeLanguage(e.target.value);
+                        }}
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
                       >
-                        <option value="English" className="bg-slate-950 text-white">English</option>
-                        <option value="Spanish" className="bg-slate-950 text-white">Español</option>
-                        <option value="French" className="bg-slate-950 text-white">Français</option>
-                        <option value="German" className="bg-slate-950 text-white">Deutsch</option>
-                        <option value="Chinese" className="bg-slate-950 text-white">中文</option>
+                        <option value="en" className="bg-slate-950 text-white">English</option>
+                        <option value="es" className="bg-slate-950 text-white">Español</option>
+                        <option value="fr" className="bg-slate-950 text-white">Français</option>
+                        <option value="de" className="bg-slate-950 text-white">Deutsch</option>
+                        <option value="zh" className="bg-slate-950 text-white">中文</option>
                       </select>
                     </div>
                     <div>

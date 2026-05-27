@@ -77,4 +77,29 @@ export const GET = withErrorHandler(async (request) => {
     hasMore && docs.length > 0 ? docs[docs.length - 1].id : null;
 
   return NextResponse.json({ attendance, nextCursor, hasMore });
+  const firestoreDb = getFirestore();
+  const snapshot = await firestoreDb
+    .collection("attendance_records")
+    .where("userId", "==", userId)
+    .get();
+
+  const attendance = [];
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    const dateStr = data.date;
+    if (dateStr >= firstDayStr && dateStr <= lastDayStr) {
+      attendance.push({
+        date: dateStr,
+        status: data.status || "present",
+        subject: data.subject || "",
+        markedAt: data.timestamp ? data.timestamp.toDate().toISOString() : null,
+        _id: doc.id,
+      });
+    }
+  });
+
+  // Sort by date ascending to match the original API contract
+  attendance.sort((a, b) => a.date.localeCompare(b.date));
+
+  return NextResponse.json({ attendance });
 });

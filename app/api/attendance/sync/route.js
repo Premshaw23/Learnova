@@ -107,6 +107,9 @@ async function handleSync(request) {
     // Only allow users to sync their own records (unless they are admin, but attendance is usually self-submitted)
     if (record.userId !== decodedToken.uid) {
       console.warn(`User ${decodedToken.uid} attempted to sync record for ${record.userId}`);
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
       continue;
     }
 
@@ -136,6 +139,9 @@ async function handleSync(request) {
       console.warn(
         `User ${decodedToken.uid} submitted offline attendance with confidence below threshold (raw: ${record.confidenceScore})`,
       );
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
       continue;
     }
 

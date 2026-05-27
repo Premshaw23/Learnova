@@ -190,7 +190,7 @@ export default function Contact() {
       icon: Phone,
       label: "Phone",
       value: CONTACT_INFO.phone,
-      href: "tel:+919310243800",
+      href: `tel:${CONTACT_INFO.phone.replace(/\s+/g, "")}`,
       gradient: "from-green-500 to-emerald-500",
     },
     {

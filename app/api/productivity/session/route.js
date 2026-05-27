@@ -68,8 +68,8 @@ export const POST = withErrorHandler(async (request) => {
       const { awardXp } = await import("@/lib/gamification-service");
       const result = await awardXp(userId, "focus_session_completed", {});
       xpAwarded = result.xpAwarded || 0;
-    } catch (_) {
-      // Gamification service may not be available yet — silently continue
+    } catch (error) {
+      console.error("Failed to award XP for focus session:", error);
     }
   }
 

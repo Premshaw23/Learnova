@@ -9,7 +9,7 @@ import {
   signOut,
   deleteUser,
 } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import {
   createUserProfile,
   getErrorMessage,
@@ -156,8 +156,10 @@ export const signupWithEmail = async (
 
       return { success: true, needsVerification: true };
     } catch (profileError) {
-      // Clean up the orphaned user account if profile creation fails
+      // Clean up the orphaned user account and database profile/stats if profile creation or verification fails
       await deleteUser(user).catch(() => {});
+      await deleteDoc(doc(db, "users", user.uid)).catch(() => {});
+      await deleteDoc(doc(db, "userStats", user.uid)).catch(() => {});
       throw profileError;
     }
   } catch (err) {

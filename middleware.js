@@ -215,6 +215,14 @@ export async function middleware(request) {
             }
           } catch (err) {
             console.error("Middleware Edge fetch failed:", err);
+        try {
+          const res = await fetch(
+            `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${payload.sub}`,
+            { headers: { Authorization: `Bearer ${authToken}` } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            userRole = data.fields?.role?.stringValue || null;
           }
         }
       }
@@ -317,5 +325,6 @@ export async function middleware(request) {
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
   ],
 };
