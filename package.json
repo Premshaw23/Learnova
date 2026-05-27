@@ -22,6 +22,7 @@
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.6",
     "@emailjs/browser": "^4.4.1",
+    "@eslint/eslintrc": "^3.3.5",
     "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-slot": "^1.2.3",
@@ -30,6 +31,7 @@
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "eslint-config-next": "^16.2.6",
     "face-api.js": "^0.20.0",
     "firebase": "^12.13.0",
     "firebase-admin": "^13.10.0",
@@ -66,19 +68,17 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tailwindcss/oxide-linux-x64-gnu": "^4.1.7",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.3.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/winston": "^2.4.4",
-    "eslint": "^9.39.1",
     "eslint": "^10.4.0",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "tailwindcss": "^4",
-    "@tailwindcss/oxide-linux-x64-gnu": "4.3.0",
     "tw-animate-css": "^1.3.8"
   }
 }

@@ -119,7 +119,6 @@ export function FirestoreProvider({ children }) {
       return query(
         collection(db, "attendance"),
         where("studentId", "==", uid),
-        orderBy("timestamp", "desc"),
         limit(60)
       );
     } catch {
@@ -141,7 +140,6 @@ export function FirestoreProvider({ children }) {
       return query(
         collection(db, "notifications"),
         where("recipientId", "==", uid),
-        orderBy("createdAt", "desc"),
         limit(30)
       );
     } catch {

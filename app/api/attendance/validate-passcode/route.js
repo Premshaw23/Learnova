@@ -84,8 +84,8 @@ export const POST = withErrorHandler(async (request) => {
     return NextResponse.json({ valid: true });
   }
 
-  return NextResponse.json({
-    valid: false,
-    error: "Invalid passcode. Please contact your teacher for the correct code.",
-  });
+  return NextResponse.json(
+    { valid: false, error: "Invalid passcode. Please contact your teacher for the correct code." },
+    { status: 401 }
+  );
 });

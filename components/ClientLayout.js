@@ -126,6 +126,8 @@ export default function ClientLayout() {
           localStorage.setItem("learnova_site_streak", currentStreak.toString());
           localStorage.setItem("learnova_site_last_visit", lastVisit);
           localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
+
+          
           console.log(`[streak-sync] Restored streak of ${currentStreak} days from Firestore profile.`);
         }
 
@@ -199,6 +201,9 @@ export default function ClientLayout() {
             siteLastVisit: lastVisit,
             siteVisitHistory: history,
           });
+
+          
+
           console.log(`[streak-sync] Synced streak of ${currentStreak} days to Firestore.`);
         }
 
