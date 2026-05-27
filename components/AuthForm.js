@@ -88,7 +88,7 @@ export default function AuthForm({
                   >
                     <IconComponent className="w-6 h-6 text-white" />
                   </div>
-                  <div className="text-left">
+                    <div className="text-left">
                     <h4 className="font-semibold text-card-foreground">{config.title}</h4>
                     <p className="text-muted-foreground text-sm">
                       Click to change role
@@ -108,10 +108,12 @@ export default function AuthForm({
           </h2>
           <p className="text-muted-foreground">
             {isLogin
-              ? `Sign in to your ${ROLE_CONFIG[selectedRole]?.title.toLowerCase() || "account"
-              } account`
-              : `Create your ${ROLE_CONFIG[selectedRole]?.title.toLowerCase() || "account"
-              } account`}
+              ? `Sign in to your ${
+                  ROLE_CONFIG[selectedRole]?.title.toLowerCase() || "account"
+                } account`
+              : `Create your ${
+                  ROLE_CONFIG[selectedRole]?.title.toLowerCase() || "account"
+                } account`}
           </p>
         </div>
 
@@ -122,194 +124,197 @@ export default function AuthForm({
         )}
 
         <form onSubmit={onSubmit} className="space-y-6">
-          {!isLogin && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  name="fullName"
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFullName(value);
+  {!isLogin && (
+    <>
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Full Name
+        </label>
+        <input
+          type="text"
+          name="fullName"
+          placeholder="Enter your full name"
+          value={fullName}
+          onChange={(e) => {
+            const value = e.target.value;
+            setFullName(value);
 
-                    if (errors.fullName) {
-                      validateField("fullName", value);
-                    }
-                  }}
-                  onBlur={(e) => validateField("fullName", e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${errors.fullName ? "border-red-500/50" : "border-border"
-                    }`}
-                />
-                {errors.fullName && (
-                  <p className="text-red-400 text-sm mt-1">{errors.fullName}</p>
-                )}
-              </div>
+            if (errors.fullName) {
+              validateField("fullName", value);
+            }
+          }}
+          onBlur={(e) => validateField("fullName", e.target.value)}
+          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+            errors.fullName ? "border-red-500/50" : "border-border"
+          }`}
+        />
+        {errors.fullName && (
+          <p className="text-red-400 text-sm mt-1">{errors.fullName}</p>
+        )}
+      </div>
 
-              {selectedRole === USER_ROLES.INSTITUTE && (
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Institute Name
-                  </label>
-                  <input
-                    type="text"
-                    name="instituteName"
-                    placeholder="Enter your institute name"
-                    value={instituteName}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setInstituteName(value);
+      {selectedRole === USER_ROLES.INSTITUTE && (
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Institute Name
+          </label>
+          <input
+            type="text"
+            name="instituteName"
+            placeholder="Enter your institute name"
+            value={instituteName}
+            onChange={(e) => {
+              const value = e.target.value;
+              setInstituteName(value);
 
-                      if (errors.instituteName) {
-                        validateField("instituteName", value);
-                      }
-                    }}
-                    onBlur={(e) => validateField("instituteName", e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${errors.instituteName
-                        ? "border-red-500/50"
-                        : "border-border"
-                      }`}
-                  />
-                  {errors.instituteName && (
-                    <p className="text-red-400 text-sm mt-1">
-                      {errors.instituteName}
-                    </p>
-                  )}
-                </div>
-              )}
-            </>
+              if (errors.instituteName) {
+                validateField("instituteName", value);
+              }
+            }}
+            onBlur={(e) => validateField("instituteName", e.target.value)}
+            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+              errors.instituteName
+                ? "border-red-500/50"
+                : "border-border"
+            }`}
+          />
+          {errors.instituteName && (
+            <p className="text-red-400 text-sm mt-1">
+              {errors.instituteName}
+            </p>
           )}
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="email"
-                name="email"
-                autoComplete="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setEmail(value);
-
-                  if (errors.email) {
-                    validateField("email", value);
-                  }
-                }}
-                onBlur={(e) => validateField("email", e.target.value)}
-                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${errors.email ? "border-red-500/50" : "border-border"
-                  }`}
-              />
-            </div>
-            {errors.email && (
-              <p className="text-red-400 text-sm mt-1">{errors.email}</p>
-            )}
-          </div>
+        </div>
+      )}
+    </>
+  )}
 
   <div>
     <label className="block text-sm font-medium text-foreground mb-2">
-      Password
+      Email Address
+    </label>
+    <div className="relative">
+      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <input
+        type="email"
+        name="email"
+        autoComplete="email"
+        placeholder="Enter your email"
+        value={email}
+        onChange={(e) => {
+          const value = e.target.value;
+          setEmail(value);
+
+          if (errors.email) {
+            validateField("email", value);
+          }
+        }}
+        onBlur={(e) => validateField("email", e.target.value)}
+        className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+          errors.email ? "border-red-500/50" : "border-border"
+        }`}
+      />
+    </div>
+    {errors.email && (
+      <p className="text-red-400 text-sm mt-1">{errors.email}</p>
+    )}
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium text-foreground mb-2">
+      Secret
     </label>
     <div className="relative">
       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
       <input
-        type={showPassword ? "text" : "password"}
-        name="password"
+        type={showUserSecret ? "text" : "password"}
+        name="userSecret"
         autoComplete={isLogin ? "current-password" : "new-password"}
-        placeholder="Enter your password"
-        value={password}
+        placeholder="Enter your secret"
+        value={userSecret}
         onChange={(e) => {
           const value = e.target.value;
-          setPassword(value);
+          setUserSecret(value);
 
-          if (errors.password) {
-            validateField("password", value);
+          if (errors.userSecret) {
+            validateField("userSecret", value);
           }
         }}
-        onBlur={(e) => validateField("password", e.target.value)}
+        onBlur={(e) => validateField("userSecret", e.target.value)}
         className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
-          errors.password ? "border-red-500/50" : "border-border"
+          errors.userSecret ? "border-red-500/50" : "border-border"
         }`}
       />
       <button
         type="button"
-        onClick={() => setShowPassword(!showPassword)}
+        onClick={() => setShowUserSecret(!showUserSecret)}
         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
       >
-        {showPassword ? (
+        {showUserSecret ? (
           <EyeOff className="w-5 h-5" />
         ) : (
           <Eye className="w-5 h-5" />
         )}
       </button>
     </div>
-    {errors.password && (
-      <p className="text-red-400 text-sm mt-1">{errors.password}</p>
+    {errors.userSecret && (
+      <p className="text-red-400 text-sm mt-1">{errors.userSecret}</p>
     )}
-    {!isLogin && !errors.password && (
+    {!isLogin && !errors.userSecret && (
       <p className="text-gray-400 text-xs mt-1">
         Min 8 characters with upper, lower, number, and special character.
       </p>
     )}
     {!isLogin && (
       <div className="mt-3 space-y-1.5 text-xs bg-slate-950/20 p-3 rounded-lg border border-border/50">
-        <p className="font-semibold text-slate-400 mb-1">Password Requirements:</p>
+        <p className="font-semibold text-slate-400 mb-1">Secret Requirements:</p>
         <div className="flex items-center gap-2">
-          <span className={password.length >= 8 ? "text-green-400" : "text-gray-400"}>
-            {password.length >= 8 ? "✓" : "○"} 8+ characters
+          <span className={userSecret.length >= 8 ? "text-green-400" : "text-gray-400"}>
+            {userSecret.length >= 8 ? "✓" : "○"} 8+ characters
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={/[A-Z]/.test(password) ? "text-green-400" : "text-gray-400"}>
-            {/[A-Z]/.test(password) ? "✓" : "○"} At least one uppercase letter
+          <span className={/[A-Z]/.test(userSecret) ? "text-green-400" : "text-gray-400"}>
+            {/[A-Z]/.test(userSecret) ? "✓" : "○"} At least one uppercase letter
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={/[a-z]/.test(password) ? "text-green-400" : "text-gray-400"}>
-            {/[a-z]/.test(password) ? "✓" : "○"} At least one lowercase letter
+          <span className={/[a-z]/.test(userSecret) ? "text-green-400" : "text-gray-400"}>
+            {/[a-z]/.test(userSecret) ? "✓" : "○"} At least one lowercase letter
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={/\d/.test(password) ? "text-green-400" : "text-gray-400"}>
-            {/\d/.test(password) ? "✓" : "○"} At least one number
+          <span className={/\d/.test(userSecret) ? "text-green-400" : "text-gray-400"}>
+            {/\d/.test(userSecret) ? "✓" : "○"} At least one number
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={/[^A-Za-z0-9]/.test(password) ? "text-green-400" : "text-gray-400"}>
-            {/[^A-Za-z0-9]/.test(password) ? "✓" : "○"} At least one special character
+          <span className={/[^A-Za-z0-9]/.test(userSecret) ? "text-green-400" : "text-gray-400"}>
+            {/[^A-Za-z0-9]/.test(userSecret) ? "✓" : "○"} At least one special character
           </span>
         </div>
       </div>
     )}
-    {!isLogin && password && (
+    {!isLogin && userSecret && (
       <div className="mt-3 space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-400 font-medium">Password Strength:</span>
+          <span className="text-gray-400 font-medium">Secret Strength:</span>
           <span
-            data-testid="password-strength-label"
-            className={`font-semibold transition-colors duration-300 ${passwordStrength.textClass}`}
+            data-testid="secret-strength-label"
+            className={`font-semibold transition-colors duration-300 ${secretStrength.textClass}`}
           >
-            {passwordStrength.label}
+            {secretStrength.label}
           </span>
         </div>
         <div className="grid grid-cols-4 gap-1.5 h-1.5 w-full bg-gray-700/30 rounded-full overflow-hidden">
           {[0, 1, 2, 3].map((index) => {
-            const activeSegments = Math.min(passwordStrength.score + 1, 4);
+            const activeSegments = Math.min(secretStrength.score + 1, 4);
             const isFilled = index < activeSegments;
             return (
               <div
                 key={index}
-                data-testid={`password-strength-bar-${index}`}
+                data-testid={`secret-strength-bar-${index}`}
                 className={`h-full rounded-full transition-all duration-500 ease-out ${
-                  isFilled ? passwordStrength.barClass : "bg-gray-700/50"
+                  isFilled ? secretStrength.barClass : "bg-gray-700/50"
                 }`}
               />
             );
@@ -322,49 +327,49 @@ export default function AuthForm({
   {!isLogin && (
     <div>
       <label className="block text-sm font-medium text-foreground mb-2">
-        Confirm Password
+        Confirm Secret
       </label>
       <div className="relative">
         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
         <input
-          type={showConfirmPassword ? "text" : "password"}
-          name="confirmPassword"
+          type={showConfirmUserSecret ? "text" : "password"}
+          name="confirmUserSecret"
           autoComplete="new-password"
-          placeholder="Re-enter your password"
-          value={confirmPassword}
+          placeholder="Re-enter your secret"
+          value={confirmUserSecret}
           onChange={(e) => {
             const value = e.target.value;
-            setConfirmPassword(value);
+            setConfirmUserSecret(value);
 
-            if (errors.confirmPassword) {
-              setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+            if (errors.confirmUserSecret) {
+              setErrors((prev) => ({ ...prev, confirmUserSecret: "" }));
             }
           }}
           onBlur={(e) => {
-            if (e.target.value !== password) {
-              setErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }));
+            if (e.target.value !== userSecret) {
+              setErrors((prev) => ({ ...prev, confirmUserSecret: "Secrets do not match" }));
             } else {
-              setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+              setErrors((prev) => ({ ...prev, confirmUserSecret: "" }));
             }
           }}
           className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
-            errors.confirmPassword ? "border-red-500/50" : "border-border"
+            errors.confirmUserSecret ? "border-red-500/50" : "border-border"
           }`}
         />
         <button
           type="button"
-          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          onClick={() => setShowConfirmUserSecret(!showConfirmUserSecret)}
           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
         >
-          {showConfirmPassword ? (
+          {showConfirmUserSecret ? (
             <EyeOff className="w-5 h-5" />
           ) : (
             <Eye className="w-5 h-5" />
           )}
         </button>
       </div>
-      {errors.confirmPassword && (
-        <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>
+      {errors.confirmUserSecret && (
+        <p className="text-red-400 text-sm mt-1">{errors.confirmUserSecret}</p>
       )}
     </div>
   )}
@@ -376,30 +381,29 @@ export default function AuthForm({
         onClick={onForgotPassword}
         className="text-sm text-indigo-400 hover:text-indigo-300 font-medium"
       >
-        Forgot password?
+        Forgot secret?
       </button>
     </div>
   )}
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            aria-busy={isLoading}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 focus:ring-4 focus:ring-indigo-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-95 flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Processing...
-              </>
-            ) : (
-              <>
-                {isLogin ? "Sign In" : "Create Account"}
-                <Sparkles className="w-5 h-5" />
-              </>
-            )}
-          </button>
-        </form>
+  <button
+    type="submit"
+    disabled={isLoading}
+    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 focus:ring-4 focus:ring-indigo-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+  >
+    {isLoading ? (
+      <>
+        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+        Processing...
+      </>
+    ) : (
+      <>
+        {isLogin ? "Sign In" : "Create Account"}
+        <Sparkles className="w-5 h-5" />
+      </>
+    )}
+  </button>
+</form>
 
         <div className="mt-6">
           <div className="relative">
@@ -437,7 +441,7 @@ export default function AuthForm({
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            {isLoading ? "Please wait..." : "Continue with Google"}
+            Continue with Google
           </button>
         </div>
 
