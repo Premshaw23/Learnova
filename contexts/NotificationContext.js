@@ -7,15 +7,10 @@ export const NotificationContext = createContext();
 
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
-  // Keep timers so we can clear on unmount
   const timersRef = useRef(new Map());
 
   const removeNotification = useCallback((id) => {
-    setNotifications((prev) =>
-      prev.filter((notification) => notification.id !== id)
-    );
-
-    // clear any pending timer for this notification
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
     const t = timersRef.current.get(id);
     if (t) {
       clearTimeout(t);
@@ -23,27 +18,25 @@ export function NotificationProvider({ children }) {
     }
   }, []);
 
+  // Use the robust ID generation from master
   const addNotificationRaw = useCallback((notification) => {
-    const id = Date.now();
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    const newNotification = {
-      id,
-      ...notification,
-    };
+    const newNotification = { id, ...notification };
 
     setNotifications((prev) => [...prev, newNotification]);
 
-    // Auto-remove notification after 5s. Track timer so it can be cleared
-    // if the provider unmounts or the notification is removed early.
     const timerId = setTimeout(() => {
       removeNotification(id);
-      // clean up timer map entry
       timersRef.current.delete(id);
     }, 5000);
 
     timersRef.current.set(id, timerId);
   }, [removeNotification]);
 
+  // Keep the throttle logic from your perf branch
   const throttledAddRef = useRef(null);
   if (!throttledAddRef.current) {
     throttledAddRef.current = throttle((notif) => addNotificationRaw(notif), 200);

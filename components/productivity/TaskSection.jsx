@@ -48,10 +48,11 @@ export function TaskSection({
                 key={priority.value}
                 type="button"
                 onClick={() => setTaskPriority(priority.value)}
-                className={`px-3 py-1 rounded-full text-xs border transition ${priority.color} ${taskPriority === priority.value
-                    ? "bg-white/10"
-                    : "bg-transparent"
-                  }`}
+               className={`px-3 py-1 rounded-full text-xs border transition-all duration-200 ${
+  taskPriority === priority.value
+    ? priority.active
+    : priority.color
+}`}
               >
                 {priority.label}
               </button>

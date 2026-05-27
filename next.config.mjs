@@ -5,6 +5,7 @@ const withPWA = withPWAInit({
   customWorkerDir: "worker",
   fallbacks: {
     document: "/~offline",
+    image: "/offline.html",
   },
   disable: process.env.NODE_ENV === "development",
   register: true,
@@ -15,6 +16,12 @@ const withPWA = withPWAInit({
   workboxOptions: {
     disableDevLogs: true,
     runtimeCaching: [
+      // API routes - NetworkOnly (must be first for priority)
+      {
+        urlPattern: /\/api\/.*/i,
+        handler: "NetworkOnly",
+      },
+      // General pages - NetworkFirst with offline fallback
       {
         urlPattern: /^https?:\/\/.*$/,
         handler: "NetworkFirst",
@@ -28,10 +35,6 @@ const withPWA = withPWAInit({
             },
           ],
         },
-      },
-      {
-        urlPattern: /\/api\/.*/i,
-        handler: "NetworkOnly",
       },
       {
         urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,

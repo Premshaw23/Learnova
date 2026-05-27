@@ -3,11 +3,7 @@ import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { del } from "@vercel/blob";
-import { z } from "zod";
-import {
-  AppError,
-  ValidationError,
-} from "@/lib/errors";
+import { AppError } from "@/lib/errors";
 import {
   extractImageFileFromFormData,
   fetchAndValidateImage,
@@ -15,6 +11,7 @@ import {
   getUserImageFromDb,
   updateUserImageInDb,
   uploadAvatarToBlob,
+  validateFaceDescriptor,
 } from "@/lib/images/imagesService";
 
 export const dynamic = "force-dynamic";
@@ -43,29 +40,20 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   const formData = await request.formData();
+
+  // Validate upfront before performing any upload/DB side effects
+  const rawFaceDescriptor = formData.get("faceDescriptor");
+  const faceDescriptor = validateFaceDescriptor(rawFaceDescriptor);
   const file = extractImageFileFromFormData(formData);
 
+  // Upload new avatar to Vercel Blob
   const { blobUrl } = await uploadAvatarToBlob({
     file,
     uid: decodedToken.uid,
   });
 
-  const rawFaceDescriptor = formData.get("faceDescriptor");
-  let faceDescriptor = null;
-  if (rawFaceDescriptor) {
-    if (typeof rawFaceDescriptor !== "string" || rawFaceDescriptor.length > 20000) {
-      throw new ValidationError("Face descriptor payload too large");
-    }
-    try {
-      const parsed = JSON.parse(rawFaceDescriptor);
-      const faceDescriptorSchema = z.array(z.number()).length(128);
-      faceDescriptor = faceDescriptorSchema.parse(parsed);
-    } catch {
-      throw new ValidationError("Invalid face descriptor format");
-    }
-  }
-
   try {
+    // Atomically update user image and handle face descriptor (unset if not provided)
     await updateUserImageInDb({
       firebaseUid: decodedToken.uid,
       imageUrl: blobUrl,

@@ -655,7 +655,8 @@ export function Navbar() {
                       key={item.key}
                       href={item.href}
                       onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
+                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition ...`}
+
                     >
                       <item.icon className="h-4 w-4 text-zinc-400" />
                       {item.label}
@@ -697,7 +698,8 @@ export function Navbar() {
                     {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
                   </motion.button>
                 )}
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 mt-auto pt-4 border-t border-zinc-100 dark:border-zinc-900">
+
                   <button
                     onClick={() => {
                       setIsMenuOpen(false);

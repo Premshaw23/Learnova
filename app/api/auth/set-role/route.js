@@ -48,13 +48,13 @@ export const POST = withValidation(
     if (existingProfile.exists) {
       const existingRole = existingProfile.data()?.role;
 
-      if (existingRole && existingRole !== role) {
+      if (existingRole) {
         return jsonError(
           `Forbidden: Account is already registered as "${existingRole}". Role cannot be changed.`,
           403
         );
       }
-    } else if (decodedToken.role && decodedToken.role !== role) {
+    } else if (decodedToken.role) {
       return jsonError(
         `Forbidden: Token already carries role "${decodedToken.role}". Role cannot be changed.`,
         403
