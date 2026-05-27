@@ -49,10 +49,15 @@ export function AgendaListSection({
               key={block.label}
               type="button"
               onClick={() => setAgendaLabel(block.label)}
-              className={`px-3 py-1 rounded-full text-xs border transition ${agendaLabel === block.label
-                  ? "border bg-white/10 border-white/20 text-white"
-                  : "border border-white/10 text-slate-300"
-                }`}
+             className={`px-3 py-1 rounded-full text-xs border transition ${
+  agendaLabel === block.label
+    ? isDark
+      ? "bg-white/10 border-white/20 text-white"
+      : "bg-slate-200 border-slate-400 text-slate-900"
+    : isDark
+      ? "border-white/10 text-slate-300 hover:text-white"
+      : "border-slate-300 text-slate-700 hover:text-slate-900 bg-white/60"
+}`}
             >
               <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
               {block.label}

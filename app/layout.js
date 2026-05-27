@@ -16,6 +16,17 @@ import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 import NextTopLoader from "nextjs-toploader";
 import RouteAnnouncer from "@/components/RouteAnnouncer";
 
+// Validate environment variables at startup (server-side only)
+if (typeof window === "undefined") {
+  try {
+    const { validateEnv } = require("@/lib/env");
+    validateEnv();
+  } catch (error) {
+    console.error("Environment validation failed:", error.message);
+    throw error;
+  }
+}
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

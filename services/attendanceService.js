@@ -27,18 +27,23 @@ export async function hasCheckedInToday(userId) {
     return false;
   }
 
-  const today = getTodayKey();
+  try {
+    const today = getTodayKey();
 
-  const attendanceQuery = query(
-    collection(db, "attendance_records"),
-    where("userId", "==", userId),
-    where("date", "==", today),
-    limit(1)
-  );
+    const attendanceQuery = query(
+      collection(db, "attendance_records"),
+      where("userId", "==", userId),
+      where("date", "==", today),
+      limit(1)
+    );
 
-  const snapshot = await getDocs(attendanceQuery);
+    const snapshot = await getDocs(attendanceQuery);
 
-  return !snapshot.empty;
+    return !snapshot.empty;
+  } catch (error) {
+    console.error("Failed to check attendance:", error);
+    return false;
+  }
 }
 
 /**
@@ -114,9 +119,20 @@ export async function recordAttendance({
   });
 
   if (!response.ok) {
-    throw new Error(
-      "Failed to record attendance securely on the server."
-    );
+    let errorMessage =
+      "Failed to record attendance securely on the server.";
+
+    try {
+      const errorData = await response.json();
+
+      if (errorData?.message) {
+        errorMessage = errorData.message;
+      }
+    } catch {
+    // Ignore invalid JSON responses
+    }
+
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();

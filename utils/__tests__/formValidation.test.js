@@ -102,20 +102,39 @@ describe("validatePassword", () => {
 });
 
 describe("validateName", () => {
-  test("returns true for valid name", () => {
-    expect(validateName("Pri" + "yan" + "shi" + " " + "Sri" + "vas" + "tav", "Full Name")).toBe(true);
+  test("returns true for valid standard and multi-word names", () => {
+    expect(validateName("John Doe", "Full Name")).toBe(true);
+    expect(validateName("Mary Jane Watson", "Full Name")).toBe(true);
   });
 
-  test("rejects short name", () => {
+  test("returns true for hyphenated and apostrophe names", () => {
+    expect(validateName("Jean-Luc", "Full Name")).toBe(true);
+    expect(validateName("O'Connor", "Full Name")).toBe(true);
+  });
+
+  test("returns true for international Unicode names", () => {
+    expect(validateName("René Müller", "Full Name")).toBe(true);
+  });
+
+  test("correctly trims outer whitespace from names", () => {
+    expect(validateName("  John Doe  ", "Full Name")).toBe(true);
+  });
+
+  test("returns required error for empty or whitespace-only names", () => {
+    expect(validateName("", "Full Name")).toBe("Full Name is required");
+    expect(validateName("   ", "Full Name")).toBe("Full Name is required");
+  });
+
+  test("rejects short name below 2 characters", () => {
     expect(validateName("P", "Full Name")).toBe(
       "Full Name must be at least 2 characters"
     );
   });
 
-  test("rejects invalid characters", () => {
-    expect(validateName("Pri" + "yan" + "shi" + "123", "Full Name")).toBe(
-      "Full Name must only contain letters, spaces, hyphens, and apostrophes"
-    );
+  test("rejects names containing unsupported characters", () => {
+    const errorMsg = "Full Name must only contain letters, spaces, hyphens, and apostrophes";
+    expect(validateName("John123", "Full Name")).toBe(errorMsg);
+    expect(validateName("@Admin", "Full Name")).toBe(errorMsg);
   });
 });
 

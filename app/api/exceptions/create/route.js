@@ -2,7 +2,6 @@ import { connectDb } from "@/lib/mongodb";
 import { requireStudent } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
-import { NextResponse } from "next/server";
 import { ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
@@ -61,9 +60,9 @@ export const POST = withErrorHandler(async (request) => {
     const db = await connectDb();
 
     const exceptionData = {
-      reason: reason.trim(),
-      details: details.trim(),
-      date: date.trim(),
+      reason,
+      details,
+      date,
       studentEmail: decodedToken.email,
       status: "pending",
       createdAt: new Date(),

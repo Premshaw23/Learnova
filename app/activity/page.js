@@ -4,6 +4,7 @@ import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import DarkVeil from "@/components/ui-block/DarkVeil";
+import CardListSkeleton from "@/components/ui/CardListSkeleton";
 import {
   BookOpen,
   Brain,
@@ -61,6 +62,7 @@ export default function ActivityPage() {
   const [selectedLevel, setSelectedLevel] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // React 19 Optimistic Hook
   const [optimisticActivities, addOptimisticActivity] = useOptimistic(
@@ -74,7 +76,12 @@ export default function ActivityPage() {
 
   useEffect(() => {
     if (user?.uid) {
-      getUserActivities(user.uid).then(setActivities);
+      getUserActivities(user.uid).then((data) => {
+        setActivities(data);
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
@@ -385,6 +392,19 @@ export default function ActivityPage() {
 
       <div className="min-h-screen relative z-50">
         <Navbar />
+
+        {/* Loading Skeleton */}
+        {loading && user && (
+          <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+              <CardListSkeleton count={6} variant="card" />
+            </div>
+          </section>
+        )}
+
+        {/* Content - only show when not loading */}
+        {!loading && (
+          <>
         {/* Hero Section */}
         <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
@@ -842,9 +862,10 @@ export default function ActivityPage() {
             </Reveal>
           </div>
         </section>
+          </>
+        )}
       </div>
 
-      {/* Floating Animation Styles */}
       <style jsx>{`
         @keyframes float {
           0%,
