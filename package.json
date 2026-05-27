@@ -17,6 +17,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "next lint",
     "test": "jest"
   },
   "dependencies": {
@@ -65,15 +66,17 @@
     "xss": "^1.0.15",
     "zod": "^4.4.3"
   },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.1.7"
+  },
   "devDependencies": {
-    "@tailwindcss/oxide-linux-x64-gnu": "^4.1.7",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/winston": "^2.4.4",
     "eslint": "^9.39.1",
-    "eslint": "^10.4.0",
+    "eslint-config-next": "^15.5.18",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",

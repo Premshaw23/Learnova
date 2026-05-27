@@ -2,42 +2,68 @@
 
 import { useEffect, useRef, useState } from "react";
 import { avatarSrcRequiresAuth, isValidAvatarUrl } from "@/lib/avatar";
+import {
+  getCachedAvatarObjectUrl,
+  getCachedIdToken,
+  setCachedAvatarObjectUrl,
+} from "@/lib/avatar-image-cache";
 
 /**
  * Resolves avatar src for display. Proxied API routes are fetched with auth
- * and converted to blob URLs to avoid broken <img> requests.
+ * and converted to blob URLs. Results are cached in memory for fast reuse.
  *
  * @param {string|null|undefined} src
  * @param {{ getToken?: () => Promise<string|undefined|null> }} options
  */
 export function useAuthenticatedAvatarSrc(src, { getToken } = {}) {
-  const [resolvedSrc, setResolvedSrc] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const cachedOnMount = src ? getCachedAvatarObjectUrl(src) : null;
+  const [resolvedSrc, setResolvedSrc] = useState(cachedOnMount);
+  const [loading, setLoading] = useState(
+    Boolean(src && avatarSrcRequiresAuth(src) && !cachedOnMount)
+  );
   const [error, setError] = useState(false);
-  const objectUrlRef = useRef(null);
+  const objectUrlRef = useRef(cachedOnMount);
+  const ownsObjectUrlRef = useRef(false);
 
-  const revokeObjectUrl = () => {
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
+  const releaseOwnedObjectUrl = () => {
+    if (ownsObjectUrlRef.current && objectUrlRef.current) {
+      const globalCached = getCachedAvatarObjectUrl(src);
+      if (objectUrlRef.current !== globalCached) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
     }
+    ownsObjectUrlRef.current = false;
+    objectUrlRef.current = null;
   };
 
   useEffect(() => {
     let cancelled = false;
 
+    const applySrc = (url, { fromCache = false } = {}) => {
+      objectUrlRef.current = url;
+      ownsObjectUrlRef.current = !fromCache;
+      setResolvedSrc(url);
+    };
+
     const load = async () => {
-      revokeObjectUrl();
+      releaseOwnedObjectUrl();
       setError(false);
 
       if (!isValidAvatarUrl(src)) {
-        setResolvedSrc(null);
+        applySrc(null);
         setLoading(false);
         return;
       }
 
       if (!avatarSrcRequiresAuth(src)) {
-        setResolvedSrc(src);
+        applySrc(src);
+        setLoading(false);
+        return;
+      }
+
+      const cached = getCachedAvatarObjectUrl(src);
+      if (cached) {
+        applySrc(cached, { fromCache: true });
         setLoading(false);
         return;
       }
@@ -45,11 +71,10 @@ export function useAuthenticatedAvatarSrc(src, { getToken } = {}) {
       setLoading(true);
 
       try {
-        const token = await getToken?.();
+        const token = await getCachedIdToken(getToken);
         const response = await fetch(src, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: "include",
-          cache: "no-store",
         });
 
         if (!response.ok) {
@@ -62,12 +87,12 @@ export function useAuthenticatedAvatarSrc(src, { getToken } = {}) {
         }
 
         const objectUrl = URL.createObjectURL(blob);
-        objectUrlRef.current = objectUrl;
-        setResolvedSrc(objectUrl);
+        setCachedAvatarObjectUrl(src, objectUrl);
+        applySrc(objectUrl, { fromCache: true });
       } catch {
         if (!cancelled) {
           setError(true);
-          setResolvedSrc(null);
+          applySrc(null);
         }
       } finally {
         if (!cancelled) {
@@ -80,7 +105,7 @@ export function useAuthenticatedAvatarSrc(src, { getToken } = {}) {
 
     return () => {
       cancelled = true;
-      revokeObjectUrl();
+      releaseOwnedObjectUrl();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);

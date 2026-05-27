@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  avatarSrcRequiresAuth,
   getAvatarCacheBust,
   getUserDisplayName,
   getUserInitials,
   resolveAvatarUrl,
 } from "@/lib/avatar";
+import { prefetchAuthenticatedAvatar } from "@/lib/avatar-image-cache";
 
 /**
  * Centralized avatar state derived from auth + optional overrides.
@@ -53,6 +55,13 @@ export function useUserAvatar(options = {}) {
     }
     return user.getIdToken();
   }, [user]);
+
+  useEffect(() => {
+    if (!avatarUrl || !avatarSrcRequiresAuth(avatarUrl)) {
+      return;
+    }
+    prefetchAuthenticatedAvatar(avatarUrl, getToken);
+  }, [avatarUrl, getToken]);
 
   return {
     user,
