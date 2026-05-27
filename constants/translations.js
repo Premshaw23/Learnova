@@ -10,7 +10,7 @@ export const translations = {
 
   hi: {
     welcome: "लर्नोवा में आपका स्वागत है",
-    mission: "हमारा मिशन",
+    mission: "हमारा मिशन", 
     values: "हमारे मूल्य",
     team: "हमारी टीम",
     impact: "हमारा प्रभाव",

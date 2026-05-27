@@ -118,6 +118,11 @@ export function Navbar() {
 
   const isDark = (mounted ? resolvedTheme : null) === "dark";
 
+  const switchLanguage = (lang) => {
+    document.cookie = `locale=${lang}; path=/; max-age=31536000`;
+    window.location.reload();
+  };
+
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
@@ -212,6 +217,7 @@ export function Navbar() {
     { href: getDashboardLink(), icon: Activity, label: "Dashboard", key: "dashboard" },
     { href: "/settings", icon: Settings, label: "Settings", key: "settings" },
   ].filter((item) => !(item.key === "dashboard" && item.href === "/profile"));
+
   const handleImageError = (e) => {
     const img = e.target;
     const fallback = img.parentElement?.querySelector(".fallback-avatar");
@@ -350,6 +356,24 @@ export function Navbar() {
                 </motion.button>
               )}
 
+              {/* Language Switcher */}
+              <div className="flex items-center gap-1 rounded-lg border border-zinc-200/50 dark:border-white/8 p-1">
+                <button
+                  onClick={() => switchLanguage('en')}
+                  className="rounded px-2 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+                  aria-label="Switch to English"
+                >
+                  EN
+                </button>
+                <button
+                  onClick={() => switchLanguage('hi')}
+                  className="rounded px-2 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+                  aria-label="Switch to Hindi"
+                >
+                  हि
+                </button>
+              </div>
+
               {/* Auth Area */}
               {loading ? (
                 <div className="w-24 h-9 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />
@@ -368,7 +392,6 @@ export function Navbar() {
                       className={iconBtn}
                       aria-label="Notifications"
                     >
-
                       <Bell className="h-5 w-5" />
                       {unreadCount > 0 && <span className="absolute top-2 right-2 bg-red-500 rounded-full h-2 w-2" />}
                     </motion.button>
@@ -709,7 +732,7 @@ export function Navbar() {
                 )}
               </div>
 
-              {/* Footer: theme + search + shortcuts */}
+              {/* Footer: theme + language + search + shortcuts */}
               <div className="flex items-center justify-between pt-1">
                 {mounted && (
                   <motion.button
@@ -721,6 +744,25 @@ export function Navbar() {
                     {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
                   </motion.button>
                 )}
+
+                {/* Language Switcher - Mobile */}
+                <div className="flex items-center gap-1 rounded-lg border border-zinc-200/50 dark:border-white/8 p-1">
+                  <button
+                    onClick={() => switchLanguage('en')}
+                    className="rounded px-1.5 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+                    aria-label="Switch to English"
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => switchLanguage('hi')}
+                    className="rounded px-1.5 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+                    aria-label="Switch to Hindi"
+                  >
+                    हि
+                  </button>
+                </div>
+
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => {

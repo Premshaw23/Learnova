@@ -1,0 +1,27 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "contact": "Contact",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "home": {
+    "hero_title": "Smart Attendance",
+    "hero_subtitle": "AI-powered student engagement platform for modern institutions.",
+    "get_started": "Get Started",
+    "learn_more": "Learn More"
+  },
+  "about": {
+    "welcome": "Welcome to Learnova",
+    "mission": "Our Mission",
+    "impact": "Our Impact",
+    "explore": "Explore"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "try_again": "Try Again",
+    "go_back": "Go Back"
+  }
+}

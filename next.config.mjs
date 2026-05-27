@@ -1,5 +1,7 @@
 import withPWAInit from "@ducanh2912/next-pwa";
+import createNextIntlPlugin from 'next-intl/plugin';
 
+const withNextIntl = createNextIntlPlugin('./i18n/request.js');
 const withPWA = withPWAInit({
   dest: "public",
   customWorkerDir: "worker",
@@ -107,4 +109,5 @@ const nextConfig = {
   },
 };
 
-export default process.env.NODE_ENV === "development" ? nextConfig : withPWA(nextConfig);
+const finalConfig = process.env.NODE_ENV === "development" ? nextConfig : withPWA(nextConfig);
+export default withNextIntl(finalConfig);
