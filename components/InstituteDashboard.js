@@ -27,11 +27,13 @@ import {
   Globe,
   User,
   RefreshCw,
+  Upload,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import ExportDropdown from "@/components/ui/ExportDropdown";
 import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 import { Navbar } from "./Navbar";
+import BulkImportModal from "./dashboard/BulkImportModal";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
@@ -45,6 +47,7 @@ const InstituteDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -347,17 +350,17 @@ const InstituteDashboard = () => {
 
             {/* Notifications */}
             <button
-              aria-label="Notifications"
+              aria-label={`Notifications${dashboardData.pendingRequests > 0 ? `, ${dashboardData.pendingRequests > 99 ? '99+' : dashboardData.pendingRequests} pending requests` : ''}`}
               className="relative p-2.5 bg-gray-800/60 hover:bg-gray-700/60 
                              rounded-xl border border-gray-600/40 transition-colors shadow-sm"
             >
               <Bell className="w-5 h-5 text-gray-300" />
               {dashboardData.pendingRequests > 0 && (
                 <span
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white 
+                  className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-white 
                                text-xs rounded-full flex items-center justify-center shadow-md"
                 >
-                  {dashboardData.pendingRequests}
+                  {dashboardData.pendingRequests > 99 ? "99+" : dashboardData.pendingRequests}
                 </span>
               )}
             </button>
@@ -598,6 +601,14 @@ const InstituteDashboard = () => {
                 className="pl-10 pr-4 py-2 bg-black/40 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-xl"
               />
             </div>
+            <button
+              onClick={() => setShowBulkImportModal(true)}
+              disabled={isLoading}
+              className="bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-all duration-500 ease-in-out hover:scale-105 flex items-center shadow-xl border border-gray-500/30"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Bulk Upload CSV
+            </button>
             <button
               onClick={() => setShowAddModal(true)}
               disabled={isLoading}
@@ -1136,26 +1147,46 @@ const InstituteDashboard = () => {
         {activeTab === "teachers" && <TeachersTab />}
         {activeTab === "attendance" && <AttendanceTab />}
         {activeTab === "settings" && <SettingsTab />}
-      </div>
-
-      {/* Add Class Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/80 backdrop-blur-sm">
-          <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-white/20 p-6 shadow-2xl w-full max-w-lg mx-4">
-            {/* ...existing code... */}
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">Add New Class</h3>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-700/50 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        {/* Add Class Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-800">
+                <h2 className="text-xl font-bold text-white">Add New Class</h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              {/* Modal Content */}
+              <div className="p-6">
+                <p className="text-gray-400 text-center py-8">
+                  Class creation form will go here
+                </p>
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={() => setShowAddModal(false)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors shadow-lg"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
-            {/* ...existing code... */}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Bulk Import Modal */}
+        <BulkImportModal
+          isOpen={showBulkImportModal}
+          onClose={() => setShowBulkImportModal(false)}
+          onImportComplete={() => {
+            // Optionally trigger a refresh of student/class lists here
+          }}
+        />
+      </div>
     </div>
   );
 };

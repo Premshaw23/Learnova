@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
 import { doc, updateDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
 const modalInitialState = {
   isShortcutsOpen: false,
@@ -55,6 +56,8 @@ const LearnovaChatbot = dynamic(() => import("@/components/ChatBot"), {
 export default function ClientLayout() {
   const [modalState, dispatch] = useReducer(modalReducer, modalInitialState);
   const { user, userProfile } = useAuth();
+
+  useOfflineQueue();
 
   const handleSearch = useCallback(() => {
     dispatch({ type: "OPEN_SEARCH" });

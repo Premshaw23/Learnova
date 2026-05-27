@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { CloudOff, RefreshCw, CheckCircle, Database } from "lucide-react";
 import { getOutboxRecords } from "@/lib/offlineStore";
+import { getQueuedMutations } from "@/lib/offlineQueue";
 import { syncAttendanceQueue } from "@/lib/syncService";
 
 export default function OfflineIndicator() {
@@ -13,7 +14,8 @@ export default function OfflineIndicator() {
   const checkQueue = async () => {
     try {
       const records = await getOutboxRecords();
-      setQueueCount(records.length);
+      const mutations = await getQueuedMutations();
+      setQueueCount(records.length + mutations.length);
     } catch (e) {
       console.error("Failed to check queue", e);
     }
@@ -37,19 +39,24 @@ export default function OfflineIndicator() {
     };
 
     const handleSyncComplete = (event) => {
-      // Event emitted by syncService or service worker message
       checkQueue();
     };
 
     const handleMessage = (event) => {
-      if (event.data && event.data.type === "SYNC_COMPLETE") {
+      if (event.data && (event.data.type === "SYNC_COMPLETE" || event.data.type === "MUTATIONS_SYNC_COMPLETE" || event.data.type === "MUTATION_QUEUED")) {
         checkQueue();
       }
+    };
+
+    const handleLocalEvent = () => {
+      checkQueue();
     };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     window.addEventListener("attendance-sync-complete", handleSyncComplete);
+    window.addEventListener("learnova:mutation-queued", handleLocalEvent);
+    window.addEventListener("learnova:mutations-sync-complete", handleLocalEvent);
     navigator.serviceWorker?.addEventListener("message", handleMessage);
 
     // Poll queue every 10 seconds just in case
@@ -59,6 +66,8 @@ export default function OfflineIndicator() {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("attendance-sync-complete", handleSyncComplete);
+      window.removeEventListener("learnova:mutation-queued", handleLocalEvent);
+      window.removeEventListener("learnova:mutations-sync-complete", handleLocalEvent);
       navigator.serviceWorker?.removeEventListener("message", handleMessage);
       clearInterval(interval);
     };

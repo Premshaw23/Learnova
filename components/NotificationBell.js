@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch } from "@/lib/apiClient";
 
 function timeAgo(date) {
   if (!date) {
@@ -65,17 +66,12 @@ export default function NotificationBell() {
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`, {
+      const data = await apiFetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
       });
 
-      if (!response.ok) {
-        throw new Error("Unable to load notifications");
-      }
-
-      const data = await response.json();
       const fetchedNotifications = Array.isArray(data.notifications) ? data.notifications : [];
       const currentIds = new Set(
         fetchedNotifications
@@ -99,8 +95,8 @@ export default function NotificationBell() {
       previousIdsRef.current = currentIds;
       hasLoadedRef.current = true;
       setNotifications(fetchedNotifications);
-    } catch {
-      setError("Unable to load notifications");
+    } catch (err) {
+      setError(err.message || "Unable to load notifications");
       setNotifications([]);
     } finally {
       setIsLoading(false);
@@ -114,18 +110,13 @@ export default function NotificationBell() {
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/notifications", {
+      await apiFetch("/api/notifications", {
         method: "PATCH",
         headers: {
-          "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ userId: user.uid }),
+        body: { userId: user.uid },
       });
-
-      if (!response.ok) {
-        throw new Error("Unable to update notifications");
-      }
 
       setNotifications((currentNotifications) =>
         currentNotifications.map((notification) => ({
@@ -134,8 +125,8 @@ export default function NotificationBell() {
         }))
       );
       setError("");
-    } catch {
-      setError("Unable to update notifications");
+    } catch (err) {
+      setError(err.message || "Unable to update notifications");
     }
   }, [user]);
 

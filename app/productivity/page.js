@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
+import TimerSkeleton from "@/components/ui/TimerSkeleton";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "react-hot-toast";
@@ -30,6 +31,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { TimerSection } from "@/components/productivity/TimerSection";
+import { apiFetch } from "@/lib/apiClient";
 import { TaskSection } from "@/components/productivity/TaskSection";
 import { CalendarSection } from "@/components/productivity/CalendarSection";
 import { AgendaListSection } from "@/components/productivity/AgendaListSection";
@@ -108,6 +110,7 @@ export default function ProductivityPage() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [calendarFilter, setCalendarFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
   const [taskInput, setTaskInput] = useState("");
   const [taskPriority, setTaskPriority] = useState("medium");
   const [tasks, setTasks] = useState([]);
@@ -151,13 +154,12 @@ export default function ProductivityPage() {
 
       try {
         const token = await user.getIdToken();
-        await fetch("/api/productivity", {
+        await apiFetch("/api/productivity", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ tasks: currentTasks, agendaItems: currentAgenda }),
+          body: { tasks: currentTasks, agendaItems: currentAgenda },
         });
       } catch (_) {
         // Offline or API error — localStorage already has the data
@@ -196,18 +198,13 @@ export default function ProductivityPage() {
 
       try {
         const token = await user.getIdToken();
-        const res = await fetch("/api/productivity", {
+        const data = await apiFetch("/api/productivity", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.tasks?.length > 0) setTasks(data.tasks);
-          if (data.agendaItems && Object.keys(data.agendaItems).length > 0) {
-            setAgendaItems(data.agendaItems);
-          }
-        } else {
-          throw new Error("API returned non-ok");
+        if (data.tasks?.length > 0) setTasks(data.tasks);
+        if (data.agendaItems && Object.keys(data.agendaItems).length > 0) {
+          setAgendaItems(data.agendaItems);
         }
       } catch (_) {
         try {
@@ -222,9 +219,14 @@ export default function ProductivityPage() {
         setDataLoaded(true);
       }
     }
+    
+    // Set loading to false after component mounts
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 300);
 
-    loadData();
-  }, [user]);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!dataLoaded) return;
@@ -266,24 +268,20 @@ export default function ProductivityPage() {
       if (!user) return;
       try {
         const token = await user.getIdToken();
-        const res = await fetch("/api/productivity/session", {
+        const data = await apiFetch("/api/productivity/session", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
+          body: {
             duration,
             completedAt: new Date().toISOString(),
             type,
-          }),
+          },
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.xpAwarded > 0) {
-            toast.success(`+${data.xpAwarded} XP earned!`);
-          }
+        if (data.xpAwarded > 0) {
+          toast.success(`+${data.xpAwarded} XP earned!`);
         }
       } catch (_) {
         // Offline — session not recorded, but timer continues
@@ -719,6 +717,12 @@ export default function ProductivityPage() {
       className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${isDark ? "text-white" : "text-slate-900"
       } relative overflow-hidden transition-all duration-500`}
     >
+      <Navbar />
+      
+      {loading ? (
+        <TimerSkeleton />
+      ) : (
+        <>
       <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
         {isDark && <DarkVeil hueShift={ambientStyles.veilHue} />}
       </div>
@@ -1162,6 +1166,8 @@ export default function ProductivityPage() {
           </button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
