@@ -1,6 +1,7 @@
 import { authenticateRequest } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { connectDbForSSE } from "@/lib/mongodb";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -148,6 +149,15 @@ export async function GET(request) {
     const profile = await getUserProfile(decodedToken.uid);
     const userRole = profile?.role || "student";
     const userId = decodedToken.uid;
+
+    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const rateLimitResult = await checkRateLimit(`notices_stream_${ip}_${userId}`);
+    if (!rateLimitResult.allowed) {
+      return new Response(JSON.stringify({ error: "Too many connections. Please slow down." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     let isConnected = true;
     let heartbeatTimer;

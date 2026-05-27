@@ -4,6 +4,8 @@ import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { getLocalDateKey } from "@/lib/dateUtils";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
 import { awardXp } from "@/lib/gamification-service";
 import { z } from "zod";
 
@@ -66,6 +68,11 @@ function resolveAttendanceIdentity(decodedToken, userProfile) {
 
 async function handleSync(request) {
   const decodedToken = await requireAuth(request);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`attendance_sync_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const body = await parseJSON(request, 1024 * 100);
   const { records } = syncSchema.parse(body);
 
@@ -136,34 +143,46 @@ async function handleSync(request) {
     // duplicate records under concurrent sync requests from multiple tabs or devices.
     const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
 
-    await db.runTransaction(async (transaction) => {
-      const existingAttendance = await transaction.get(newDocRef);
-      if (existingAttendance.exists) {
-        return;
-      }
+    // Wrap each transaction individually so a single Firestore failure
+    // (write lock, network blip) does not crash the entire batch.
+    // Only successfully written records are acknowledged to the client.
+    try {
+      await db.runTransaction(async (transaction) => {
+        const existingAttendance = await transaction.get(newDocRef);
+        if (existingAttendance.exists) {
+          return;
+        }
 
-      if (
-        (record.studentName && record.studentName !== serverIdentity.studentName) ||
-        (record.email && record.email !== serverIdentity.email)
-      ) {
-        console.warn(
-          `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
-        );
-      }
+        if (
+          (record.studentName && record.studentName !== serverIdentity.studentName) ||
+          (record.email && record.email !== serverIdentity.email)
+        ) {
+          console.warn(
+            `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
+          );
+        }
 
-      transaction.set(newDocRef, {
-        userId: decodedToken.uid,
-        studentName: serverIdentity.studentName,
-        email: serverIdentity.email,
-        instituteId,
-        timestamp: FieldValue.serverTimestamp(),
-        date: recordDate,
-        status: "present",
-        confidenceScore: normalizedConfidence,
-        offlineSynced: true,
-        queuedAt: new Date(record.queuedAt),
+        transaction.set(newDocRef, {
+          userId: decodedToken.uid,
+          studentName: serverIdentity.studentName,
+          email: serverIdentity.email,
+          instituteId,
+          timestamp: FieldValue.serverTimestamp(),
+          date: recordDate,
+          status: "present",
+          confidenceScore: normalizedConfidence,
+          offlineSynced: true,
+          queuedAt: new Date(record.queuedAt),
+        });
       });
-    });
+    } catch (txnError) {
+      console.error(
+        `[sync] Transaction failed for record ${decodedToken.uid}_${recordDate}:`,
+        txnError.message,
+      );
+      // Skip this record — do NOT acknowledge it so the client retries later
+      continue;
+    }
 
     successfulIds.push(record.id);
     processedUserDates.add(userDateKey);

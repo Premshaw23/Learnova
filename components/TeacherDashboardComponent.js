@@ -71,6 +71,7 @@ import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
 import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
 import { db } from "@/lib/firebaseConfig";
 import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { getTodayKeyLocal } from "@/lib/dateUtils";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -106,7 +107,7 @@ const TeacherDashboard = () => {
 
   const fetchTodayAttendanceStats = useCallback(async () => {
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getTodayKeyLocal();
 
       const attendanceQuery = query(
         collection(db, "attendance_records"),
@@ -314,7 +315,7 @@ const TeacherDashboard = () => {
           email: doc.data().email,
         }));
 
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getTodayKeyLocal();
         const attendanceQuery = query(
           collection(db, "attendance_records"),
           where("date", "==", today)

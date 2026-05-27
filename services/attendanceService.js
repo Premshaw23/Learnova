@@ -8,7 +8,7 @@ import {
   limit,
 } from "firebase/firestore";
 
-import { db } from "@/lib/firebaseConfig";
+import { auth, db } from "@/lib/firebaseConfig";
 
 import { recalculateAttendanceRate } from "./statsService";
 import { saveToOutbox } from "@/lib/offlineStore";
@@ -93,10 +93,16 @@ export async function recordAttendance({
   }
 
   // SECURE SERVER RECORDING
+  const token = await auth?.currentUser?.getIdToken();
+  if (!token) {
+    throw new Error("Authentication token unavailable. Please sign in again.");
+  }
+
   const response = await fetch("/api/attendance/record", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify({
       userId,

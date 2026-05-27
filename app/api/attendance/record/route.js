@@ -4,10 +4,17 @@ import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { awardXp } from "@/lib/gamification-service";
 import { getLocalDateKey } from "@/lib/dateUtils";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
 
 export const POST = withErrorHandler(async (request) => {
-  // 1. Secure token validation ensures only logged-in users can ping this route
   const decodedToken = await authenticateRequest(request);
+
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`attendance_record_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
 
   const body = await parseJSON(request, 1024);
   const { userId, studentName, email, confidenceScore, date } = body;

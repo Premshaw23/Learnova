@@ -7,6 +7,7 @@ import { z } from "zod";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { ValidationError, ForbiddenError, AppError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,11 @@ const settingsSchema = z
 
 export const PATCH = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`settings_patch_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
 
   const body = await parseJSON(request, 1024 * 100);
   const parsed = settingsSchema.safeParse(body);

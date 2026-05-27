@@ -1,7 +1,10 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
 import { initializeFirebase } from "@/lib/firebase-admin";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
 import admin from "firebase-admin";
+import { connectDb } from "@/lib/mongodb";
 
 import { withValidation } from "@/lib/validations/withValidation";
 import { setRoleSchema } from "@/lib/validations/auth";
@@ -10,6 +13,12 @@ export const POST = withValidation(
   setRoleSchema,
   withErrorHandler(async (request, data) => {
     const decodedToken = await authenticateRequest(request);
+
+    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const rateLimitResult = await checkRateLimit(`set_role_${ip}_${decodedToken.uid}`);
+    if (!rateLimitResult.allowed) {
+      throw new AppError("Too many attempts. Please try again later.", 429);
+    }
 
     const { role, fullName, instituteName, inviteCode } = data;
 
@@ -74,6 +83,41 @@ export const POST = withValidation(
       .collection("users")
       .doc(decodedToken.uid)
       .set(userProfile, { merge: true });
+
+    // Sync user to MongoDB so gamification (awardXp) and biometric labels
+    // endpoints can locate the student by their Firebase UID.
+    try {
+      const mongoDB = await connectDb();
+      const now = new Date().toISOString();
+
+      await mongoDB.collection("users").updateOne(
+        { firebaseUid: decodedToken.uid },
+        {
+          $set: {
+            firebaseUid: decodedToken.uid,
+            email: decodedToken.email,
+            name: fullName,
+            fullName,
+            role,
+            lastLogin: now,
+          },
+          $setOnInsert: {
+            totalXp: 0,
+            currentLevel: 1,
+            xpToNextLevel: 100,
+            currentStreak: 0,
+            unlockedBadges: [],
+            attendanceHistory: [],
+            createdAt: now,
+          },
+        },
+        { upsert: true }
+      );
+    } catch (mongoErr) {
+      // MongoDB sync is non-blocking — Firestore is the primary store.
+      // Log the error but do not fail the registration flow.
+      console.error("[set-role] MongoDB user sync failed:", mongoErr.message);
+    }
 
     return jsonSuccess({ userProfile }, 201);
   })

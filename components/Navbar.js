@@ -350,34 +350,16 @@ export function Navbar() {
                       className={iconBtn}
                       aria-label="Notifications"
                     >
-
-                      <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && <span className="absolute top-2 right-2 bg-red-500 rounded-full h-2 w-2" />}
+                      <Bell className="h-[18px] w-[18px]" />
+                      <AnimatePresence>
+                        {unreadCount > 0 && (
+                          <motion.span
+                            initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                            className="absolute top-1.5 right-1.5 bg-red-500 rounded-full h-2 w-2 ring-2 ring-white dark:ring-zinc-950"
+                          />
+                        )}
+                      </AnimatePresence>
                     </motion.button>
-
-                    {isNotificationOpen && (
-                      <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-[80] overflow-hidden">
-                        <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50">
-                          <h3 className="text-zinc-900 dark:text-zinc-100 font-bold text-sm">Notifications</h3>
-                          {unreadCount > 0 && (
-                            <button onClick={markAllAsRead} aria-label="Mark all notifications as read" className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                              Mark all as read
-                            </button>
-                          )}
-                        </div>
-                        <div className="max-h-60 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-900">
-                          {notifications.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-zinc-400">No new notices</div>
-                          ) : (
-                            notifications.map((n) => (
-                              <div key={n.id} onClick={() => markAsRead(n.id)} className={`p-3 text-left cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/40 ${!n.read ? "bg-blue-50/30" : ""}`}>
-                                <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{n.message}</p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    )}
 
                     <AnimatePresence>
                       {isNotificationOpen && (

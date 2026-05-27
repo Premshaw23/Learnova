@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast"; // or whatever toast library you're using
@@ -43,7 +43,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
   });
 
   // Load settings from secure API endpoint (with error handling & retry)
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     if (!user) return;
     setSettingsLoading(true);
     setSettingsError(null);
@@ -73,12 +73,12 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     } finally {
       setSettingsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
     fetchSettings();
-  }, [user]);
+  }, [user, fetchSettings]);
 
   const getTimeWindowStatus = (timeWindow) => {
     if (!timeWindow) {

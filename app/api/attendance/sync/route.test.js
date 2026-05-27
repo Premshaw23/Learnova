@@ -8,6 +8,10 @@ jest.mock("@/lib/rbac", () => ({
   requireAuth: jest.fn(),
 }));
 
+jest.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+}));
+
 jest.mock("@/lib/firebase-admin", () => ({
   initFirebaseAdmin: jest.fn(),
   getUserProfile: jest.fn(),

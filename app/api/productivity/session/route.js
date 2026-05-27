@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
-import { ValidationError } from "@/lib/errors";
+import { ValidationError, AppError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const DEFAULT_DAYS_BACK = 7;
@@ -30,6 +31,11 @@ const sessionSchema = z.object({
  */
 export const POST = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireRole(request, ["student", "teacher", "admin"]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`productivity_session_post_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
 
   const body = await request.json();
 
@@ -83,6 +89,11 @@ export const POST = withErrorHandler(async (request) => {
  */
 export const GET = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireRole(request, ["student", "teacher", "admin"]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`productivity_session_get_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
 
   const { searchParams } = new URL(request.url);
   const endDate = searchParams.get("endDate") || new Date().toISOString();

@@ -251,11 +251,20 @@ export default function FaceRecognizer({ authUser }) {
         videoRef.current.load();
       }
 
+      // CRITICAL FIX: Removed tf.disposeVariables() from here.
+      // Toggling the camera (facingMode) triggers this cleanup. We must NOT destroy the 
+      // heavy ML models from memory just to flip the camera track.
+    };
+  }, [labelsLoading, error, labels, facingMode]);
+
+  // Handle ultimate cleanup only on component unmount
+  useEffect(() => {
+    return () => {
       if (faceapiRef.current?.tf?.disposeVariables) {
         faceapiRef.current.tf.disposeVariables();
       }
     };
-  }, [labelsLoading, error, labels, facingMode]);
+  }, []);
 
   const buildFaceMatcher = async () => {
     if (!labels || labels.length === 0) return;

@@ -106,7 +106,7 @@ export default function Contact() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
   e.preventDefault();
 
   const COOLDOWN_MS = 60 * 1000;
@@ -123,6 +123,19 @@ export default function Contact() {
     setSubmitStatus({
       type: "error",
       message: "Please fix the highlighted fields before submitting.",
+    });
+    return;
+  }
+
+  // Guard: check EmailJS env variables are configured before attempting send
+  if (
+    !process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID ||
+    !process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ||
+    !process.env.NEXT_PUBLIC_EMAILJS_USER_ID
+  ) {
+    setSubmitStatus({
+      type: "error",
+      message: `Contact form is currently unavailable. Please reach us directly at ${CONTACT_INFO.email}`,
     });
     return;
   }
@@ -152,31 +165,12 @@ export default function Contact() {
       message: "",
     });
 
-    localStorage.setItem('learnova_contact_last_submit', Date.now().toString());
-    setCooldown(true);
-    let seconds = 60;
-    setCooldownTimer(seconds);
-
-    if (cooldownIntervalRef.current) {
-      clearInterval(cooldownIntervalRef.current);
-    }
-
-    cooldownIntervalRef.current = setInterval(() => {
-      seconds -= 1;
-      setCooldownTimer(seconds);
-      if (seconds === 0) {
-        clearInterval(cooldownIntervalRef.current);
-        cooldownIntervalRef.current = null;
-        setCooldown(false);
-      }
-    }, 1000);
-
     setErrors({});
   } catch (error) {
+    console.error("[Contact Form] EmailJS error:", error);
     setSubmitStatus({
       type: "error",
       message: "Sorry, something went wrong. Please try again later.",
-     
     });
      toast.error("Failed to send message");
   } finally {

@@ -3,11 +3,10 @@ import { ForbiddenError } from "@/lib/errors";
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const GET = withErrorHandler(async (request) => {
   initFirebaseAdmin();
-
-  // 1. Secure token validation ensures only logged-in users can query this route
   const decodedToken = await authenticateRequest(request);
 
   const { searchParams } = new URL(request.url);
@@ -21,6 +20,12 @@ export const GET = withErrorHandler(async (request) => {
   // 2. Ensure they are only querying attendance data for their own UID!
   if (decodedToken.uid !== userId) {
     throw new ForbiddenError("Forbidden: Cannot query attendance for another user");
+  }
+
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`attendance_heatmap_${ip}_${userId}`);
+  if (!rateLimitResult.allowed) {
+    return Response.json({ error: "Too many requests. Please slow down." }, { status: 429 });
   }
 
   const [year, monthNum] = month.split("-").map(Number);
