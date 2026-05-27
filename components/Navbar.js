@@ -495,21 +495,39 @@ export function Navbar() {
                   </div>
                 </div>
               ) : (
-                /* Login Button */
-                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} className="relative group">
-                  <span className="absolute inset-0 rounded-xl bg-blue-500 opacity-0 group-hover:opacity-20 blur-lg transition-opacity duration-300" />
-                  <Button
-                    asChild
-                    size="default"
-                    className="relative bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl px-5 h-9 text-sm shadow-md shadow-blue-600/25 border border-blue-500/30 transition-all duration-200"
-                  >
-                    <Link href="/auth">
-                      <span className="flex items-center gap-1.5">
-                        Login <Sparkles className="h-3.5 w-3.5 text-blue-200" />
-                      </span>
-                    </Link>
-                  </Button>
-                </motion.div>
+                <div className="flex items-center gap-2">
+                  {/* Login Button */}
+                  <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} className="relative group">
+                    <span className="absolute inset-0 rounded-xl bg-blue-500 opacity-0 group-hover:opacity-20 blur-lg transition-opacity duration-300" />
+                    <Button
+                      asChild
+                      size="default"
+                      className="relative bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl px-5 h-9 text-sm shadow-md shadow-blue-600/25 border border-blue-500/30 transition-all duration-200"
+                    >
+                      <Link href="/auth">
+                        <span className="flex items-center gap-1.5">
+                          Login <Sparkles className="h-3.5 w-3.5 text-blue-200" />
+                        </span>
+                      </Link>
+                    </Button>
+                  </motion.div>
+
+                  {/* Signup Button */}
+                  <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} className="relative group">
+                    <span className="absolute inset-0 rounded-xl bg-blue-500 opacity-0 group-hover:opacity-20 blur-lg transition-opacity duration-300" />
+                    <Button
+                      asChild
+                      size="default"
+                      className="relative bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl px-5 h-9 text-sm shadow-md shadow-blue-600/25 border border-blue-500/30 transition-all duration-200"
+                    >
+                      <Link href="/auth?mode=signup">
+                        <span className="flex items-center gap-1.5">
+                          Sign Up <Sparkles className="h-3.5 w-3.5 text-blue-200" />
+                        </span>
+                      </Link>
+                    </Button>
+                  </motion.div>
+                </div>
               )}
             </div>
 

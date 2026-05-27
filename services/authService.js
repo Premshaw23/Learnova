@@ -7,7 +7,6 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   signOut,
-  deleteUser,
 } from "firebase/auth";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import {
@@ -156,8 +155,20 @@ export const signupWithEmail = async (
 
       return { success: true, needsVerification: true };
     } catch (profileError) {
-      // Clean up the orphaned user account and database profile/stats if profile creation or verification fails
-      await deleteUser(user).catch(() => {});
+      // Clean up the orphaned user account using server-side Admin SDK
+      // Client-side deleteUser() fails with auth/requires-recent-login if credential is stale
+      console.error(`[signup] Profile creation failed for user ${user.uid}, initiating cleanup`);
+      
+      try {
+        await fetch("/api/auth/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid: user.uid }),
+        });
+      } catch (cleanupErr) {
+        console.error(`[signup] Cleanup failed for orphaned account ${user.uid}:`, cleanupErr.message);
+      }
+      
       await deleteDoc(doc(db, "users", user.uid)).catch(() => {});
       await deleteDoc(doc(db, "userStats", user.uid)).catch(() => {});
       throw profileError;
@@ -212,7 +223,18 @@ export const loginWithGoogle = async (
         // New Google user signing up - create profile with selected role
         const nameToUse = user.displayName || additionalData.fullName?.trim();
         if (!nameToUse) {
-          await deleteUser(user).catch(() => {});
+          // Clean up orphaned account via server-side endpoint
+          console.error(`[google-signup] No name provided for user ${user.uid}, initiating cleanup`);
+          try {
+            await fetch("/api/auth/cleanup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ uid: user.uid }),
+            });
+          } catch (cleanupErr) {
+            console.error(`[google-signup] Cleanup failed for orphaned account ${user.uid}:`, cleanupErr.message);
+          }
+          
           await signOut(auth);
           return {
             success: false,
@@ -228,7 +250,18 @@ export const loginWithGoogle = async (
           // Force refresh the token to immediately acquire the new custom claims (role) on the client side
           await user.getIdToken(true);
         } catch (profileError) {
-          await deleteUser(user).catch(() => {});
+          // Clean up orphaned account via server-side endpoint
+          console.error(`[google-signup] Profile creation failed for user ${user.uid}, initiating cleanup`);
+          try {
+            await fetch("/api/auth/cleanup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ uid: user.uid }),
+            });
+          } catch (cleanupErr) {
+            console.error(`[google-signup] Cleanup failed for orphaned account ${user.uid}:`, cleanupErr.message);
+          }
+          
           throw profileError;
         }
 

@@ -80,8 +80,19 @@ const COURSES = [
 ];
 
 export const metadata = {
-  title: "Learnova Course Library - Discover Premium Education",
-  description: "Browse our curated directory of premium web development, data science, and design courses with advanced search and filters.",
+  title: "Courses · Learnova",
+  description: "Browse and manage your enrolled courses and curriculum",
+  openGraph: {
+    title: "Courses · Learnova",
+    description: "Browse and manage your enrolled courses and curriculum",
+    type: "website",
+    siteName: "Learnova",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Courses · Learnova",
+    description: "Browse and manage your enrolled courses and curriculum",
+  },
 };
 
 export default async function CoursesPage({ searchParams }) {

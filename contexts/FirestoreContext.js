@@ -56,6 +56,9 @@ function usePooledCollection(key, buildQuery, enabled = true) {
     // Build the Firestore query (may be null if db isn't ready)
     const q = buildQuery();
     if (!q) {
+      if (!db) {
+        setError(new Error("Firestore is not initialized. Check your Firebase configuration."));
+      }
       setLoading(false);
       return;
     }

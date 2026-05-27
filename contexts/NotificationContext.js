@@ -10,7 +10,11 @@ export function NotificationProvider({ children }) {
   const timersRef = useRef(new Map());
 
   const addNotification = (notification) => {
-    const id = Date.now();
+    // Use crypto.randomUUID() to guarantee unique IDs even when notifications
+    // are added simultaneously (prevents ID collision with Date.now())
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     const newNotification = {
       id,

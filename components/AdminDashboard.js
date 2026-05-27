@@ -21,6 +21,13 @@ import {
   MapPin,
   Camera,
   DollarSign,
+  Trash2,
+  Play,
+  CheckCircle2,
+  Wifi,
+  WifiOff,
+  FileText,
+  History,
 } from "lucide-react";
 import { Navbar } from "./Navbar";
 import dynamic from "next/dynamic";
@@ -30,6 +37,8 @@ import SkeletonCard from "@/components/ui/SkeletonCard";
 
 // CRITICAL FIX: Imported missing useAuth hook to prevent ReferenceError crash
 import { useAuth } from "@/hooks/useAuth";
+import { getOutboxRecords, removeFromOutbox, clearOutbox } from "@/lib/offlineStore";
+import { syncAttendanceQueue } from "@/lib/syncService";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -65,6 +74,98 @@ const SuperAdminDashboard = () => {
   const [systemMetrics, setSystemMetrics] = useState({});
   const [criticalAlerts, setCriticalAlerts] = useState([]);
   const [featureUsage, setFeatureUsage] = useState({});
+
+  const [outboxRecords, setOutboxRecords] = useState([]);
+  const [syncHistory, setSyncHistory] = useState([]);
+  const [sessionSyncedCount, setSessionSyncedCount] = useState(0);
+  const [sessionRejectedCount, setSessionRejectedCount] = useState(0);
+  const [onlineStatus, setOnlineStatus] = useState(true);
+  const [selectedRecordPayload, setSelectedRecordPayload] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    setOnlineStatus(navigator.onLine);
+
+    const updateOutbox = async () => {
+      try {
+        const records = await getOutboxRecords();
+        setOutboxRecords(records || []);
+      } catch (err) {
+        console.error("Error reading outbox in dashboard:", err);
+      }
+    };
+
+    updateOutbox();
+
+    const handleOnline = () => {
+      setOnlineStatus(true);
+      setSyncHistory((prev) => [
+        {
+          time: new Date().toLocaleTimeString(),
+          type: "info",
+          message: "Network connection restored. Preparing automatic sync replay.",
+        },
+        ...prev,
+      ]);
+      updateOutbox();
+    };
+
+    const handleOffline = () => {
+      setOnlineStatus(false);
+      setSyncHistory((prev) => [
+        {
+          time: new Date().toLocaleTimeString(),
+          type: "warning",
+          message: "Network connection lost. Offline mode active. Outbox will cache sync actions.",
+        },
+        ...prev,
+      ]);
+    };
+
+    const handleSyncComplete = (e) => {
+      const count = e.detail?.count || 0;
+      setSessionSyncedCount((prev) => prev + count);
+      setSyncHistory((prev) => [
+        {
+          time: new Date().toLocaleTimeString(),
+          type: "success",
+          message: `Replay acknowledgment received: ${count} attendance records successfully synced.`,
+        },
+        ...prev,
+      ]);
+      updateOutbox();
+    };
+
+    const handleSyncRejected = (e) => {
+      const count = e.detail?.count || 0;
+      setSessionRejectedCount((prev) => prev + count);
+      setSyncHistory((prev) => [
+        {
+          time: new Date().toLocaleTimeString(),
+          type: "error",
+          message: `Replay rejected: ${count} records permanently failed validation. ${e.detail?.warning || ""}`,
+        },
+        ...prev,
+      ]);
+      updateOutbox();
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("attendance-sync-complete", handleSyncComplete);
+    window.addEventListener("attendance-sync-rejected", handleSyncRejected);
+
+    const interval = setInterval(updateOutbox, 5000);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("attendance-sync-complete", handleSyncComplete);
+      window.removeEventListener("attendance-sync-rejected", handleSyncRejected);
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -813,9 +914,277 @@ const SuperAdminDashboard = () => {
     </div>
   );
 
+  const handleForceSync = async () => {
+    setSyncHistory((prev) => [
+      {
+        time: new Date().toLocaleTimeString(),
+        type: "info",
+        message: "Manually triggered outbox sync execution.",
+      },
+      ...prev,
+    ]);
+    await syncAttendanceQueue();
+    const records = await getOutboxRecords();
+    setOutboxRecords(records || []);
+  };
+
+  const handleClearOutbox = async () => {
+    if (!window.confirm("Are you sure you want to clear the entire offline sync queue? This will delete all pending offline actions permanently.")) return;
+    await clearOutbox();
+    setSyncHistory((prev) => [
+      {
+        time: new Date().toLocaleTimeString(),
+        type: "warning",
+        message: "Offline outbox queue was manually cleared.",
+      },
+      ...prev,
+    ]);
+    setOutboxRecords([]);
+  };
+
+  const handleRemoveItem = async (id) => {
+    await removeFromOutbox(id);
+    setSyncHistory((prev) => [
+      {
+        time: new Date().toLocaleTimeString(),
+        type: "info",
+        message: `Removed pending outbox record ID: ${id}`,
+      },
+      ...prev,
+    ]);
+    const records = await getOutboxRecords();
+    setOutboxRecords(records || []);
+  };
+
+  const renderSyncInspector = () => {
+    const queueHealthScore = outboxRecords.some((r) => Date.now() - r.queuedAt > 24 * 60 * 60 * 1000) ? 75 : 100;
+
+    return (
+      <div className="space-y-6">
+        {/* Sync Replay Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white flex items-center gap-2 font-display">
+              <RefreshCw className="w-6 h-6 text-blue-400" />
+              Offline Sync Replay Reconciliation Inspector
+            </h2>
+            <p className="text-sm text-gray-400">
+              Prune, replay, and monitor the client-side IndexedDB outbox queue in real-time.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleForceSync}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2 shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all duration-300"
+            >
+              <Play className="w-4 h-4" />
+              Sync Now
+            </button>
+            <button
+              onClick={handleClearOutbox}
+              className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 flex items-center gap-2 border border-red-500/30 transition-all duration-300"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Queue
+            </button>
+          </div>
+        </div>
+
+        {/* Sync Overview Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-2">
+              <Database className="w-6 h-6 text-blue-400" />
+              <span className={`inline-flex px-2 py-0.5 text-xs rounded-full font-medium ${onlineStatus ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"}`}>
+                {onlineStatus ? "Online" : "Offline"}
+              </span>
+            </div>
+            <h3 className="text-2xl font-bold text-blue-400">{outboxRecords.length}</h3>
+            <p className="text-sm text-gray-300 mt-1">Total Queued Operations</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-xl border border-green-500/20 rounded-2xl p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-2">
+              <CheckCircle2 className="w-6 h-6 text-green-400" />
+              <span className="text-xs text-gray-400">This Session</span>
+            </div>
+            <h3 className="text-2xl font-bold text-green-400">{sessionSyncedCount}</h3>
+            <p className="text-sm text-gray-300 mt-1">Successfully Synced</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-red-500/10 to-red-600/10 backdrop-blur-xl border border-red-500/20 rounded-2xl p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-2">
+              <AlertTriangle className="w-6 h-6 text-red-400" />
+              <span className="text-xs text-gray-400">Rejected Replays</span>
+            </div>
+            <h3 className="text-2xl font-bold text-red-400">{sessionRejectedCount}</h3>
+            <p className="text-sm text-gray-300 mt-1">Rejected Replays</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-2">
+              <Activity className="w-6 h-6 text-purple-400" />
+              <span className="text-xs text-gray-400">Queue Health</span>
+            </div>
+            <h3 className={`text-2xl font-bold ${queueHealthScore === 100 ? "text-purple-400" : "text-yellow-400"}`}>
+              {queueHealthScore}%
+            </h3>
+            <p className="text-sm text-gray-300 mt-1">Stale Record Health</p>
+          </div>
+        </div>
+
+        {/* Main Content Grid (Inspector & Logs) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Outbox Queue Inspector List */}
+          <div className="lg:col-span-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2 text-white">
+              <FileText className="w-5 h-5 text-gray-400" />
+              Pending Replay Queue Inspector
+            </h3>
+
+            {outboxRecords.length === 0 ? (
+              <div className="py-12 text-center border border-dashed border-gray-700 rounded-xl space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto" />
+                <p className="font-medium text-gray-300 font-display">Outbox Queue Clean</p>
+                <p className="text-xs text-gray-500">No cached actions or pending synchronizations detected in IndexedDB.</p>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-gray-700/50">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-800/50 text-gray-400 text-xs font-medium uppercase tracking-wider">
+                      <tr className="border-b border-gray-700/50">
+                        <th className="px-4 py-3 text-left">ID</th>
+                        <th className="px-4 py-3 text-left">Record / Identity</th>
+                        <th className="px-4 py-3 text-left">Confidence</th>
+                        <th className="px-4 py-3 text-left">Queued At</th>
+                        <th className="px-4 py-3 text-left">Status</th>
+                        <th className="px-4 py-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700/50">
+                      {outboxRecords.map((record) => {
+                        const isStale = Date.now() - record.queuedAt > 24 * 60 * 60 * 1000;
+                        return (
+                          <tr key={record.id} className="hover:bg-gray-800/30 transition-colors">
+                            <td className="px-4 py-4 text-xs font-mono text-gray-400 font-bold">#{record.id}</td>
+                            <td className="px-4 py-4">
+                              <div className="font-medium text-white">{record.studentName || "Self Submit"}</div>
+                              <div className="text-xs text-gray-400 font-mono">UID: {record.userId.slice(0, 8)}...</div>
+                            </td>
+                            <td className="px-4 py-4 font-mono text-gray-300">{(record.confidenceScore * 100).toFixed(0)}%</td>
+                            <td className="px-4 py-4 text-xs text-gray-400">
+                              {new Date(record.queuedAt).toLocaleString()}
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className={`inline-flex px-2 py-0.5 text-xs rounded-full border ${isStale ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "bg-blue-500/20 text-blue-400 border-blue-500/30"}`}>
+                                {isStale ? "Stale (>24h)" : "Pending"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => setSelectedRecordPayload(record)}
+                                  className="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600/40 text-gray-300 px-2 py-1 rounded transition-colors"
+                                >
+                                  View Payload
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveItem(record.id)}
+                                  className="text-red-400 hover:text-red-300 p-1 transition-colors"
+                                  aria-label="Remove item"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sync Timeline / Diagnostic Logs */}
+          <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2 text-white">
+              <History className="w-5 h-5 text-gray-400" />
+              Replay Timeline & Diagnostics
+            </h3>
+
+            <div className="h-[300px] overflow-y-auto pr-2 space-y-3 font-mono text-xs scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+              {syncHistory.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-gray-500 text-center text-[11px] py-12">
+                  No real-time synchronization events recorded yet. Ready and listening to connection changes.
+                </div>
+              ) : (
+                syncHistory.map((log, index) => (
+                  <div
+                    key={index}
+                    className={`p-2.5 rounded border ${
+                      log.type === "success"
+                        ? "bg-green-500/10 border-green-500/20 text-green-400"
+                        : log.type === "error"
+                        ? "bg-red-500/10 border-red-500/20 text-red-400"
+                        : log.type === "warning"
+                        ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
+                        : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                    }`}
+                  >
+                    <div className="flex justify-between font-bold text-[10px] opacity-75 mb-0.5">
+                      <span>[{log.time}]</span>
+                      <span className="uppercase">{log.type}</span>
+                    </div>
+                    <div>{log.message}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* JSON Payload Modal Backdrop */}
+        {selectedRecordPayload && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-white/15 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-6 py-4 bg-gray-800/80 border-b border-white/10 flex items-center justify-between">
+                <h3 className="font-bold text-white flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-400" />
+                  Queued Payload Details (Record #{selectedRecordPayload.id})
+                </h3>
+                <button
+                  onClick={() => setSelectedRecordPayload(null)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6">
+                <pre className="bg-black/60 border border-gray-700/50 p-4 rounded-xl text-xs font-mono text-green-400 overflow-x-auto max-h-[300px]">
+                  {JSON.stringify(selectedRecordPayload, null, 2)}
+                </pre>
+              </div>
+              <div className="px-6 py-4 bg-gray-800/50 border-t border-white/10 flex justify-end">
+                <button
+                  onClick={() => setSelectedRecordPayload(null)}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl transition-colors border border-gray-600/40 text-sm"
+                >
+                  Close Payload
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
-  return <DashboardSkeleton />;
-}
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="min-h-screen p-6 space-y-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-16">
@@ -872,13 +1241,13 @@ const SuperAdminDashboard = () => {
 
       {/* Tabs Navigation */}
       <div className="flex items-center gap-4 border-b border-white/10 pb-2">
-        {["overview", "institutes", "monitoring", "security"].map((tab) => (
+        {["overview", "institutes", "monitoring", "security", "sync reconciliation"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`capitalize px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-300 ${
               activeTab === tab
-                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg font-bold"
                 : "text-gray-300 hover:text-white hover:bg-gray-800/50"
             }`}
           >
@@ -894,6 +1263,7 @@ const SuperAdminDashboard = () => {
           {activeTab === "institutes" && renderInstitutes()}
           {activeTab === "monitoring" && renderSystemMonitoring()}
           {activeTab === "security" && renderSecurityCenter()}
+          {activeTab === "sync reconciliation" && renderSyncInspector()}
         </div>
       </div>
     </div>

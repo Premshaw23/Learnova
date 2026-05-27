@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
+import Tooltip from "@/components/ui/Tooltip";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 
@@ -596,7 +597,7 @@ export default function LearnovaChatbot() {
   // ---------------------------------------------------------------------------
   return (
     <div
-      className={`fixed z-50 flex flex-col ${t.bg} shadow-2xl transition-all duration-300 border ${t.border} ${
+      className={`fixed z-50 flex flex-col ${themeTokens.bg} shadow-2xl transition-all duration-300 border ${themeTokens.border} ${
         isMinimized ? "bottom-24 md:bottom-6 right-4 md:right-6 w-72 h-16 overflow-hidden rounded-xl" : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
       }`}
     >
@@ -616,18 +617,26 @@ export default function LearnovaChatbot() {
         </div>
 
         <div className="flex items-center space-x-1">
-          <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Clear chat" aria-label="Clear chat">
-            <RefreshCw size={16} />
-          </button>
-          <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme" aria-label="Toggle theme">
-            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-          <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title={isMinimized ? "Expand" : "Minimize"} aria-label={isMinimized ? "Expand chat" : "Minimize chat"}>
-            {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
-          </button>
-          <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-2 sm:p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Close" aria-label="Close chat">
-            <X size={20} className="sm:w-4 sm:h-4" />
-          </button>
+          <Tooltip content="Clear chat">
+            <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" aria-label="Clear chat">
+              <RefreshCw size={16} />
+            </button>
+          </Tooltip>
+          <Tooltip content="Toggle theme">
+            <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" aria-label="Toggle theme">
+              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+          </Tooltip>
+          <Tooltip content={isMinimized ? "Expand" : "Minimize"}>
+            <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" aria-label={isMinimized ? "Expand chat" : "Minimize chat"}>
+              {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+            </button>
+          </Tooltip>
+          <Tooltip content="Close">
+            <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-2 sm:p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close chat">
+              <X size={20} className="sm:w-4 sm:h-4" />
+            </button>
+          </Tooltip>
         </div>
       </div>
 

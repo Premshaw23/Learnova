@@ -101,6 +101,9 @@ async function handleSync(request) {
     // Only allow users to sync their own records (unless they are admin, but attendance is usually self-submitted)
     if (record.userId !== decodedToken.uid) {
       console.warn(`User ${decodedToken.uid} attempted to sync record for ${record.userId}`);
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
       continue;
     }
 
@@ -130,21 +133,20 @@ async function handleSync(request) {
       console.warn(
         `User ${decodedToken.uid} submitted offline attendance with confidence below threshold (raw: ${record.confidenceScore})`,
       );
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
       continue;
     }
 
-    // Atomic check-and-set using a Firestore transaction to prevent
-    // duplicate records under concurrent sync requests from multiple tabs or devices.
     const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
 
-    // Wrap each transaction individually so a single Firestore failure
-    // (write lock, network blip) does not crash the entire batch.
-    // Only successfully written records are acknowledged to the client.
+    let wasWritten = false;
     try {
-      await db.runTransaction(async (transaction) => {
+      wasWritten = await db.runTransaction(async (transaction) => {
         const existingAttendance = await transaction.get(newDocRef);
         if (existingAttendance.exists) {
-          return;
+          return false;
         }
 
         if (
@@ -168,17 +170,23 @@ async function handleSync(request) {
           offlineSynced: true,
           queuedAt: new Date(record.queuedAt),
         });
+
+        return true;
       });
     } catch (txnError) {
       console.error(
         `[sync] Transaction failed for record ${decodedToken.uid}_${recordDate}:`,
         txnError.message,
       );
-      // Skip this record — do NOT acknowledge it so the client retries later
       continue;
     }
 
     successfulIds.push(record.id);
+
+    if (!wasWritten) {
+      continue;
+    }
+
     processedUserDates.add(userDateKey);
 
     try {

@@ -328,6 +328,7 @@ export default function ProductivityPage() {
     const nextSeconds = MODES[nextMode].seconds;
     setIsRunning(false);
     setMode(nextMode);
+    setAmbientMode(nextMode);
     setSessionSeconds(nextSeconds);
     setManualMinutes(String(Math.round(nextSeconds / 60)));
     setTimeLeft(nextSeconds);
@@ -456,17 +457,50 @@ export default function ProductivityPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
-  const ambientGradient = isDark
-    ? ambientMode === "focus"
-      ? "from-[#0B1020] via-[#1E1B4B] to-[#312E81]"
-      : ambientMode === "short"
-        ? "from-[#052e2b] via-[#0f172a] to-[#134e4a]"
-        : "from-[#2E1065] via-[#1E1B4B] to-[#312E81]"
-    : ambientMode === "focus"
-      ? "from-[#F8FAFC] via-[#EEF2FF] to-[#E0E7FF]"
-      : ambientMode === "short"
-        ? "from-[#ECFDF5] via-[#F0FDFA] to-[#CCFBF1]"
-        : "from-[#FAF5FF] via-[#F3E8FF] to-[#EDE9FE]";
+  const darkAmbientStyles = {
+    focus: {
+      gradient: "from-[#020617] via-[#0F172A] to-[#164E63]",
+      glowPrimary: "bg-cyan-400/20",
+      glowSecondary: "bg-blue-500/15",
+      veilHue: 0,
+    },
+    short: {
+      gradient: "from-[#022C22] via-[#064E3B] to-[#0F766E]",
+      glowPrimary: "bg-emerald-400/25",
+      glowSecondary: "bg-teal-400/20",
+      veilHue: 95,
+    },
+    long: {
+      gradient: "from-[#2E1065] via-[#581C87] to-[#831843]",
+      glowPrimary: "bg-purple-400/25",
+      glowSecondary: "bg-fuchsia-400/20",
+      veilHue: 210,
+    },
+  };
+
+  const lightAmbientStyles = {
+    focus: {
+      gradient: "from-[#F8FAFC] via-[#EEF2FF] to-[#E0E7FF]",
+      glowPrimary: "bg-cyan-300/30",
+      glowSecondary: "bg-blue-300/25",
+    },
+    short: {
+      gradient: "from-[#ECFDF5] via-[#F0FDFA] to-[#CCFBF1]",
+      glowPrimary: "bg-emerald-300/35",
+      glowSecondary: "bg-teal-300/30",
+    },
+    long: {
+      gradient: "from-[#FAF5FF] via-[#F3E8FF] to-[#EDE9FE]",
+      glowPrimary: "bg-purple-300/35",
+      glowSecondary: "bg-fuchsia-300/25",
+    },
+  };
+
+  const ambientStyles = isDark
+    ? darkAmbientStyles[ambientMode] || darkAmbientStyles.focus
+    : lightAmbientStyles[ambientMode] || lightAmbientStyles.focus;
+
+  const ambientGradient = ambientStyles.gradient;
 
   const SoundscapeIcon =
     SOUNDSCAPES.find((item) => item.value === soundscape)?.icon || Volume2;
@@ -674,16 +708,15 @@ export default function ProductivityPage() {
   return (
     <div
       className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${isDark ? "text-white" : "text-slate-900"
-        } relative overflow-hidden transition-all duration-500`}
+      } relative overflow-hidden transition-all duration-500`}
     >
       <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
-        {isDark && <DarkVeil />}
+        {isDark && <DarkVeil hueShift={ambientStyles.veilHue} />}
       </div>
 
       <div className="absolute inset-0 pointer-events-none z-0">
-        <div className={`absolute -top-32 -right-32 w-72 h-72 rounded-full ${isDark ? "bg-cyan-500/10" : "bg-cyan-300/30"} blur-3xl`} />
-        <div className={`absolute bottom-0 left-0 w-72 h-72 rounded-full ${isDark ? "bg-cyan-500/10" : "bg-cyan-300/30"
-          } blur-3xl`} />
+        <div className={`absolute -top-32 -right-32 w-72 h-72 rounded-full ${ambientStyles.glowPrimary} blur-3xl transition-colors duration-500`} />
+        <div className={`absolute bottom-0 left-0 w-72 h-72 rounded-full ${ambientStyles.glowSecondary} blur-3xl transition-colors duration-500`} />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.04),transparent_55%)]" />
       </div>
 
