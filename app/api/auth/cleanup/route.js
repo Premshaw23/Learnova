@@ -1,5 +1,5 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { withErrorHandler } from "@/lib/error-handler";
+import { authenticateRequest, withErrorHandler } from "@/lib/error-handler";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 
@@ -15,11 +15,17 @@ export const runtime = "nodejs";
  * needs to be cleaned up to prevent orphaned accounts.
  */
 export const POST = withErrorHandler(async (request) => {
+  const decodedToken = await authenticateRequest(request);
+
   const body = await request.json();
   const { uid } = body;
 
   if (!uid || typeof uid !== "string") {
     return jsonError("Invalid or missing UID parameter", 400);
+  }
+
+  if (decodedToken.uid !== uid) {
+    return jsonError("You can only clean up your own account", 403);
   }
 
   try {
