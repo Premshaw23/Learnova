@@ -7,7 +7,7 @@ const withPWA = withPWAInit({
     document: "/~offline",
     image: "/offline.html",
   },
-  disable: process.env.NODE_ENV === "development",
+  disable: process.env.NODE_ENV === "production" || process.env.SKIP_PWA === "true",
   register: true,
   skipWaiting: true,
   reloadOnOnline: true,
@@ -93,7 +93,7 @@ const nextConfig = {
     config.resolve.fallback = {
       ...(config.resolve.fallback || {}),
       fs: false,
-      encoding: false, // Fixes TensorFlow warning
+      encoding: false,
     };
     return config;
   },
@@ -114,4 +114,4 @@ const nextConfig = {
   },
 };
 
-export default process.env.NODE_ENV === "development" ? nextConfig : withPWA(nextConfig);
+export default process.env.NODE_ENV === "development" || process.env.SKIP_PWA === "true" ? nextConfig : withPWA(nextConfig);

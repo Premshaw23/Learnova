@@ -41,6 +41,7 @@ const [selectedRole, setSelectedRole] = useState("");
 // Form state
 const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
+const [confirmPassword, setConfirmPassword] = useState("");
 const [fullName, setFullName] = useState("");
 const [instituteName, setInstituteName] = useState("");
 const [inviteCode, setInviteCode] = useState("");
@@ -75,6 +76,7 @@ setShowRoleSelection(true);
 setErrors({});
 setEmail("");
 setPassword("");
+setConfirmPassword("");
 setFullName("");
 setInstituteName("");
 setInviteCode("");
@@ -84,6 +86,7 @@ const handleToggleLogin = () => {
 setIsLogin(!isLogin);
 setErrors({});
 setPassword("");
+setConfirmPassword("");
   if (!isLogin) {
     setFullName("");
     setInstituteName("");
@@ -94,6 +97,13 @@ setPassword("");
 
 const handleSubmit = async (e) => {
 e.preventDefault();
+
+  // Validate confirm password for signup
+  if (!isLogin && password !== confirmPassword) {
+    setErrors({ confirmPassword: "Passwords do not match" });
+    return;
+  }
+
   const formData = {
     selectedRole,
     email,
@@ -272,6 +282,8 @@ return (
                   setEmail={setEmail}
                   password={password}
                   setPassword={setPassword}
+                  confirmPassword={confirmPassword}
+                  setConfirmPassword={setConfirmPassword}
                   fullName={fullName}
                   setFullName={setFullName}
                   instituteName={instituteName}

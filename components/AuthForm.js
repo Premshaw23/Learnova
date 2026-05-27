@@ -23,6 +23,8 @@ export default function AuthForm({
   setInstituteName,
   inviteCode,
   setInviteCode,
+  confirmPassword,
+  setConfirmPassword,
   errors,
   setErrors,
   isLoading,
@@ -33,6 +35,7 @@ export default function AuthForm({
   onForgotPassword,
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const passwordStrength = useMemo(
     () => getPasswordStrength(password),
     [password]
@@ -320,6 +323,56 @@ export default function AuthForm({
       </div>
     )}
   </div>
+
+  {!isLogin && (
+    <div>
+      <label className="block text-sm font-medium text-foreground mb-2">
+        Confirm Password
+      </label>
+      <div className="relative">
+        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <input
+          type={showConfirmPassword ? "text" : "password"}
+          name="confirmPassword"
+          autoComplete="new-password"
+          placeholder="Re-enter your password"
+          value={confirmPassword}
+          onChange={(e) => {
+            const value = e.target.value;
+            setConfirmPassword(value);
+
+            if (errors.confirmPassword) {
+              setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+            }
+          }}
+          onBlur={(e) => {
+            if (e.target.value !== password) {
+              setErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }));
+            } else {
+              setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+            }
+          }}
+          className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+            errors.confirmPassword ? "border-red-500/50" : "border-border"
+          }`}
+        />
+        <button
+          type="button"
+          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
+        >
+          {showConfirmPassword ? (
+            <EyeOff className="w-5 h-5" />
+          ) : (
+            <Eye className="w-5 h-5" />
+          )}
+        </button>
+      </div>
+      {errors.confirmPassword && (
+        <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>
+      )}
+    </div>
+  )}
 
   {isLogin && (
     <div className="text-right">
