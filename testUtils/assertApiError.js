@@ -18,13 +18,9 @@ export async function assertApiError(response, expectedStatus, expectedError = n
   
   if (expectedError !== null) {
     if (typeof expectedError === 'object') {
-      expect(body.error || body).toEqual(expect.objectContaining(expectedError));
+      expect(body.error || body).toEqual(expectedError);
     } else {
-      if (typeof body.error === 'object' && body.error !== null) {
-        expect(body.error.message).toBe(expectedError);
-      } else {
-        expect(body.error).toBe(expectedError);
-      }
+      expect(body.error).toBe(expectedError);
     }
   }
   

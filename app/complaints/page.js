@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import ComplaintsTable from "@/components/ComplaintsTable";
 import ComplaintForm from "@/components/ComplaintForm";
+import CardListSkeleton from "@/components/ui/CardListSkeleton";
 
 export default function ComplaintsPage() {
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [complaints, setComplaints] = useState([
     {
@@ -44,6 +46,15 @@ export default function ComplaintsPage() {
     },
   ]);
 
+  // Simulate data loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleAddComplaint = (newComplaint) => {
     setComplaints((prev) => [
       {
@@ -64,7 +75,9 @@ export default function ComplaintsPage() {
 
       <div className="pt-24 px-4 md:px-8 lg:px-10 pb-10">
 
-        {showForm ? (
+        {loading ? (
+          <CardListSkeleton count={3} variant="table" />
+        ) : showForm ? (
           <ComplaintForm
             onClose={() => setShowForm(false)}
             onSubmitComplaint={handleAddComplaint}

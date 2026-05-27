@@ -2,6 +2,23 @@ import { put, del } from "@vercel/blob";
 import { randomUUID } from "crypto";
 
 import { connectDb } from "@/lib/mongodb";
+import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { suggestEmailCorrection } from "@/utils/emailValidation";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import xss from "xss";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const normalizeText = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const getImageExtension = (mimeType) => {
 
 import {
   jsonError,
@@ -202,6 +219,11 @@ const validateMagicBytes = (
   return true;
 };
 
+    const formData = await req.formData();
+    const name = xss(normalizeText(formData.get("name")));
+    const rollNo = xss(normalizeText(formData.get("rollNo")));
+    const email = normalizeText(formData.get("email")).toLowerCase();
+    const file = formData.get("photo");
 export const POST =
   withErrorHandler(
     async (req) => {

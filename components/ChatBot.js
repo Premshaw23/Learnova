@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
-import Tooltip from "@/components/ui/Tooltip";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 
@@ -617,26 +616,18 @@ export default function LearnovaChatbot() {
         </div>
 
         <div className="flex items-center space-x-1">
-          <Tooltip content="Clear chat">
-            <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" aria-label="Clear chat">
-              <RefreshCw size={16} />
-            </button>
-          </Tooltip>
-          <Tooltip content="Toggle theme">
-            <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" aria-label="Toggle theme">
-              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-          </Tooltip>
-          <Tooltip content={isMinimized ? "Expand" : "Minimize"}>
-            <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" aria-label={isMinimized ? "Expand chat" : "Minimize chat"}>
-              {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
-            </button>
-          </Tooltip>
-          <Tooltip content="Close">
-            <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-2 sm:p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close chat">
-              <X size={20} className="sm:w-4 sm:h-4" />
-            </button>
-          </Tooltip>
+          <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Clear chat" aria-label="Clear chat">
+            <RefreshCw size={16} />
+          </button>
+          <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme" aria-label="Toggle theme">
+            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title={isMinimized ? "Expand" : "Minimize"} aria-label={isMinimized ? "Expand chat" : "Minimize chat"}>
+            {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+          </button>
+          <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-2 sm:p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Close" aria-label="Close chat">
+            <X size={20} className="sm:w-4 sm:h-4" />
+          </button>
         </div>
       </div>
 
