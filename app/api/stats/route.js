@@ -41,7 +41,32 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   if (action === "update" && statField) {
-    const incValue = typeof value === "number" ? value : 1;
+    // Allowlist: only permit the four known numeric stat fields.
+    // Accepting an arbitrary caller-supplied string as a Firestore document key
+    // lets any authenticated user inject fake fields (e.g. "isAdmin": 1) or
+    // corrupt dashboards visible to teachers and admins.
+    const ALLOWED_STAT_FIELDS = new Set([
+      "Courses Enrolled",
+      "Assignments Done",
+      "Study Hours",
+    ]);
+
+    if (!ALLOWED_STAT_FIELDS.has(statField)) {
+      return jsonError(
+        `Invalid statField. Allowed values: ${[...ALLOWED_STAT_FIELDS].join(", ")}`,
+        400
+      );
+    }
+
+    // Clamp the increment to a safe integer range so a single request cannot
+    // teleport a counter to an unrealistic value. Infinity and NaN are also
+    // rejected by the isFinite check below.
+    const MAX_INCREMENT = 100;
+    const rawIncrement = typeof value === "number" ? value : 1;
+    if (!Number.isFinite(rawIncrement)) {
+      return jsonError("value must be a finite number", 400);
+    }
+    const incValue = Math.max(-MAX_INCREMENT, Math.min(MAX_INCREMENT, rawIncrement));
 
     const statsSnap = await statsRef.get();
     if (!statsSnap.exists) {
