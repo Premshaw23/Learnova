@@ -111,7 +111,11 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
   }
 
   // Initialize their empty dashboard stats
+  try {
   await initializeUserStats(user.uid);
+} catch (error) {
+  console.log("Stats init failed", error);
+}
 
   return data.data.userProfile;
 };

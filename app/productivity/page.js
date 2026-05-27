@@ -46,14 +46,29 @@ const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TASKS_KEY = "learnova_productivity_tasks";
 const AGENDA_KEY = "learnova_productivity_agenda";
 const TIME_BLOCKS = [
-  { label: "Focus", color: "bg-cyan-400" },
-  { label: "Meetings", color: "bg-purple-400" },
-  { label: "Grading", color: "bg-emerald-400" },
+  { label: "Focus", color: "bg-cyan-700" },
+  { label: "Meetings", color: "bg-purple-700" },
+  { label: "Grading", color: "bg-emerald-700" },
 ];
 const PRIORITIES = [
-  { value: "low", label: "Low", color: "border-emerald-400/40 text-emerald-200" },
-  { value: "medium", label: "Medium", color: "border-amber-400/40 text-amber-200" },
-  { value: "high", label: "High", color: "border-rose-400/40 text-rose-200" },
+  {
+    value: "low",
+    label: "Low",
+    color: "border-emerald-300 text-emerald-700 bg-emerald-50",
+    active: "bg-emerald-600 text-white border-emerald-700 shadow-md",
+  },
+  {
+    value: "medium",
+    label: "Medium",
+    color: "border-amber-300 text-amber-700 bg-amber-50",
+    active: "bg-amber-500 text-white border-amber-600 shadow-md",
+  },
+  {
+    value: "high",
+    label: "High",
+    color: "border-rose-300 text-rose-700 bg-rose-50",
+    active: "bg-rose-600 text-white border-rose-700 shadow-md",
+  },
 ];
 const SOUNDSCAPES = [
   { value: "rain", label: "Rain", icon: Volume2 },

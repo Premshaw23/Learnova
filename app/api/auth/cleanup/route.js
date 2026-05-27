@@ -1,5 +1,5 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, authenticateRequest, parseJSON } from "@/lib/error-handler";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 
@@ -12,14 +12,24 @@ export const runtime = "nodejs";
  * that cannot be deleted client-side due to re-authentication requirements.
  * 
  * Called when client-side profile creation fails and the auth account
- * needs to be cleaned up to prevent orphaned accounts.
+ * needs to be cleaned up. Access is strictly authenticated to ensure a user
+ * can only delete their own freshly created/orphaned account (CWE-306).
  */
 export const POST = withErrorHandler(async (request) => {
-  const body = await request.json();
+  // 1. Authenticate request via Firebase token first to prevent unauthenticated/arbitrary deletion
+  const decodedToken = await authenticateRequest(request);
+
+  // 2. Parse request body securely with maxBytes limitation (1KB) to prevent DoS
+  const body = await parseJSON(request, 1024);
   const { uid } = body;
 
   if (!uid || typeof uid !== "string") {
     return jsonError("Invalid or missing UID parameter", 400);
+  }
+
+  // 3. Ensure the authenticated user can only delete/cleanup their own account!
+  if (decodedToken.uid !== uid) {
+    return jsonError("Forbidden: Cannot clean up other users' accounts", 403);
   }
 
   try {

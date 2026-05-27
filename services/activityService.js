@@ -1,3 +1,6 @@
+import { db } from "@/lib/firebaseConfig";
+import { doc, updateDoc } from "firebase/firestore";
+
 export const logActivity = async (userId, activityData) => {
   if (!userId) return;
   try {
@@ -50,6 +53,17 @@ export const removeActivity = async (activityId) => {
     }
   } catch (error) {
     console.error("Error removing activity:", error);
+    throw error;
+  }
+};
+
+export const updateActivityProgress = async (activityId, progress) => {
+  if (!activityId) return;
+  try {
+    const docRef = doc(db, "activities", activityId);
+    await updateDoc(docRef, { progress });
+  } catch (error) {
+    console.error("Error updating activity progress:", error);
     throw error;
   }
 };
