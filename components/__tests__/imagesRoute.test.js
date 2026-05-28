@@ -46,6 +46,7 @@ jest.mock("@/lib/images/imagesService", () => ({
   getUserImageFromDb: jest.fn(),
   updateUserImageInDb: jest.fn(),
   uploadAvatarToBlob: jest.fn(),
+  validateFaceDescriptor: jest.fn(),
 }));
 
 describe("/api/images route orchestration", () => {

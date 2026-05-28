@@ -1,6 +1,7 @@
 import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
 import { ForbiddenError } from "@/lib/errors";
-import clientPromise from "@/lib/mongodb";
+import { NextResponse } from "next/server";
+import { getFirestore } from "firebase-admin/firestore";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { success, fail } from "@/lib/apiResponse";
@@ -29,27 +30,34 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   const [year, monthNum] = month.split("-").map(Number);
-  const firstDay = new Date(year, monthNum - 1, 1);
-  const lastDay = new Date(year, monthNum, 0, 23, 59, 59);
+  const pad = (n) => String(n).padStart(2, "0");
+  const firstDayStr = `${year}-${pad(monthNum)}-01`;
+  const lastDayDate = new Date(year, monthNum, 0);
+  const lastDayStr = `${year}-${pad(monthNum)}-${pad(lastDayDate.getDate())}`;
 
-  const client = await clientPromise;
-  const db = client.db();
-  const records = await db
-    .collection("attendance")
-    .find({
-      userId,
-      date: { $gte: firstDay, $lte: lastDay },
-    })
-    .sort({ date: 1 })
-    .toArray();
+  const firestoreDb = getFirestore();
+  const snapshot = await firestoreDb
+    .collection("attendance_records")
+    .where("userId", "==", userId)
+    .get();
 
-  const attendance = records.map((r) => ({
-    date: new Date(r.date).toISOString().split("T")[0],
-    status: r.status,
-    subject: r.subject || "",
-    markedAt: r.markedAt ? new Date(r.markedAt).toISOString() : null,
-    _id: r._id.toString(),
-  }));
+  const attendance = [];
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    const dateStr = data.date;
+    if (dateStr >= firstDayStr && dateStr <= lastDayStr) {
+      attendance.push({
+        date: dateStr,
+        status: data.status || "present",
+        subject: data.subject || "",
+        markedAt: data.timestamp ? data.timestamp.toDate().toISOString() : null,
+        _id: doc.id,
+      });
+    }
+  });
+
+  // Sort by date ascending to match the original API contract
+  attendance.sort((a, b) => a.date.localeCompare(b.date));
 
   return success({ attendance });
 });

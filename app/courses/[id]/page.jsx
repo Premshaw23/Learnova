@@ -12,6 +12,7 @@ import {
   PlayCircle
 } from "lucide-react";
 import ShareButton from "@/components/ui/ShareButton";
+import ReadingTimeBadge from "@/components/ui/ReadingTimeBadge";
 import toast from "react-hot-toast";
 import MarkdownRenderer from "@/components/ui/MarkdownRenderer";
 
@@ -100,6 +101,11 @@ export default function CourseDetailPage() {
               <Clock className="w-3.5 h-3.5 text-zinc-500" />
               {course.duration}
             </span>
+            <span className="text-zinc-500">•</span>
+            <ReadingTimeBadge 
+              text={course.description} 
+              className="text-xs bg-zinc-900 border border-zinc-800/80 px-3 py-1 rounded-full text-zinc-400 hover:text-zinc-200 transition-all duration-200"
+            />
           </div>
 
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-50 via-zinc-100 to-zinc-400 mb-6 leading-tight">
