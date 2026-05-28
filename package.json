@@ -18,12 +18,13 @@
     "build": "next build",
     "start": "next start",
     "test": "jest",
-    "postinstall": "patch-package"
+    "postinstall": "node -e \"const fs=require('fs');const hasPatches=fs.existsSync('patches')&&fs.readdirSync('patches').some((f)=>f.endsWith('.patch'));if(hasPatches){require('child_process').execSync('npx patch-package',{stdio:'inherit'});}else{console.log('Skipping patch-package: no .patch files found.');}\""
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.6",
     "@emailjs/browser": "^4.4.1",
     "@eslint/eslintrc": "^3.3.5",
+    "@firebase/firestore": "^4.14.1",
     "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-slot": "^1.2.3",
@@ -47,6 +48,7 @@
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.542.0",
     "mongodb": "^6.19.0",
+    "motion-dom": "^12.40.0",
     "next": "^15.5.18",
     "next-themes": "^0.4.6",
     "nextjs-toploader": "^3.9.17",

@@ -1,84 +1,94 @@
-import withPWAInit from "@ducanh2912/next-pwa";
+let withPWA = (config) => config;
 
-const withPWA = withPWAInit({
-  dest: "public",
-  customWorkerDir: "worker",
-  fallbacks: {
-    document: "/~offline",
-    image: "/offline.html",
-  },
-  disable: process.env.NODE_ENV === "development",
-  register: true,
-  skipWaiting: true,
-  reloadOnOnline: true,
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
-  workboxOptions: {
-    disableDevLogs: true,
-    runtimeCaching: [
-      // API routes - NetworkOnly (must be first for priority)
-      {
-        urlPattern: /\/api\/.*/i,
-        handler: "NetworkOnly",
+if (process.env.NODE_ENV !== "development") {
+  try {
+    const { default: withPWAInit } = await import("@ducanh2912/next-pwa");
+
+    withPWA = withPWAInit({
+      dest: "public",
+      customWorkerDir: "worker",
+      fallbacks: {
+        document: "/~offline",
+        image: "/offline.html",
       },
-      // General pages - NetworkFirst with offline fallback
-      {
-        urlPattern: /^https?:\/\/.*$/,
-        handler: "NetworkFirst",
-        options: {
-          cacheName: "pages",
-          plugins: [
-            {
-              handlerDidError: async () => {
-                return caches.match("/offline.html", { ignoreSearch: true });
-              },
+      disable: process.env.NODE_ENV === "development",
+      register: true,
+      skipWaiting: true,
+      reloadOnOnline: true,
+      cacheOnFrontEndNav: true,
+      aggressiveFrontEndNavCaching: true,
+      workboxOptions: {
+        disableDevLogs: true,
+        runtimeCaching: [
+          // API routes - NetworkOnly (must be first for priority)
+          {
+            urlPattern: /\/api\/.*/i,
+            handler: "NetworkOnly",
+          },
+          // General pages - NetworkFirst with offline fallback
+          {
+            urlPattern: /^https?:\/\/.*$/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "pages",
+              plugins: [
+                {
+                  handlerDidError: async () => {
+                    return caches.match("/offline.html", { ignoreSearch: true });
+                  },
+                },
+              ],
             },
-          ],
-        },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts",
+              expiration: { maxEntries: 4, maxAgeSeconds: 31536000 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/lh3\.googleusercontent\.com\/.*/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "google-images",
+              expiration: { maxEntries: 50, maxAgeSeconds: 2592000 },
+            },
+          },
+          {
+            urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "static-image-assets",
+              expiration: { maxEntries: 64, maxAgeSeconds: 86400 },
+            },
+          },
+          {
+            urlPattern: /\.(?:js)$/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "static-js-assets",
+              expiration: { maxEntries: 32, maxAgeSeconds: 86400 },
+            },
+          },
+          {
+            urlPattern: /\.(?:css|less)$/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "static-style-assets",
+              expiration: { maxEntries: 32, maxAgeSeconds: 86400 },
+            },
+          },
+        ],
       },
-      {
-        urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
-        handler: "CacheFirst",
-        options: {
-          cacheName: "google-fonts",
-          expiration: { maxEntries: 4, maxAgeSeconds: 31536000 },
-        },
-      },
-      {
-        urlPattern: /^https:\/\/lh3\.googleusercontent\.com\/.*/i,
-        handler: "StaleWhileRevalidate",
-        options: {
-          cacheName: "google-images",
-          expiration: { maxEntries: 50, maxAgeSeconds: 2592000 },
-        },
-      },
-      {
-        urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
-        handler: "StaleWhileRevalidate",
-        options: {
-          cacheName: "static-image-assets",
-          expiration: { maxEntries: 64, maxAgeSeconds: 86400 },
-        },
-      },
-      {
-        urlPattern: /\.(?:js)$/i,
-        handler: "StaleWhileRevalidate",
-        options: {
-          cacheName: "static-js-assets",
-          expiration: { maxEntries: 32, maxAgeSeconds: 86400 },
-        },
-      },
-      {
-        urlPattern: /\.(?:css|less)$/i,
-        handler: "StaleWhileRevalidate",
-        options: {
-          cacheName: "static-style-assets",
-          expiration: { maxEntries: 32, maxAgeSeconds: 86400 },
-        },
-      },
-    ],
-  },
-});
+    });
+  } catch (error) {
+    console.warn(
+      "[next.config] @ducanh2912/next-pwa is not installed; continuing without PWA integration.",
+    );
+  }
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -114,4 +124,4 @@ const nextConfig = {
   },
 };
 
-export default process.env.NODE_ENV === "development" ? nextConfig : withPWA(nextConfig);
+export default withPWA(nextConfig);
