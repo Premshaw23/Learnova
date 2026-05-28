@@ -31,7 +31,6 @@ export const POST = withErrorHandler(async (request) => {
   const sanitizedMessage = sanitizeMessage(trimmedMessage);
 
   try {
-    console.log(`[nova-ai] Making request to Groq API: ${GROQ_API_URL}`);
     const content = await callGroq(sanitizedMessage);
     return jsonSuccess({ message: content });
   } catch (error) {

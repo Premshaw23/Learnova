@@ -1,37 +1,25 @@
 "use client";
-import { useTheme } from "next-themes";
-import { translations } from "@/constants/translations";
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState } from "react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
-import { motion, useMotionValue, useTransform, animate, useInView } from "framer-motion";
-import SplitText from "@/components/ui-block/SplitText";
-import DarkVeil from "@/components/ui-block/DarkVeil";
 import CommentSection from "@/components/CommentSection";
-import HomeSkeleton from "@/components/ui/HomeSkeleton";
-
-
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Target,
-  Heart,
-  Lightbulb,
-  User,
-  Building2,
+  TrendingUp,
+  Award,
+  Zap,
+  ShieldCheck,
   GraduationCap,
   Sparkles,
   ArrowRight,
   BookOpen,
   Users,
   ChevronDown,
-  HelpCircle
+  HelpCircle,
+  Calendar,
+  UserCheck,
+  BarChart3,
 } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
 
 // --- Mock Data & Constants ---
 const STATS_ITEMS = [
@@ -40,21 +28,27 @@ const STATS_ITEMS = [
     number: 99.8,
     suffix: "%",
     label: "Attendance Tracking Accuracy",
-    href: "/metrics/attendance"
+    href: "/metrics/attendance",
+    icon: ShieldCheck,
+    iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
   },
   {
     id: "ring-2",
     number: 45,
     suffix: "%",
     label: "Admin Workload Reduction",
-    href: "/metrics/efficiency"
+    href: "/metrics/efficiency",
+    icon: Zap,
+    iconColor: "text-purple-400 bg-purple-500/10 border-purple-500/20"
   },
   {
     id: "ring-1",
     number: 25,
     suffix: "K+",
     label: "Active Daily Campus Users",
-    href: null
+    href: null,
+    icon: Users,
+    iconColor: "text-blue-400 bg-blue-500/10 border-blue-500/20"
   }
 ];
 
@@ -195,148 +189,6 @@ function AnimatedCounter({ to, suffix }) {
   );
 }
 
-export default function AboutPage() {
-  const { theme } = useTheme();
-  const [language, setLanguage] = useState("en");
-  const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  
-  useEffect(() => setMounted(true), []);
-  
-  // Simulate initial page load
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
-  const isDark = mounted ? theme === "dark" : true;
-  const [scrollY, setScrollY] = useState(0);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  
-  // Track active infographic orbital index layer
-  const [hoveredRing, setHoveredRing] = useState(null);
-
-  const handleMouseMove = useCallback((e) => {
-    setMousePosition({ x: e.clientX, y: e.clientY });
-  }, []);
-
-  const handleScroll = useCallback(() => {
-    setScrollY(window.scrollY);
-  }, []);
-
-  const handleAnimationComplete = useCallback(() => {}, []);
-
-  useEffect(() => {
-    let scrollTimeout;
-    let mouseTimeout;
-
-    const throttledScroll = () => {
-      if (!scrollTimeout) {
-        scrollTimeout = setTimeout(() => {
-          handleScroll();
-          scrollTimeout = null;
-        }, 16);
-      }
-    };
-
-    const throttledMouseMove = (e) => {
-      if (!mouseTimeout) {
-        mouseTimeout = setTimeout(() => {
-          handleMouseMove(e);
-          mouseTimeout = null;
-        }, 32);
-      }
-    ]);
-    setNewComment("");
-  };
-
-  return (
-    <div className="w-full bg-white dark:bg-zinc-900/50 rounded-2xl border border-gray-200/60 dark:border-white/5 p-6 md:p-8 backdrop-blur-md">
-      <div className="flex items-center gap-3 mb-6">
-        <MessageSquare className="w-6 h-6 text-purple-500" />
-        <h3 className="text-xl font-bold text-black dark:text-white">Campus Notice Board & Logs</h3>
-      </div>
-
-      <form onSubmit={handleSubmit} className="mb-8">
-        <textarea
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Log administrative feedback or department updates..."
-          rows={3}
-          className="w-full p-4 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-black/30 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all text-black dark:text-white resize-none"
-        />
-        <div className="mt-3 flex justify-end">
-          <button type="submit" className="px-5 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors">
-            Post Entry
-          </button>
-        </div>
-      </div>
-
-      <div className="min-h-screen relative z-50">
-        <Navbar />
-
-        {loading ? (
-          <HomeSkeleton />
-        ) : (
-          <>
-        {/* Hero Section */}
-        <section
-          id="hero"
-          className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
-        >
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)`,
-              backgroundSize: "50px 50px",
-              ...gridTransform,
-            }}
-          />
-
-          <div className="max-w-4xl mx-auto text-center relative">
-            <SectionBadge icon={Sparkles} text={translations[language].welcome} />
-
-            <div className="flex flex-wrap justify-center items-center mb-8 text-center gap-x-6 gap-y-4">
-              <SplitText
-                text="Transforming"
-                className="text-4xl sm:text-5xl md:text-7xl font-bold text-black dark:text-white text-balance"
-                delay={0.05}
-                duration={0.8}
-                ease="power3.out"
-                splitType="chars"
-                from={{ opacity: 0, y: 100, rotateX: -90 }}
-                to={{ opacity: 1, y: 0, rotateX: 0 }}
-                threshold={0.1}
-                rootMargin="-100px"
-                textAlign="center"
-                onLetterAnimationComplete={handleAnimationComplete}
-              />
-              <SplitText
-                text="Education"
-                className="text-4xl sm:text-5xl md:text-7xl font-bold bg-gradient-to-r from-accent via-purple-400 to-pink-400 bg-clip-text text-transparent text-balance"
-                delay={0.05}
-                duration={0.8}
-                ease="power3.out"
-                splitType="chars"
-                from={{ opacity: 0, y: 100, rotateX: -90 }}
-                to={{ opacity: 1, y: 0, rotateX: 0 }}
-                threshold={0.1}
-                rootMargin="-100px"
-                textAlign="center"
-                onLetterAnimationComplete={handleAnimationComplete}
-              />
-            </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-300 mt-2 leading-relaxed">{c.body}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // --- Main Page Component ---
 export default function Page() {
   const [hoveredRing, setHoveredRing] = useState(null);
@@ -432,6 +284,7 @@ export default function Page() {
                 <div className="flex-1 w-full space-y-4">
                   {STATS_ITEMS.map((stat, idx) => {
                     const isSelected = hoveredRing === idx;
+                    const IconComponent = stat.icon;
                     return (
                       <div
                         key={stat.id}
@@ -439,10 +292,41 @@ export default function Page() {
                         onMouseLeave={() => setHoveredRing(null)}
                         className={`group block p-4 rounded-2xl border transition-all duration-500 cursor-pointer
                           ${isSelected 
-                            ? "bg-purple-50/60 dark:bg-purple-900/10 border-purple-500/40 translate-x-2 shadow-sm" 
-                            : "bg-white/50 dark:bg-black/20 border-gray-100 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10"
+                            ? "bg-purple-950/20 border-purple-500/40 translate-x-2 shadow-lg shadow-purple-500/5" 
+                            : "bg-white/[0.02] dark:bg-black/20 border-white/5 hover:border-white/10 hover:bg-white/[0.04]"
                           }`}
-                      />
+                      >
+                        {stat.href ? (
+                          <Link href={stat.href} className="focus:outline-none flex items-center gap-4">
+                            <div className={`p-2.5 rounded-xl border ${stat.iconColor} transition-transform duration-300 group-hover:scale-105`}>
+                              <IconComponent className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-2xl font-black text-white transition-colors duration-300 group-hover:text-purple-400">
+                                <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                              </div>
+                              <p className="text-xs font-semibold text-gray-300 mt-0.5 flex items-center gap-1 group-hover:text-white transition-colors">
+                                {stat.label}
+                                <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-purple-400" />
+                              </p>
+                            </div>
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-4">
+                            <div className={`p-2.5 rounded-xl border ${stat.iconColor} transition-transform duration-300 group-hover:scale-105`}>
+                              <IconComponent className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-2xl font-black text-white">
+                                <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                              </div>
+                              <p className="text-xs font-semibold text-gray-300 mt-0.5">
+                                {stat.label}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -601,8 +485,6 @@ export default function Page() {
             <CommentSection />
           </Reveal>
         </section>
-        </>
-      )}
       </div>
     </>
   );

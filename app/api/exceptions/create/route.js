@@ -1,13 +1,7 @@
 import { connectDb } from "@/lib/mongodb";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { jsonError, jsonSuccess } from "@/lib/api-response";
-import xss from "xss";
-
-const sanitize = (text) => (typeof text === "string" ? xss(text).trim() : "");
 import { requireStudent } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
-import { NextResponse } from "next/server";
 import { ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
@@ -46,33 +40,6 @@ const exceptionCreateSchema = z.object({
     .min(1, "Date is required"),
 });
 
-    if (!authResult.valid) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          reason: authResult.reason,
-        },
-        { status: 401 }
-      );
-    }
-
-    const decodedToken = authResult.decodedToken;
-
-
-    const body = await request.json();
-    const reason = sanitize(body.reason);
-    const details = sanitize(body.details);
-    const date = sanitize(body.date);
-
-    if (!reason) {
-      return jsonError("Reason is required and must be a string", 400);
-    }
-    if (!details) {
-      return jsonError("Details are required and must be a string", 400);
-    }
-    if (!date) {
-      return jsonError("Date is required and must be a string", 400);
-    }
 export const POST = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireStudent(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";

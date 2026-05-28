@@ -14,6 +14,12 @@ describe('MongoDB Safety Utilities - ReDoS & Injection Prevention', () => {
       expect(escapeRegex(maliciousInput)).toBe(expected);
     });
 
+    test('escapes additional special characters like dash, slash, hash, space and comma', () => {
+      const input = '- / # , ';
+      const expected = '\\-\\ \\/\\ \\#\\ \\,\\ ';
+      expect(escapeRegex(input)).toBe(expected);
+    });
+
     test('truncates strings exceeding the default max length (100)', () => {
       const longInput = 'a'.repeat(150);
       const output = escapeRegex(longInput);
