@@ -275,7 +275,7 @@ export default function UniversalProfile() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files?.[0];
 
     if (!file) return;
@@ -296,29 +296,6 @@ export default function UniversalProfile() {
     e.target.value = "";
     return;
   }
-
-  const loadingToast = toast.loading("Uploading profile picture...");
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-      const res = await fetch("/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error("Upload failed");
-      }
-
-      toast.success("Uploaded!");
-      e.target.value = ""; 
-    } catch (error) {
-      toast.error("Upload failed!");
-    } finally {
-      toast.dismiss(loadingToast);
-    }
-   
 
     // Show preview before uploading
     const objectUrl = URL.createObjectURL(file);
@@ -1006,4 +983,4 @@ export default function UniversalProfile() {
       </div>
     </div>
   );
-};
+}
