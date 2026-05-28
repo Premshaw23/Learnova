@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
-import ProfilePage from "@/components/profile";
+import ProfilePage from "@/components/Profile";
 
 const Profile = () => {
   const { user, loading: authLoading } = useAuthContext();

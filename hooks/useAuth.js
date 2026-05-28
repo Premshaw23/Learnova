@@ -50,17 +50,35 @@ export const useAuth = () => {
     }
 
     let unsubscribeSnapshot = null;
+    let tokenRefreshInterval = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Clean up previous snapshot listener if active
+      // Clean up previous snapshot listener and token refresh interval if active
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
         unsubscribeSnapshot = null;
+      }
+      if (tokenRefreshInterval) {
+        clearInterval(tokenRefreshInterval);
+        tokenRefreshInterval = null;
       }
 
       try {
         if (firebaseUser) {
           setUser(firebaseUser);
+
+          // Proactively refresh the Firebase ID token every 55 minutes so the
+          // authToken cookie never goes stale before the middleware rejects it.
+          // Firebase tokens expire after 60 minutes; 55-minute interval gives a
+          // 5-minute buffer for network latency and clock drift.
+          tokenRefreshInterval = setInterval(async () => {
+            try {
+              const freshToken = await firebaseUser.getIdToken(true);
+              setCookie("authToken", freshToken, 7);
+            } catch {
+              // Network error during background refresh; the next interval will retry.
+            }
+          }, 55 * 60 * 1000);
 
           // Listen to the user profile document in real-time
           const userDocRef = doc(db, "users", firebaseUser.uid);
@@ -128,6 +146,9 @@ export const useAuth = () => {
       unsubscribeAuth();
       if (unsubscribeSnapshot) {
         unsubscribeSnapshot();
+      }
+      if (tokenRefreshInterval) {
+        clearInterval(tokenRefreshInterval);
       }
     };
   }, []);

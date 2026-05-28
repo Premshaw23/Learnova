@@ -1,23 +1,25 @@
 "use client";
-
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { 
-  TrendingUp, 
-  ArrowRight, 
-  Award, 
-  MessageSquare, 
-  ShieldCheck, 
-  Zap, 
-  Calendar, 
-  UserCheck, 
-  BarChart3, 
-  GraduationCap, 
-  BookOpen, 
-  Users 
-} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
+import CommentSection from "@/components/CommentSection";
+import {
+  TrendingUp,
+  Award,
+  Zap,
+  ShieldCheck,
+  GraduationCap,
+  Sparkles,
+  ArrowRight,
+  BookOpen,
+  Users,
+  ChevronDown,
+  HelpCircle,
+  Calendar,
+  UserCheck,
+  BarChart3,
+} from "lucide-react";
 
 // --- Mock Data & Constants ---
 const STATS_ITEMS = [
@@ -26,21 +28,27 @@ const STATS_ITEMS = [
     number: 99.8,
     suffix: "%",
     label: "Attendance Tracking Accuracy",
-    href: "/metrics/attendance"
+    href: "/metrics/attendance",
+    icon: ShieldCheck,
+    iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
   },
   {
     id: "ring-2",
     number: 45,
     suffix: "%",
     label: "Admin Workload Reduction",
-    href: "/metrics/efficiency"
+    href: "/metrics/efficiency",
+    icon: Zap,
+    iconColor: "text-purple-400 bg-purple-500/10 border-purple-500/20"
   },
   {
     id: "ring-1",
     number: 25,
     suffix: "K+",
     label: "Active Daily Campus Users",
-    href: null
+    href: null,
+    icon: Users,
+    iconColor: "text-blue-400 bg-blue-500/10 border-blue-500/20"
   }
 ];
 
@@ -86,6 +94,25 @@ const ROLE_DATA = {
   }
 };
 
+const FAQ_ITEMS = [
+  {
+    question: "How does the AI Attendance Engine prevent proxy attendance?",
+    answer: "Our AI Attendance Engine integrates intelligent multi-layered verification—including automated anomaly detection and real-time streak monitoring—to validate records effortlessly without manual intervention."
+  },
+  {
+    question: "Can the Smart Curriculum Planner adjust to sudden calendar shifts?",
+    answer: "Absolutely. The intuitive drag-and-drop timeline updates dependent curriculum milestones globally, instantly broadcasting the adjusted velocity across your specific department layout."
+  },
+  {
+    question: "Is data synchronized in real-time across multiple branches?",
+    answer: "Yes. Learnova features built-in multi-branch syncing. Any institutional directive, audit report update, or compliance adjustment updates across all connected campuses immediately."
+  },
+  {
+    question: "What platform analytics are visible to students?",
+    answer: "Students receive dedicated dashboards highlighting active attendance thresholds to bypass credit penalties, upcoming assignment deadlines, and aligned syllabus timelines."
+  }
+];
+
 // --- High-Fidelity Child Components ---
 
 function Reveal({ children, className = "", delay = 0 }) {
@@ -122,6 +149,37 @@ function ActionButton({ children, href }) {
   );
 }
 
+// Custom Accordion Item for the FAQ Section
+function FAQAccordionItem({ question, answer, isOpen, onToggle }) {
+  return (
+    <div className="border border-gray-200/60 dark:border-white/5 bg-white dark:bg-zinc-900/20 backdrop-blur-md rounded-2xl overflow-hidden transition-all duration-300">
+      <button
+        onClick={onToggle}
+        className="w-full flex justify-between items-center p-5 md:p-6 text-left font-semibold text-black dark:text-zinc-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none"
+      >
+        <span className="text-sm md:text-base leading-relaxed">{question}</span>
+        <ChevronDown 
+          className={`w-5 h-5 text-purple-500 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} 
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            <div className="px-5 pb-5 md:px-6 md:pb-6 text-xs md:text-sm text-muted-foreground leading-relaxed border-t border-gray-100 dark:border-white/[0.02] pt-4">
+              {answer}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function AnimatedCounter({ to, suffix }) {
   return (
     <span>
@@ -131,72 +189,11 @@ function AnimatedCounter({ to, suffix }) {
   );
 }
 
-function CommentSection() {
-  const [comments, setComments] = useState([
-    { id: 1, user: "Dr. Evelyn Vance", role: "Dean of Academics", body: "The recent curriculum planning updates allowed our computer science department to map compliance standards in half the time.", time: "2 hours ago" }
-  ]);
-  const [newComment, setNewComment] = useState("");
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    setComments([
-      ...comments,
-      {
-        id: Date.now(),
-        user: "Faculty Coordinator",
-        role: "Department Head",
-        body: newComment,
-        time: "Just now"
-      }
-    ]);
-    setNewComment("");
-  };
-
-  return (
-    <div className="w-full bg-white dark:bg-zinc-900/50 rounded-2xl border border-gray-200/60 dark:border-white/5 p-6 md:p-8 backdrop-blur-md">
-      <div className="flex items-center gap-3 mb-6">
-        <MessageSquare className="w-6 h-6 text-purple-500" />
-        <h3 className="text-xl font-bold text-black dark:text-white">Campus Notice Board & Logs</h3>
-      </div>
-
-      <form onSubmit={handleSubmit} className="mb-8">
-        <textarea
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Log administrative feedback or department updates..."
-          rows={3}
-          className="w-full p-4 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-black/30 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all text-black dark:text-white resize-none"
-        />
-        <div className="mt-3 flex justify-end">
-          <button type="submit" className="px-5 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors">
-            Post Entry
-          </button>
-        </div>
-      </form>
-
-      <div className="space-y-4">
-        {comments.map((c) => (
-          <div key={c.id} className="p-4 rounded-xl bg-gray-50/50 dark:bg-white/[0.01] border border-gray-100 dark:border-white/[0.02]">
-            <div className="flex justify-between items-start gap-4">
-              <div>
-                <span className="text-sm font-semibold text-black dark:text-white">{c.user}</span>
-                <span className="text-xs text-muted-foreground ml-2">({c.role})</span>
-              </div>
-              <span className="text-[11px] text-zinc-400">{c.time}</span>
-            </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-300 mt-2 leading-relaxed">{c.body}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // --- Main Page Component ---
 export default function Page() {
   const [hoveredRing, setHoveredRing] = useState(null);
   const [activeRole, setActiveRole] = useState("admins");
+  const [openFaqIdx, setOpenFaqIdx] = useState(null);
 
   return (
     <>
@@ -287,6 +284,7 @@ export default function Page() {
                 <div className="flex-1 w-full space-y-4">
                   {STATS_ITEMS.map((stat, idx) => {
                     const isSelected = hoveredRing === idx;
+                    const IconComponent = stat.icon;
                     return (
                       <div
                         key={stat.id}
@@ -294,28 +292,38 @@ export default function Page() {
                         onMouseLeave={() => setHoveredRing(null)}
                         className={`group block p-4 rounded-2xl border transition-all duration-500 cursor-pointer
                           ${isSelected 
-                            ? "bg-purple-50/60 dark:bg-purple-900/10 border-purple-500/40 translate-x-2 shadow-sm" 
-                            : "bg-white/50 dark:bg-black/20 border-gray-100 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10"
+                            ? "bg-purple-950/20 border-purple-500/40 translate-x-2 shadow-lg shadow-purple-500/5" 
+                            : "bg-white/[0.02] dark:bg-black/20 border-white/5 hover:border-white/10 hover:bg-white/[0.04]"
                           }`}
                       >
                         {stat.href ? (
-                          <Link href={stat.href} className="focus:outline-none">
-                            <div className="text-2xl font-black text-black dark:text-white transition-colors duration-300 group-hover:text-purple-500 dark:group-hover:text-purple-400">
-                              <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                          <Link href={stat.href} className="focus:outline-none flex items-center gap-4">
+                            <div className={`p-2.5 rounded-xl border ${stat.iconColor} transition-transform duration-300 group-hover:scale-105`}>
+                              <IconComponent className="w-5 h-5" />
                             </div>
-                            <p className="text-sm font-medium text-muted-foreground mt-1 flex items-center gap-1">
-                              {stat.label}
-                              <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-purple-500 dark:text-purple-400" />
-                            </p>
+                            <div className="flex-1">
+                              <div className="text-2xl font-black text-white transition-colors duration-300 group-hover:text-purple-400">
+                                <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                              </div>
+                              <p className="text-xs font-semibold text-gray-300 mt-0.5 flex items-center gap-1 group-hover:text-white transition-colors">
+                                {stat.label}
+                                <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-purple-400" />
+                              </p>
+                            </div>
                           </Link>
                         ) : (
-                          <div>
-                            <div className="text-2xl font-black text-black dark:text-white transition-colors duration-300 group-hover:text-purple-500 dark:group-hover:text-purple-400">
-                              <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                          <div className="flex items-center gap-4">
+                            <div className={`p-2.5 rounded-xl border ${stat.iconColor} transition-transform duration-300 group-hover:scale-105`}>
+                              <IconComponent className="w-5 h-5" />
                             </div>
-                            <p className="text-sm font-medium text-muted-foreground mt-1">
-                              {stat.label}
-                            </p>
+                            <div className="flex-1">
+                              <div className="text-2xl font-black text-white">
+                                <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                              </div>
+                              <p className="text-xs font-semibold text-gray-300 mt-0.5">
+                                {stat.label}
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -328,7 +336,7 @@ export default function Page() {
           </div>
         </section>
 
-        {/* --- NEW SECTION: FEATURE GRID --- */}
+        {/* --- FEATURE GRID --- */}
         <section id="features" className="py-20 bg-gray-50/40 dark:bg-zinc-950/40 border-y border-gray-100 dark:border-white/[0.02]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <Reveal className="text-center max-w-3xl mx-auto mb-16 space-y-4">
@@ -369,7 +377,7 @@ export default function Page() {
           </div>
         </section>
 
-        {/* --- NEW SECTION: ROLE-BASED TAILORED WORKFLOWS --- */}
+        {/* --- ROLE-BASED TAILORED WORKFLOWS --- */}
         <section id="roles" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-12 gap-12 items-center">
             
@@ -434,6 +442,40 @@ export default function Page() {
                 </ul>
               </motion.div>
             </div>
+          </div>
+        </section>
+
+        {/* --- NEW SECTION: FAQ ACCORDION --- */}
+        <section id="faqs" className="py-20 bg-gray-50/40 dark:bg-zinc-950/40 border-y border-gray-100 dark:border-white/[0.02]">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <Reveal className="text-center max-w-2xl mx-auto mb-16 space-y-4">
+              <SectionBadge
+                icon={HelpCircle}
+                text="Common Queries"
+                gradient="from-purple-500/10 to-indigo-500/10 dark:from-purple-500/20 dark:to-indigo-500/20"
+                borderClass="border-purple-200/50 dark:border-purple-500/30"
+                iconClass="text-purple-500"
+                textClass="text-purple-700 dark:text-indigo-300"
+              />
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black dark:text-white">
+                Frequently Asked Questions
+              </h2>
+              <p className="text-muted-foreground text-sm md:text-base">
+                Got structural questions about platform functionalities? Look through our documented answers below.
+              </p>
+            </Reveal>
+
+            <Reveal className="space-y-4" delay={0.1}>
+              {FAQ_ITEMS.map((faq, index) => (
+                <FAQAccordionItem
+                  key={index}
+                  question={faq.question}
+                  answer={faq.answer}
+                  isOpen={openFaqIdx === index}
+                  onToggle={() => setOpenFaqIdx(openFaqIdx === index ? null : index)}
+                />
+              ))}
+            </Reveal>
           </div>
         </section>
 

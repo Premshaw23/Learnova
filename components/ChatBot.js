@@ -534,7 +534,7 @@ export default function LearnovaChatbot() {
   };
 
   // ---------------------------------------------------------------------------
-  // Theme tokens - Enhanced for rich glassmorphism & premium UI spacing
+  // Theme tokens
   // ---------------------------------------------------------------------------
   const themeTokens = {
     bg: isDarkMode
@@ -568,9 +568,6 @@ export default function LearnovaChatbot() {
     dot: isDarkMode ? "text-gray-400" : "text-gray-500",
   };
 
-  // ---------------------------------------------------------------------------
-  // Closed state — floating button
-  // ---------------------------------------------------------------------------
   if (!isOpen) {
     return (
       <div className={`fixed z-50 transition-all duration-300 right-4 md:right-6 ${isScrolling ? 'bottom-16 opacity-40 scale-90 md:bottom-6 md:opacity-100 md:scale-100' : 'bottom-24 md:bottom-6 opacity-100 scale-100'}`}>
@@ -591,16 +588,13 @@ export default function LearnovaChatbot() {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Open state — chat window
-  // ---------------------------------------------------------------------------
   return (
     <div
-      className={`fixed z-50 flex flex-col ${t.bg} shadow-2xl transition-all duration-300 border ${t.border} ${
+      className={`fixed z-50 flex flex-col ${themeTokens.bg} shadow-2xl transition-all duration-300 border ${themeTokens.border} ${
         isMinimized ? "bottom-24 md:bottom-6 right-4 md:right-6 w-72 h-16 overflow-hidden rounded-xl" : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
       }`}
     >
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className={`${themeTokens.header} text-white p-4 rounded-t-xl flex items-center justify-between shrink-0`}>
         <div className="flex items-center space-x-3">
           <div className="relative">
@@ -631,10 +625,9 @@ export default function LearnovaChatbot() {
         </div>
       </div>
 
-      {/* Everything below is hidden when minimized */}
       {!isMinimized && (
         <>
-          {/* ── Category Tabs ────────────────────────────────────────────── */}
+          {/* Category Tabs */}
           <div className={`p-2 border-b ${themeTokens.border} shrink-0`}>
             <div className="flex space-x-1 overflow-x-auto scrollbar-none">
               {categories.map((cat) => {
@@ -655,7 +648,7 @@ export default function LearnovaChatbot() {
             </div>
           </div>
 
-          {/* ── Messages Stream Container ─────────────────────────────────── */}
+          {/* Messages Stream Container */}
           <div
             ref={messagesContainerRef}
             onScroll={handleScroll}
@@ -676,57 +669,59 @@ export default function LearnovaChatbot() {
               </div>
             ))}
 
-            {/* Loading / Typing Animation Indicator */}
             {isLoading && (
               <div className="flex items-start space-x-2.5">
                 <div className={`p-2 rounded-xl shrink-0 ${themeTokens.botAvatar}`}>
                   <Bot size={16} />
                 </div>
-                <div className={`rounded-2xl px-4 py-3 shadow-sm ${themeTokens.loading}`}>
-                  <div className="flex space-x-1.5 items-center h-4">
-                     <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                     <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                <div className={`rounded-2xl px-4 py-2.5 text-sm shadow-sm ${themeTokens.loading}`}>
+                  <div className="flex space-x-1 items-center h-4 select-none">
+                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce delay-100 ${themeTokens.dot}`} style={{ backgroundColor: 'currentColor' }} />
+                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce delay-200 ${themeTokens.dot}`} style={{ backgroundColor: 'currentColor' }} />
+                    <div className={`w-1.5 h-1.5 rounded-full animate-bounce delay-300 ${themeTokens.dot}`} style={{ backgroundColor: 'currentColor' }} />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Suggested Questions Pillar Context Chips */}
+            {suggestedQuestions[currentCategory] && messages.length <= 1 && (
+              <div className="pt-2 space-y-2">
+                <p className="text-[11px] font-semibold tracking-wider uppercase opacity-60 px-1">Suggested Questions</p>
+                <div className="flex flex-col gap-2">
+                  {suggestedQuestions[currentCategory].map((q, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSendMessage(q)}
+                      className={`text-left px-3 py-2 rounded-xl text-xs transition-all duration-200 cursor-pointer ${themeTokens.suggestion}`}
+                    >
+                      {q}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
           </div>
 
-          {/* ── Context Suggestions Layer ─────────────────────────────────── */}
-          <div className={`px-4 py-2 bg-transparent overflow-x-auto whitespace-nowrap scrollbar-none flex gap-2 border-t ${themeTokens.border} shrink-0`}>
-            {suggestedQuestions[currentCategory]?.map((q, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSendMessage(q)}
-                className={`text-xs px-3 py-1.5 rounded-full transition-all duration-150 border active:scale-95 text-left truncate max-w-xs cursor-pointer ${themeTokens.suggestion}`}
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Input Interaction Area ───────────────────────────────────── */}
-          <div className={`p-3 border-t ${themeTokens.border} shrink-0`}>
-            <div className="flex items-end space-x-2">
-              <div className="relative flex-1">
-                <textarea
-                  ref={textareaRef}
-                  value={inputMessage}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder={`Ask Nova about ${currentCategory}...`}
-                  rows={1}
-                  className={`w-full max-h-32 pr-10 pl-3 py-2.5 rounded-xl text-sm font-normal resize-none overflow-y-auto border outline-none transition-all duration-200 focus:outline-none ${themeTokens.input}`}
-                  style={{ minHeight: "40px" }}
-                />
-              </div>
+          {/* Form Input Submission Layout Control */}
+          <div className={`p-3 border-t ${themeTokens.border} shrink-0 bg-transparent`}>
+            <div className="flex items-end space-x-2 relative">
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                value={inputMessage}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask Nova a question..."
+                className={`flex-1 resize-none overflow-y-auto py-2.5 pl-4 pr-10 rounded-xl text-sm focus:outline-none transition-all duration-150 border max-h-32 ${themeTokens.input}`}
+              />
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputMessage.trim() || isLoading}
-                className="bg-purple-600 hover:bg-purple-500 text-white p-2.5 rounded-xl transition-all duration-150 disabled:opacity-40 disabled:hover:bg-purple-600 disabled:scale-100 active:scale-95 shrink-0 flex items-center justify-center cursor-pointer shadow-md shadow-purple-900/10"
+                className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 disabled:hover:bg-purple-600 transition-colors cursor-pointer"
+                aria-label="Send message"
               >
-                <Send size={16} />
+                <Send size={14} />
               </button>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { connectDb } from "@/lib/mongodb";
 import { parseJSON, authenticateRequest, withErrorHandler } from "@/lib/error-handler";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,12 @@ export const POST = withErrorHandler(async (request) => {
 
   if (decodedToken.uid !== userId) {
     throw new AppError("Forbidden: You can only seed notifications for your own account", 403);
+  }
+
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`notifications_seed_${ip}_${userId}`);
+  if (!rateLimitResult.allowed) {
+    return Response.json({ error: "Too many requests. Please slow down." }, { status: 429 });
   }
 
   const db = await connectDb();

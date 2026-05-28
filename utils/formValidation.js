@@ -88,7 +88,7 @@ export const validateName = (value, fieldName = "Name") => {
 
   const nameRegex = /^[\p{L}\s\-']+$/u;
   if (!nameRegex.test(trimmed)) {
-    return `${fieldName} must only contain letters and spaces`;
+    return `${fieldName} must only contain letters, spaces, hyphens, and apostrophes`;
   }
 
   return true;

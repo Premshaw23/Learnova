@@ -4,6 +4,7 @@ import DarkVeil from "@/components/ui-block/DarkVeil";
 import React, { useState, useRef, useEffect } from "react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import FormSkeleton from "@/components/ui/FormSkeleton";
 import { CONTACT_INFO } from '@/constants/contact';
 import {
   Mail,
@@ -25,7 +26,16 @@ import toast from "react-hot-toast";
 export default function Contact() {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    setMounted(true);
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+  
   const isDark = mounted ? theme === "dark" : true;
   const [formData, setFormData] = useState({
     name: "",
@@ -106,7 +116,7 @@ export default function Contact() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
   e.preventDefault();
 
   const COOLDOWN_MS = 60 * 1000;
@@ -123,6 +133,19 @@ export default function Contact() {
     setSubmitStatus({
       type: "error",
       message: "Please fix the highlighted fields before submitting.",
+    });
+    return;
+  }
+
+  // Guard: check EmailJS env variables are configured before attempting send
+  if (
+    !process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID ||
+    !process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ||
+    !process.env.NEXT_PUBLIC_EMAILJS_USER_ID
+  ) {
+    setSubmitStatus({
+      type: "error",
+      message: `Contact form is currently unavailable. Please reach us directly at ${CONTACT_INFO.email}`,
     });
     return;
   }
@@ -152,31 +175,12 @@ export default function Contact() {
       message: "",
     });
 
-    localStorage.setItem('learnova_contact_last_submit', Date.now().toString());
-    setCooldown(true);
-    let seconds = 60;
-    setCooldownTimer(seconds);
-
-    if (cooldownIntervalRef.current) {
-      clearInterval(cooldownIntervalRef.current);
-    }
-
-    cooldownIntervalRef.current = setInterval(() => {
-      seconds -= 1;
-      setCooldownTimer(seconds);
-      if (seconds === 0) {
-        clearInterval(cooldownIntervalRef.current);
-        cooldownIntervalRef.current = null;
-        setCooldown(false);
-      }
-    }, 1000);
-
     setErrors({});
   } catch (error) {
+    console.error("[Contact Form] EmailJS error:", error);
     setSubmitStatus({
       type: "error",
       message: "Sorry, something went wrong. Please try again later.",
-     
     });
      toast.error("Failed to send message");
   } finally {
@@ -196,7 +200,7 @@ export default function Contact() {
       icon: Phone,
       label: "Phone",
       value: CONTACT_INFO.phone,
-      href: "tel:+919310243800",
+      href: `tel:${CONTACT_INFO.phone.replace(/\s+/g, "")}`,
       gradient: "from-green-500 to-emerald-500",
     },
     {
@@ -261,6 +265,14 @@ export default function Contact() {
       <div className="min-h-screen relative z-50">
         <Navbar />
 
+        {loading ? (
+          <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
+              <FormSkeleton />
+            </div>
+          </section>
+        ) : (
+          <>
         {/* Hero Section */}
         <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
@@ -527,6 +539,8 @@ export default function Contact() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Floating Animation Styles */}

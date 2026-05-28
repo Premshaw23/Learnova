@@ -9,8 +9,6 @@ import { escapeRegex } from "@/utils/mongoUtils";
 export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(async (request) => {
-  // Rate limiting — use the MongoDB-backed helper so state survives across
-  // serverless function instances and cold starts.
   const ip =
     request.headers.get("x-real-ip") ||
     request.headers.get("x-vercel-proxied-for") ||

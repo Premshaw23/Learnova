@@ -4,6 +4,9 @@ import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { getLocalDateKey } from "@/lib/dateUtils";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
+import { awardXp } from "@/lib/gamification-service";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +68,11 @@ function resolveAttendanceIdentity(decodedToken, userProfile) {
 
 async function handleSync(request) {
   const decodedToken = await requireAuth(request);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`attendance_sync_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const body = await parseJSON(request, 1024 * 100);
   const { records } = syncSchema.parse(body);
 
@@ -86,7 +94,8 @@ async function handleSync(request) {
   const instituteId = userProfile?.instituteId || null;
   
   const successfulIds = [];
-  
+  const rejectedIds = [];
+
   // We use a Set to keep track of processed user-dates to prevent duplicate attendance
   // even within the same batch.
   const processedUserDates = new Set();
@@ -98,13 +107,16 @@ async function handleSync(request) {
     // Only allow users to sync their own records (unless they are admin, but attendance is usually self-submitted)
     if (record.userId !== decodedToken.uid) {
       console.warn(`User ${decodedToken.uid} attempted to sync record for ${record.userId}`);
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
       continue;
     }
 
     // Validate timestamp: must be within the last 48 hours and not in the future (allowing 5 min clock skew)
     if (record.queuedAt > now + 5 * 60 * 1000 || record.queuedAt < now - MAX_OFFLINE_WINDOW_MS) {
       console.warn(`User ${decodedToken.uid} attempted to sync record with invalid queuedAt timestamp ${record.queuedAt}`);
-      successfulIds.push(record.id); // Acknowledge to clear from client DB and prevent endless retry loop
+      rejectedIds.push(record.id);
       continue;
     }
 
@@ -127,49 +139,78 @@ async function handleSync(request) {
       console.warn(
         `User ${decodedToken.uid} submitted offline attendance with confidence below threshold (raw: ${record.confidenceScore})`,
       );
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
       continue;
     }
 
-    // Atomic check-and-set using a Firestore transaction to prevent
-    // duplicate records under concurrent sync requests from multiple tabs or devices.
     const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
 
-    await db.runTransaction(async (transaction) => {
-      const existingAttendance = await transaction.get(newDocRef);
-      if (existingAttendance.exists) {
-        return;
-      }
+    let wasWritten = false;
+    try {
+      wasWritten = await db.runTransaction(async (transaction) => {
+        const existingAttendance = await transaction.get(newDocRef);
+        if (existingAttendance.exists) {
+          return false;
+        }
 
-      if (
-        (record.studentName && record.studentName !== serverIdentity.studentName) ||
-        (record.email && record.email !== serverIdentity.email)
-      ) {
-        console.warn(
-          `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
-        );
-      }
+        if (
+          (record.studentName && record.studentName !== serverIdentity.studentName) ||
+          (record.email && record.email !== serverIdentity.email)
+        ) {
+          console.warn(
+            `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
+          );
+        }
 
-      transaction.set(newDocRef, {
-        userId: decodedToken.uid,
-        studentName: serverIdentity.studentName,
-        email: serverIdentity.email,
-        instituteId,
-        timestamp: FieldValue.serverTimestamp(),
-        date: recordDate,
-        status: "present",
-        confidenceScore: normalizedConfidence,
-        offlineSynced: true,
-        queuedAt: new Date(record.queuedAt),
+        transaction.set(newDocRef, {
+          userId: decodedToken.uid,
+          studentName: serverIdentity.studentName,
+          email: serverIdentity.email,
+          instituteId,
+          timestamp: FieldValue.serverTimestamp(),
+          date: recordDate,
+          status: "present",
+          confidenceScore: normalizedConfidence,
+          offlineSynced: true,
+          queuedAt: new Date(record.queuedAt),
+        });
+
+        return true;
       });
-    });
+    } catch (txnError) {
+      console.error(
+        `[sync] Transaction failed for record ${decodedToken.uid}_${recordDate}:`,
+        txnError.message,
+      );
+      continue;
+    }
 
     successfulIds.push(record.id);
+
+    if (!wasWritten) {
+      continue;
+    }
+
     processedUserDates.add(userDateKey);
+
+    try {
+      await awardXp(decodedToken.uid, "attendance_marked", {
+        attendanceHour: record.queuedAt ? new Date(record.queuedAt).getHours() : new Date().getHours(),
+      });
+    } catch (error) {
+      console.error(`Failed to award XP for offline-synced record (${decodedToken.uid}_${recordDate}):`, error);
+    }
   }
 
   return NextResponse.json({
     success: true,
     syncedIds: successfulIds,
+    rejectedIds,
+    ...(rejectedIds.length > 0 && {
+      warning: "Some records were not synced because they exceeded the 48-hour offline window. These records have been removed from your local queue.",
+    }),
   });
 }
 

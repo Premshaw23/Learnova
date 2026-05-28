@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { parseJSON, authenticateRequest, withErrorHandler } from "@/lib/error-handler";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,12 @@ export const GET = withErrorHandler(async (request) => {
 
   if (decodedToken.uid !== userId) {
     throw new AppError("Forbidden: You can only access your own notifications", 403);
+  }
+
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`notifications_get_${ip}_${userId}`);
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
   }
 
   const client = await clientPromise;
@@ -52,6 +59,12 @@ export const PATCH = withErrorHandler(async (request) => {
 
   if (decodedToken.uid !== userId) {
     throw new AppError("Forbidden: You can only modify your own notifications", 403);
+  }
+
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`notifications_patch_${ip}_${userId}`);
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
   }
 
   const client = await clientPromise;

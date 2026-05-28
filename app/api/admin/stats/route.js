@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireRole } from "@/lib/rbac";
+import { AppError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 import admin from "firebase-admin";
 import {
   DEFAULT_SYSTEM_METRICS,
@@ -11,8 +13,12 @@ import {
 export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(async (request) => {
-  await requireRole(request, ["admin"]);
-
+  const { payload: decodedToken } = await requireRole(request, ["admin"]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`admin_stats_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many requests. Please slow down.", 429);
+  }
   const db = admin.firestore();
 
   let totalUsers = 0;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useReducer } from "react";
 import dynamic from "next/dynamic";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
@@ -11,6 +11,37 @@ import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
 import { doc, updateDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+
+const modalInitialState = {
+  isShortcutsOpen: false,
+  isSearchOpen: false,
+};
+
+function modalReducer(state, action) {
+  switch (action.type) {
+    case "OPEN_SHORTCUTS":
+      return {
+        isShortcutsOpen: true,
+        isSearchOpen: false,
+      };
+    case "OPEN_SEARCH":
+      return {
+        isShortcutsOpen: false,
+        isSearchOpen: true,
+      };
+    case "CLOSE_ALL":
+    case "ESCAPE":
+      return modalInitialState;
+    default:
+      return state;
+  }
+}
+
+const modalEventMap = {
+  "learnova:open-shortcuts": "OPEN_SHORTCUTS",
+  "learnova:open-search": "OPEN_SEARCH",
+};
 
 const InstallPWA = dynamic(() => import("@/components/InstallPWA"), {
   ssr: false,
@@ -23,35 +54,36 @@ const LearnovaChatbot = dynamic(() => import("@/components/ChatBot"), {
 });
 
 export default function ClientLayout() {
-  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [modalState, dispatch] = useReducer(modalReducer, modalInitialState);
   const { user, userProfile } = useAuth();
 
+  useOfflineQueue();
+
   const handleSearch = useCallback(() => {
-    setIsSearchOpen(true);
+    dispatch({ type: "OPEN_SEARCH" });
   }, []);
 
   const handleHelp = useCallback(() => {
-    setIsShortcutsOpen(true);
+    dispatch({ type: "OPEN_SHORTCUTS" });
   }, []);
 
   const handleEscape = useCallback(() => {
-    setIsShortcutsOpen(false);
-    setIsSearchOpen(false);
+    dispatch({ type: "CLOSE_ALL" });
     window.dispatchEvent(new CustomEvent("learnova:escape"));
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handleOpenShortcuts = () => setIsShortcutsOpen(true);
-    const handleOpenSearch = () => setIsSearchOpen(true);
-    
-    window.addEventListener("learnova:open-shortcuts", handleOpenShortcuts);
-    window.addEventListener("learnova:open-search", handleOpenSearch);
-    
+    const listeners = Object.entries(modalEventMap).map(([eventName, actionType]) => {
+      const listener = () => dispatch({ type: actionType });
+      window.addEventListener(eventName, listener);
+      return [eventName, listener];
+    });
+
     return () => {
-      window.removeEventListener("learnova:open-shortcuts", handleOpenShortcuts);
-      window.removeEventListener("learnova:open-search", handleOpenSearch);
+      listeners.forEach(([eventName, listener]) => {
+        window.removeEventListener(eventName, listener);
+      });
     };
   }, []);
 
@@ -97,7 +129,6 @@ export default function ClientLayout() {
           localStorage.setItem("learnova_site_streak", currentStreak.toString());
           localStorage.setItem("learnova_site_last_visit", lastVisit);
           localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
-          console.log(`[streak-sync] Restored streak of ${currentStreak} days from Firestore profile.`);
         }
 
         // Case B: Process today's check-in if last visit is different
@@ -170,7 +201,6 @@ export default function ClientLayout() {
             siteLastVisit: lastVisit,
             siteVisitHistory: history,
           });
-          console.log(`[streak-sync] Synced streak of ${currentStreak} days to Firestore.`);
         }
 
       } catch (error) {
@@ -195,12 +225,12 @@ export default function ClientLayout() {
     <>
       <InstallPWA />
       <ShortcutsModal
-        isOpen={isShortcutsOpen}
-        onClose={() => setIsShortcutsOpen(false)}
+        isOpen={modalState.isShortcutsOpen}
+        onClose={() => dispatch({ type: "CLOSE_ALL" })}
       />
       <SearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
+        isOpen={modalState.isSearchOpen}
+        onClose={() => dispatch({ type: "CLOSE_ALL" })}
       />
       <ErrorBoundary>
         <LearnovaChatbot />

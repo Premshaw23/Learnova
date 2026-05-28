@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch } from "@/lib/apiClient";
 
 const STATUS_CONFIG = {
   present: { color: "bg-green-500", label: "Present", dot: "🟢" },
@@ -47,7 +48,7 @@ export default function AttendanceHeatmap() {
     setIsLoading(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(
+      const data = await apiFetch(
         `/api/attendance/heatmap?userId=${user.uid}&month=${monthKey}`,
         {
           headers: {
@@ -55,7 +56,6 @@ export default function AttendanceHeatmap() {
           },
         }
       );
-      const data = await res.json();
       const map = {};
       (data.attendance || []).forEach((record) => {
         map[record.date] = record;

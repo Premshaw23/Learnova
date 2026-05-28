@@ -4,6 +4,45 @@ const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
+// ─── Rate Limiting ────────────────────────────────────────────────────────────
+
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX = 5;
+
+const AUTH_RATE_LIMITED_PATHS = [
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
+  "/api/auth/verify-otp",
+];
+
+function isAuthRoute(pathname) {
+  return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
+}
+
+function rateLimit(ip, pathname) {
+  const key = `${ip}_${pathname}`;
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
+    return { allowed: false, remaining: 0, retryAfter };
+  }
+
+  entry.count += 1;
+  return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count };
+}
+
+// ─── CSP ──────────────────────────────────────────────────────────────────────
+
 function buildPageCsp() {
   const frameSrc = [
     "'self'",
@@ -33,13 +72,8 @@ function buildPageCsp() {
   ].join("; ");
 }
 
-/**
- * Verifies a Firebase ID token by delegating validation to Firebase Auth REST API.
- * Fails closed: any error returns null (deny access).
- *
- * @param {string} token - The Firebase ID token from the authToken cookie
- * @returns {Promise<Object|null>} Verified payload, or null if invalid
- */
+// ─── Firebase Token Verification ─────────────────────────────────────────────
+
 async function verifyIdToken(token) {
   try {
     if (!FIREBASE_PROJECT_ID || !FIREBASE_API_KEY) return null;
@@ -53,9 +87,7 @@ async function verifyIdToken(token) {
       }
     );
 
-    if (!response.ok) {
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json().catch(() => null);
     const user = data?.users?.[0];
@@ -74,7 +106,7 @@ async function verifyIdToken(token) {
       ? Math.floor(Number(user.lastLoginAt) / 1000)
       : undefined;
 
-    const payload = {
+    return {
       sub: user.localId,
       uid: user.localId,
       email: user.email,
@@ -82,25 +114,52 @@ async function verifyIdToken(token) {
       role: parsedCustomClaims?.role,
       iat: authTimeSeconds,
     };
-
-    return payload;
   } catch {
-    // Network errors, malformed JSON, or upstream failures all result in denial
     return null;
   }
 }
 
+// ─── Middleware ───────────────────────────────────────────────────────────────
+
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // We only want to generate CSP for HTML pages, not static assets or APIs.
-  const isPage = !pathname.startsWith("/_next") && 
-                 !pathname.startsWith("/api") && 
-                 !pathname.match(/\.(?:png|jpg|jpeg|gif|svg|ico|css|js|woff2?|json)$/);
+  // ── 1. Rate limiting for auth API routes ──
+  if (isAuthRoute(pathname)) {
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+
+    const { allowed, remaining, retryAfter } = rateLimit(ip, pathname);
+
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Too many attempts. Please try again in ${retryAfter} seconds.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfter),
+            "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
+    }
+  }
+
+  // ── 2. CSP: only for HTML pages, not assets or APIs ──
+  const isPage =
+    !pathname.startsWith("/_next") &&
+    !pathname.startsWith("/api") &&
+    !pathname.match(/\.(?:png|jpg|jpeg|gif|svg|ico|css|js|woff2?|json)$/);
 
   const requestHeaders = new Headers(request.headers);
 
-  // Retrieve token from Authorization header or cookies
+  // ── 3. Token extraction ──
   let authToken = null;
   const authorization = request.headers.get("authorization");
   if (authorization?.startsWith("Bearer ")) {
@@ -109,8 +168,8 @@ export async function middleware(request) {
   if (!authToken) {
     authToken = request.cookies.get("authToken")?.value;
   }
-  
-  // Cryptographically verify the token — decoding alone is not sufficient
+
+  // ── 4. Token verification ──
   let isTokenValid = false;
   let isEmailVerified = false;
   let userRole = null;
@@ -120,18 +179,14 @@ export async function middleware(request) {
     if (payload) {
       isTokenValid = true;
       isEmailVerified = !!payload.email_verified;
-      
-      // Prioritize securely signed custom claim
+
       if (payload.role) {
         userRole = payload.role;
       } else if (FIREBASE_PROJECT_ID) {
-        // Fallback: securely fetch the user's role from Firestore REST API
         try {
           const res = await fetch(
             `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${payload.sub}`,
-            {
-              headers: { Authorization: `Bearer ${authToken}` }
-            }
+            { headers: { Authorization: `Bearer ${authToken}` } }
           );
           if (res.ok) {
             const data = await res.json();
@@ -144,34 +199,44 @@ export async function middleware(request) {
     }
   }
 
-  // Define role-protected dashboard routes
+  // ── 5. Role-protected dashboard routes ──
   const protectedDashboards = [
-    { prefix: "/student", role: "student", defaultPath: "/student/dashboard" },
-    { prefix: "/teacher", role: "teacher", defaultPath: "/teacher/dashboard" },
-    { prefix: "/admin", role: "admin", defaultPath: "/admin/dashboard" },
-    { prefix: "/institute", role: "institute", defaultPath: "/institute/dashboard" },
+    { prefix: "/student", apiPrefix: "/api/student", role: "student", defaultPath: "/student/dashboard" },
+    { prefix: "/teacher", apiPrefix: "/api/teacher", role: "teacher", defaultPath: "/teacher/dashboard" },
+    { prefix: "/admin", apiPrefix: "/api/admin", role: "admin", defaultPath: "/admin/dashboard" },
+    { prefix: "/institute", apiPrefix: "/api/institute", role: "institute", defaultPath: "/institute/dashboard" },
   ];
 
-  // 1. If path is a protected dashboard route
   const matchedDashboard = protectedDashboards.find((dashboard) =>
-    pathname.startsWith(dashboard.prefix)
+    pathname.startsWith(dashboard.prefix) ||
+    (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
   );
 
+  // General API route protection (non-dashboard routes under /api/)
+  if (pathname.startsWith("/api/") && pathname !== "/api/check-groq-config") {
+    if (!matchedDashboard) {
+      if (!isTokenValid) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (!isEmailVerified) {
+        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
+      }
+    }
+  }
+
   if (matchedDashboard) {
-    // Not logged in or invalid token -> redirect to /auth
     if (!isTokenValid) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       return NextResponse.redirect(new URL("/auth", request.url));
     }
-
-    // Email not verified -> redirect to /verify
     if (!isEmailVerified) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
+      }
       return NextResponse.redirect(new URL("/verify", request.url));
     }
-
-    // Role mismatch -> redirect to their appropriate dashboard or profile
     if (userRole !== matchedDashboard.role) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden: Role mismatch" }, { status: 403 });
@@ -182,7 +247,7 @@ export async function middleware(request) {
     }
   }
 
-  // 2. General user protected routes (/profile, /settings)
+  // ── 6. General protected routes ──
   const generalProtectedRoutes = ["/profile", "/settings"];
   const isGeneralProtected = generalProtectedRoutes.some((route) =>
     pathname.startsWith(route)
@@ -197,12 +262,11 @@ export async function middleware(request) {
     }
   }
 
-  // 3. Email verification page check
+  // ── 7. Email verification page ──
   if (pathname.startsWith("/verify")) {
     if (!isTokenValid) {
       return NextResponse.redirect(new URL("/auth", request.url));
     }
-    // If email is already verified, send them to /profile or dashboard
     if (isEmailVerified) {
       const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
       const redirectTarget = correctDashboard ? correctDashboard.defaultPath : "/profile";
@@ -210,7 +274,7 @@ export async function middleware(request) {
     }
   }
 
-  // 4. Authenticated users visiting /auth -> redirect to their dashboard
+  // ── 8. Redirect logged-in users away from /auth ──
   if (pathname === "/auth" && isTokenValid && isEmailVerified && userRole) {
     const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
     if (correctDashboard) {
@@ -218,11 +282,8 @@ export async function middleware(request) {
     }
   }
 
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  // ── 9. Attach CSP header for pages ──
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
 
   if (isPage) {
     response.headers.set("Content-Security-Policy", buildPageCsp());
@@ -231,10 +292,8 @@ export async function middleware(request) {
   return response;
 }
 
-// Next.js Middleware matcher configuration
 export const config = {
   matcher: [
-    // Match all HTML page routes. Exclude APIs, static assets, favicon, manifest, and service worker.
     "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
   ],
 };

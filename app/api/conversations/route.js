@@ -1,25 +1,31 @@
 import { connectDb } from "@/lib/mongodb";
 import { jsonSuccess } from "@/lib/api-response";
 import { z } from "zod";
-import xss from "xss";
+
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { AppError, ValidationError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 // Force dynamic rendering to prevent build-time database connection errors
 export const dynamic = "force-dynamic";
 
 /**
- * Sanitizes incoming text streams to eliminate malicious script or markup tags 
- * while maintaining Markdown symbols for UI representation.
+ * Escapes HTML tag brackets and dangerous special characters inside incoming 
+ * text streams to completely eliminate malicious script or markup execution,
+ * while maintaining standard Markdown symbols for UI representation.
+ * Follows OWASP recommendations by escaping &, <, >, ", ', and /.
  */
 const sanitizeText = (text) => {
   if (typeof text !== "string") return "";
-  return xss(text, {
-    whiteList: {}, // Strip all standard HTML tags completely
-    stripIgnoreTag: true,
-    stripIgnoreTagBody: ["script", "style", "iframe", "object", "embed"],
-  }).trim();
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/\//g, "&#x2F;")
+    .trim();
 };
 
 const conversationSchema = z.object({
@@ -48,8 +54,11 @@ const conversationSchema = z.object({
 
 export const POST = withErrorHandler(async (req) => {
   const decodedToken = await requireAuth(req);
-
-  // Enforce payload constraint
+  const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`conversations_post_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const rawText = await req.text();
   const byteLength = new TextEncoder().encode(rawText).length;
   if (byteLength > 1024 * 1024) {
@@ -87,8 +96,11 @@ export const POST = withErrorHandler(async (req) => {
 
 export const GET = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
-
-
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`conversations_get_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const db = await connectDb();
 
   // Sorted by newest first (-1) to fetch recent activity

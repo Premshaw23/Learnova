@@ -96,6 +96,9 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
       ...(role === USER_ROLES.INSTITUTE && instituteName?.trim()
         ? { instituteName: instituteName.trim() }
         : {}),
+      ...(additionalData.inviteCode
+        ? { inviteCode: additionalData.inviteCode }
+        : {}),
     }),
   });
 
@@ -108,7 +111,11 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
   }
 
   // Initialize their empty dashboard stats
+  try {
   await initializeUserStats(user.uid);
+} catch (error) {
+  console.log("Stats init failed", error);
+}
 
   return data.data.userProfile;
 };
@@ -120,7 +127,7 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
  * @returns {Object} Validation result containing status and error messages.
  */
 export const validateForm = (formData, isLogin) => {
-  const { selectedRole, email, password, fullName, instituteName } = formData;
+  const { selectedRole, email, password, fullName, instituteName, inviteCode } = formData;
   const errors = {};
 
   // Role is always required
@@ -153,6 +160,16 @@ export const validateForm = (formData, isLogin) => {
       );
       if (instituteNameValidation !== true) {
         errors.instituteName = instituteNameValidation;
+      }
+    }
+
+    if (selectedRole === USER_ROLES.TEACHER || selectedRole === USER_ROLES.INSTITUTE) {
+      const inviteCodeValidation = validateRequired(
+        inviteCode,
+        "Invite code"
+      );
+      if (inviteCodeValidation !== true) {
+        errors.inviteCode = inviteCodeValidation;
       }
     }
   }

@@ -3,6 +3,7 @@ import { authenticateRequest, parseJSON, withErrorHandler } from "@/lib/error-ha
 import { validateGroqBody, callGroq } from "@/lib/ai/groq";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { detectInjection, sanitizeMessage } from "@/utils/promptGuard";
+import { GROQ_API_URL } from "@/lib/ai/groq";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,32 +11,30 @@ export const runtime = "nodejs";
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await authenticateRequest(request);
 
-  // Rate limiting by UID
   const rateLimitResult = await checkRateLimit(decodedToken.uid);
   if (!rateLimitResult.allowed) {
     return jsonError("Too many requests. Please try again later.", 429);
   }
 
-  // Parse body (Max 10KB)
   const body = await parseJSON(request, 1024 * 10);
-  const validation = validateGroqBody(body);
 
+  // Validate body using the library validator
+  const validation = validateGroqBody(body);
   const trimmedMessage = validation.trimmedMessage;
 
-  // Check for prompt injection
   const injectionCheck = detectInjection(trimmedMessage);
   if (injectionCheck.isInjection) {
     console.warn(`[nova-ai-safety] Injection blocked for user ${decodedToken.uid}: ${injectionCheck.matchedPattern}`);
     return jsonError("Safety check: System instructions override or prompt injection attempt detected.", 400);
   }
 
-  // Sanitize and call Groq
   const sanitizedMessage = sanitizeMessage(trimmedMessage);
-  
+
   try {
     const content = await callGroq(sanitizedMessage);
     return jsonSuccess({ message: content });
   } catch (error) {
+    console.error(`[nova-ai] Groq API error:`, error.message);
     if (error.name === "AbortError" || error.status === 504) {
       return jsonError("Gateway Timeout: Groq did not respond in time.", 504);
     }

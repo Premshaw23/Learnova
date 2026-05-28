@@ -8,17 +8,28 @@ import {
   uploadAvatarToBlob,
 } from "@/lib/images/imagesService";
 
-jest.mock("next/server", () => ({
-  NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
-      return {
-        status: init?.status || 200,
-        json: async () => body,
-        headers: new Map(),
-      };
-    }),
-  },
-}));
+jest.mock("next/server", () => {
+  class MockNextResponse {
+    constructor(body, init) {
+      this.body = body;
+      this.status = init?.status || 200;
+      this.headers = new Map(Object.entries(init?.headers || {}));
+    }
+    async json() {
+      return JSON.parse(this.body);
+    }
+  }
+  MockNextResponse.json = jest.fn().mockImplementation((body, init) => {
+    return {
+      status: init?.status || 200,
+      json: async () => body,
+      headers: new Map(),
+    };
+  });
+  return {
+    NextResponse: MockNextResponse,
+  };
+});
 
 jest.mock("@/lib/rbac", () => ({
   requireAuth: jest.fn(),
@@ -35,6 +46,7 @@ jest.mock("@/lib/images/imagesService", () => ({
   getUserImageFromDb: jest.fn(),
   updateUserImageInDb: jest.fn(),
   uploadAvatarToBlob: jest.fn(),
+  validateFaceDescriptor: jest.fn(),
 }));
 
 describe("/api/images route orchestration", () => {

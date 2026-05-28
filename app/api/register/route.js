@@ -1,199 +1,103 @@
 import { put, del } from "@vercel/blob";
 import { randomUUID } from "crypto";
-
 import { connectDb } from "@/lib/mongodb";
-
-import {
-  jsonError,
-  jsonSuccess,
-} from "@/lib/api-response";
-
-// Ensure unique indexes are created exactly once per process lifetime.
-// This is the database-level safety net that prevents duplicate users
-// even when concurrent requests bypass the application-layer findOne() check.
-let _indexesEnsured = false;
-async function ensureUserIndexes(collection) {
-  if (_indexesEnsured) return;
-  await collection.createIndex({ email: 1 }, { unique: true, sparse: true });
-  await collection.createIndex({ rollNo: 1 }, { unique: true, sparse: true });
-  _indexesEnsured = true;
-}
-
-import {
-  withErrorHandler,
-  authenticateRequest,
-} from "@/lib/error-handler";
-
-import {
-  AppError,
-  ValidationError,
-  ForbiddenError,
-} from "@/lib/errors";
-
+import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { AppError, ValidationError, ForbiddenError } from "@/lib/errors";
 import { z } from "zod";
-
 import { checkRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
-if (
-  typeof global !== "undefined" &&
-  !global.mockFile
-) {
-  global.mockFile = {
-    size: 1024,
-    type: "image/jpeg",
-    arrayBuffer: async () =>
-      new ArrayBuffer(1024),
-  };
-}
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+const WEBP_MARKER = [0x57, 0x45, 0x42, 0x50];
 
-
-const MAX_FILE_SIZE =
-  5 * 1024 * 1024;
-
-const ALLOWED_IMAGE_TYPES =
-  new Set([
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ]);
-
-const WEBP_MARKER = [
-  0x57,
-  0x45,
-  0x42,
-  0x50,
-];
-
-const registerSchema =
-  z.object({
-    name: z
-      .string({
-        error: (issue) =>
-          issue.input === undefined ? "Name is required" : undefined,
-      })
-      .trim()
-      .min(
-        1,
-        "Name is required"
-      )
-      .max(100),
-
-    rollNo: z
-      .string({
-        error: (issue) =>
-          issue.input === undefined ? "Roll number is required" : undefined,
-      })
-      .trim()
-      .min(
-        1,
-        "Roll number is required"
-      )
-      .max(50),
-
-    email: z
-      .string({
-        error: (issue) =>
-          issue.input === undefined ? "Email is required" : undefined,
-      })
-      .trim()
-      .email(
-        "Invalid email format"
-      )
-      .toLowerCase(),
-  });
+const registerSchema = z.object({
+  name: z
+    .string({
+      error: (issue) =>
+        issue.input === undefined ? "Name is required" : undefined,
+    })
+    .trim()
+    .min(1, "Name is required")
+    .max(100),
+  rollNo: z
+    .string({
+      error: (issue) =>
+        issue.input === undefined ? "Roll number is required" : undefined,
+    })
+    .trim()
+    .min(1, "Roll number is required")
+    .max(50),
+  email: z
+    .string({
+      error: (issue) =>
+        issue.input === undefined ? "Email is required" : undefined,
+    })
+    .trim()
+    .email("Invalid email format")
+    .toLowerCase(),
+});
 
 const MAGIC_BYTES = {
-  "image/jpeg": [
-    0xff,
-    0xd8,
-    0xff,
-  ],
-
-  "image/png": [
-    0x89,
-    0x50,
-    0x4e,
-    0x47,
-  ],
-
-  "image/webp": [
-    0x52,
-    0x49,
-    0x46,
-    0x46,
-  ],
+  "image/jpeg": [0xff, 0xd8, 0xff],
+  "image/png": [0x89, 0x50, 0x4e, 0x47],
+  "image/webp": [0x52, 0x49, 0x46, 0x46],
 };
 
-const normalizeText = (
-  value
-) =>
-  typeof value === "string"
-    ? value.trim()
-    : "";
+const normalizeText = (value) =>
+  typeof value === "string" ? value.trim() : "";
 
-const getImageExtension = (
-  mimeType
-) => {
+/**
+ * Escapes HTML characters inside input values to prevent Stored XSS
+ * vulnerabilities in fields that are stored and rendered (CWE-79).
+ */
+const sanitizeHtml = (text) => {
+  if (typeof text !== "string") return "";
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/\//g, "&#x2F;")
+    .trim();
+};
+
+const getImageExtension = (mimeType) => {
   switch (mimeType) {
     case "image/png":
       return "png";
-
     case "image/webp":
       return "webp";
-
     case "image/jpeg":
     default:
       return "jpg";
   }
 };
 
-const validateMagicBytes = (
-  buffer,
-  mimeType
-) => {
-  const magic =
-    MAGIC_BYTES[mimeType];
+const validateMagicBytes = (buffer, mimeType) => {
+  const magic = MAGIC_BYTES[mimeType];
 
-  if (
-    !magic ||
-    buffer.length <
-      magic.length
-  ) {
+  if (!magic || buffer.length < magic.length) {
     return false;
   }
 
-  for (
-    let i = 0;
-    i < magic.length;
-    i++
-  ) {
-    if (
-      buffer[i] !== magic[i]
-    ) {
+  for (let i = 0; i < magic.length; i++) {
+    if (buffer[i] !== magic[i]) {
       return false;
     }
   }
 
-  if (
-    mimeType === "image/webp"
-  ) {
+  if (mimeType === "image/webp") {
     if (buffer.length < 12) {
       return false;
     }
 
-    for (
-      let i = 0;
-      i <
-      WEBP_MARKER.length;
-      i++
-    ) {
-      if (
-        buffer[8 + i] !==
-        WEBP_MARKER[i]
-      ) {
+    for (let i = 0; i < WEBP_MARKER.length; i++) {
+      if (buffer[8 + i] !== WEBP_MARKER[i]) {
         return false;
       }
     }
@@ -201,6 +105,15 @@ const validateMagicBytes = (
 
   return true;
 };
+
+// Ensure unique indexes are created exactly once per process lifetime.
+let _indexesEnsured = false;
+async function ensureUserIndexes(collection) {
+  if (_indexesEnsured) return;
+  await collection.createIndex({ email: 1 }, { unique: true, sparse: true });
+  await collection.createIndex({ rollNo: 1 }, { unique: true, sparse: true });
+  _indexesEnsured = true;
+}
 
 export const POST =
   withErrorHandler(
@@ -283,6 +196,9 @@ export const POST =
         email,
       } =
         validationResult.data;
+
+      const sanitizedName = sanitizeHtml(name);
+      const sanitizedRollNo = sanitizeHtml(rollNo);
 
       // Validate file
       if (
@@ -425,8 +341,8 @@ export const POST =
 
       try {
         const user = {
-          name,
-          rollNo,
+          name: sanitizedName,
+          rollNo: sanitizedRollNo,
           email,
           image:
             blob.url,

@@ -56,6 +56,9 @@ function usePooledCollection(key, buildQuery, enabled = true) {
     // Build the Firestore query (may be null if db isn't ready)
     const q = buildQuery();
     if (!q) {
+      if (!db) {
+        setError(new Error("Firestore is not initialized. Check your Firebase configuration."));
+      }
       setLoading(false);
       return;
     }
@@ -119,7 +122,6 @@ export function FirestoreProvider({ children }) {
       return query(
         collection(db, "attendance"),
         where("studentId", "==", uid),
-        orderBy("timestamp", "desc"),
         limit(60)
       );
     } catch {
@@ -141,7 +143,6 @@ export function FirestoreProvider({ children }) {
       return query(
         collection(db, "notifications"),
         where("recipientId", "==", uid),
-        orderBy("createdAt", "desc"),
         limit(30)
       );
     } catch {

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth, requireRole } from "@/lib/rbac";
-import { ValidationError } from "@/lib/errors";
+import { ValidationError, AppError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
+import { checkRateLimit } from "@/lib/rateLimit";
 import admin from "firebase-admin";
 import { z } from "zod";
+import { hashPasscode } from "@/utils/passcodeUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +48,11 @@ export const GET = withErrorHandler(async (request) => {
 
 export const POST = withErrorHandler(async (request) => {
   const { profile } = await requireRole(request, ["teacher", "admin"]);
-
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`attendance_settings_${ip}_${profile.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   initializeFirebase();
 
   const body = await parseJSON(request, 1024);
@@ -69,7 +75,7 @@ export const POST = withErrorHandler(async (request) => {
     .doc("current_settings")
     .set(
       {
-        passcode,
+        passcode: hashPasscode(passcode),
         active: true,
         createdAt: now.toISOString(),
         expiresAt: expiresAt.toISOString(),
@@ -85,8 +91,12 @@ export const POST = withErrorHandler(async (request) => {
 });
 
 export const DELETE = withErrorHandler(async (request) => {
-  await requireRole(request, ["teacher", "admin"]);
-
+  const { profile } = await requireRole(request, ["teacher", "admin"]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`attendance_settings_delete_${ip}_${profile.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   initializeFirebase();
 
   const db = admin.firestore();

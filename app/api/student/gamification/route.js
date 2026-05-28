@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, AppError } from "@/lib/errors";
 import { calculateLevel, calculateNextLevelXp } from "@/utils/gamification";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 /**
  * GET /api/student/gamification
@@ -14,6 +15,11 @@ import { calculateLevel, calculateNextLevelXp } from "@/utils/gamification";
  */
 export const GET = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireRole(request, ["student", "admin"]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`gamification_get_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const db = await connectDb();
   const userId = decodedToken.uid;
 
