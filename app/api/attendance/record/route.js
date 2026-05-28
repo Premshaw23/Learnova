@@ -47,8 +47,11 @@ export const POST = withErrorHandler(async (request) => {
   const db = getFirestore();
   const userProfile = await getUserProfile(decodedToken.uid);
   const instituteId = userProfile?.instituteId || null;
-  const resolvedName = userProfile?.fullName || userProfile?.displayName || studentName;
-  const resolvedEmail = userProfile?.email || email;
+
+  // Use authoritative, verified data from Firebase JWT token (decodedToken) to completely prevent
+  // client-supplied parameter spoofing and impersonation attacks.
+  const resolvedName = userProfile?.fullName || decodedToken.name || decodedToken.displayName || decodedToken.email?.split("@")[0] || "Unknown User";
+  const resolvedEmail = userProfile?.email || decodedToken.email || "unknown@learnova.edu";
 
   const docRef = db.collection("attendance_records").doc(`${userId}_${normalizedDate}`);
 

@@ -112,7 +112,7 @@ export default function UniversalSettings() {
         toast.success("Timetable push notifications activated! Reminders will trigger 10m before class.");
         if ("serviceWorker" in navigator) {
           navigator.serviceWorker.register("/sw.js")
-            .then((reg) => console.log("Service Worker registered:", reg.scope))
+            .then((reg) => {})
             .catch((err) => console.error("SW Registration failed:", err));
         }
       } else if (permission === "denied") {

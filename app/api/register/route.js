@@ -32,6 +32,7 @@ const registerSchema = z.object({
 const normalizeText = (value) => (typeof value === "string" ? value.trim() : "");
 
 const getImageExtension = (mimeType) => {
+const getImageExtension = (mimeType) => {
   switch (mimeType) {
     case "image/png":
       return "png";
@@ -51,10 +52,13 @@ const validateMagicBytes = (buffer, mimeType) => {
 
   for (let i = 0; i < magic.length; i++) {
     if (buffer[i] !== magic[i]) {
+  for (let i = 0; i < magic.length; i++) {
+    if (buffer[i] !== magic[i]) {
       return false;
     }
   }
 
+  if (mimeType === "image/webp") {
   if (mimeType === "image/webp") {
     if (buffer.length < 12) {
       return false;

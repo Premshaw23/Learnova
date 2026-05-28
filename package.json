@@ -21,7 +21,6 @@
     "postinstall": "node -e \"const fs=require('fs');const hasPatches=fs.existsSync('patches')&&fs.readdirSync('patches').some((f)=>f.endsWith('.patch'));if(hasPatches){require('child_process').execSync('npx patch-package',{stdio:'inherit'});}else{console.log('Skipping patch-package: no .patch files found.');}\""
   },
   "dependencies": {
-    "@ducanh2912/next-pwa": "^10.2.6",
     "@emailjs/browser": "^4.4.1",
     "@eslint/eslintrc": "^3.3.5",
     "@firebase/firestore": "^4.14.1",
@@ -86,5 +85,11 @@
     "postinstall-postinstall": "^2.1.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.8"
+  },
+  "overrides": {
+    "serialize-javascript": "7.0.5",
+    "postcss": "8.5.11",
+    "uuid": "11.1.1",
+    "workbox-build": "7.4.1"
   }
 }
