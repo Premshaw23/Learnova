@@ -43,6 +43,8 @@ export const useAttendance = ({ role, user }) => {
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [attendanceRequests, setAttendanceRequests] = useState([]);
+  const [instituteProfile, setInstituteProfile] = useState(null);
+  const [adminProfile, setAdminProfile] = useState(null);
 
   // --- student fetchers ---
   const fetchStudentActivity = useCallback(async () => {
@@ -145,6 +147,8 @@ export const useAttendance = ({ role, user }) => {
         if (data.teachers) setTeachers(data.teachers);
         if (data.attendanceRequests)
           setAttendanceRequests(data.attendanceRequests);
+        if (data.instituteProfile) setInstituteProfile(data.instituteProfile);
+        if (data.adminProfile) setAdminProfile(data.adminProfile);
       } else {
         setError("Failed to fetch institute data. Please try again.");
       }
@@ -298,6 +302,8 @@ export const useAttendance = ({ role, user }) => {
     teachers,
     attendanceRequests,
     setAttendanceRequests,
+    instituteProfile,
+    adminProfile,
     // shared
     loading,
     error,

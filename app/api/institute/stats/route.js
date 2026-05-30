@@ -22,6 +22,8 @@ export const GET = withErrorHandler(async (request) => {
   let classes = [];
   let attendanceRequests = [];
   let todayAttendance = 0;
+  let adminProfile = null;
+  let instituteProfile = null;
 
   try {
     const studentsSnap = await db
@@ -61,6 +63,16 @@ export const GET = withErrorHandler(async (request) => {
     const presentCount = attSnap.docs.filter((d) => (d.data().status ?? "present") === "present").length;
     const totalStudents = studentDocs.length || 1;
     todayAttendance = Math.round((presentCount / totalStudents) * 1000) / 10;
+
+    const adminDoc = await db.collection("users").doc(uid).get();
+    if (adminDoc.exists) {
+      adminProfile = { id: adminDoc.id, ...adminDoc.data() };
+    }
+
+    const instDoc = await db.collection("institutes").doc(uid).get();
+    if (instDoc.exists) {
+      instituteProfile = { id: instDoc.id, ...instDoc.data() };
+    }
   } catch (err) {
     console.error("Error fetching institute stats from Firestore:", err);
     return NextResponse.json(
@@ -88,5 +100,12 @@ export const GET = withErrorHandler(async (request) => {
     pendingRequests: attendanceRequests.filter((r) => r.status === "pending").length,
   };
 
-  return NextResponse.json({ dashboardData, classes, teachers, attendanceRequests });
+  return NextResponse.json({ 
+    dashboardData, 
+    classes, 
+    teachers, 
+    attendanceRequests,
+    adminProfile,
+    instituteProfile
+  });
 });

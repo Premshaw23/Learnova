@@ -101,29 +101,28 @@ const InstituteDashboard = () => {
     teachers,
     attendanceRequests,
     setAttendanceRequests,
+    instituteProfile,
+    adminProfile,
     loading: initialLoading,
     error,
   } = useAttendance({ role: "institute", user });
   const { curriculum } = useCurriculum({ role: "institute", user });
 
-  // Keep institute and currentUser as static placeholders
-  // Mock institute data
   const institute = {
-    name: "Learnova Institute of Technology",
-    code: "LIT001",
-    email: "admin@learnova.edu",
-    phone: "+1 (555) 123-4567",
-    address: "123 Education Street, Knowledge City",
-    established: "2010",
-    website: "www.learnova.edu",
-    accreditation: "NAAC A++",
+    name: instituteProfile?.name || "Unknown Institute",
+    code: instituteProfile?.code || instituteProfile?.id || "N/A",
+    email: instituteProfile?.email || "admin@example.edu",
+    phone: instituteProfile?.phone || "N/A",
+    address: instituteProfile?.address || "N/A",
+    established: instituteProfile?.established || "N/A",
+    website: instituteProfile?.website || "N/A",
+    accreditation: instituteProfile?.accreditation || "N/A",
   };
 
   const currentUser = {
-    name: "Dr. Admin",
+    name: adminProfile?.name || adminProfile?.fullName || user?.displayName || "Administrator",
     role: "Institute Administrator",
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face",
+    avatar: adminProfile?.avatar || adminProfile?.photoURL || user?.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face",
   };
 
   // Clock interval only
