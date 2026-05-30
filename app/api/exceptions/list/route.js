@@ -4,7 +4,7 @@ import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
-import { AppError } from "@/lib/errors";
+import { AppError, ValidationError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { escapeRegex, sanitizeSortField } from "@/utils/mongoUtils";
 
@@ -38,7 +38,6 @@ export const GET = withErrorHandler(async (request) => {
 
     // Validate pagination parameters
     if (isNaN(page) || isNaN(limit)) {
-      const { ValidationError } = require("@/lib/errors");
       throw new ValidationError("Invalid pagination parameters");
     }
 
@@ -67,24 +66,36 @@ export const GET = withErrorHandler(async (request) => {
     // Role-based filtering
     if (profile.role === "student") {
       query.studentEmail = decodedToken.email;
+    } else if (profile.role === "teacher") {
+      const teacherSubjects = profile.subjects || [];
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { className: { $in: teacherSubjects } },
+          { class: { $in: teacherSubjects } },
+        ],
+      });
     }
 
     // Search filter
     if (search) {
-      query.$or = [
-        {
-          reason: {
-            $regex: search,
-            $options: "i",
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          {
+            reason: {
+              $regex: search,
+              $options: "i",
+            },
           },
-        },
-        {
-          studentEmail: {
-            $regex: search,
-            $options: "i",
+          {
+            studentEmail: {
+              $regex: search,
+              $options: "i",
+            },
           },
-        },
-      ];
+        ],
+      });
     }
 
     // Total count

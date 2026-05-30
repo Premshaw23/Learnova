@@ -4,49 +4,46 @@ import { connectDb } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
+import { UnauthorizedError, ForbiddenError } from "@/lib/errors";
 
-jest.mock("@/lib/rbac", () => ({
-  requireRole: jest.fn(),
+const mockCursor = {
+  sort: vi.fn().mockReturnThis(),
+  skip: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  toArray: vi.fn().mockResolvedValue([]),
+};
+const mockCollection = {
+  countDocuments: vi.fn().mockResolvedValue(0),
+  find: vi.fn(() => mockCursor),
+};
+const mockDb = {
+  collection: vi.fn(() => mockCollection),
+};
+
+vi.mock("@/lib/rbac", () => ({
+  requireRole: vi.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/mongodb", () => {
-  const mockCursor = {
-    sort: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    toArray: jest.fn().mockResolvedValue([]),
-  };
-  const mockCollection = {
-    countDocuments: jest.fn().mockResolvedValue(0),
-    find: jest.fn(() => mockCursor),
-  };
-  const mockDb = {
-    collection: jest.fn(() => mockCollection),
-  };
-  return {
-    connectDb: jest.fn(() => Promise.resolve(mockDb)),
-    _mockCollection: mockCollection,
-    _mockCursor: mockCursor,
-    _mockDb: mockDb,
-  };
-});
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(() => Promise.resolve(mockDb)),
+}));
 
-jest.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
+vi.mock("@/lib/error-handler", () => {
+  const { AppError } = require("../../../../lib/errors");
   return {
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
+          if (error instanceof AppError || error.name === "AppError" || error.statusCode) {
             const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
             return {
-              status: error.statusCode,
+              status: error.statusCode || 500,
               json: async () => ({ error: payload }),
             };
           }
@@ -60,7 +57,7 @@ jest.mock("@/lib/error-handler", () => {
   };
 });
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -70,14 +67,9 @@ jest.mock("next/server", () => ({
 }));
 
 describe("exceptions list route", () => {
-  let mockCollection;
-  let mockCursor;
-
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("@/lib/mongodb")._mockCollection;
-    mockCursor = require("@/lib/mongodb")._mockCursor;
   });
 
   const createMockRequest = (url = "http://localhost/api/exceptions/list", headers = {}) => {
@@ -147,7 +139,6 @@ describe("exceptions list route", () => {
   });
 
   test("rejects request with 401 Unauthorized if token is missing or invalid", async () => {
-    const { UnauthorizedError } = require("@/lib/errors");
     requireRole.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
     const response = await GET(createMockRequest());
@@ -155,7 +146,6 @@ describe("exceptions list route", () => {
   });
 
   test("rejects request with 403 Forbidden if role is not allowed", async () => {
-    const { ForbiddenError } = require("@/lib/errors");
     requireRole.mockRejectedValue(new ForbiddenError("Forbidden"));
 
     const response = await GET(createMockRequest());
@@ -171,5 +161,30 @@ describe("exceptions list route", () => {
 
     const response = await GET(createMockRequest());
     await assertApiError(response, 429, "Too many attempts. Please try again later.");
+  });
+
+  test("filters exceptions by teacher subjects if role is teacher", async () => {
+    requireRole.mockResolvedValue({
+      payload: { uid: "teacher-123", email: "teacher@example.com" },
+      profile: { role: "teacher", subjects: ["Database Systems", "Web Development"] },
+    });
+
+    mockCollection.countDocuments.mockResolvedValue(0);
+    mockCursor.toArray.mockResolvedValue([]);
+
+    const response = await GET(createMockRequest("http://localhost/api/exceptions/list"));
+    await assertApiSuccess(response, 200);
+
+    expect(mockCollection.find).toHaveBeenCalledWith({
+      status: "pending",
+      $and: [
+        {
+          $or: [
+            { className: { $in: ["Database Systems", "Web Development"] } },
+            { class: { $in: ["Database Systems", "Web Development"] } },
+          ],
+        },
+      ],
+    });
   });
 });

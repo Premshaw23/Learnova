@@ -3,7 +3,7 @@ import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
-import { AppError } from "@/lib/errors";
+import { AppError, ValidationError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { escapeRegex, sanitizeSortField } from "@/utils/mongoUtils";
 
@@ -17,7 +17,7 @@ const ALLOWED_SORT_FIELDS = new Set([
 ]);
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, ["admin", "teacher"]);
+  const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher"]);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`exceptions_all_${ip}_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {
@@ -32,9 +32,7 @@ export const GET = withErrorHandler(async (request) => {
     const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
     const limit = limitParam ? Math.min(100, Math.max(1, parseInt(limitParam, 10))) : 20;
 
-    // Validate pagination parameters
     if (isNaN(page) || isNaN(limit)) {
-      const { ValidationError } = require("@/lib/errors");
       throw new ValidationError("Invalid pagination parameters");
     }
 
@@ -59,27 +57,42 @@ export const GET = withErrorHandler(async (request) => {
     // Search query
     let query = {};
 
+    // Role-based filtering for teacher
+    if (profile.role === "teacher") {
+      const teacherSubjects = profile.subjects || [];
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { className: { $in: teacherSubjects } },
+          { class: { $in: teacherSubjects } },
+        ],
+      });
+    }
+
     if (search) {
-      query.$or = [
-        {
-          reason: {
-            $regex: search,
-            $options: "i",
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          {
+            reason: {
+              $regex: search,
+              $options: "i",
+            },
           },
-        },
-        {
-          studentEmail: {
-            $regex: search,
-            $options: "i",
+          {
+            studentEmail: {
+              $regex: search,
+              $options: "i",
+            },
           },
-        },
-        {
-          status: {
-            $regex: search,
-            $options: "i",
+          {
+            status: {
+              $regex: search,
+              $options: "i",
+            },
           },
-        },
-      ];
+        ],
+      });
     }
 
     // Total count
