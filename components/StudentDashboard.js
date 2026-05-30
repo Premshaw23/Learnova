@@ -29,7 +29,7 @@ import { useCurriculum } from "@/hooks/useCurriculum";
 import AchievementSection from "./AchievementSection";
 import AttendanceChart from "./AttendanceChart";
 
-import { weeklySchedule } from "@/constants/mockData";
+
 
 import AttendanceAnalytics from "./dashboard/AttendanceAnalytics";
 import StreakCounter from "./gamification/StreakCounter";
@@ -130,7 +130,7 @@ const getUpcomingClass = (classes, now) => {
   );
 };
 
-const getTodaySchedule = (now, schedule = weeklySchedule) => {
+const getTodaySchedule = (now, schedule = {}) => {
   const dayIndex = now.getDay();
   const dayName = getDayName(dayIndex);
   const classes = schedule[dayName] || [];
@@ -236,6 +236,7 @@ const StudentDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [scheduleTime, setScheduleTime] = useState(new Date());
   const [error, setError] = useState(null);
+  const [scheduleData, setScheduleData] = useState({});
 
   const [viewMode, setViewMode] = useState("heatmap");
   const [showComplaint, setShowComplaint] = useState(false);
@@ -290,8 +291,8 @@ const StudentDashboard = () => {
   }, [attendanceStats, gamificationData]);
 
   const scheduleState = useMemo(
-    () => getTodaySchedule(scheduleTime, weeklySchedule),
-    [scheduleTime]
+    () => getTodaySchedule(scheduleTime, scheduleData),
+    [scheduleTime, scheduleData]
   );
 
   const todayClasses = scheduleState.classes;
@@ -299,9 +300,26 @@ const StudentDashboard = () => {
   const isAttendanceWindow = scheduleState.isAttendanceWindow;
 
   useEffect(() => {
-    const loadingTimer = setTimeout(() => {
+    let isMounted = true;
+    const fetchSchedule = async () => {
+      try {
+        const res = await fetch("/api/student/schedule");
+        const data = await res.json();
+        if (data.success && data.weekly && isMounted) {
+          setScheduleData(data.weekly);
+        }
+      } catch (err) {
+        console.error("Failed to load schedule", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    if (user?.uid) {
+      fetchSchedule();
+    } else {
       setLoading(false);
-    }, 1500);
+    }
 
     const updateDashboard = () => {
       const now = new Date();
@@ -325,10 +343,10 @@ const StudentDashboard = () => {
     );
 
     return () => {
+      isMounted = false;
       clearInterval(timer);
-      clearTimeout(loadingTimer);
     };
-  }, []);
+  }, [user?.uid]);
 
   if (loading) {
     const handleEvaluateQuiz = (scoreOutOfFive) => {
