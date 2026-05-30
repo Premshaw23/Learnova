@@ -1,19 +1,20 @@
 import { GET } from "./route";
 import { requireRole } from "@/lib/rbac";
-import { connectDb } from "@/lib/mongodb";
+import { connectDb, _mockCollection, _mockCursor } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
+import { UnauthorizedError, ForbiddenError } from "@/lib/errors";
 
-jest.mock("@/lib/rbac", () => ({
+vi.mock("@/lib/rbac", () => ({
   requireRole: jest.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/mongodb", () => {
+vi.mock("@/lib/mongodb", () => {
   const mockCursor = {
     sort: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
@@ -35,15 +36,15 @@ jest.mock("@/lib/mongodb", () => {
   };
 });
 
-jest.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
+vi.mock("@/lib/error-handler", () => {
+  const { AppError } = require("../../../../lib/errors");
   return {
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
+          if (error instanceof AppError || typeof error.statusCode === "number") {
             const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
             return {
               status: error.statusCode,
@@ -60,7 +61,7 @@ jest.mock("@/lib/error-handler", () => {
   };
 });
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -70,14 +71,12 @@ jest.mock("next/server", () => ({
 }));
 
 describe("exceptions all route", () => {
-  let mockCollection;
-  let mockCursor;
+  const mockCollection = _mockCollection;
+  const mockCursor = _mockCursor;
 
   beforeEach(() => {
     jest.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("@/lib/mongodb")._mockCollection;
-    mockCursor = require("@/lib/mongodb")._mockCursor;
   });
 
   const createMockRequest = (url = "http://localhost/api/exceptions/all", headers = {}) => {
@@ -132,7 +131,6 @@ describe("exceptions all route", () => {
   });
 
   test("rejects request with 401 Unauthorized if token is missing or invalid", async () => {
-    const { UnauthorizedError } = require("@/lib/errors");
     requireRole.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
     const response = await GET(createMockRequest());
@@ -140,7 +138,6 @@ describe("exceptions all route", () => {
   });
 
   test("rejects request with 403 Forbidden if user is not authorized", async () => {
-    const { ForbiddenError } = require("@/lib/errors");
     requireRole.mockRejectedValue(new ForbiddenError("Forbidden"));
 
     const response = await GET(createMockRequest());

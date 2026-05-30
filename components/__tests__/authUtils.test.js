@@ -1,12 +1,12 @@
-jest.mock("@/services/statsService", () => ({
-  initializeUserStats: jest.fn(),
-}));
-
-const {
+import {
   PASSWORD_REQUIREMENTS_MESSAGE,
   validateForm,
   validatePasswordStrength,
-} = require("@/utils/authUtils");
+} from "../../utils/authUtils";
+
+vi.mock("@/services/statsService", () => ({
+  initializeUserStats: jest.fn(),
+}));
 
 const validSignupData = {
   selectedRole: "student",

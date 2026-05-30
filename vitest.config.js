@@ -7,6 +7,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  esbuild: {
+    loader: 'jsx',
+    include: /.*\.[jt]sx?$/,
+    exclude: [],
+  },
   test: {
     environment: 'jsdom',
     globals: true,
@@ -28,6 +33,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@/': path.resolve(__dirname, '.') + '/',
       '@': path.resolve(__dirname, '.'),
     },
   },

@@ -4,14 +4,14 @@ import userEvent from "@testing-library/user-event";
 import AttendanceValidation from "../AttendanceValidation";
 
 // Mock next/navigation
-jest.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: jest.fn(),
   }),
 }));
 
 // Mock useAuth hook
-jest.mock("@/hooks/useAuth", () => ({
+vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: {
       email: "student@example.com",
@@ -22,7 +22,7 @@ jest.mock("@/hooks/useAuth", () => ({
 }));
 
 // Mock calculateDistance utility
-jest.mock("@/utils/authUtils", () => ({
+vi.mock("@/utils/authUtils", () => ({
   calculateDistance: () => 10,
 }));
 

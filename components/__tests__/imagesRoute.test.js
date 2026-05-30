@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
 import { GET, POST } from "@/app/api/images/route";
 import { requireAuth } from "@/lib/rbac";
+import { connectDb } from "@/lib/mongodb";
+import { getUserProfile } from "@/lib/firebase-admin";
 import {
   extractImageFileFromFormData,
   fetchAndValidateImage,
@@ -9,7 +11,7 @@ import {
   uploadAvatarToBlob,
 } from "@/lib/images/imagesService";
 
-jest.mock("next/server", () => {
+vi.mock("next/server", () => {
   class MockNextResponse {
     constructor(body, init) {
       this.body = body;
@@ -32,38 +34,35 @@ jest.mock("next/server", () => {
   };
 });
 
-jest.mock("@/lib/rbac", () => ({
-  requireAuth: jest.fn(),
+vi.mock("@/lib/rbac", () => ({
+  requireAuth: vi.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  getUserProfile: vi.fn(),
 }));
 
-jest.mock("@/lib/images/imagesService", () => ({
-  extractImageFileFromFormData: jest.fn(),
-  fetchAndValidateImage: jest.fn(),
-  getImageResponseHeaders: jest.fn().mockReturnValue({
+vi.mock("@/lib/images/imagesService", () => ({
+  extractImageFileFromFormData: vi.fn(),
+  fetchAndValidateImage: vi.fn(),
+  getImageResponseHeaders: vi.fn().mockReturnValue({
     "Content-Type": "image/jpeg",
     "Cache-Control": "no-store, no-cache, must-revalidate",
     "X-Content-Type-Options": "nosniff",
   }),
-  getUserImageFromDb: jest.fn(),
-  updateUserImageInDb: jest.fn(),
-  uploadAvatarToBlob: jest.fn(),
-  validateFaceDescriptor: jest.fn(),
+  getUserImageFromDb: vi.fn(),
+  updateUserImageInDb: vi.fn(),
+  uploadAvatarToBlob: vi.fn(),
+  validateFaceDescriptor: vi.fn(),
 }));
 
 describe("/api/images route orchestration", () => {
-  let connectDb;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    connectDb = require("@/lib/mongodb").connectDb;
   });
 
   test("GET returns own image when requested id matches authenticated user", async () => {
@@ -110,7 +109,6 @@ describe("/api/images route orchestration", () => {
         findOne: jest.fn().mockResolvedValue({ _id: ownId }),
       }),
     });
-    const { getUserProfile } = require("@/lib/firebase-admin");
     getUserProfile.mockResolvedValue({ role: "student" });
 
     const req = {
@@ -136,7 +134,6 @@ describe("/api/images route orchestration", () => {
         findOne: jest.fn().mockResolvedValue({ _id: ownId }),
       }),
     });
-    const { getUserProfile } = require("@/lib/firebase-admin");
     getUserProfile.mockResolvedValue({ role: "admin" });
     getUserImageFromDb.mockResolvedValue("https://public.blob.vercel-storage.com/admin-view.jpg");
     fetchAndValidateImage.mockResolvedValue({
@@ -168,7 +165,6 @@ describe("/api/images route orchestration", () => {
         findOne: jest.fn().mockResolvedValue({ _id: ownId }),
       }),
     });
-    const { getUserProfile } = require("@/lib/firebase-admin");
     getUserProfile.mockResolvedValue({ role: "teacher" });
     getUserImageFromDb.mockResolvedValue("https://public.blob.vercel-storage.com/teacher-view.jpg");
     fetchAndValidateImage.mockResolvedValue({

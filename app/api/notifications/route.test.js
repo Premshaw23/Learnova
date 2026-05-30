@@ -1,11 +1,12 @@
 import { GET, PATCH } from "./route";
 import { authenticateRequest, parseJSON } from "../../../lib/error-handler";
 import { checkRateLimit } from "../../../lib/rateLimit";
-import clientPromise from "../../../lib/mongodb";
+import clientPromise, { _mockCollection, _mockCursor } from "../../../lib/mongodb";
 import { assertApiSuccess } from "../../../testUtils/assertApiSuccess";
 import { assertApiError } from "../../../testUtils/assertApiError";
+import { UnauthorizedError } from "../../../lib/errors";
 
-jest.mock("../../../lib/error-handler", () => {
+vi.mock("../../../lib/error-handler", () => {
   const { AppError } = require("../../../lib/errors");
   return {
     authenticateRequest: jest.fn(),
@@ -14,7 +15,7 @@ jest.mock("../../../lib/error-handler", () => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
+          if (error instanceof AppError || typeof error.statusCode === "number") {
             const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
             return {
               status: error.statusCode,
@@ -32,11 +33,11 @@ jest.mock("../../../lib/error-handler", () => {
   };
 });
 
-jest.mock("../../../lib/rateLimit", () => ({
+vi.mock("../../../lib/rateLimit", () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("../../../lib/mongodb", () => {
+vi.mock("../../../lib/mongodb", () => {
   const mockCursor = {
     sort: jest.fn().mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
@@ -60,7 +61,7 @@ jest.mock("../../../lib/mongodb", () => {
   };
 });
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -70,14 +71,12 @@ jest.mock("next/server", () => ({
 }));
 
 describe("notifications route", () => {
-  let mockCollection;
-  let mockCursor;
+  const mockCollection = _mockCollection;
+  const mockCursor = _mockCursor;
 
   beforeEach(() => {
     jest.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("../../../lib/mongodb")._mockCollection;
-    mockCursor = require("../../../lib/mongodb")._mockCursor;
   });
 
   const createMockRequest = (url = "http://localhost/api/notifications", headers = {}) => {
@@ -130,7 +129,6 @@ describe("notifications route", () => {
     });
 
     test("rejects request with 401 Unauthorized if token is missing or invalid", async () => {
-      const { UnauthorizedError } = require("../../../lib/errors");
       authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
       const response = await GET(createMockRequest("http://localhost/api/notifications?userId=user-123"));
@@ -184,7 +182,6 @@ describe("notifications route", () => {
     });
 
     test("rejects request with 401 if unauthorized", async () => {
-      const { UnauthorizedError } = require("@/lib/errors");
       authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
       const response = await PATCH(createMockRequest());

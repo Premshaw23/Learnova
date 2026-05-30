@@ -7,31 +7,31 @@ import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("@/lib/rbac", () => ({
+vi.mock("@/lib/rbac", () => ({
   requireAuth: jest.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
+vi.mock("@/lib/firebase-admin", () => ({
   initFirebaseAdmin: jest.fn(),
   getUserProfile: jest.fn(),
 }));
 
-jest.mock("@/lib/gamification-service", () => ({
+vi.mock("@/lib/gamification-service", () => ({
   awardXp: jest.fn().mockResolvedValue({ xpAwarded: 50, newLevel: null }),
 }));
 
-jest.mock("firebase-admin/firestore", () => ({
+vi.mock("firebase-admin/firestore", () => ({
   getFirestore: jest.fn(),
   FieldValue: {
     serverTimestamp: jest.fn(() => "server-timestamp"),
   },
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -40,18 +40,18 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
+vi.mock("@/lib/error-handler", () => {
+  const { AppError } = require("../../../../lib/errors");
   return {
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
+          if (error instanceof AppError || error.name === "AppError" || error.statusCode) {
             const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
             return {
-              status: error.statusCode,
+              status: error.statusCode || 500,
               json: async () => ({ error: payload }),
             };
           }

@@ -2,7 +2,7 @@ import { POST, GET } from "@/app/api/conversations/route";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: jest.fn().mockImplementation((body, init) => {
       return {
@@ -14,11 +14,11 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
+vi.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: jest.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
+vi.mock("@/lib/mongodb", () => ({
   connectDb: jest.fn(),
 }));
 
@@ -60,7 +60,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message || body.error).toBe("Unauthorized");
     expect(mockInsertOne).not.toHaveBeenCalled();
     expect(connectDb).not.toHaveBeenCalled();
   });
@@ -80,7 +80,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message || body.error).toBe("Unauthorized");
     expect(mockInsertOne).not.toHaveBeenCalled();
     expect(connectDb).not.toHaveBeenCalled();
   });
@@ -128,7 +128,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(413);
-    expect(body.error).toBe("Payload too large");
+    expect(body.error.message || body.error).toBe("Payload too large");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -146,7 +146,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Invalid JSON payload");
+    expect(body.error.message || body.error).toBe("Invalid JSON payload");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -166,7 +166,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toContain("userMessage must be a string");
+    expect(body.error.message || body.error).toContain("userMessage must be a string");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -186,7 +186,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toContain("botMessage is required");
+    expect(body.error.message || body.error).toContain("botMessage is required");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -280,7 +280,7 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message || body.error).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -293,7 +293,7 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message || body.error).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -370,6 +370,6 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Internal server error");
+    expect(body.error.message || body.error).toBe("Internal server error");
   });
 });

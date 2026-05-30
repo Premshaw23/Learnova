@@ -2,11 +2,13 @@ import { renderHook } from "@testing-library/react";
 import { useOfflineQueue } from "../useOfflineQueue";
 import toast from "react-hot-toast";
 
-jest.mock("react-hot-toast", () => ({
-  loading: jest.fn(),
-  success: jest.fn(),
-  error: jest.fn(),
-  dismiss: jest.fn(),
+vi.mock("react-hot-toast", () => ({
+  default: {
+    loading: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    dismiss: vi.fn(),
+  },
 }));
 
 describe("useOfflineQueue hook", () => {

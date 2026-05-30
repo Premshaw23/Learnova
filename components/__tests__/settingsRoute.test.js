@@ -2,7 +2,7 @@ import { PATCH } from "@/app/api/settings/route";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: jest.fn().mockImplementation((body, init) => {
       return {
@@ -14,12 +14,12 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
+vi.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: jest.fn(),
   getUserProfile: jest.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
+vi.mock("@/lib/mongodb", () => ({
   connectDb: jest.fn(),
 }));
 
@@ -65,7 +65,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 
@@ -77,7 +77,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 
@@ -93,7 +93,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.message).toBe("Settings saved successfully");
+    expect(body.data.message).toBe("Settings saved successfully");
     expect(mockUpdateOne).toHaveBeenCalledWith(
       { userId: "user-123" },
       expect.objectContaining({
@@ -122,7 +122,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.message).toBe("Settings saved successfully");
+    expect(body.data.message).toBe("Settings saved successfully");
     expect(mockUpdateOne).toHaveBeenCalledWith(
       { userId: "user-123" },
       expect.objectContaining({
@@ -147,7 +147,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(403);
-    expect(body.error).toContain("Forbidden");
+    expect(body.error.message).toContain("Forbidden");
     expect(mockUpdateOne).not.toHaveBeenCalled();
     expect(getUserProfile).toHaveBeenCalledWith("user-123");
   });
@@ -165,7 +165,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.message).toBe("Settings saved successfully");
+    expect(body.data.message).toBe("Settings saved successfully");
     expect(mockUpdateOne).toHaveBeenCalledWith(
       { userId: "victim-user-123" },
       expect.objectContaining({
@@ -192,7 +192,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toContain("Bad Request");
+    expect(body.error.message).toContain("Bad Request");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 });

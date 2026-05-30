@@ -4,14 +4,14 @@ import userEvent from "@testing-library/user-event";
 import SearchModal from "../SearchModal";
 
 // Mock next/navigation
-jest.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: jest.fn(),
   }),
 }));
 
 // Mock useAuthContext hook
-jest.mock("@/contexts/AuthContext", () => ({
+vi.mock("@/contexts/AuthContext", () => ({
   useAuthContext: () => ({
     userProfile: { role: "student" },
     isAuthenticated: true,

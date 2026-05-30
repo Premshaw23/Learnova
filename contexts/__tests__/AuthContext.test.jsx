@@ -4,7 +4,7 @@ import { AuthProvider, useAuthContext } from "../AuthContext";
 import { useAuth } from "@/hooks/useAuth";
 
 // Mock the useAuth hook
-jest.mock("@/hooks/useAuth", () => ({
+vi.mock("@/hooks/useAuth", () => ({
   useAuth: jest.fn(),
 }));
 

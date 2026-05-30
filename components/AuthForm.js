@@ -242,12 +242,20 @@ export default function AuthForm({
                   errors.password ? "border-red-500/50" : "border-border"
                 }`}
               />
-            );
-          })}
-        </div>
-      </div>
-    )}
-  </div>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password}</p>}
+          </div>
   {!isLogin && (
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">

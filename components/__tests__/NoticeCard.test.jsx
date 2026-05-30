@@ -25,7 +25,7 @@ const mockPdfInstance = {
   setTextColor: jest.fn(),
 };
 
-jest.mock("jspdf", () => ({
+vi.mock("jspdf", () => ({
   jsPDF: jest.fn(() => mockPdfInstance),
 }));
 

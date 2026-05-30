@@ -4,11 +4,11 @@ import { put, del } from "@vercel/blob";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: jest.fn(),
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: jest.fn().mockImplementation((body, init) => {
       return {
@@ -20,16 +20,16 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@vercel/blob", () => ({
+vi.mock("@vercel/blob", () => ({
   put: jest.fn(),
   del: jest.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
+vi.mock("@/lib/mongodb", () => ({
   connectDb: jest.fn(),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
+vi.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: jest.fn(),
 }));
 
@@ -156,7 +156,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Invalid email format");
+    expect(body.error.message || body.error).toBe("Invalid email format");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -172,7 +172,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -188,7 +188,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -204,7 +204,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const body = await response.json();
 
     expect(response.status).toBe(403);
-    expect(body.error).toContain("Forbidden");
+    expect(body.error.message).toContain("Forbidden");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -224,7 +224,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const body6 = await response6.json();
 
     expect(response6.status).toBe(429);
-    expect(body6.error).toContain("Too many registration attempts");
+    expect(body6.error.message).toContain("Too many registration attempts");
   });
 
   test("deletes uploaded blob if database insertion fails (rollback)", async () => {
@@ -242,7 +242,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Internal server error");
+    expect(body.error.message).toBe("Internal server error");
     expect(put).toHaveBeenCalled();
     expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
   });
@@ -267,7 +267,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const body = await response.json();
 
     expect(response.status).toBe(409);
-    expect(body.error).toBe("User already registered");
+    expect(body.error.message).toBe("User already registered");
     expect(put).toHaveBeenCalled();
     expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
   });

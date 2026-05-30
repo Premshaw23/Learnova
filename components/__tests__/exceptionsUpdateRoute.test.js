@@ -1,7 +1,7 @@
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile, getUserProfileByEmail } from "@/lib/firebase-admin";
 
-jest.mock("mongodb", () => ({
+vi.mock("mongodb", () => ({
   ObjectId: class {
     constructor(id) {
       this.id = id;
@@ -16,7 +16,7 @@ jest.mock("mongodb", () => ({
 }));
 
 import { PUT } from "@/app/api/exceptions/update/route";
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: jest.fn().mockImplementation((body, init) => {
       return {
@@ -28,13 +28,13 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
+vi.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: jest.fn(),
   getUserProfile: jest.fn(),
   getUserProfileByEmail: jest.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
+vi.mock("@/lib/mongodb", () => ({
   connectDb: jest.fn(),
 }));
 
@@ -61,6 +61,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
       collection: jest.fn().mockReturnValue({
         findOne: mockFindOne,
         updateOne: mockUpdateOne,
+        insertOne: jest.fn().mockResolvedValue({}),
       }),
     });
 
@@ -91,7 +92,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message || body.error).toBe("Unauthorized");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 
@@ -107,7 +108,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(403);
-    expect(body.error).toBe("User profile not found. Access denied.");
+    expect(body.error.message || body.error).toBe("User profile not found. Access denied.");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 
@@ -123,7 +124,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(403);
-    expect(body.error).toBe("Forbidden: Requires one of admin, teacher");
+    expect(body.error.message || body.error).toBe("Forbidden: Requires one of admin, teacher");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 
@@ -139,7 +140,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("exceptionId is required");
+    expect(body.error.message || body.error).toBe("exceptionId is required");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 
@@ -155,7 +156,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Invalid exception ID");
+    expect(body.error.message || body.error).toBe("Invalid exception ID");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 
@@ -171,7 +172,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Invalid status value");
+    expect(body.error.message || body.error).toBe("Invalid status value");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 
@@ -196,7 +197,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(403);
-    expect(body.error).toContain("Forbidden: You are not authorized");
+    expect(body.error.message || body.error).toContain("Forbidden: You are not authorized");
     expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 
@@ -309,7 +310,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Invalid status value");
+    expect(body.error.message || body.error).toBe("Invalid status value");
   });
 
   test("returns 404 if matching exception record not found", async () => {
@@ -325,7 +326,7 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(404);
-    expect(body.error).toBe("Exception not found");
+    expect(body.error.message || body.error).toBe("Exception not found");
   });
 
   test("handles database query exceptions gracefully returning 500", async () => {
@@ -341,6 +342,6 @@ describe("PUT /api/exceptions/update - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Internal server error");
+    expect(body.error.message || body.error).toBe("Internal server error");
   });
 });

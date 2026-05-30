@@ -3,7 +3,7 @@ import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: jest.fn().mockImplementation((body, init) => {
       return {
@@ -15,16 +15,16 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/mongodb", () => ({
+vi.mock("@/lib/mongodb", () => ({
   connectDb: jest.fn(),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
+vi.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: jest.fn(),
   getUserProfile: jest.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: jest.fn(),
 }));
 
