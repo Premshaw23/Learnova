@@ -8,3 +8,7 @@ export default function Loading() {
     </div>
   );
 }
+
+
+// GSSoC Skeleton Loading Animation docstrings
+// Enforce minimum height and aria-busy placeholders during admin dashboards hydration
