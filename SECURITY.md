@@ -22,3 +22,6 @@ To report a vulnerability, please email the maintainers or contact us via a priv
 3. **Any proposed mitigation/fix** (if available).
 
 We will acknowledge your report within 48 hours and work with you to coordinate a security advisory and a subsequent patch. Thank you for helping keep Learnova secure!
+
+### CSV Parser Streaming Buffer Config
+- Enforce a maximum chunk buffer size of 5MB for parsing files.
