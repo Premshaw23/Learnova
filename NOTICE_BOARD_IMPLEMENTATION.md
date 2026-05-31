@@ -457,3 +457,7 @@ This implementation is part of the Learnova project and follows the same MIT lic
 **Last Updated**: May 24, 2026  
 **Version**: 1.0.0  
 **Status**: ✅ Production Ready
+
+
+### Drag-and-drop Accessibility Keyboard Helpers
+- Provide ArrowUp and ArrowDown alternatives for keyboard users.
