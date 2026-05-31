@@ -65,7 +65,15 @@ const SuperAdminDashboard = () => {
   const [systemMetrics, setSystemMetrics] = useState({});
   const [criticalAlerts, setCriticalAlerts] = useState([]);
   const [featureUsage, setFeatureUsage] = useState({});
-
+  
+  const [selectedThemeCategory, setSelectedThemeCategory] = useState("");
+  const [decayWarningText, setDecayWarningText] = useState("");
+  const [shipmentHistoryBaseline] = useState([
+    { boxId: "BX-991", dispatchMonth: "February", assignedCategory: "lifestyle accessory" },
+    { boxId: "BX-992", dispatchMonth: "March", assignedCategory: "candles" },
+    { boxId: "BX-993", dispatchMonth: "April", assignedCategory: "lifestyle accessory" },
+    { boxId: "BX-994", dispatchMonth: "May", assignedCategory: "lifestyle accessory" },
+  ]); 
   useEffect(() => {
     if (!user) return;
     const fetchStats = async () => {
@@ -92,6 +100,28 @@ const SuperAdminDashboard = () => {
     };
     fetchStats();
   }, [user]);
+
+  const handleThemeCategorySelection = (chosenCategory) => {
+    setSelectedThemeCategory(chosenCategory);
+    
+    if (!chosenCategory) {
+      setDecayWarningText("");
+      return;
+    }
+
+    const historicalLookback = shipmentHistoryBaseline.slice(-4);
+    const duplicationInstances = historicalLookback.filter(
+      (item) => item.assignedCategory === chosenCategory
+    ).length;
+
+    if (duplicationInstances >= 2) {
+      setDecayWarningText(
+        `Content Fatigue Warning: You have included a "${chosenCategory}" in ${duplicationInstances} of the last 4 boxes. Consider swapping this item to protect customer lifetime value (LTV).`
+      );
+    } else {
+      setDecayWarningText("");
+    }
+  };
 
   const renderOverview = () => (
     <div className="space-y-6">
@@ -351,6 +381,45 @@ const SuperAdminDashboard = () => {
             Export Report
           </button>
         </div>
+      </div>
+      {/* 👇 PASTE STEP 3 DIRECTLY HERE (BETWEEN THE HEADER AND THE TABLE) */}
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black/60 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="flex items-center gap-2">
+          <Database className="w-5 h-5 text-amber-500" />
+          <h3 className="text-lg font-bold text-white tracking-tight">Box Configuration & Distribution Strategy</h3>
+        </div>
+        <p className="text-xs text-gray-400 max-w-xl">
+          Select an incoming item category line up below. The Automated Content Decay engine will scan past shipment indices to identify potential customer churn or theme repetition issues.
+        </p>
+
+        <div className="max-w-xs space-y-2 pt-2">
+          <label className="block text-xs font-semibold text-gray-300 tracking-wide uppercase">Select Target Item Category</label>
+          <div className="relative">
+            <select
+              value={selectedThemeCategory}
+              onChange={(e) => handleThemeCategorySelection(e.target.value)}
+              className="w-full bg-gray-800/80 border border-white/10 text-white text-sm rounded-xl px-4 py-3 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all cursor-pointer"
+            >
+              <option value="">-- Choose Category --</option>
+              <option value="lifestyle accessory">Lifestyle Accessory (Triggers Fatigue Error)</option>
+              <option value="candles">Candles</option>
+              <option value="notebooks">Notebooks</option>
+              <option value="premium gear">Premium Gear</option>
+            </select>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-4 top-3.5 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Real-time Inline Amber Notification Banner */}
+        {decayWarningText && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3 text-amber-400 transition-all duration-300">
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
+            <div className="space-y-1">
+              <h4 className="text-xs font-black text-amber-500 uppercase tracking-widest">Distribution Warning Notification</h4>
+              <p className="text-sm text-gray-300 font-medium leading-relaxed">{decayWarningText}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Institute Table */}
