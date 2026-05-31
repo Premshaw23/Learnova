@@ -1,0 +1,22 @@
+# Labeler Configuration
+# Matches file path changes to assign labels to PRs automatically.
+
+backend:
+  - changed-files:
+    - any-glob-to-any-file: 'app/api/**/*'
+    - any-glob-to-any-file: 'lib/**/*'
+    - any-glob-to-any-file: 'services/**/*'
+
+frontend:
+  - changed-files:
+    - any-glob-to-any-file: 'components/**/*'
+    - any-glob-to-any-file: 'app/!(api)/**/*'
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: 'docs/**/*'
+    - any-glob-to-any-file: '*.md'
+
+workflows:
+  - changed-files:
+    - any-glob-to-any-file: '.github/workflows/**/*'
