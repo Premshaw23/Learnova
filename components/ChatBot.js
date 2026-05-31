@@ -25,6 +25,10 @@ import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
 
 import { useAuthContext } from "@/contexts/AuthContext";
+// 🛠️ STEP 1 IMPORT: Bring in your local fallback Intent Router interface
+import { parseUserIntent } from "@/services/ai-agent/intentparser.js";
+import { apiFetch } from "@/lib/apiClient";
+
 
 // ---------------------------------------------------------------------------
 // Constants — centralized
@@ -289,7 +293,7 @@ async function generateBotResponse(userMessage, currentCategory, idToken, update
     const headers = { "Content-Type": "application/json" };
     if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
     
-    const response = await fetch("/api/groq", {
+    const response = await apiFetch("/api/groq", {
       method: "POST",
       headers,
       body: JSON.stringify({ 
@@ -318,7 +322,7 @@ async function generateBotResponse(userMessage, currentCategory, idToken, update
 async function saveConversation(userText, botText, idToken) {
   if (!idToken) return;
   try {
-    await fetch("/api/conversations", {
+    await apiFetch("/api/conversations", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -445,7 +449,7 @@ export default function LearnovaChatbot() {
       setIsHistoryLoading(true);
       try {
         const idToken = await user.getIdToken();
-        const response = await fetch("/api/conversations", {
+        const response = await apiFetch("/api/conversations", {
           headers: {
             Authorization: `Bearer ${idToken}`,
           },
@@ -536,13 +540,13 @@ export default function LearnovaChatbot() {
     if (!isOpen || isMinimized) return;
     if (userHasScrolledUp.current) return;
 
-    const container = messagesContainerRef.current;
-    if (container) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: "smooth"
-      });
-    }
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: "smooth"
+      });
+    }
   }, [messages, isOpen, isMinimized, isLoading]);
 
   const handleInputChange = (e) => {
@@ -570,7 +574,7 @@ export default function LearnovaChatbot() {
   const handleSendMessage = useCallback(
     async (messageText) => {
       const text = (typeof messageText === "string" ? messageText : inputMessage).trim();
-      if (!text || isLoading) return;
+      if (!text || text.length > 1000 || isLoading) return;
 
       const userMsg = {
         id: Date.now(),
@@ -593,6 +597,18 @@ export default function LearnovaChatbot() {
         if (!user) {
           botText = "[**Please sign in**](/auth) to use the AI chatbot.";
         } else {
+          // 🛠️ STEP 2 INTERCEPT: Check text signature against local action handlers first!
+          const actionResponse = await parseUserIntent(text);
+          const parsedResult = JSON.parse(actionResponse);
+
+          if (parsedResult.status === 'success') {
+            // Found a registry tool trigger match. Format the raw output nicely for render view
+            botText = `🤖 **Action Handler Initiated Successfully**\n\n\`\`\`json\n${JSON.stringify(parsedResult, null, 2)}\n\`\`\``;
+          } else {
+            // No local action regex matched. Fall through safely to normal processing pipeline
+            const idToken = await user.getIdToken();
+            botText = await generateBotResponse(text, currentCategory, idToken, [...messages, userMsg]);
+          }
           idToken = await user.getIdToken();
           botText = await generateBotResponse(text, currentCategory, idToken, [...messages, userMsg]);
         }
@@ -766,6 +782,43 @@ export default function LearnovaChatbot() {
                       )}
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Suggested Questions Area */}
+          <div className={`p-3 border-t ${themeTokens.border} shrink-0 space-y-2`}>
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto scrollbar-none">
+              {suggestedQuestions[currentCategory]?.map((q, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSendMessage(q)}
+                  className={`text-left px-2.5 py-1 rounded-lg text-xs transition-all duration-150 cursor-pointer ${themeTokens.suggestion}`}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+
+            {/* Input Box Actions */}
+            <div className="flex items-end space-x-2 pt-1">
+              <div className="relative flex-1">
+                <textarea
+                  ref={textareaRef}
+                  value={inputMessage}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type your message here..."
+                  rows={1}
+                  className={`w-full pr-10 pl-3 py-2 rounded-xl text-sm border resize-none focus:outline-none scrollbar-none transition-all duration-200 ${themeTokens.input}`}
+                  style={{ minHeight: "38px", maxHeight: "120px" }}
+                />
+              </div>
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={!inputMessage.trim() || isLoading}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-2.5 rounded-xl hover:opacity-95 active:scale-95 disabled:opacity-40 disabled:scale-100 transition-all cursor-pointer shadow-md shrink-0"
                 ))}
 
                 {isLoading && (
@@ -813,6 +866,8 @@ export default function LearnovaChatbot() {
                 value={inputMessage}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
+                maxLength={1000}
+                aria-label="Type your message to Nova"
                 placeholder={isHistoryLoading ? "Loading chat history..." : "Ask Nova a question..."}
                 disabled={isHistoryLoading || isLoading}
                 className={`flex-1 resize-none overflow-y-auto py-2.5 pl-4 pr-10 rounded-xl text-sm focus:outline-none transition-all duration-150 border max-h-32 ${themeTokens.input}`}
@@ -823,7 +878,7 @@ export default function LearnovaChatbot() {
                 className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 disabled:hover:bg-purple-600 transition-colors cursor-pointer"
                 aria-label="Send message"
               >
-                <Send size={14} />
+                <Send size={16} />
               </button>
             </div>
           </div>

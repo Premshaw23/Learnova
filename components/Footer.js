@@ -1,5 +1,5 @@
 "use client";
-
+import { FaDiscord } from "react-icons/fa";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
@@ -13,6 +13,7 @@ import { CONTACT_INFO } from "../constants/contact";
 function FooterLink({ href, children, external = false }) {
   const LinkComponent = external ? "a" : Link;
   const externalProps = external ? { target: "_blank", rel: "noopener noreferrer" } : {};
+  
 
   return (
     <motion.li whileHover={{ x: 4 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
@@ -34,6 +35,7 @@ function SocialIcon({ href, icon: Icon, label, glowColor = "purple" }) {
     blue: "hover:shadow-blue-500/30 hover:border-blue-500/50 hover:text-blue-400",
     red: "hover:shadow-red-500/30 hover:border-red-500/50 hover:text-red-400",
   };
+  
 
   return (
     <motion.a href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
@@ -105,12 +107,24 @@ export default function Footer() {
                 Get Started <ArrowUpRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="flex items-center gap-3">
-              {socialLinks.map((s) => <SocialIcon key={s.label} {...s} />)}
-            </div>
-          </div>
+           <div className="flex items-center gap-3">
+  {socialLinks.map((s) => (
+    <SocialIcon key={s.label} {...s} />
+  ))}
 
-          {/* Quick Links */}
+  <motion.a
+    href="https://discord.gg/"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Discord"
+    whileHover={{ scale: 1.15, y: -3 }}
+    whileTap={{ scale: 0.95 }}
+    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/30 hover:border-purple-500/50 hover:text-purple-400"
+  >
+    <FaDiscord size={18} />
+  </motion.a>
+</div>
+      </div>    {/* Quick Links */}
           <div className="space-y-5">
             <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">Quick Links</h3>
             <ul className="space-y-3">
@@ -124,10 +138,19 @@ export default function Footer() {
           {/* Sections */}
           <div className="space-y-5">
             <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">Sections</h3>
-            <ul className="space-y-3">
-              {sectionLinks.map((link) => <FooterLink key={link.href} href={link.href}>{link.label}</FooterLink>)}
-            </ul>
+           
+           <ul className="space-y-3">
+ {sectionLinks.map((link) => (
+  <FooterLink key={link.href} href={link.href}>
+    {link.label}
+  </FooterLink>
+))}
+
+  
+  
+</ul>
           </div>
+          
 
           {/* Contact Column with Integrated Modern Campus Card */}
           <div className="space-y-6">

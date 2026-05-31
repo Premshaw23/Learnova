@@ -5,6 +5,70 @@ const STORE_NAME = "attendance_outbox";
 const MUTATIONS_STORE = "offline_mutations";
 const DB_VERSION = 2;
 
+let csrfTokenCache = null;
+let csrfTokenPromise = null;
+
+function isUnsafeMethod(method) {
+  return ["POST", "PUT", "PATCH", "DELETE"].includes((method || "GET").toUpperCase());
+}
+
+function isSameOriginApiUrl(url) {
+  try {
+    const parsedUrl = new URL(url, self.location.origin);
+    return parsedUrl.origin === self.location.origin && parsedUrl.pathname.startsWith("/api/");
+  } catch {
+    return false;
+  }
+}
+
+async function getCsrfToken() {
+  if (csrfTokenCache) {
+    return csrfTokenCache;
+  }
+
+  if (csrfTokenPromise) {
+    return csrfTokenPromise;
+  }
+
+  csrfTokenPromise = fetch("/api/auth/csrf", {
+    method: "GET",
+    credentials: "same-origin",
+    cache: "no-store",
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json().catch(() => null);
+      const csrfToken = data?.csrfToken || null;
+      csrfTokenCache = csrfToken;
+      return csrfToken;
+    })
+    .catch(() => null)
+    .finally(() => {
+      csrfTokenPromise = null;
+    });
+
+  return csrfTokenPromise;
+}
+
+async function withCsrfHeaders(url, method, headers = {}) {
+  if (!isUnsafeMethod(method) || !isSameOriginApiUrl(url)) {
+    return headers;
+  }
+
+  const nextHeaders = new Headers(headers);
+  if (!nextHeaders.has("x-csrf-token")) {
+    const csrfToken = await getCsrfToken();
+    if (csrfToken) {
+      nextHeaders.set("X-CSRF-Token", csrfToken);
+    }
+  }
+
+  return nextHeaders;
+}
+
 async function getDb() {
   return openDB(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
@@ -46,12 +110,13 @@ async function syncAttendanceSW() {
   try {
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
       const batch = records.slice(i, i + BATCH_SIZE);
+      const csrfHeaders = await withCsrfHeaders("/api/attendance/sync", "POST", {
+        "Content-Type": "application/json",
+      });
 
       const response = await fetch("/api/attendance/sync", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: csrfHeaders,
         credentials: "same-origin",
         body: JSON.stringify({ records: batch }),
       });
@@ -101,9 +166,10 @@ async function replayQueuedMutations() {
 
   for (const req of requests) {
     try {
+      const csrfHeaders = await withCsrfHeaders(req.url, req.method, req.headers);
       const response = await fetch(req.url, {
         method: req.method,
-        headers: req.headers,
+        headers: csrfHeaders,
         body: req.body,
         credentials: "same-origin",
       });

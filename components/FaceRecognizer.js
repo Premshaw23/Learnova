@@ -399,7 +399,14 @@ export default function FaceRecognizer({ authUser }) {
     }
 
     if (resizedDetections.length > 0 && ctx) {
-      const face = resizedDetections[0];
+      // CRITICAL FIX: Sort detections by bounding box area to always select the person closest to the camera
+      const sortedDetections = resizedDetections.sort((a, b) => {
+        const areaA = a.detection.box.width * a.detection.box.height;
+        const areaB = b.detection.box.width * b.detection.box.height;
+        return areaB - areaA; // Descending order (largest face first)
+      });
+      
+      const face = sortedDetections[0];
       const bestMatch = faceMatcherRef.current.findBestMatch(face.descriptor);
       const label = bestMatch.label === "unknown" ? "Unknown" : bestMatch.label;
       const confidenceScore = Math.round((1 - bestMatch.distance) * 100);

@@ -1,12 +1,13 @@
+import { vi } from "vitest";
 import { POST } from "@/app/api/notices/route";
 import { GET } from "@/app/api/notices/stream/route";
 import { getAdminDb, getUserProfile, verifyFirebaseToken } from "@/lib/firebase-admin";
-import { connectDb } from "@/lib/mongodb";
+import { connectDb, connectDbForSSE } from "../../lib/mongodb";
 
 // Mock NextResponse
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -17,34 +18,34 @@ jest.mock("next/server", () => ({
 }));
 
 // Mock firebase admin
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
-  getUserProfile: jest.fn(),
-  getAdminDb: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
+  getUserProfile: vi.fn(),
+  getAdminDb: vi.fn(),
 }));
 
 // Mock MongoDB
-const mockMongoInsert = jest.fn();
-const mockMongoFindToArray = jest.fn();
-const mockMongoFind = jest.fn().mockReturnValue({
-  sort: jest.fn().mockReturnThis(),
-  limit: jest.fn().mockReturnThis(),
+const mockMongoInsert = vi.fn();
+const mockMongoFindToArray = vi.fn();
+const mockMongoFind = vi.fn().mockReturnValue({
+  sort: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
   toArray: mockMongoFindToArray,
 });
 
 let changeStreamCallback = null;
 const mockWatchStream = {
-  on: jest.fn().mockImplementation((event, cb) => {
+  on: vi.fn().mockImplementation((event, cb) => {
     if (event === "change") {
       changeStreamCallback = cb;
     }
   }),
-  close: jest.fn(),
+  close: vi.fn(),
 };
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
-  connectDbForSSE: jest.fn(),
+vi.mock("../../lib/mongodb", () => ({
+  connectDb: vi.fn(),
+  connectDbForSSE: vi.fn(),
 }));
 
 // Mock ReadableStream to capture its start function
@@ -79,32 +80,31 @@ describe("Notice Board Isolation & Security Tests", () => {
   let originalConsoleError;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     capturedStart = null;
 
-    mockFirestoreAdd = jest.fn().mockResolvedValue({ id: "mock-notice-id" });
+    mockFirestoreAdd = vi.fn().mockResolvedValue({ id: "mock-notice-id" });
     getAdminDb.mockReturnValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         add: mockFirestoreAdd,
       }),
     });
 
     connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         insertOne: mockMongoInsert,
       }),
     });
 
-    const { connectDbForSSE } = require("@/lib/mongodb");
     connectDbForSSE.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         find: mockMongoFind,
-        watch: jest.fn().mockReturnValue(mockWatchStream),
+        watch: vi.fn().mockReturnValue(mockWatchStream),
       }),
     });
 
     originalConsoleError = console.error;
-    console.error = jest.fn();
+    console.error = vi.fn();
   });
 
   afterEach(() => {
@@ -117,10 +117,10 @@ describe("Notice Board Isolation & Security Tests", () => {
       headers: {
         get: (name) => headers[name.toLowerCase()] || null,
       },
-      json: jest.fn().mockResolvedValue(bodyData),
-      text: jest.fn().mockResolvedValue(JSON.stringify(bodyData)),
+      json: vi.fn().mockResolvedValue(bodyData),
+      text: vi.fn().mockResolvedValue(JSON.stringify(bodyData)),
       signal: {
-        addEventListener: jest.fn(),
+        addEventListener: vi.fn(),
       },
     };
   };
@@ -197,7 +197,7 @@ describe("Notice Board Isolation & Security Tests", () => {
       const body = await response.json();
 
       expect(response.status).toBe(403);
-      expect(body.error).toContain("Forbidden");
+      expect(body.error.message).toContain("Forbidden");
       expect(mockFirestoreAdd).not.toHaveBeenCalled();
     });
   });
@@ -227,8 +227,8 @@ describe("Notice Board Isolation & Security Tests", () => {
       expect(capturedStart).toBeDefined();
 
       const mockController = {
-        enqueue: jest.fn(),
-        close: jest.fn(),
+        enqueue: vi.fn(),
+        close: vi.fn(),
       };
 
       await capturedStart(mockController);
@@ -269,8 +269,8 @@ describe("Notice Board Isolation & Security Tests", () => {
       await GET(req);
 
       const mockController = {
-        enqueue: jest.fn(),
-        close: jest.fn(),
+        enqueue: vi.fn(),
+        close: vi.fn(),
       };
 
       await capturedStart(mockController);

@@ -42,3 +42,15 @@ export function verifyPasscode(passcode, storedHash) {
     return false;
   }
 }
+
+/**
+ * Returns the tenant-scoped document ID for attendance settings.
+ * Logs a warning if the instituteId is missing, falling back to uid.
+ */
+export function getSettingsDocId(profile) {
+  if (!profile.instituteId) {
+    console.warn(`[Attendance Settings] User ${profile.uid} is missing instituteId. Falling back to uid.`);
+    return profile.uid;
+  }
+  return profile.instituteId;
+}

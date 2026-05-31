@@ -1,33 +1,49 @@
-import { connectDb } from "../../../../lib/mongodb";
-import { parseJSON, authenticateRequest, withErrorHandler } from "../../../../lib/error-handler";
-import { checkRateLimit } from "../../../../lib/rateLimit";
-import { AppError } from "../../../../lib/errors";
-import { fail, success } from "../../../../lib/api-response";
+import { NextResponse } from "next/server";
+import { connectDb } from "@/lib/mongodb";
+import { requireRole } from "@/lib/rbac";
+import { withErrorHandler } from "@/lib/error-handler";
+import { ForbiddenError, ValidationError, AppError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
 export const POST = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+  // 1. Environment check: Block seeding in production
+  if (process.env.NODE_ENV === "production") {
+    throw new ForbiddenError("Not allowed in production");
+  }
 
-  const body = await parseJSON(request, 1024);
+  // 2. Authentication check: Only admin is allowed to seed
+  await requireRole(request, ["admin"]);
+
+  // 3. Body parsing and validation
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    throw new ValidationError("Invalid JSON payload");
+  }
+
   const { userId } = body;
-
   if (!userId) {
-    throw new AppError("userId is required", 400);
+    throw new ValidationError("userId is required");
   }
 
-  if (decodedToken.uid !== userId) {
-    throw new AppError("Forbidden: You can only seed notifications for your own account", 403);
-  }
+  // 4. Rate limiting check
+  const ip =
+    request.headers.get("x-real-ip") ||
+    request.headers.get("x-vercel-proxied-for") ||
+    request.ip ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "127.0.0.1";
 
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`notifications_seed_${ip}_${userId}`);
   if (!rateLimitResult.allowed) {
-    return fail(429, "TOO_MANY_REQUESTS", "Too many requests. Please slow down.");
+    throw new AppError("Too many requests. Please slow down.", 429);
   }
 
+  // 5. Database operations: Insert mock notifications
   const db = await connectDb();
-
   await db.collection("notifications").insertMany([
     {
       userId,
@@ -52,5 +68,5 @@ export const POST = withErrorHandler(async (request) => {
     },
   ]);
 
-  return success({ success: true });
+  return NextResponse.json({ success: true });
 });

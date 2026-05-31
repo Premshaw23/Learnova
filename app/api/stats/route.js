@@ -1,11 +1,12 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler, authenticateRequest, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getWeekdaysSince } from "@/lib/dateUtils";
 
 export const GET = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
   initFirebaseAdmin();
   const db = getFirestore();
 
@@ -19,7 +20,7 @@ export const GET = withErrorHandler(async (request) => {
 });
 
 export const POST = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
   const body = await parseJSON(request, 1024);
   const { action, statField, value } = body;
 

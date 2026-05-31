@@ -3,7 +3,10 @@ import { GET } from "@/app/api/auth/me/route";
 
 vi.mock("@/lib/error-handler", () => ({
   withErrorHandler: (fn) => fn,
-  authenticateRequest: vi.fn(),
+}));
+
+vi.mock("@/lib/rbac", () => ({
+  requireAuth: vi.fn(),
 }));
 
 vi.mock("@/lib/firebase-admin", () => ({
@@ -29,10 +32,10 @@ describe("GET /api/auth/me", () => {
   });
 
   it("returns user info with role from Firestore", async () => {
-    const { authenticateRequest } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
     const { getUserProfile } = await import("@/lib/firebase-admin");
 
-    authenticateRequest.mockResolvedValue({
+    requireAuth.mockResolvedValue({
       uid: "user-123",
       email: "test@example.com",
       email_verified: true,
@@ -61,10 +64,10 @@ describe("GET /api/auth/me", () => {
   });
 
   it("returns rolesInSync: true when roles match", async () => {
-    const { authenticateRequest } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
     const { getUserProfile } = await import("@/lib/firebase-admin");
 
-    authenticateRequest.mockResolvedValue({
+    requireAuth.mockResolvedValue({
       uid: "user-456",
       email: "sync@example.com",
       email_verified: true,
@@ -90,10 +93,10 @@ describe("GET /api/auth/me", () => {
   });
 
   it("handles missing Firestore profile gracefully", async () => {
-    const { authenticateRequest } = await import("@/lib/error-handler");
+    const { requireAuth } = await import("@/lib/rbac");
     const { getUserProfile } = await import("@/lib/firebase-admin");
 
-    authenticateRequest.mockResolvedValue({
+    requireAuth.mockResolvedValue({
       uid: "user-789",
       email: "nofirestore@example.com",
       email_verified: false,

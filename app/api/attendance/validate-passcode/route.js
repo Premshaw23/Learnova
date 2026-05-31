@@ -51,11 +51,31 @@ export const POST = withErrorHandler(async (request) => {
   
   const { passcode } = validation.data;
 
+  const { getUserProfile } = await import("@/lib/firebase-admin");
+  const profile = await getUserProfile(decodedToken.uid);
+  if (!profile) {
+    return NextResponse.json(
+      { valid: false, error: "User profile not found." },
+      { status: 404 }
+    );
+  }
+
+  const { getSettingsDocId } = await import("@/utils/passcodeUtils");
+  const settingsDocId = getSettingsDocId(profile);
+
   const db = admin.firestore();
-  const settingsDoc = await db
+  let settingsDoc = await db
     .collection("attendance_settings")
-    .doc("current_settings")
+    .doc(settingsDocId)
     .get();
+
+  if (!settingsDoc.exists) {
+    // Fallback for existing data
+    settingsDoc = await db
+      .collection("attendance_settings")
+      .doc("current_settings")
+      .get();
+  }
 
   if (!settingsDoc.exists) {
     return NextResponse.json(

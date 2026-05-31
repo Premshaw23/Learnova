@@ -1,5 +1,5 @@
 import { POST } from "./route";
-import { authenticateRequest, parseJSON } from "@/lib/error-handler";
+import { parseJSON } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -7,24 +7,16 @@ import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
 
 vi.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
   return {
-    authenticateRequest: vi.fn(),
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
-            return {
-              status: error.statusCode,
-              json: async () => ({ error: payload }),
-            };
-          }
+          const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
           return {
-            status: 500,
-            json: async () => ({ error: error.message || "Internal server error" }),
+            status: error.statusCode ?? 500,
+            json: async () => ({ error: payload || error.message || "Internal server error" }),
           };
         }
       };
@@ -32,6 +24,10 @@ vi.mock("@/lib/error-handler", () => {
     parseJSON: vi.fn(),
   };
 });
+
+vi.mock("@/lib/rbac", () => ({
+  requireAuth: vi.fn(),
+}));
 
 vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
@@ -91,7 +87,8 @@ describe("attendance record route", () => {
   };
 
   test("writes attendance to Firestore with canonical doc id + instituteId using transaction", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "user-123",
       studentName: "Client Name",
@@ -143,7 +140,8 @@ describe("attendance record route", () => {
   });
 
   test("prevents duplicate check-in if document already exists", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "user-123",
       studentName: "Client Name",
@@ -181,15 +179,20 @@ describe("attendance record route", () => {
   });
 
   test("rejects request if unauthorized", async () => {
-    const { UnauthorizedError } = require("@/lib/errors");
-    authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockRejectedValue({
+      statusCode: 401,
+      message: "Unauthorized",
+      originalMessage: "Unauthorized",
+    });
 
     const response = await POST(createMockRequest());
     await assertApiError(response, 401, "Unauthorized");
   });
 
   test("rejects request with 403 Forbidden if attempting to submit for another user", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "another-user-456",
       studentName: "Client Name",
@@ -203,7 +206,8 @@ describe("attendance record route", () => {
   });
 
   test("rejects request with 400 Bad Request if confidence score is invalid or below threshold", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
 
     // Scenario 1: below 60
     parseJSON.mockResolvedValue({
@@ -231,7 +235,8 @@ describe("attendance record route", () => {
   });
 
   test("rejects request if rate limit exceeded", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     checkRateLimit.mockResolvedValue({ allowed: false });
 
     const response = await POST(createMockRequest());
@@ -239,7 +244,8 @@ describe("attendance record route", () => {
   });
 
   test("simulates concurrent double-click requests and guarantees single write via OCC retry simulation", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "user-123",
       studentName: "Client Name",

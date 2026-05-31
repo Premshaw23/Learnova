@@ -135,7 +135,7 @@ const ISSUES = [
 
 **Relevant files:** \`components/AuthForm.js\`, \`package.json\`
 
-**Expected solution:** Create \`components/__tests__/AuthForm.test.js\` with at least 5 test cases using Jest and React Testing Library.
+**Expected solution:** Create \`components/__tests__/AuthForm.test.js\` with at least 5 test cases using Vitest and React Testing Library.
 
 ## ✅ Acceptance Criteria
 

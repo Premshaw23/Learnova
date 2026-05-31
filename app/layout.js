@@ -5,7 +5,6 @@ import { Suspense } from "react";
 
 // ─── Third-party libraries ───────────────────────────────────────────────────
 import { Toaster } from "react-hot-toast";
-import NextTopLoader from "nextjs-toploader";
 
 // ─── Global styles ───────────────────────────────────────────────────────────
 import "./globals.css";
@@ -18,14 +17,18 @@ import ScrollToTop from "@/components/ScrollToTop";
 import BackToTop from "@/components/ui/BackToTop";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ScrollProgress from "@/components/ui/ScrollProgress";
+import NextTopLoader from "nextjs-toploader";
+
+// 🎯 FIX: Explicitly loading overlays
+
 import RouteAnnouncer from "@/components/RouteAnnouncer";
+
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 // ─── Command palette (wrapper owns isOpen state via useCommandPalette hook) ──
 // Conflict resolved: use CommandPaletteWrapper, NOT CommandPalette directly.
 // CommandPalette requires isOpen + onClose props — it has no internal state.
 // CommandPaletteWrapper wires the hook so the palette responds to Ctrl+K.
-import CommandPaletteWrapper from "@/components/CommandPaletteWrapper";
 
 // ─── Context providers (all wrapped inside AllProviders) ─────────────────────
 // AllProviders composes: ThemeProvider → AuthProvider → FirestoreProvider → NotificationProvider
@@ -33,16 +36,32 @@ import AllProviders from "./providers/AllProviders";
 
 // ─── SEO metadata & structured data ─────────────────────────────────────────
 import { siteStructuredData } from "@/lib/seo/siteStructuredData";
+
+// 🎯 FIX: Explicitly loading overlays
+import CommandPaletteWrapper from "@/components/CommandPalette";
+import ShortcutsModal from "@/components/ShortcutsModal";
+
 import CommandPalette from "../components/CommandPalette";
 
+
+// Validate environment variables at startup (server-side only).
 // ─── Environment validation (server-side only, runs once at startup) ─────────
 // Kept outside the component so it runs at module load time, not per-render.
 // throwOnError:false keeps local dev working even without all secrets set.
+
+
 if (typeof window === "undefined") {
   try {
     const { validateEnv } = require("@/lib/env");
     validateEnv({
+
+      throwOnError: false,
+
       throwOnError: false, // Avoid failing the build during local/CI evaluation
+
+      throwOnError: false,
+      throwOnError: false, // Avoid failing the build during local/CI evaluation
+
       warnOnce: true,
     });
   } catch (error) {
@@ -295,7 +314,13 @@ export default function RootLayout({ children }) {
           Skip to Main Content
         </a>
 
+
         {/* ── All context providers (Theme, Auth, Firestore, Notifications) ── */}
+
+          
+
+        {/* ── All context providers (Theme, Auth, Firestore, Notifications) ── */}
+
         <AllProviders>
           {/* Note: Ensure these providers (ThemeProvider, AuthProvider, etc.) 
               are actually imported and exported correctly in AllProviders 
@@ -329,43 +354,45 @@ export default function RootLayout({ children }) {
             <ScrollToTop />
             <Footer />
 
+            <ClientLayout />
+            <BackToTop />
+
             {/* ── Client-only layout: modals, chatbot, PWA install, streak sync ── */}
             <ClientLayout />
 
             {/* ── Back-to-top floating button ── */}
             <BackToTop />
 
+
             {/* ── Screen-reader route announcer for accessibility ── */}
             <RouteAnnouncer />
             <OfflineIndicator />
 
             {/* Single Toaster configuration */}
+
+
             <Toaster
-              position="bottom-right"
+              position="top-right"
               toastOptions={{
                 duration: 4000,
-                style: {
-                  background: "#0f172a",
-                  color: "#f8fafc",
-                  border: "1px solid rgba(99, 102, 241, 0.15)",
-                  fontWeight: 600,
-                },
-                success: {
-                  iconTheme: {
-                    primary: "#10b981",
-                    secondary: "#0f172a",
-                  },
-                },
-                error: {
-                  iconTheme: {
-                    primary: "#ef4444",
-                    secondary: "#0f172a",
-                  },
-                },
+                style: { fontWeight: 600 },
               }}
             />
 
+            <OfflineIndicator />
+            <CommandPaletteWrapper />
+            
+            {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
+            <ShortcutsModal />
+
+            
             <CommandPalette />
+
+
+
+            <CommandPalette />
+
+            <CommandPaletteWrapper />
           </Suspense>
         </AllProviders>
 

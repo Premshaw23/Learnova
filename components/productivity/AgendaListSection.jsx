@@ -17,9 +17,9 @@ export function AgendaListSection({
   return (
     <motion.div
       className={`${isDark
-          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-          : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-        } rounded-3xl p-6 `}
+        ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+        : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+      } rounded-3xl p-6 h-[472px] flex flex-col`}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
@@ -82,7 +82,7 @@ export function AgendaListSection({
           </button>
         </div>
       </form>
-      <div className="space-y-3">
+      <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-purple-500/40 scrollbar-track-transparent">
         {agendaForSelectedDate.length === 0 ? (
           <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
             No agenda yet. Add a focus item for this day.

@@ -2,7 +2,7 @@ import React from "react";
 import { Sparkles } from "lucide-react";
 import CourseFilters from "@/components/courses/CourseFilters";
 import CourseLibrary from "@/components/courses/CourseLibrary";
-import { getPaginatedCourses } from "@/lib/courses";
+import { COURSES, getPaginatedCourses } from "@/lib/courses";
 
 export const metadata = {
   title: "Courses · Learnova",
@@ -75,6 +75,7 @@ export default async function CoursesPage({ searchParams }) {
           q={q}
           total={total}
           limit={limit}
+          allCourses={COURSES}
         />
       </main>
     </div>

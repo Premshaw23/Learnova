@@ -1,5 +1,6 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { withErrorHandler, authenticateRequest, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { logger } from "@/lib/logger";
@@ -18,7 +19,7 @@ export const runtime = "nodejs";
  */
 export const POST = withErrorHandler(async (request) => {
   // 1. Authenticate request via Firebase token first to prevent unauthenticated/arbitrary deletion
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
 
   // 2. Parse request body securely with maxBytes limitation (1KB) to prevent DoS
   const body = await parseJSON(request, 1024);

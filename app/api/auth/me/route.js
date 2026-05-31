@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
  * custom claims can be stale for up to 1 hour after a role change.
  */
 export const GET = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`auth_me_${ip}_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {

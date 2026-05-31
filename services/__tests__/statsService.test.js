@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import {
   getWeekdaysSince,
   initializeUserStats,
@@ -5,32 +6,35 @@ import {
   recalculateAttendanceRate,
 } from "../statsService";
 
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe("statsService", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("getWeekdaysSince", () => {
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it("should calculate correct number of weekdays for a given start date", () => {
-      jest.useFakeTimers().setSystemTime(new Date("2024-01-10T12:00:00Z"));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-10T12:00:00Z"));
       const weekdays = getWeekdaysSince(new Date("2024-01-01T12:00:00Z"));
       expect(weekdays).toBe(8);
     });
 
     it("should default to start of year if no start date is provided", () => {
-      jest.useFakeTimers().setSystemTime(new Date("2024-01-10T12:00:00Z"));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-10T12:00:00Z"));
       const weekdays = getWeekdaysSince();
       expect(weekdays).toBe(8);
     });
 
     it("should return at least 1 even if checked exactly on Jan 1st of a weekend", () => {
-      jest.useFakeTimers().setSystemTime(new Date("2023-01-01T12:00:00Z"));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2023-01-01T12:00:00Z"));
       const weekdays = getWeekdaysSince();
       expect(weekdays).toBe(1);
     });

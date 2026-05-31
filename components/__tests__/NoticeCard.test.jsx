@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import NoticeCard from "../NoticeCard";
 
 const mockPdfInstance = {
@@ -100,7 +101,7 @@ describe("NoticeCard", () => {
 
   test("downloads a formatted text export for the notice", async () => {
     const user = userEvent.setup();
-    const clickSpy = jest
+    const clickSpy = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => {});
 

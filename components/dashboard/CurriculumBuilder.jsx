@@ -24,6 +24,8 @@ import { toast } from "react-hot-toast";
 
 // Fetch the master courses list
 import { COURSES } from "@/lib/courses";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export default function CurriculumBuilder() {
   const [courses] = useState(COURSES);
@@ -61,7 +63,7 @@ export default function CurriculumBuilder() {
           }
         }
 
-        const res = await fetch(`/api/courses/curriculum/${selectedCourseId}`);
+        const res = await apiFetch(`/api/courses/curriculum/${selectedCourseId}`);
         const data = await res.json();
         if (data.success) {
           setModules(data.modules);
@@ -97,7 +99,7 @@ export default function CurriculumBuilder() {
     });
 
     try {
-      const res = await fetch("/api/courses/curriculum/sync", {
+      const res = await apiFetch("/api/courses/curriculum/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

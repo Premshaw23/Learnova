@@ -3,6 +3,7 @@ import { initFirebaseAdmin, getAdminDb } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
+import { parseJSON } from "@/lib/error-handler";
 import { executeSaga, findExistingOperation, markIdempotent } from "@/lib/transactionCoordinator";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
@@ -26,24 +27,7 @@ export async function POST(req) {
       );
     }
 
-    const rawBody = await req.text();
-    const byteLength = new TextEncoder().encode(rawBody).length;
-    if (byteLength > MAX_BULK_IMPORT_PAYLOAD_BYTES) {
-      return NextResponse.json(
-        { error: "Payload too large" },
-        { status: 413 }
-      );
-    }
-
-    let body;
-    try {
-      body = JSON.parse(rawBody);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid JSON payload" },
-        { status: 400 }
-      );
-    }
+    const body = await parseJSON(req, MAX_BULK_IMPORT_PAYLOAD_BYTES);
 
     const { students, idempotencyKey } = body;
 

@@ -36,6 +36,8 @@ import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
 import i18n from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
+import { apiFetch } from "@/lib/apiClient";
+
 
 const SettingCard = ({ children, title, description }) => (
   <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 hover:bg-black/30 transition-all duration-300">
@@ -383,7 +385,7 @@ export default function UniversalSettings() {
         const formData = new FormData();
         formData.append("file", avatarFile);
         
-        const uploadResponse = await fetch("/api/upload/avatar", {
+        const uploadResponse = await apiFetch("/api/upload/avatar", {
           method: "POST",
           body: formData,
           credentials: "include", // Include cookies for authentication
@@ -405,7 +407,7 @@ export default function UniversalSettings() {
       }
 
       // Save other settings
-      const response = await fetch("/api/settings", {
+      const response = await apiFetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
