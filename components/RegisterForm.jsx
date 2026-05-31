@@ -100,7 +100,7 @@ const RegisterForm = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    aria-label={showPassword ? "Show password" : "Hide password"}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
