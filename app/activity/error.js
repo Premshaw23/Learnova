@@ -40,3 +40,7 @@ export default function ActivityError({ error, reset }) {
     </div>
   );
 }
+
+
+// GSSoC Error Logger Docstrings
+// Log uncaught activity fetch errors to centralized database endpoint
