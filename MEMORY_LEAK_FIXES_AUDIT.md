@@ -288,3 +288,7 @@ Before merging to production:
 - [ ] Rapid route navigation - verify no "setState on unmounted" warnings
 - [ ] 10+ minutes continuous polling - verify steady memory (no growth)
 - [ ] DevTools memory profiler - check for detached DOM nodes
+
+
+### Password Strength Regex Complexity
+- Enforce special character and number requirements in RegisterForm.
