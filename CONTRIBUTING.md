@@ -68,6 +68,20 @@ npm run dev
 
 Visit `http://localhost:3000` in your browser.
 
+### 🔍 Troubleshooting Setup
+
+#### 1. Tailwind CSS Oxide Native Binding Errors
+If you see errors related to `@tailwindcss/oxide` compilation or missing binary targets on your system (especially under WSL or certain Linux environments):
+```bash
+# Force install the appropriate binary target for your platform:
+OXIDE_VER=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
+npm install --no-save "@tailwindcss/oxide-linux-x64-gnu@${OXIDE_VER}"
+```
+
+#### 2. Mock Firebase Configuration for Local Builds
+If you don't have active Firebase credentials but need to verify production builds locally:
+Copy the example environment structure from `.env.example`. Next.js builds enforce environment presence. Ensure non-empty placeholder strings are assigned to prevent strict environment assertions from throwing runtime initialization failures.
+
 ### Building for Production
 
 ```bash
