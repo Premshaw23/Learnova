@@ -56,7 +56,7 @@ describe("AuthForm", () => {
 
   test("calls onSubmit when form is submitted", async () => {
     const user = userEvent.setup();
-    const handleSubmit = vi.fn((e) => e.preventDefault());
+    const handleSubmit = vi.fn();
 
     render(<AuthForm {...defaultProps} onSubmit={handleSubmit} />);
 
