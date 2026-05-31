@@ -1,0 +1,30 @@
+name: PR Template Compliance
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  compliance-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Inspect PR Description
+        run: |
+          PR_BODY="${{ github.event.pull_request.body }}"
+          
+          echo "Checking PR description for template placeholder cleanup..."
+          
+          if echo "$PR_BODY" | grep -iq "Closes #ISSUE_NUMBER"; then
+            echo "❌ ERROR: You must replace 'Closes #ISSUE_NUMBER' with actual issue numbers!"
+            exit 1
+          fi
+
+          if echo "$PR_BODY" | grep -iq "Short explanation of contribution"; then
+            echo "❌ ERROR: You must update the summary section in the PR description!"
+            exit 1
+          fi
+
+          echo "✅ PR description matches template guidelines successfully!"
