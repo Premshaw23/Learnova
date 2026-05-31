@@ -59,3 +59,7 @@ Blocked from search engine indexing:
 - `/contributors` — Contributors (priority 0.5, monthly)
 - `/terms` — Terms of Service (priority 0.4, yearly)
 - `/verify` — Email Verification (priority 0.3, monthly)
+
+
+### Next.js SEO Routing Meta Optimizations
+- Dynamic routing slugs must resolve custom title strings.
