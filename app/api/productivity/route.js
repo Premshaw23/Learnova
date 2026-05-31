@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
-import { ValidationError } from "@/lib/errors";
+import { parseJSON, withErrorHandler } from "@/lib/error-handler";
+import { ValidationError, AppError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const MAX_ITEMS = 500;
+const MAX_AGENDA_DAYS = 60;
+const MAX_PRODUCTIVITY_PAYLOAD_BYTES = 1024 * 100;
 
 const taskSchema = z.object({
   id: z.union([z.string(), z.number()]),
@@ -28,6 +31,9 @@ const postSchema = z.object({
   agendaItems: z.record(
     z.string(),
     z.array(agendaItemSchema).max(MAX_ITEMS, `Agenda items per day cannot exceed ${MAX_ITEMS}`)
+  ).refine(
+    (record) => Object.keys(record).length <= MAX_AGENDA_DAYS,
+    { message: `Cannot sync more than ${MAX_AGENDA_DAYS} days of agenda items` }
   ),
 });
 
@@ -39,6 +45,11 @@ const postSchema = z.object({
  */
 export const GET = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireRole(request, ["student", "teacher", "admin"]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`productivity_get_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const db = await connectDb();
   const userId = decodedToken.uid;
 
@@ -68,8 +79,13 @@ export const GET = withErrorHandler(async (request) => {
  */
 export const POST = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireRole(request, ["student", "teacher", "admin"]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`productivity_post_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
 
-  const body = await request.json();
+  const body = await parseJSON(request, MAX_PRODUCTIVITY_PAYLOAD_BYTES);
 
   const validation = postSchema.safeParse(body);
   if (!validation.success) {

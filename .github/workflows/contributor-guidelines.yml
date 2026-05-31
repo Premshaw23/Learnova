@@ -24,7 +24,9 @@ jobs:
             const eventType = context.payload.issue ? 'issue' : 'pull_request';
             const issue_number = context.payload.issue?.number || context.payload.pull_request?.number;
 
-            // Query open issues by this contributor
+            // Query open issues by this contributor.
+            // Note: GitHub's issues.listForRepo API returns both issues and pull requests,
+            // so we must filter out pull request objects afterwards.
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -32,12 +34,15 @@ jobs:
               state: 'open'
             });
 
-            // Query ALL open PRs in the repository
-            const allPRs = await github.rest.pulls.list({
+            // Query ALL open PRs in the repository using pagination to prevent 30-item default limits
+            const allPRsData = await github.paginate(github.rest.pulls.list, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: 'open'
+              state: 'open',
+              per_page: 100
             });
+            // Authoritative fallback: explicitly filter for only open PRs to prevent any API edge-case leakage of closed/merged PRs
+            const allPRs = { data: allPRsData.filter(pr => pr.state === 'open') };
 
             // Filter open PRs by this contributor
             const prs = { data: allPRs.data.filter(pr => pr.user && pr.user.login === author) };
@@ -46,7 +51,7 @@ jobs:
 
             const PER_PERSON_LIMIT = 3;
             const GLOBAL_PR_LIMIT = 30;
-            const issueCount = issues.data.length;
+            const issueCount = issues.data.filter(issue => !issue.pull_request).length;
             const prCount = prs.data.length;
             const totalOpenPRs = allPRs.data.length;
 

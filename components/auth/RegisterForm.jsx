@@ -131,7 +131,7 @@ export default function RegisterForm({ onSubmitSuccess }) {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-200"
             >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPassword ? <Eye className="w-4 h-4" />: <EyeOff className="w-4 h-4" />}
             </button>
           </div>
           {errors.password && (
@@ -197,8 +197,9 @@ export default function RegisterForm({ onSubmitSuccess }) {
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              aria-label={showConfirmPassword ? "Show password" : "Hide password"}
             >
-              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showConfirmPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             </button>
           </div>
           {errors.confirmPassword && (

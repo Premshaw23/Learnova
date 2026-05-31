@@ -1,10 +1,12 @@
+"use client";
 import React from "react";
 import Skeleton from "@/components/ui/Skeleton";
+import SkeletonCard from "@/components/SkeletonCard";
 
 /**
  * DashboardLoading Component
- * Next.js loading convention segment for the dashboard pages.
- * Displays structural grid skeletons mimicking widgets, charts, and data panels.
+ * Next.js loading segment for the dashboard pages.
+ * Displays structural grid skeletons mimicking widgets, charts, and data panels to prevent CLS.
  */
 export default function DashboardLoading() {
   return (
@@ -36,12 +38,14 @@ export default function DashboardLoading() {
             <div className="flex justify-between items-center">
               <Skeleton className="h-6 w-32 bg-slate-800/80" />
               <Skeleton className="h-4 w-16 bg-slate-800/60" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Skeleton className="h-28 bg-slate-800/60 rounded-xl" />
-              <Skeleton className="h-28 bg-slate-800/60 rounded-xl" />
-            </div>
-          </div>
+           </div>
+         {/* 👇 Updated to a 3-column layout showcasing your beautiful skeleton cards */}
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+         </div>
+        </div>
 
           {/* List panel */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">

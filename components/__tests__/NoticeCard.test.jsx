@@ -5,28 +5,28 @@ import NoticeCard from "../NoticeCard";
 const mockPdfInstance = {
   internal: {
     pageSize: {
-      getWidth: jest.fn(() => 210),
-      getHeight: jest.fn(() => 297),
+      getWidth: vi.fn(() => 210),
+      getHeight: vi.fn(() => 297),
     },
   },
-  setFont: jest.fn(),
-  setFontSize: jest.fn(),
-  text: jest.fn(),
-  splitTextToSize: jest.fn(() => ["Exam Schedule Updated", "The exam timetable has been updated for next week." ]),
-  addPage: jest.fn(),
-  save: jest.fn(),
-  setFillColor: jest.fn(),
-  rect: jest.fn(),
-  setDrawColor: jest.fn(),
-  setLineWidth: jest.fn(),
-  line: jest.fn(),
-  getTextWidth: jest.fn(() => 15),
-  roundedRect: jest.fn(),
-  setTextColor: jest.fn(),
+  setFont: vi.fn(),
+  setFontSize: vi.fn(),
+  text: vi.fn(),
+  splitTextToSize: vi.fn(() => ["Exam Schedule Updated", "The exam timetable has been updated for next week." ]),
+  addPage: vi.fn(),
+  save: vi.fn(),
+  setFillColor: vi.fn(),
+  rect: vi.fn(),
+  setDrawColor: vi.fn(),
+  setLineWidth: vi.fn(),
+  line: vi.fn(),
+  getTextWidth: vi.fn(() => 15),
+  roundedRect: vi.fn(),
+  setTextColor: vi.fn(),
 };
 
-jest.mock("jspdf", () => ({
-  jsPDF: jest.fn(() => mockPdfInstance),
+vi.mock("jspdf", () => ({
+  jsPDF: vi.fn(() => mockPdfInstance),
 }));
 
 const baseNotice = {
@@ -44,9 +44,9 @@ const baseNotice = {
 const defaultProps = {
   notice: baseNotice,
   isRead: false,
-  onToggleRead: jest.fn(),
+  onToggleRead: vi.fn(),
   searchQuery: "",
-  getRelativeTime: jest.fn(() => "2h ago"),
+  getRelativeTime: vi.fn(() => "2h ago"),
 };
 
 const readBlobAsText = (blob) =>
@@ -62,17 +62,17 @@ describe("NoticeCard", () => {
   beforeEach(() => {
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
-      value: jest.fn(() => "blob:notice-export"),
+      value: vi.fn(() => "blob:notice-export"),
     });
 
     Object.defineProperty(URL, "revokeObjectURL", {
       configurable: true,
-      value: jest.fn(),
+      value: vi.fn(),
     });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     Object.values(mockPdfInstance).forEach((value) => {
       if (value && typeof value.mockClear === "function") {
         value.mockClear();
@@ -133,7 +133,7 @@ describe("NoticeCard", () => {
 
   test("shares the notice when the Web Share API is available", async () => {
     const user = userEvent.setup();
-    const shareMock = jest.fn().mockResolvedValue(undefined);
+    const shareMock = vi.fn().mockResolvedValue(undefined);
 
     Object.defineProperty(navigator, "share", {
       configurable: true,

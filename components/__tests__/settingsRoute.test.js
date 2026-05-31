@@ -2,9 +2,9 @@ import { PATCH } from "@/app/api/settings/route";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -14,13 +14,13 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
 }));
 
 describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Tests", () => {
@@ -29,17 +29,17 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   let consoleLogMock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    mockUpdateOne = jest.fn();
+    mockUpdateOne = vi.fn();
     connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         updateOne: mockUpdateOne,
       }),
     });
 
     originalConsoleLog = console.log;
-    consoleLogMock = jest.fn();
+    consoleLogMock = vi.fn();
     console.log = consoleLogMock;
   });
 
@@ -52,7 +52,8 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
       headers: {
         get: (name) => headers[name.toLowerCase()] || null,
       },
-      json: jest.fn().mockResolvedValue(bodyData),
+      json: vi.fn().mockResolvedValue(bodyData),
+      text: vi.fn().mockResolvedValue(JSON.stringify(bodyData)),
     };
   };
 

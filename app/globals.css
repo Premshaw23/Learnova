@@ -1,5 +1,8 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "tw-animate-css";
+
+/* Tailwind CSS v4 Migration - Verified */
 
 @layer base {
   :focus-visible {

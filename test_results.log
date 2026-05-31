@@ -1,0 +1,507 @@
+
+> learnova@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.4 /home/mihir/2026 open contribution/Learnova
+
+ ❯ lib/__tests__/env.test.js (6 tests | 6 failed) 34ms
+   × environment validation > reports missing required environment variables without throwing 24ms
+     → jest is not defined
+   × environment validation > throws in strict mode when required variables are missing 1ms
+     → jest is not defined
+   × environment validation > warns instead of throwing in non-strict mode 1ms
+     → jest is not defined
+   × environment validation > can suppress repeated warnings in non-strict mode 1ms
+     → jest is not defined
+   × environment validation > accepts fully configured environment variables 1ms
+     → jest is not defined
+   × environment validation > formats placeholder values as invalid variables 1ms
+     → jest is not defined
+ ❯ lib/__tests__/apiClient.test.js (9 tests | 9 failed) 36ms
+   × apiFetch > resolves JSON response correctly 19ms
+     → jest is not defined
+     → jest is not defined
+   × apiFetch > resolves text response correctly 3ms
+     → jest is not defined
+     → jest is not defined
+   × apiFetch > deduplicates simultaneous in-flight requests 2ms
+     → jest is not defined
+     → jest is not defined
+   × apiFetch > does not deduplicate sequential requests 2ms
+     → jest is not defined
+     → jest is not defined
+   × apiFetch > triggers timeout if request takes too long 2ms
+     → jest is not defined
+     → jest is not defined
+   × apiFetch > extracts error message from string error response 1ms
+     → jest is not defined
+     → jest is not defined
+   × apiFetch > extracts error message and code from object error response 1ms
+     → jest is not defined
+     → jest is not defined
+   × apiFetch > extracts error message from plain text response 1ms
+     → jest is not defined
+     → jest is not defined
+   × apiFetch > handles general network errors 1ms
+     → jest is not defined
+     → jest is not defined
+ ❯ components/__tests__/StreakTracker.test.jsx (4 tests | 4 failed) 35ms
+   × StreakTracker Component > should initialize streak to 1 and store today as lastActiveDate on first render 18ms
+     → jest is not defined
+     → jest is not defined
+   × StreakTracker Component > should increment streak if lastActiveDate was yesterday 2ms
+     → jest is not defined
+     → jest is not defined
+   × StreakTracker Component > should keep streak the same if lastActiveDate is today 2ms
+     → jest is not defined
+     → jest is not defined
+   × StreakTracker Component > should reset streak to 1 if lastActiveDate was more than 1 day ago 2ms
+     → jest is not defined
+     → jest is not defined
+ ✓ lib/__tests__/dateUtils.test.js (14 tests) 142ms
+ ✓ components/__tests__/formValidation.test.js (19 tests) 32ms
+ ✓ utils/__tests__/formValidation.test.js (29 tests) 31ms
+ ✓ components/__tests__/Tooltip.test.jsx (2 tests) 214ms
+ ✓ lib/ai/__tests__/groq.test.js (7 tests) 27ms
+ ✓ tests/utils/attendanceUtils.test.js (22 tests) 30ms
+ ✓ lib/__tests__/courses.test.js (6 tests) 18ms
+ ✓ tests/api/attendance.test.js (8 tests) 17ms
+ ✓ lib/__tests__/readingTime.test.js (8 tests) 10ms
+ ✓ utils/__tests__/mongoUtils.test.js (9 tests) 13ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 31 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/__tests__/AttendanceValidation.test.jsx [ components/__tests__/AttendanceValidation.test.jsx ]
+ FAIL  components/__tests__/AuthForm.test.jsx [ components/__tests__/AuthForm.test.jsx ]
+ FAIL  components/__tests__/SearchModal.test.jsx [ components/__tests__/SearchModal.test.jsx ]
+ FAIL  contexts/__tests__/AuthContext.test.js [ contexts/__tests__/AuthContext.test.js ]
+ FAIL  contexts/__tests__/AuthContext.test.jsx [ contexts/__tests__/AuthContext.test.jsx ]
+Error: Failed to parse source for import analysis because the content contains invalid JS syntax. If you are using JSX, make sure to name the file with the .jsx or .tsx extension.
+  Plugin: vite:import-analysis
+  File: /home/mihir/2026 open contribution/Learnova/components/AttendanceValidation.js:524:129
+  522 |          <div className="text-center space-y-6">
+  523 |            <div className="relative">
+  524 |  ...order-t-purple-500 rounded-full animate-spin mx-auto"></div>
+      |                                                                 ^
+  525 |              <div
+  526 |                className="absolute inset-0 w-24 h-24 border-4 border-transparent border-r-blue-500 rounded-full animat...
+ ❯ TransformPluginContext._formatLog ../../2026%20open%20contribution/Learnova/node_modules/vite/dist/node/chunks/config.js:29019:43
+ ❯ TransformPluginContext.error ../../2026%20open%20contribution/Learnova/node_modules/vite/dist/node/chunks/config.js:29016:14
+ ❯ TransformPluginContext.transform ../../2026%20open%20contribution/Learnova/node_modules/vite/dist/node/chunks/config.js:27102:10
+ ❯ EnvironmentPluginContainer.transform ../../2026%20open%20contribution/Learnova/node_modules/vite/dist/node/chunks/config.js:28817:14
+ ❯ loadAndTransform ../../2026%20open%20contribution/Learnova/node_modules/vite/dist/node/chunks/config.js:22686:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/63]⎯
+
+ FAIL  components/__tests__/AuthForm.test.js [ components/__tests__/AuthForm.test.js ]
+RollupError: Parse failure: Expression expected
+At file: /home/mihir/2026 open contribution/Learnova/components/__tests__/AuthForm.test.js:28:11
+  File: /home/mihir/2026 open contribution/Learnova/components/__tests__/AuthForm.test.js:28:11
+  26 |  describe("AuthForm", () => {
+  27 |    test("renders login form with correct heading", () => {
+  28 |      render(<AuthForm {...defaultProps} />);
+     |             ^
+  29 |  
+  30 |      expect(screen.getByRole("heading", { name: "Welcome Back" })).toBeInTheDocument();
+ ❯ getRollupError ../../2026%20open%20contribution/Learnova/node_modules/rollup/dist/es/shared/parseAst.js:406:41
+ ❯ convertProgram ../../2026%20open%20contribution/Learnova/node_modules/rollup/dist/es/shared/parseAst.js:1132:26
+ ❯ parseAstAsync ../../2026%20open%20contribution/Learnova/node_modules/rollup/dist/es/shared/parseAst.js:2122:106
+ ❯ ssrTransformScript ../../2026%20open%20contribution/Learnova/node_modules/vite/dist/node/chunks/config.js:15390:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/63]⎯
+
+ FAIL  components/__tests__/EmptyNoticeState.test.jsx [ components/__tests__/EmptyNoticeState.test.jsx ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/EmptyNoticeState.test.jsx:8:21
+      6|   const defaultProps = {
+      7|     query: "",
+      8|     onResetFilters: jest.fn(),
+       |                     ^
+      9|   };
+     10| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/63]⎯
+
+ FAIL  components/__tests__/ExceptionRequestsList.test.jsx [ components/__tests__/ExceptionRequestsList.test.jsx ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/ExceptionRequestsList.test.jsx:11:23
+      9|     isLoadingRequests: false,
+     10|     requestsError: null,
+     11|     fetchAllRequests: jest.fn(),
+       |                       ^
+     12|     showAllRequestsModal: false,
+     13|     setShowAllRequestsModal: jest.fn(),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/63]⎯
+
+ FAIL  components/__tests__/NoticeCard.test.jsx [ components/__tests__/NoticeCard.test.jsx ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/NoticeCard.test.jsx:8:17
+      6|   internal: {
+      7|     pageSize: {
+      8|       getWidth: jest.fn(() => 210),
+       |                 ^
+      9|       getHeight: jest.fn(() => 297),
+     10|     },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/63]⎯
+
+ FAIL  components/__tests__/authUtils.test.js [ components/__tests__/authUtils.test.js ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/authUtils.test.js:1:1
+      1| jest.mock("@/services/statsService", () => ({
+       | ^
+      2|   initializeUserStats: jest.fn(),
+      3| }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/63]⎯
+
+ FAIL  components/__tests__/conversationsRoute.test.js [ components/__tests__/conversationsRoute.test.js ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/conversationsRoute.test.js:5:1
+      3| import { verifyFirebaseToken } from "@/lib/firebase-admin";
+      4| 
+      5| jest.mock("next/server", () => ({
+       | ^
+      6|   NextResponse: {
+      7|     json: jest.fn().mockImplementation((body, init) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/63]⎯
+
+ FAIL  components/__tests__/exceptionsUpdateRoute.test.js [ components/__tests__/exceptionsUpdateRoute.test.js ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/exceptionsUpdateRoute.test.js:4:1
+      2| import { verifyFirebaseToken, getUserProfile, getUserProfileByEmail } …
+      3| 
+      4| jest.mock("mongodb", () => ({
+       | ^
+      5|   ObjectId: class {
+      6|     constructor(id) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/63]⎯
+
+ FAIL  components/__tests__/groqRoute.test.js [ components/__tests__/groqRoute.test.js ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/groqRoute.test.js:5:1
+      3| import { checkRateLimit } from "@/lib/rateLimit";
+      4| 
+      5| jest.mock("next/server", () => ({
+       | ^
+      6|   NextResponse: {
+      7|     json: jest.fn().mockImplementation((body, init) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/63]⎯
+
+ FAIL  components/__tests__/imagesRoute.test.js [ components/__tests__/imagesRoute.test.js ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/imagesRoute.test.js:12:1
+     10| } from "@/lib/images/imagesService";
+     11| 
+     12| jest.mock("next/server", () => {
+       | ^
+     13|   class MockNextResponse {
+     14|     constructor(body, init) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/63]⎯
+
+ FAIL  components/__tests__/labelsRoute.test.js [ components/__tests__/labelsRoute.test.js ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/labelsRoute.test.js:6:1
+      4| import { checkRateLimit } from "@/lib/rateLimit";
+      5| 
+      6| jest.mock("next/server", () => ({
+       | ^
+      7|   NextResponse: {
+      8|     json: jest.fn().mockImplementation((body, init) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/63]⎯
+
+ FAIL  components/__tests__/registerRoute.test.js [ components/__tests__/registerRoute.test.js ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/registerRoute.test.js:7:1
+      5| import { checkRateLimit } from "@/lib/rateLimit";
+      6| 
+      7| jest.mock("@/lib/rateLimit", () => ({
+       | ^
+      8|   checkRateLimit: jest.fn(),
+      9| }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/63]⎯
+
+ FAIL  components/__tests__/settingsRoute.test.js [ components/__tests__/settingsRoute.test.js ]
+ReferenceError: jest is not defined
+ ❯ components/__tests__/settingsRoute.test.js:5:1
+      3| import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-ad…
+      4| 
+      5| jest.mock("next/server", () => ({
+       | ^
+      6|   NextResponse: {
+      7|     json: jest.fn().mockImplementation((body, init) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/63]⎯
+
+ FAIL  hooks/__tests__/useOfflineQueue.test.js [ hooks/__tests__/useOfflineQueue.test.js ]
+ReferenceError: jest is not defined
+ ❯ hooks/__tests__/useOfflineQueue.test.js:5:1
+      3| import toast from "react-hot-toast";
+      4| 
+      5| jest.mock("react-hot-toast", () => ({
+       | ^
+      6|   loading: jest.fn(),
+      7|   success: jest.fn(),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/63]⎯
+
+ FAIL  lib/__tests__/gamificationRace.test.js [ lib/__tests__/gamificationRace.test.js ]
+ReferenceError: jest is not defined
+ ❯ lib/__tests__/gamificationRace.test.js:4:1
+      2| import { awardXp } from "@/lib/gamification-service";
+      3| 
+      4| jest.setTimeout(30000);
+       | ^
+      5| 
+      6| describe("Gamification Concurrency Race Condition Test", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/63]⎯
+
+ FAIL  services/__tests__/statsService.test.js [ services/__tests__/statsService.test.js ]
+ReferenceError: jest is not defined
+ ❯ services/__tests__/statsService.test.js:8:16
+      6| } from "../statsService";
+      7| 
+      8| global.fetch = jest.fn();
+       |                ^
+      9| 
+     10| describe("statsService", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/63]⎯
+
+ FAIL  app/api/notifications/route.test.js [ app/api/notifications/route.test.js ]
+ReferenceError: jest is not defined
+ ❯ app/api/notifications/route.test.js:8:1
+      6| import { assertApiError } from "../../../testUtils/assertApiError";
+      7| 
+      8| jest.mock("../../../lib/error-handler", () => {
+       | ^
+      9|   const { AppError } = require("../../../lib/errors");
+     10|   return {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/63]⎯
+
+ FAIL  lib/images/__tests__/imagesService.stress.test.js [ lib/images/__tests__/imagesService.stress.test.js ]
+ReferenceError: jest is not defined
+ ❯ lib/images/__tests__/imagesService.stress.test.js:7:1
+      5| import { connectDb } from "@/lib/mongodb";
+      6| 
+      7| jest.mock("@/lib/mongodb", () => ({
+       | ^
+      8|   connectDb: jest.fn(),
+      9| }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/63]⎯
+
+ FAIL  lib/images/__tests__/imagesService.test.js [ lib/images/__tests__/imagesService.test.js ]
+ReferenceError: jest is not defined
+ ❯ lib/images/__tests__/imagesService.test.js:15:1
+     13| import { put } from "@vercel/blob";
+     14| 
+     15| jest.mock("@/lib/mongodb", () => ({
+       | ^
+     16|   connectDb: jest.fn(),
+     17| }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/63]⎯
+
+ FAIL  app/api/attendance/heatmap/route.test.js [ app/api/attendance/heatmap/route.test.js ]
+ReferenceError: jest is not defined
+ ❯ app/api/attendance/heatmap/route.test.js:5:1
+      3| import { getFirestore } from "firebase-admin/firestore";
+      4| 
+      5| jest.mock("@/lib/error-handler", () => ({
+       | ^
+      6|   authenticateRequest: jest.fn(),
+      7|   withErrorHandler: (handler) => handler,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/63]⎯
+
+ FAIL  app/api/attendance/record/route.test.js [ app/api/attendance/record/route.test.js ]
+ReferenceError: jest is not defined
+ ❯ app/api/attendance/record/route.test.js:9:1
+      7| import { assertApiError } from "@/testUtils/assertApiError";
+      8| 
+      9| jest.mock("@/lib/error-handler", () => {
+       | ^
+     10|   const { AppError } = require("@/lib/errors");
+     11|   return {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/63]⎯
+
+ FAIL  app/api/attendance/sync/route.test.js [ app/api/attendance/sync/route.test.js ]
+ReferenceError: jest is not defined
+ ❯ app/api/attendance/sync/route.test.js:10:1
+      8| import { checkRateLimit } from "@/lib/rateLimit";
+      9| 
+     10| jest.mock("@/lib/rbac", () => ({
+       | ^
+     11|   requireAuth: jest.fn(),
+     12| }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/63]⎯
+
+ FAIL  app/api/exceptions/all/route.test.js [ app/api/exceptions/all/route.test.js ]
+ReferenceError: jest is not defined
+ ❯ app/api/exceptions/all/route.test.js:8:1
+      6| import { assertApiError } from "@/testUtils/assertApiError";
+      7| 
+      8| jest.mock("@/lib/rbac", () => ({
+       | ^
+      9|   requireRole: jest.fn(),
+     10| }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/63]⎯
+
+ FAIL  app/api/exceptions/create/route.test.js [ app/api/exceptions/create/route.test.js ]
+ReferenceError: jest is not defined
+ ❯ app/api/exceptions/create/route.test.js:9:1
+      7| import { assertApiError } from "@/testUtils/assertApiError";
+      8| 
+      9| jest.mock("@/lib/rbac", () => ({
+       | ^
+     10|   requireStudent: jest.fn(),
+     11| }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/63]⎯
+
+ FAIL  app/api/exceptions/list/route.test.js [ app/api/exceptions/list/route.test.js ]
+ReferenceError: jest is not defined
+ ❯ app/api/exceptions/list/route.test.js:8:1
+      6| import { assertApiError } from "@/testUtils/assertApiError";
+      7| 
+      8| jest.mock("@/lib/rbac", () => ({
+       | ^
+      9|   requireRole: jest.fn(),
+     10| }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/63]⎯
+
+ FAIL  app/api/exceptions/update/route.test.js [ app/api/exceptions/update/route.test.js ]
+ReferenceError: jest is not defined
+ ❯ app/api/exceptions/update/route.test.js:11:1
+      9| import { assertApiError } from "@/testUtils/assertApiError";
+     10| 
+     11| jest.mock("@/lib/rbac", () => ({
+       | ^
+     12|   requireRole: jest.fn(),
+     13| }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/63]⎯
+
+ FAIL  app/api/notifications/seed/route.test.js [ app/api/notifications/seed/route.test.js ]
+ReferenceError: jest is not defined
+ ❯ app/api/notifications/seed/route.test.js:8:1
+      6| import { assertApiError } from "../../../../testUtils/assertApiError";
+      7| 
+      8| jest.mock("../../../../lib/error-handler", () => {
+       | ^
+      9|   const { AppError } = require("../../../../lib/errors");
+     10|   return {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/63]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 19 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  components/__tests__/StreakTracker.test.jsx > StreakTracker Component > should initialize streak to 1 and store today as lastActiveDate on first render
+ FAIL  components/__tests__/StreakTracker.test.jsx > StreakTracker Component > should increment streak if lastActiveDate was yesterday
+ FAIL  components/__tests__/StreakTracker.test.jsx > StreakTracker Component > should keep streak the same if lastActiveDate is today
+ FAIL  components/__tests__/StreakTracker.test.jsx > StreakTracker Component > should reset streak to 1 if lastActiveDate was more than 1 day ago
+ReferenceError: jest is not defined
+ ❯ components/__tests__/StreakTracker.test.jsx:27:5
+     25|   beforeEach(() => {
+     26|     window.localStorage.clear();
+     27|     jest.useFakeTimers();
+       |     ^
+     28|   });
+     29| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/63]⎯
+
+ FAIL  components/__tests__/StreakTracker.test.jsx > StreakTracker Component > should initialize streak to 1 and store today as lastActiveDate on first render
+ FAIL  components/__tests__/StreakTracker.test.jsx > StreakTracker Component > should increment streak if lastActiveDate was yesterday
+ FAIL  components/__tests__/StreakTracker.test.jsx > StreakTracker Component > should keep streak the same if lastActiveDate is today
+ FAIL  components/__tests__/StreakTracker.test.jsx > StreakTracker Component > should reset streak to 1 if lastActiveDate was more than 1 day ago
+ReferenceError: jest is not defined
+ ❯ components/__tests__/StreakTracker.test.jsx:31:5
+     29| 
+     30|   afterEach(() => {
+     31|     jest.useRealTimers();
+       |     ^
+     32|   });
+     33| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/63]⎯
+
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > resolves JSON response correctly
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > resolves text response correctly
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > deduplicates simultaneous in-flight requests
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > does not deduplicate sequential requests
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > triggers timeout if request takes too long
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > extracts error message from string error response
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > extracts error message and code from object error response
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > extracts error message from plain text response
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > handles general network errors
+ReferenceError: jest is not defined
+ ❯ lib/__tests__/apiClient.test.js:15:20
+     13| 
+     14|   beforeEach(() => {
+     15|     global.fetch = jest.fn();
+       |                    ^
+     16|     jest.useFakeTimers();
+     17|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/63]⎯
+
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > resolves JSON response correctly
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > resolves text response correctly
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > deduplicates simultaneous in-flight requests
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > does not deduplicate sequential requests
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > triggers timeout if request takes too long
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > extracts error message from string error response
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > extracts error message and code from object error response
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > extracts error message from plain text response
+ FAIL  lib/__tests__/apiClient.test.js > apiFetch > handles general network errors
+ReferenceError: jest is not defined
+ ❯ lib/__tests__/apiClient.test.js:20:5
+     18| 
+     19|   afterEach(() => {
+     20|     jest.useRealTimers();
+       |     ^
+     21|   });
+     22| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/63]⎯
+
+ FAIL  lib/__tests__/env.test.js > environment validation > reports missing required environment variables without throwing
+ FAIL  lib/__tests__/env.test.js > environment validation > throws in strict mode when required variables are missing
+ FAIL  lib/__tests__/env.test.js > environment validation > warns instead of throwing in non-strict mode
+ FAIL  lib/__tests__/env.test.js > environment validation > can suppress repeated warnings in non-strict mode
+ FAIL  lib/__tests__/env.test.js > environment validation > accepts fully configured environment variables
+ FAIL  lib/__tests__/env.test.js > environment validation > formats placeholder values as invalid variables
+ReferenceError: jest is not defined
+ ❯ lib/__tests__/env.test.js:18:5
+     16| describe("environment validation", () => {
+     17|   beforeEach(() => {
+     18|     jest.resetModules();
+       |     ^
+     19|     process.env = { ...originalEnv };
+     20|     delete globalThis.__learnovaEnvValidationWarningLogged;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/63]⎯
+
+
+ Test Files  34 failed | 10 passed (44)
+      Tests  19 failed | 124 passed (143)
+   Start at  18:32:21
+   Duration  22.39s (transform 2.43s, setup 8.33s, collect 2.25s, tests 639ms, environment 71.83s, prepare 14.11s)
+

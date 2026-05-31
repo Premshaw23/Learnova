@@ -2,9 +2,9 @@ import { POST, GET } from "@/app/api/conversations/route";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -14,24 +14,24 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
 }));
 
 describe("POST /api/conversations - Authentication and Validation Security Tests", () => {
   let mockInsertOne;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    mockInsertOne = jest.fn();
+    mockInsertOne = vi.fn();
 
     connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         insertOne: mockInsertOne,
       }),
     });
@@ -43,7 +43,8 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
       headers: {
         get: (name) => headers[name.toLowerCase()] || null,
       },
-      text: jest.fn().mockResolvedValue(rawText),
+      json: vi.fn().mockResolvedValue(bodyData),
+      text: vi.fn().mockResolvedValue(rawText),
     };
   };
 
@@ -59,7 +60,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(mockInsertOne).not.toHaveBeenCalled();
     expect(connectDb).not.toHaveBeenCalled();
   });
@@ -79,7 +80,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(mockInsertOne).not.toHaveBeenCalled();
     expect(connectDb).not.toHaveBeenCalled();
   });
@@ -127,7 +128,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(413);
-    expect(body.error).toBe("Payload too large");
+    expect(body.error.message).toBe("Payload too large");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -145,7 +146,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Invalid JSON payload");
+    expect(body.error.message).toBe("Invalid JSON payload");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -165,7 +166,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toContain("userMessage must be a string");
+    expect(body.error.message).toContain("userMessage must be a string");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -185,7 +186,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toContain("botMessage is required");
+    expect(body.error.message).toContain("botMessage is required");
     expect(mockInsertOne).not.toHaveBeenCalled();
   });
 
@@ -208,6 +209,39 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data.userMessage).toBe("Hello World"); // <script> tag stripped
+    expect(mockInsertOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userMessage: "Hello World",
+      })
+    );
+  });
+
+  test("strips HTML tags while preserving safe Markdown syntax", async () => {
+    const mockDecodedToken = { uid: "user-123", email: "user@example.com" };
+    verifyFirebaseToken.mockResolvedValue(mockDecodedToken);
+    mockInsertOne.mockResolvedValue({ insertedId: "conv-123" });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      {
+        userMessage: "**Hello** <b>World</b> [docs](/courses)",
+        botMessage: "<style>body{display:none}</style>Safe **reply**",
+      }
+    );
+
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data.userMessage).toBe("**Hello** World [docs](/courses)");
+    expect(body.data.botMessage).toBe("Safe **reply**");
+    expect(mockInsertOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userMessage: "**Hello** World [docs](/courses)",
+        botMessage: "Safe **reply**",
+      })
+    );
   });
 });
 
@@ -215,15 +249,15 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
   let mockFind, mockSort, mockLimit, mockToArray;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    mockToArray = jest.fn();
-    mockLimit = jest.fn().mockReturnValue({ toArray: mockToArray });
-    mockSort = jest.fn().mockReturnValue({ limit: mockLimit });
-    mockFind = jest.fn().mockReturnValue({ sort: mockSort });
+    mockToArray = vi.fn();
+    mockLimit = vi.fn().mockReturnValue({ toArray: mockToArray });
+    mockSort = vi.fn().mockReturnValue({ limit: mockLimit });
+    mockFind = vi.fn().mockReturnValue({ sort: mockSort });
 
     connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         find: mockFind,
       }),
     });
@@ -246,7 +280,7 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -259,7 +293,7 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -336,7 +370,6 @@ describe("GET /api/conversations - History Retrieval Security and Performance Te
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Internal server error");
+    expect(body.error.message).toBe("Internal server error");
   });
 });
-

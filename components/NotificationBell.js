@@ -4,6 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch } from "@/lib/apiClient";
+
+// AbortController for fetch requests
+const createAbortController = () => {
+  try {
+    return new AbortController();
+  } catch {
+    return null; // Fallback for environments without AbortController
+  }
+};
 
 function timeAgo(date) {
   if (!date) {
@@ -50,6 +60,9 @@ export default function NotificationBell() {
   const buttonRef = useRef(null);
   const previousIdsRef = useRef(new Set());
   const hasLoadedRef = useRef(false);
+  const abortControllerRef = useRef(null);
+  const pollingTimeoutRef = useRef(null);
+  const isFetchingRef = useRef(false);
 
   const fetchNotifications = useCallback(async () => {
     if (!user?.uid) {
@@ -60,17 +73,30 @@ export default function NotificationBell() {
       return;
     }
 
+    // Prevent overlapping requests
+    if (isFetchingRef.current) {
+      return;
+    }
+    isFetchingRef.current = true;
+
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = createAbortController();
+
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`);
+      const token = await user.getIdToken();
+      const data = await apiFetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
+        signal: abortControllerRef.current?.signal
+      });
 
-      if (!response.ok) {
-        throw new Error("Unable to load notifications");
-      }
-
-      const data = await response.json();
       const fetchedNotifications = Array.isArray(data.notifications) ? data.notifications : [];
       const currentIds = new Set(
         fetchedNotifications
@@ -94,13 +120,18 @@ export default function NotificationBell() {
       previousIdsRef.current = currentIds;
       hasLoadedRef.current = true;
       setNotifications(fetchedNotifications);
-    } catch {
-      setError("Unable to load notifications");
-      setNotifications([]);
+      setError("");
+    } catch (error) {
+      // Ignore abort errors (user-triggered cancellations)
+      if (error?.name !== "AbortError") {
+        setError("Unable to load notifications");
+        setNotifications([]);
+      }
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
-  }, [user?.uid]);
+  }, [user]);
 
   const markNotificationsAsRead = useCallback(async () => {
     if (!user?.uid) {
@@ -108,17 +139,14 @@ export default function NotificationBell() {
     }
 
     try {
-      const response = await fetch("/api/notifications", {
+      const token = await user.getIdToken();
+      await apiFetch("/api/notifications", {
         method: "PATCH",
         headers: {
-          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ userId: user.uid }),
+        body: { userId: user.uid },
       });
-
-      if (!response.ok) {
-        throw new Error("Unable to update notifications");
-      }
 
       setNotifications((currentNotifications) =>
         currentNotifications.map((notification) => ({
@@ -127,10 +155,10 @@ export default function NotificationBell() {
         }))
       );
       setError("");
-    } catch {
-      setError("Unable to update notifications");
+    } catch (err) {
+      setError(err.message || "Unable to update notifications");
     }
-  }, [user?.uid]);
+  }, [user]);
 
   useEffect(() => {
     if (loading) {
@@ -146,9 +174,30 @@ export default function NotificationBell() {
 
     fetchNotifications();
 
-    const intervalId = setInterval(fetchNotifications, 30000);
+    // Use recursive timeout instead of setInterval to prevent request stacking
+    // Ensures each request completes before the next one starts
+    const scheduleNextPoll = () => {
+      pollingTimeoutRef.current = setTimeout(() => {
+        fetchNotifications().then(() => {
+          scheduleNextPoll();
+        }).catch(() => {
+          // Reschedule even on error
+          scheduleNextPoll();
+        });
+      }, 30000);
+    };
+    scheduleNextPoll();
 
-    return () => clearInterval(intervalId);
+    return () => {
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [fetchNotifications, loading, user?.uid]);
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import { getUserProfileByEmail } from "@/lib/firebase-admin";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireRole } from "@/lib/rbac";
 import { AppError, ValidationError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
@@ -32,7 +33,11 @@ const exceptionUpdateSchema = z.object({
 
 export const PUT = withErrorHandler(async (request) => {
   const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher"]);
-
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`exceptions_update_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const body = await parseJSON(request, 1024 * 10);
   
   const validation = exceptionUpdateSchema.safeParse(body);
@@ -114,9 +119,15 @@ export const PUT = withErrorHandler(async (request) => {
 
   if (result.matchedCount === 0) throw new NotFoundError("Exception not found");
 
-  console.log(
-  `[Audit Log] Exception ${exceptionId} ${status} by approver UID: ${decodedToken.uid} (${decodedToken.email}, Role: ${profile.role}) at ${new Date().toISOString()}`
-  );
+  await db.collection("audit_logs").insertOne({
+    timestamp: new Date(),
+    approverUid: decodedToken.uid,
+    approverEmail: decodedToken.email,
+    role: profile.role,
+    exceptionId: new ObjectId(exceptionId),
+    action: status,
+    module: "exceptions",
+  });
 
   return NextResponse.json({ message: "Exception updated successfully" });
 });

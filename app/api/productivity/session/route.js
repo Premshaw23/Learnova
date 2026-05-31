@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
-import { ValidationError } from "@/lib/errors";
+import { parseJSON, withErrorHandler } from "@/lib/error-handler";
+import { ValidationError, AppError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const DEFAULT_DAYS_BACK = 7;
+const MAX_SESSION_PAYLOAD_BYTES = 1024 * 10;
 
 const sessionSchema = z.object({
   duration: z
@@ -30,8 +32,13 @@ const sessionSchema = z.object({
  */
 export const POST = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireRole(request, ["student", "teacher", "admin"]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`productivity_session_post_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
 
-  const body = await request.json();
+  const body = await parseJSON(request, MAX_SESSION_PAYLOAD_BYTES);
 
   const validation = sessionSchema.safeParse(body);
   if (!validation.success) {
@@ -62,8 +69,8 @@ export const POST = withErrorHandler(async (request) => {
       const { awardXp } = await import("@/lib/gamification-service");
       const result = await awardXp(userId, "focus_session_completed", {});
       xpAwarded = result.xpAwarded || 0;
-    } catch (_) {
-      // Gamification service may not be available yet — silently continue
+    } catch (error) {
+      console.error("Failed to award XP for focus session:", error);
     }
   }
 
@@ -83,6 +90,11 @@ export const POST = withErrorHandler(async (request) => {
  */
 export const GET = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireRole(request, ["student", "teacher", "admin"]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`productivity_session_get_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
 
   const { searchParams } = new URL(request.url);
   const endDate = searchParams.get("endDate") || new Date().toISOString();

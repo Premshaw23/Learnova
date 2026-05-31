@@ -1,5 +1,6 @@
 import React from "react";
 import CopyInviteButton from "../ui/CopyInviteButton";
+import Image from "next/image";
 
 /**
  * StudyRoomHeader Component
@@ -31,20 +32,26 @@ const StudyRoomHeader = ({ roomName = "Advanced AI Agents & Algorithms Study Roo
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <div className="flex -space-x-1.5 overflow-hidden">
                 {/* Simulated Avatars */}
-                <img
-                  className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-slate-900 object-cover"
+                <Image
+                  className="inline-block rounded-full ring-2 ring-white dark:ring-slate-900 object-cover"
                   src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"
                   alt="User 1"
+                  width={20}
+                  height={20}
                 />
-                <img
-                  className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-slate-900 object-cover"
+                <Image
+                  className="inline-block rounded-full ring-2 ring-white dark:ring-slate-900 object-cover"
                   src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100"
                   alt="User 2"
+                  width={20}
+                  height={20}
                 />
-                <img
-                  className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-slate-900 object-cover"
+                <Image
+                  className="inline-block rounded-full ring-2 ring-white dark:ring-slate-900 object-cover"
                   src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100"
                   alt="User 3"
+                  width={20}
+                  height={20}
                 />
               </div>
               <span className="font-medium text-xs">

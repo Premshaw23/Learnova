@@ -1,29 +1,26 @@
-## 🎯 Purpose of this Pull Request
-Provide a brief summary of what this Pull Request introduces or resolves.
+## Related Issue
+Closes #
 
-## 🔗 Related Issue / Link
-Fixes #[Issue Number] (or links to the relevant GSSOC issue).
+## Description
+Provide a clear, detailed summary of the changes proposed in this Pull Request, highlighting the problem solved or feature added.
 
-## 🛠️ Description of Changes
-List the major changes introduced by this PR:
-- 
-- 
-- 
+## Type of Change
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Refactoring (technical debt reduction, code health improvements)
+- [ ] Documentation update
 
-## 🧪 Verification / Testing Done
-How did you test your changes? Mention exact steps, browsers used, or automation test suites run:
-- [ ] Rendered locally and checked dark/light modes.
-- [ ] Tested on Chrome/Safari/Firefox.
-- [ ] Ran relevant linters or unit tests (`npm run lint` / `npm test`).
+## Verification & Testing
+Describe the verification process and test steps executed to validate your changes:
+1. **Local Test Execution**: (e.g., `npm run test` output)
+2. **Device / Viewport Testing**: (e.g., verified responsiveness on Chrome Mobile, Firefox, Safari)
+3. **Accessibility Verification**: (e.g., Keyboard tab-navigation checked)
 
-## 📸 Screenshots / GIFs
-If this PR changes or introduces any UI components, please add screenshots or a short GIF showing the before and after states.
-
-## 📋 Checklist
-Before submitting, please make sure you check the following:
-- [ ] My code follows the code style guidelines of this project.
-- [ ] I have performed a self-review of my own code.
-- [ ] I have commented my code, particularly in hard-to-understand areas.
-- [ ] I have updated the documentation accordingly.
-- [ ] My changes generate no new warnings or console errors.
-- [ ] I have deleted any temporary or debugging console logs.
+## Checklist
+- [ ] My code follows the style guidelines of this project
+- [ ] My changes generate no new warnings or console errors
+- [ ] I have performed a self-review of my own code
+- [ ] I have verified responsiveness on mobile and tablet devices
+- [ ] Keyboard accessibility has been considered
+- [ ] No unrelated files or code changes are included

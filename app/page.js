@@ -1,39 +1,120 @@
 "use client";
-
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { TrendingUp, ArrowRight, Award, MessageSquare, ShieldCheck, Zap } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
+import CommentSection from "@/components/CommentSection";
+import {
+  TrendingUp,
+  Award,
+  Zap,
+  ShieldCheck,
+  GraduationCap,
+  Sparkles,
+  ArrowRight,
+  BookOpen,
+  Users,
+  ChevronDown,
+  HelpCircle,
+  Calendar,
+  UserCheck,
+  BarChart3,
+} from "lucide-react";
 
 // --- Mock Data & Constants ---
 const STATS_ITEMS = [
   {
     id: "ring-3",
-    number: 99.9,
+    number: 99.8,
     suffix: "%",
-    label: "Platform Operational Uptime",
-    href: "/metrics/uptime"
+    label: "Attendance Tracking Accuracy",
+    href: "/metrics/attendance",
+    icon: ShieldCheck,
+    iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
   },
   {
     id: "ring-2",
-    number: 140,
-    suffix: "ms",
-    label: "Global API Response Latency",
-    href: "/metrics/latency"
+    number: 45,
+    suffix: "%",
+    label: "Admin Workload Reduction",
+    href: "/metrics/efficiency",
+    icon: Zap,
+    iconColor: "text-purple-400 bg-purple-500/10 border-purple-500/20"
   },
   {
     id: "ring-1",
-    number: 15,
-    suffix: "M+",
-    label: "Validated Data Transitions",
-    href: null
+    number: 25,
+    suffix: "K+",
+    label: "Active Daily Campus Users",
+    href: null,
+    icon: Users,
+    iconColor: "text-blue-400 bg-blue-500/10 border-blue-500/20"
+  }
+];
+
+const FEATURES = [
+  {
+    icon: Calendar,
+    title: "Smart Curriculum Planner",
+    description: "Map syllabi, track lesson progressions, and auto-align department goals with a seamless drag-and-drop timeline.",
+    color: "text-blue-500",
+    bg: "bg-blue-500/10"
+  },
+  {
+    icon: UserCheck,
+    title: "AI Attendance Engine",
+    description: "Eliminate manual proxies with smart verification, real-time absence alerts, and comprehensive streak logging.",
+    color: "text-purple-500",
+    bg: "bg-purple-500/10"
+  },
+  {
+    icon: BarChart3,
+    title: "Predictive Insights",
+    description: "Identify struggling students early and gauge curriculum velocity with advanced data dashboards.",
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10"
+  }
+];
+
+const ROLE_DATA = {
+  admins: {
+    title: "Centralized Campus Control",
+    description: "Manage multiple departments, cross-verify compliance criteria, automate institutional audit reports, and broadcast critical alerts effortlessly.",
+    points: ["Multi-branch sync", "Automated compliance audits", "Role-based permission gating"]
+  },
+  educators: {
+    title: "Focus on Teaching, Not Paperwork",
+    description: "Log dynamic syllabus milestones in seconds, track student attendance streaks, and automatically flag performance anomalies.",
+    points: ["One-click attendance grids", "Dynamic lesson trackers", "Instant parent notifications"]
+  },
+  students: {
+    title: "A Calmer, Connected Journey",
+    description: "Stay perfectly aligned with department timelines, track your personal attendance thresholds to avoid penalties, and receive centralized updates.",
+    points: ["Real-time threshold alerts", "Syllabus tracking dashboard", "Direct assignment portals"]
+  }
+};
+
+const FAQ_ITEMS = [
+  {
+    question: "How does the AI Attendance Engine prevent proxy attendance?",
+    answer: "Our AI Attendance Engine integrates intelligent multi-layered verification—including automated anomaly detection and real-time streak monitoring—to validate records effortlessly without manual intervention."
+  },
+  {
+    question: "Can the Smart Curriculum Planner adjust to sudden calendar shifts?",
+    answer: "Absolutely. The intuitive drag-and-drop timeline updates dependent curriculum milestones globally, instantly broadcasting the adjusted velocity across your specific department layout."
+  },
+  {
+    question: "Is data synchronized in real-time across multiple branches?",
+    answer: "Yes. Learnova features built-in multi-branch syncing. Any institutional directive, audit report update, or compliance adjustment updates across all connected campuses immediately."
+  },
+  {
+    question: "What platform analytics are visible to students?",
+    answer: "Students receive dedicated dashboards highlighting active attendance thresholds to bypass credit penalties, upcoming assignment deadlines, and aligned syllabus timelines."
   }
 ];
 
 // --- High-Fidelity Child Components ---
 
-// Wrapper component to handle reveals cleanly using Framer Motion
 function Reveal({ children, className = "", delay = 0 }) {
   return (
     <motion.div
@@ -48,7 +129,6 @@ function Reveal({ children, className = "", delay = 0 }) {
   );
 }
 
-// Reusable Section Pill/Badge
 function SectionBadge({ icon: Icon, text, gradient, borderClass, iconClass, textClass }) {
   return (
     <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-gradient-to-r ${gradient} ${borderClass}`}>
@@ -58,21 +138,49 @@ function SectionBadge({ icon: Icon, text, gradient, borderClass, iconClass, text
   );
 }
 
-// Reusable Premium Button
 function ActionButton({ children, href }) {
   return (
     <Link
       href={href}
-      className="group inline-flex items-center justify-center px-6 py-3 rounded-xl bg-black text-white dark:bg-white dark:text-black font-medium transition-all duration-300 hover:opacity-90 shadow-md hover:shadow-lg"
+      className="group inline-flex items-center justify-center px-6 py-3 rounded-xl bg-black text-white dark:bg-white dark:text-black font-medium transition-all duration-300 hover:opacity-90 shadow-md hover:shadow-lg text-sm"
     >
       {children}
     </Link>
   );
 }
 
-// Smooth Number Counter
+// Custom Accordion Item for the FAQ Section
+function FAQAccordionItem({ question, answer, isOpen, onToggle }) {
+  return (
+    <div className="border border-gray-200/60 dark:border-white/5 bg-white dark:bg-zinc-900/20 backdrop-blur-md rounded-2xl overflow-hidden transition-all duration-300">
+      <button
+        onClick={onToggle}
+        className="w-full flex justify-between items-center p-5 md:p-6 text-left font-semibold text-black dark:text-zinc-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none"
+      >
+        <span className="text-sm md:text-base leading-relaxed">{question}</span>
+        <ChevronDown 
+          className={`w-5 h-5 text-purple-500 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} 
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            <div className="px-5 pb-5 md:px-6 md:pb-6 text-xs md:text-sm text-muted-foreground leading-relaxed border-t border-gray-100 dark:border-white/[0.02] pt-4">
+              {answer}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function AnimatedCounter({ to, suffix }) {
-  // Simplistic presentation version. Can be powered by useMotionValue / useTransform if needed
   return (
     <span>
       {to}
@@ -81,80 +189,18 @@ function AnimatedCounter({ to, suffix }) {
   );
 }
 
-// Standalone Placeholder Comment System for the bottom section
-function CommentSection() {
-  const [comments, setComments] = useState([
-    { id: 1, user: "Alex Rivers", role: "DevOps Architect", body: "The edge orbital rendering optimizations lowered our monitoring memory profiles significantly.", time: "2 hours ago" }
-  ]);
-  const [newComment, setNewComment] = useState("");
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    setComments([
-      ...comments,
-      {
-        id: Date.now(),
-        user: "Anonymous Contributor",
-        role: "System Engineer",
-        body: newComment,
-        time: "Just now"
-      }
-    ]);
-    setNewComment("");
-  };
-
-  return (
-    <div className="w-full bg-white dark:bg-zinc-900/50 rounded-2xl border border-gray-200/60 dark:border-white/5 p-6 md:p-8 backdrop-blur-md">
-      <div className="flex items-center gap-3 mb-6">
-        <MessageSquare className="w-6 h-6 text-purple-500" />
-        <h3 className="text-xl font-bold text-black dark:text-white">Engineering Logs & Discussion</h3>
-      </div>
-
-      <form onSubmit={handleSubmit} className="mb-8">
-        <textarea
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Log architectural feedback or system observations..."
-          rows={3}
-          className="w-full p-4 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-black/30 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500 transition-all text-black dark:text-white resize-none"
-        />
-        <div className="mt-3 flex justify-end">
-          <button type="submit" className="px-5 py-2 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors">
-            Post Entry
-          </button>
-        </div>
-      </form>
-
-      <div className="space-y-4">
-        {comments.map((c) => (
-          <div key={c.id} className="p-4 rounded-xl bg-gray-50/50 dark:bg-white/[0.01] border border-gray-100 dark:border-white/[0.02]">
-            <div className="flex justify-between items-start gap-4">
-              <div>
-                <span className="text-sm font-semibold text-black dark:text-white">{c.user}</span>
-                <span className="text-xs text-muted-foreground ml-2">({c.role})</span>
-              </div>
-              <span className="text-[11px] text-zinc-400">{c.time}</span>
-            </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-300 mt-2 leading-relaxed">{c.body}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // --- Main Page Component ---
 export default function Page() {
   const [hoveredRing, setHoveredRing] = useState(null);
+  const [activeRole, setActiveRole] = useState("admins");
+  const [openFaqIdx, setOpenFaqIdx] = useState(null);
 
   return (
     <>
       <Navbar />
       <div className="min-h-screen bg-background text-foreground selection:bg-purple-500/30">
-        <Navbar />
         
-        {/* Premium Infographic Concentric Rings Stats Section */}
+        {/* Premium Academic Performance Metrics */}
         <section
           id="stats"
           className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
@@ -166,17 +212,17 @@ export default function Page() {
               <Reveal className="lg:col-span-5 space-y-6">
                 <SectionBadge
                   icon={TrendingUp}
-                  text="System Metrics"
+                  text="Institutional Impact"
                   gradient="from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20"
                   borderClass="border-blue-200/50 dark:border-blue-500/30"
                   iconClass="text-blue-500"
                   textClass="text-blue-700 dark:text-blue-300"
                 />
-                <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white tracking-tight">
-                  Measurable Operational Footprint
+                <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white tracking-tight leading-tight">
+                  Measurable Academic Operational Efficiency
                 </h2>
                 <p className="text-lg text-muted-foreground leading-relaxed">
-                  Hover over the tracking orbits to review our architectural benchmarks. We maintain precise validation layers across institutional hubs to maximize productivity outcomes.
+                  Hover over our structural hubs to review platform milestones. We embed robust data layers straight into modern campuses to elevate productivity and engagement metrics.
                 </p>
                 <div className="pt-4 flex flex-wrap gap-4">
                   <ActionButton href="/case-studies/impact">
@@ -234,10 +280,11 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Grid-List Metrics - Fixed via "group" utility for item highlights */}
+                {/* Grid-List Metrics */}
                 <div className="flex-1 w-full space-y-4">
                   {STATS_ITEMS.map((stat, idx) => {
                     const isSelected = hoveredRing === idx;
+                    const IconComponent = stat.icon;
                     return (
                       <div
                         key={stat.id}
@@ -245,28 +292,38 @@ export default function Page() {
                         onMouseLeave={() => setHoveredRing(null)}
                         className={`group block p-4 rounded-2xl border transition-all duration-500 cursor-pointer
                           ${isSelected 
-                            ? "bg-purple-50/60 dark:bg-purple-900/10 border-purple-500/40 translate-x-2 shadow-sm" 
-                            : "bg-white/50 dark:bg-black/20 border-gray-100 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10"
+                            ? "bg-purple-950/20 border-purple-500/40 translate-x-2 shadow-lg shadow-purple-500/5" 
+                            : "bg-white/[0.02] dark:bg-black/20 border-white/5 hover:border-white/10 hover:bg-white/[0.04]"
                           }`}
                       >
                         {stat.href ? (
-                          <Link href={stat.href} className="focus:outline-none">
-                            <div className="text-2xl font-black text-black dark:text-white transition-colors duration-300 group-hover:text-purple-500 dark:group-hover:text-purple-400">
-                              <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                          <Link href={stat.href} className="focus:outline-none flex items-center gap-4">
+                            <div className={`p-2.5 rounded-xl border ${stat.iconColor} transition-transform duration-300 group-hover:scale-105`}>
+                              <IconComponent className="w-5 h-5" />
                             </div>
-                            <p className="text-sm font-medium text-muted-foreground mt-1 flex items-center gap-1">
-                              {stat.label}
-                              <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-purple-500 dark:text-purple-400" />
-                            </p>
+                            <div className="flex-1">
+                              <div className="text-2xl font-black text-white transition-colors duration-300 group-hover:text-purple-400">
+                                <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                              </div>
+                              <p className="text-xs font-semibold text-gray-300 mt-0.5 flex items-center gap-1 group-hover:text-white transition-colors">
+                                {stat.label}
+                                <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-purple-400" />
+                              </p>
+                            </div>
                           </Link>
                         ) : (
-                          <div>
-                            <div className="text-2xl font-black text-black dark:text-white transition-colors duration-300 group-hover:text-purple-500 dark:group-hover:text-purple-400">
-                              <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                          <div className="flex items-center gap-4">
+                            <div className={`p-2.5 rounded-xl border ${stat.iconColor} transition-transform duration-300 group-hover:scale-105`}>
+                              <IconComponent className="w-5 h-5" />
                             </div>
-                            <p className="text-sm font-medium text-muted-foreground mt-1">
-                              {stat.label}
-                            </p>
+                            <div className="flex-1">
+                              <div className="text-2xl font-black text-white">
+                                <AnimatedCounter to={stat.number} suffix={stat.suffix} />
+                              </div>
+                              <p className="text-xs font-semibold text-gray-300 mt-0.5">
+                                {stat.label}
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -276,6 +333,149 @@ export default function Page() {
 
               </Reveal>
             </div>
+          </div>
+        </section>
+
+        {/* --- FEATURE GRID --- */}
+        <section id="features" className="py-20 bg-gray-50/40 dark:bg-zinc-950/40 border-y border-gray-100 dark:border-white/[0.02]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <Reveal className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+              <SectionBadge
+                icon={Zap}
+                text="Engineered for Scale"
+                gradient="from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20"
+                borderClass="border-purple-200/50 dark:border-purple-500/30"
+                iconClass="text-purple-500"
+                textClass="text-purple-700 dark:text-purple-300"
+              />
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black dark:text-white">
+                Intelligent Frameworks Built for Modern Classrooms
+              </h2>
+              <p className="text-muted-foreground">
+                Simplify complex department operations with an interconnected ecosystem built on cutting-edge design paradigms.
+              </p>
+            </Reveal>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {FEATURES.map((feat, i) => {
+                const IconComp = feat.icon;
+                return (
+                  <Reveal key={i} delay={i * 0.1}>
+                    <div className="h-full p-6 bg-white dark:bg-zinc-900/40 border border-gray-200/60 dark:border-white/5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1">
+                      <div>
+                        <div className={`w-12 h-12 ${feat.bg} rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
+                          <IconComp className={`w-6 h-6 ${feat.color}`} />
+                        </div>
+                        <h3 className="text-lg font-bold text-black dark:text-white mb-2">{feat.title}</h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{feat.description}</p>
+                      </div>
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* --- ROLE-BASED TAILORED WORKFLOWS --- */}
+        <section id="roles" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            
+            <Reveal className="lg:col-span-5 space-y-6">
+              <SectionBadge
+                icon={GraduationCap}
+                text="Tailored Workflows"
+                gradient="from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/20 dark:to-teal-500/20"
+                borderClass="border-emerald-200/50 dark:border-emerald-500/30"
+                iconClass="text-emerald-500"
+                textClass="text-emerald-700 dark:text-emerald-300"
+              />
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black dark:text-white">
+                One Platform. Optimized Roles.
+              </h2>
+              <p className="text-muted-foreground">
+                Select your perspective to explore how our specialized UI architecture satisfies institutional demands across roles.
+              </p>
+
+              {/* Tab Toggles */}
+              <div className="flex bg-gray-100 dark:bg-zinc-900/80 p-1.5 rounded-xl border border-gray-200/60 dark:border-white/5 space-x-1">
+                <button
+                  onClick={() => setActiveRole("admins")}
+                  className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all ${activeRole === "admins" ? "bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <div className="flex items-center justify-center gap-1.5"><Users className="w-3.5 h-3.5" /> Admins</div>
+                </button>
+                <button
+                  onClick={() => setActiveRole("educators")}
+                  className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all ${activeRole === "educators" ? "bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <div className="flex items-center justify-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Educators</div>
+                </button>
+                <button
+                  onClick={() => setActiveRole("students")}
+                  className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all ${activeRole === "students" ? "bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <div className="flex items-center justify-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" /> Students</div>
+                </button>
+              </div>
+            </Reveal>
+
+            {/* Dynamic Content Card */}
+            <div className="lg:col-span-7">
+              <motion.div
+                key={activeRole}
+                initial={{ opacity: 0, x: 15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4 }}
+                className="p-8 bg-white dark:bg-zinc-900/30 border border-gray-200/60 dark:border-white/5 rounded-2xl shadow-xl backdrop-blur-sm relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+                <h3 className="text-xl font-bold text-black dark:text-white mb-3">{ROLE_DATA[activeRole].title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-6">{ROLE_DATA[activeRole].description}</p>
+                <ul className="space-y-3">
+                  {ROLE_DATA[activeRole].points.map((pt, idx) => (
+                    <li key={idx} className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                      <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
+                      <span>{pt}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* --- NEW SECTION: FAQ ACCORDION --- */}
+        <section id="faqs" className="py-20 bg-gray-50/40 dark:bg-zinc-950/40 border-y border-gray-100 dark:border-white/[0.02]">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <Reveal className="text-center max-w-2xl mx-auto mb-16 space-y-4">
+              <SectionBadge
+                icon={HelpCircle}
+                text="Common Queries"
+                gradient="from-purple-500/10 to-indigo-500/10 dark:from-purple-500/20 dark:to-indigo-500/20"
+                borderClass="border-purple-200/50 dark:border-purple-500/30"
+                iconClass="text-purple-500"
+                textClass="text-purple-700 dark:text-indigo-300"
+              />
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black dark:text-white">
+                Frequently Asked Questions
+              </h2>
+              <p className="text-muted-foreground text-sm md:text-base">
+                Got structural questions about platform functionalities? Look through our documented answers below.
+              </p>
+            </Reveal>
+
+            <Reveal className="space-y-4" delay={0.1}>
+              {FAQ_ITEMS.map((faq, index) => (
+                <FAQAccordionItem
+                  key={index}
+                  question={faq.question}
+                  answer={faq.answer}
+                  isOpen={openFaqIdx === index}
+                  onToggle={() => setOpenFaqIdx(openFaqIdx === index ? null : index)}
+                />
+              ))}
+            </Reveal>
           </div>
         </section>
 

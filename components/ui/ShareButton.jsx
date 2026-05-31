@@ -20,23 +20,37 @@ export default function ShareButton({ className = "" }) {
       if (!shareUrl) {
         throw new Error("Unable to retrieve window.location.href");
       }
+      if (navigator.share) {
+        await navigator.share({
+          title: "Learnova Project",
+          text: "Check out this article/link from Learnova!",
+          url: shareUrl,
+        });
+        toast.success("Shared successfully!");
+      } else {
+        // 2. Fallback: Use your existing clipboard functionality for desktop
+        await navigator.clipboard.writeText(shareUrl);
+        setIsCopied(true);
+        toast.success("Link copied to clipboard!");
 
-      await navigator.clipboard.writeText(shareUrl);
-      setIsCopied(true);
-      toast.success("Link copied to clipboard!");
+        // Clear any existing timeout to avoid race conditions
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
 
-      // Clear any existing timeout to avoid race conditions
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+        // Revert copied state after 2 seconds
+        timeoutRef.current = setTimeout(() => {
+          setIsCopied(false);
+        }, 2000);
       }
-
-      // Revert copied state after 2 seconds
-      timeoutRef.current = setTimeout(() => {
-        setIsCopied(false);
-      }, 2000);
     } catch (error) {
-      console.error("Clipboard copy failed:", error);
-      toast.error("Failed to copy link. Please copy it manually.");
+      // Don't error out if the user simply cancels/closes the native share sheet
+      if (error.name === "AbortError") {
+        console.log("Share menu dismissed by user.");
+        return;
+      }
+      console.error("Sharing failed:", error);
+      toast.error("Failed to share link. Please copy it manually.");
     }
   };
 

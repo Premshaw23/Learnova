@@ -1,14 +1,5 @@
-jest.mock("firebase/firestore", () => ({
-  doc: jest.fn(),
-  setDoc: jest.fn(),
-}));
-
-jest.mock("@/lib/firebaseConfig", () => ({
-  db: {},
-}));
-
-jest.mock("@/services/statsService", () => ({
-  initializeUserStats: jest.fn(),
+vi.mock("@/services/statsService", () => ({
+  initializeUserStats: vi.fn(),
 }));
 
 const {
