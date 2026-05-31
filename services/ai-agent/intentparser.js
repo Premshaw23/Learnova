@@ -4,7 +4,7 @@
  * Clean, dependency-free pattern matcher.
  * Safely parsed by both Client and Server environments.
  */
-export function matchUserIntent(prompt) {
+export function parseUserIntent(prompt) {
   if (!prompt || typeof prompt !== "string") {
     return { matched: false };
   }
