@@ -81,25 +81,36 @@ class ErrorBoundary extends React.Component {
               </div>
             </div>
 
-            <div className="border-t border-gray-700 bg-gray-800/50">
-              <button
-                onClick={() => this.setState(s => ({ showDetails: !s.showDetails }))}
-                className="w-full flex items-center justify-between p-4 text-sm text-gray-400 hover:text-gray-300 transition-colors"
-              >
-                <span className="flex items-center gap-2 font-medium">
+            <div className="border-t border-zinc-700 bg-zinc-800/30 backdrop-blur-md">
+              <div className="flex items-center justify-between p-4">
+                <button
+                  onClick={() => this.setState(s => ({ showDetails: !s.showDetails }))}
+                  className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-300 transition-colors"
+                >
                   <Terminal className="w-4 h-4" />
-                  {this.state.showDetails ? "Hide Error Details" : "Show Error Details"}
-                </span>
-                {this.state.showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
+                  <span>{this.state.showDetails ? "Hide Error Details" : "Show Error Details"}</span>
+                </button>
+                {this.state.showDetails && (
+                  <button
+                    onClick={() => {
+                      const log = `${this.state.error?.toString()}\n${this.state.errorInfo?.componentStack}`;
+                      navigator.clipboard.writeText(log);
+                      alert("Error details copied to clipboard!");
+                    }}
+                    className="flex items-center gap-1.5 text-xs bg-zinc-700/60 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    Copy Details
+                  </button>
+                )}
+              </div>
               
               {this.state.showDetails && this.state.error && (
                 <div className="p-4 pt-0">
-                  <div className="bg-black/50 rounded-xl p-4 overflow-auto max-h-60 border border-gray-700/50">
-                    <p className="text-red-400 font-mono text-sm font-bold mb-2">
+                  <div className="bg-black/40 rounded-xl p-4 overflow-auto max-h-60 border border-zinc-700/50">
+                    <p className="text-rose-400 font-mono text-sm font-bold mb-2">
                       {this.state.error.toString()}
                     </p>
-                    <pre className="text-gray-400 font-mono text-xs whitespace-pre-wrap leading-relaxed">
+                    <pre className="text-zinc-400 font-mono text-xs whitespace-pre-wrap leading-relaxed">
                       {this.state.errorInfo?.componentStack}
                     </pre>
                   </div>
