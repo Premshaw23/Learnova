@@ -3,6 +3,26 @@ import React from "react";
 import { motion } from "framer-motion";
 import { BADGES } from "@/utils/gamification";
 
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const badgeVariants = {
+  hidden: {
+    opacity: 0,
+    y: 10,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+  },
+};
+
 export default function BadgeGallery({ unlockedBadges = [] }) {
   const allBadges = Object.values(BADGES);
 
@@ -11,43 +31,42 @@ export default function BadgeGallery({ unlockedBadges = [] }) {
       <h3 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
         <span>🏆</span> Achievement Badges
       </h3>
-      <div className="grid grid-cols-3 gap-4">
-        {allBadges.map((badge, index) => {
-          const unlockedBadgeSet = useMemo(
-            () => new Set(unlockedBadges),
-            [unlockedBadges]
-          );
 
-          const isUnlocked = unlockedBadgeSet.has(badge.id);
+      <motion.div
+        className="grid grid-cols-3 gap-4"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {allBadges.map((badge) => {
+          const isUnlocked = unlockedBadges.includes(badge.id);
+
           return (
             <motion.div
               key={badge.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              variants={badgeVariants}
               className={`flex flex-col items-center p-3 rounded-lg border transition-all duration-300 ${
                 isUnlocked
                   ? "bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.3)]"
                   : "bg-gray-800/50 border-gray-700 opacity-60 grayscale"
               }`}
-               title={badge.description}
-                tabIndex={0}
-                role="img"
-                aria-label={`${badge.name}. ${badge.description}. ${
-                  isUnlocked ? "Unlocked" : "Locked"
-                }`}
+              title={badge.description}
             >
               <div className="text-3xl mb-2">{badge.icon}</div>
+
               <p className="text-xs text-center font-medium text-gray-300 leading-tight">
                 {badge.name}
               </p>
+
               {!isUnlocked && (
-                <span className="text-[10px] text-gray-500 mt-1">Locked</span>
+                <span className="text-[10px] text-gray-500 mt-1">
+                  Locked
+                </span>
               )}
             </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }

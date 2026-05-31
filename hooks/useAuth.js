@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { auth, db } from "@/lib/firebaseConfig";
-import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
+import { onIdTokenChanged, signOut as firebaseSignOut } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 
 /**
@@ -146,7 +146,7 @@ export const useAuth = () => {
       return;
     }
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
       // Clean up previous snapshot listener and token refresh if active
       if (unsubscribeSnapshotRef.current) {
         unsubscribeSnapshotRef.current();

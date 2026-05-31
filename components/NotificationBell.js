@@ -5,6 +5,7 @@ import { Bell, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/apiClient";
+import { extractNotificationsFromResponse } from "@/lib/notificationResponse";
 
 // AbortController for fetch requests
 const createAbortController = () => {
@@ -97,7 +98,7 @@ export default function NotificationBell() {
         signal: abortControllerRef.current?.signal
       });
 
-      const fetchedNotifications = Array.isArray(data.notifications) ? data.notifications : [];
+      const fetchedNotifications = extractNotificationsFromResponse(data);
       const currentIds = new Set(
         fetchedNotifications
           .map((notification) => notification._id?.toString?.() || notification._id)

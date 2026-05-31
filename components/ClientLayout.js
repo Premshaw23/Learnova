@@ -12,7 +12,7 @@ import { db } from "@/lib/firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
-import { normalizeStreakCount } from "@/lib/streakUtils";
+import { useSessionMonitor } from "@/hooks/useSessionMonitor";
 
 const modalInitialState = {
   isShortcutsOpen: false,
@@ -59,6 +59,7 @@ export default function ClientLayout() {
   const { user, userProfile } = useAuth();
 
   useOfflineQueue();
+  useSessionMonitor();
 
   const handleSearch = useCallback(() => {
     dispatch({ type: "OPEN_SEARCH" });

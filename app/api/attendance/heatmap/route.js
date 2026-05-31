@@ -38,21 +38,20 @@ export const GET = withErrorHandler(async (request) => {
   const snapshot = await firestoreDb
     .collection("attendance_records")
     .where("userId", "==", userId)
+    .where("date", ">=", firstDayStr)
+    .where("date", "<=", lastDayStr)
     .get();
 
   const attendance = [];
   snapshot.forEach((doc) => {
     const data = doc.data();
-    const dateStr = data.date;
-    if (dateStr >= firstDayStr && dateStr <= lastDayStr) {
-      attendance.push({
-        date: dateStr,
-        status: data.status || "present",
-        subject: data.subject || "",
-        markedAt: data.timestamp ? data.timestamp.toDate().toISOString() : null,
-        _id: doc.id,
-      });
-    }
+    attendance.push({
+      date: data.date,
+      status: data.status || "present",
+      subject: data.subject || "",
+      markedAt: data.timestamp ? data.timestamp.toDate().toISOString() : null,
+      _id: doc.id,
+    });
   });
 
   // Sort by date ascending to match the original API contract
