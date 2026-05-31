@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export default function StudyDeck() {
   const [cards, setCards] = useState([]);
@@ -16,7 +18,7 @@ export default function StudyDeck() {
   async function fetchCards() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/flashcards`);
+      const res = await apiFetch(`/api/flashcards`);
       if (!res.ok) throw new Error("Failed to load flashcards");
       const data = await res.json();
       setCards(data || []);

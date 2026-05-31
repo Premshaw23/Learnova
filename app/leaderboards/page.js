@@ -137,13 +137,23 @@ export default function LeaderboardsPage() {
 
   const isDark = mounted ? theme === "dark" : true;
 
-  const displayData = leaderboardData.length > 0 ? leaderboardData : LEADERBOARD_DATA;
-  const topThree = displayData.length >= 3 ? [displayData[1], displayData[0], displayData[2]] : [];
-  const restOfList = displayData.slice(3);
-  
-  // Find current user or default to the last one
-  const currentUser = displayData.find(u => u.isCurrentUser) || displayData[displayData.length - 1] || LEADERBOARD_DATA[9];
+ const baseData =
+  leaderboardData.length > 0 ? leaderboardData : LEADERBOARD_DATA;
 
+const displayData = user
+  ? baseData
+  : baseData.filter(entry => entry.name !== "You (Current)");
+
+const topThree =
+  displayData.length >= 3
+    ? [displayData[1], displayData[0], displayData[2]]
+    : [];
+
+const restOfList = displayData.slice(3);
+
+const currentUser = user
+  ? displayData.find(u => u.isCurrentUser)
+  : null;
   const getRankStyle = (rank) => {
     switch (rank) {
       case 1:
@@ -343,7 +353,7 @@ export default function LeaderboardsPage() {
         </main>
         
         {/* Sticky Current User Status Bar */}
-        {!loading && currentUser && (
+        {!loading && user && currentUser && (
           <motion.div 
             initial={{ y: 100 }}
             animate={{ y: 0 }}

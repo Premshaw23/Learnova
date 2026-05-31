@@ -1,5 +1,6 @@
 import clientPromise from "../../../lib/mongodb";
-import { parseJSON, authenticateRequest, withErrorHandler } from "../../../lib/error-handler";
+import { parseJSON, withErrorHandler } from "../../../lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { checkRateLimit } from "../../../lib/rateLimit";
 import { AppError } from "../../../lib/errors";
 import { fail, success } from "../../../lib/api-response";
@@ -14,7 +15,7 @@ function serializeNotification(notification) {
 }
 
 export const GET = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
 
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
@@ -48,7 +49,7 @@ export const GET = withErrorHandler(async (request) => {
 });
 
 export const PATCH = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
 
   const body = await parseJSON(request, 1024);
   const { userId } = body;

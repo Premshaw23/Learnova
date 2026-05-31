@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import AIProductivityInsights from "./AIProductivityInsights";
 
 import {
   Flame,
@@ -409,9 +410,13 @@ export default function ProductivityTrendsSection({ isDark }) {
         This week
         </p>
     </div>
-
     </div>
     </div>
+    
+    <AIProductivityInsights
+        analytics={analytics}
+        isDark={isDark}
+    />
     </motion.div>
   );
 }

@@ -19,10 +19,10 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install --legacy-peer-deps --ignore-scripts
+        run: npm install --legacy-peer-deps
 
       - name: Verify Linter and Formatters
         run: npm run lint --if-present
 
       - name: Execute Vitest Unit Tests
-        run: echo "Skipping tests for fast track"
+        run: npm run test -- hooks/__tests__/useSafePolling.test.js

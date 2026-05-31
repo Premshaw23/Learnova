@@ -39,12 +39,6 @@ function AuthPageContent() {
   const [isLogin, setIsLogin] = useState(mode !== "signup");
   const [selectedRole, setSelectedRole] = useState("");
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [instituteName, setInstituteName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
-
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -69,27 +63,15 @@ function AuthPageContent() {
   const handleRoleChange = () => {
     setShowRoleSelection(true);
     setErrors({});
-    setEmail("");
-    setPassword("");
-    setFullName("");
-    setInstituteName("");
-    setInviteCode("");
   };
 
   const handleToggleLogin = () => {
     setIsLogin(!isLogin);
     setErrors({});
-    setPassword("");
-    if (!isLogin) {
-      setFullName("");
-      setInstituteName("");
-      setInviteCode("");
-    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const formData = { selectedRole, email, password, fullName, instituteName, inviteCode };
+  const handleSubmit = async (formData) => { // <-- Accept formData directly here
+    const { email, password, fullName, instituteName, inviteCode } = formData; // Extract fields for the API call
     const { isValid, errors: validationErrors } = validateForm(formData, isLogin);
 
     if (!isValid) {
@@ -139,16 +121,13 @@ function AuthPageContent() {
       setErrors({ role: "Please select your role first" });
       return;
     }
-    if (!isLogin && selectedRole === USER_ROLES.INSTITUTE && !instituteName.trim()) {
-      setErrors({ instituteName: "Institute name is required" });
-      return;
-    }
 
     setIsLoading(true);
     setErrors({});
 
     try {
-      const result = await loginWithGoogle(selectedRole, isLogin, { fullName, instituteName });
+      // Pass safe fallbacks since local text state is handled inside AuthForm now
+      const result = await loginWithGoogle(selectedRole, isLogin, { fullName: "", instituteName: "" });
       if (result.success) {
         toast.success("Successfully logged in with Google!");
         redirectBasedOnRole(result.userData.role, router);
@@ -193,7 +172,7 @@ function AuthPageContent() {
 
   const handleOpenForgotPassword = () => {
     setShowForgotPassword(true);
-    setForgotPasswordEmail(email);
+    setForgotPasswordEmail(""); // changed from email to ""
     setErrors({});
   };
 
@@ -223,27 +202,15 @@ function AuthPageContent() {
               <ErrorBoundary>
                 <div className="mx-auto w-full max-w-md">
                   <AuthForm
-                    isLogin={isLogin}
-                    selectedRole={selectedRole}
-                    email={email}
-                    setEmail={setEmail}
-                    password={password}
-                    setPassword={setPassword}
-                    fullName={fullName}
-                    setFullName={setFullName}
-                    instituteName={instituteName}
-                    setInstituteName={setInstituteName}
-                    inviteCode={inviteCode}
-                    setInviteCode={setInviteCode}
-                    errors={errors}
-                    setErrors={setErrors}
-                    isLoading={isLoading}
-                    onSubmit={handleSubmit}
-                    onGoogleLogin={handleGoogleLogin}
-                    onRoleChange={handleRoleChange}
-                    onToggleLogin={handleToggleLogin}
-                    onForgotPassword={handleOpenForgotPassword}
-                  />
+                  isLogin={isLogin}
+                  selectedRole={selectedRole}
+                  isLoading={isLoading}
+                  onSubmit={handleSubmit}
+                  onGoogleLogin={handleGoogleLogin}
+                  onRoleChange={handleRoleChange}
+                  onToggleLogin={handleToggleLogin}
+                  onForgotPassword={handleOpenForgotPassword}
+                />
                 </div>
               </ErrorBoundary>
             </div>

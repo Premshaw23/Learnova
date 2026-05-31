@@ -196,17 +196,22 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
     }
 
     const now = new Date();
+    const recordsByMonth = attendanceRecords.reduce((monthMap, record) => {
+      if (typeof record.date !== "string") {
+        return monthMap;
+      }
+
+      const monthKey = record.date.slice(0, 7);
+      monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + 1);
+      return monthMap;
+    }, new Map());
+
     return Array.from({ length: 6 }).map((_, index) => {
       const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      const availableRecords = attendanceRecords.filter(
-        (record) =>
-          typeof record.date === "string" &&
-          record.date.startsWith(monthKey),
-      );
       const weekdays = countWeekdaysInMonth(date.getFullYear(), date.getMonth());
       const attendance = Math.round(
-        (availableRecords.length / Math.max(1, weekdays)) * 100,
+        ((recordsByMonth.get(monthKey) || 0) / Math.max(1, weekdays)) * 100,
       );
 
       return {

@@ -44,6 +44,9 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
+import ActivityHeatmap from "@/components/activity/ActivityHeatmap";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export default function UniversalProfile() {
   const { user, userProfile, loading } = useAuth();
@@ -275,17 +278,19 @@ export default function UniversalProfile() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 1. Explicitly check for allowed image types (.jpg, .jpeg, .png, .webp)
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       toast.error("Invalid file type. Only .jpg, .jpeg, .png, and .webp are supported.");
-      e.target.value = "";
+      e.target.value = ""; // Clear the file input registry cleanly
       return;
     }
 
+    // 2. Reduce restriction boundary down to a strict 2MB limit
     const MAX_SIZE = 2 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       toast.error("File too large. Maximum image size allowed is 2MB.");
-      e.target.value = "";
+      e.target.value = ""; // Clear the file input registry cleanly
       return;
     }
 
@@ -347,7 +352,7 @@ export default function UniversalProfile() {
         uploadFormData.append("faceDescriptor", faceDescriptorString);
       }
 
-      const res = await fetch("/api/images", {
+      const res = await apiFetch("/api/images", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: uploadFormData,
@@ -817,6 +822,10 @@ export default function UniversalProfile() {
               </p>
             </div>
           ))}
+        </div>
+
+        <div className="mt-8">
+          <ActivityHeatmap />
         </div>
 
         {/* Tabs */}

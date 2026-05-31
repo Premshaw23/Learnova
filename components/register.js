@@ -13,6 +13,8 @@ import { validateRequired, validateName } from "@/utils/formValidation";
 import { isValidEmail, suggestEmailCorrection } from "@/utils/emailValidation";
 import * as faceapi from "face-api.js";
 import { z } from "zod";
+import { apiFetch } from "@/lib/apiClient";
+
 
 // Strict validation schema matching issue #1567 criteria
 const registrationSchema = z.object({
@@ -84,7 +86,7 @@ export default function RegisterPage() {
     const loadImage = async () => {
       try {
         const token = await user?.getIdToken();
-        const res = await fetch(`/api/images?id=${registeredUser._id}`, {
+        const res = await apiFetch(`/api/images?id=${registeredUser._id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 
@@ -220,7 +222,7 @@ setEmailSuggestion(null);
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await fetch("/api/register", {
+      const res = await apiFetch("/api/register", {
         method: "POST",
         headers,
         body: formData,

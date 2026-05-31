@@ -102,7 +102,9 @@ export function FirestoreProvider({ children }) {
       return query(
         collection(db, "notices"),
         where("targetAudience", "array-contains", userRole),
-        where("instituteId", "==", instituteId)
+        where("instituteId", "==", instituteId),
+        orderBy("createdAt", "desc"),
+        limit(100)
       );
     } catch {
       return null;

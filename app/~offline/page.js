@@ -1,79 +1,145 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { WifiOff, RefreshCw, Home, BookOpen, Clock } from "lucide-react";
+// fix: serve proper offline fallback page instead of blank screen (fixes #2182)
+// Previously uncached routes showed a blank white screen or browser error.
+// This page is now registered as the PWA document fallback in next.config.mjs.
+
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { WifiOff, RefreshCw, CheckCircle } from "lucide-react";
 
-export default function OfflineFallback() {
-  const [isRetrying, setIsRetrying] = useState(false);
+export default function OfflinePage() {
+  const [isChecking, setIsChecking] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
+  const [cachedAttendance, setCachedAttendance] = useState(null);
+  const [lastSeen, setLastSeen] = useState(null);
 
-  // Auto-reload when back online
+  // Load last-cached attendance data from Cache Storage
   useEffect(() => {
-    const handleOnline = () => {
-      window.location.reload();
+    const loadCachedData = async () => {
+      try {
+        if ("caches" in window) {
+          const cache = await caches.open("api-cache");
+          const keys = await cache.keys();
+          const attendanceKey = keys.find((k) =>
+            k.url.includes("/api/attendance"),
+          );
+          if (attendanceKey) {
+            const response = await cache.match(attendanceKey);
+            if (response) {
+              const data = await response.json();
+              setCachedAttendance(data?.data ?? null);
+              // Use the Date header as "last seen" timestamp
+              const dateHeader = response.headers.get("date");
+              if (dateHeader) {
+                setLastSeen(new Date(dateHeader).toLocaleString());
+              }
+            }
+          }
+        }
+      } catch {
+        // Cache API unavailable — silently ignore
+      }
     };
+
+    loadCachedData();
+
+    // Listen for the browser coming back online
+    const handleOnline = () => setIsOnline(true);
     window.addEventListener("online", handleOnline);
     return () => window.removeEventListener("online", handleOnline);
   }, []);
 
-  const handleRetry = () => {
-    setIsRetrying(true);
-    setTimeout(() => {
+  // Retry button — pings /api/auth/me to confirm connectivity before reloading
+  const handleRetry = useCallback(async () => {
+    setIsChecking(true);
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "HEAD",
+        cache: "no-store",
+      });
+      if (res.ok || res.status === 401) {
+        // 401 still means the server responded — we're back online
+        window.location.reload();
+        return;
+      }
+    } catch {
+      // Still offline
+    }
+    setIsChecking(false);
+  }, []);
+
+  // Auto-reload once the browser detects it's back online
+  useEffect(() => {
+    if (isOnline) {
       window.location.reload();
-      setIsRetrying(false);
-    }, 1000);
-  };
+    }
+  }, [isOnline]);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Background blobs for Learnova branded look */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-3xl animate-blob"></div>
-        <div className="absolute top-1/3 -right-32 w-96 h-96 bg-purple-600/20 rounded-full mix-blend-screen filter blur-3xl animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-32 left-1/3 w-96 h-96 bg-indigo-600/20 rounded-full mix-blend-screen filter blur-3xl animate-blob animation-delay-4000"></div>
-      </div>
+    <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 bg-background">
+      <div className="max-w-md w-full space-y-6">
 
-      <div className="bg-gray-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-12 max-w-lg w-full shadow-2xl text-center z-10">
-        <div className="w-24 h-24 bg-gray-800/80 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10 shadow-inner">
-          <WifiOff className="w-12 h-12 text-gray-400" />
-        </div>
-
-        <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-          You're Offline
-        </h1>
-        
-        <p className="text-gray-400 mb-8 text-lg">
-          It looks like you've lost your internet connection. We'll automatically reconnect you when your network returns.
-        </p>
-
-        <button
-          onClick={handleRetry}
-          disabled={isRetrying}
-          className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 text-white font-medium py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl mb-8"
-        >
-          <RefreshCw className={`w-5 h-5 ${isRetrying ? "animate-spin" : ""}`} />
-          <span>{isRetrying ? "Retrying..." : "Try Again"}</span>
-        </button>
-
-        <div className="border-t border-white/10 pt-8">
-          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-6">
-            Cached Pages Available Offline
-          </h2>
-          <div className="grid grid-cols-3 gap-4">
-            <Link href="/" className="flex flex-col items-center p-3 rounded-xl bg-gray-800/40 hover:bg-gray-700/50 border border-white/5 transition-colors group">
-              <Home className="w-6 h-6 text-gray-400 group-hover:text-blue-400 mb-2 transition-colors" />
-              <span className="text-xs text-gray-400 group-hover:text-gray-200">Home</span>
-            </Link>
-            <Link href="/student/dashboard" className="flex flex-col items-center p-3 rounded-xl bg-gray-800/40 hover:bg-gray-700/50 border border-white/5 transition-colors group">
-              <BookOpen className="w-6 h-6 text-gray-400 group-hover:text-purple-400 mb-2 transition-colors" />
-              <span className="text-xs text-gray-400 group-hover:text-gray-200">Dashboard</span>
-            </Link>
-            <Link href="/attendance" className="flex flex-col items-center p-3 rounded-xl bg-gray-800/40 hover:bg-gray-700/50 border border-white/5 transition-colors group">
-              <Clock className="w-6 h-6 text-gray-400 group-hover:text-green-400 mb-2 transition-colors" />
-              <span className="text-xs text-gray-400 group-hover:text-gray-200">Attendance</span>
-            </Link>
+        {/* Icon */}
+        <div className="flex justify-center">
+          <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <WifiOff className="w-9 h-9 text-amber-400" />
           </div>
         </div>
+
+        {/* Heading */}
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            You&apos;re offline
+          </h1>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Learnova can&apos;t reach the internet right now. Check your Wi-Fi
+            or mobile data, then tap Retry.
+          </p>
+        </div>
+
+        {/* Retry button */}
+        <button
+          onClick={handleRetry}
+          disabled={isChecking}
+          className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60"
+        >
+          <RefreshCw
+            className={`w-4 h-4 ${isChecking ? "animate-spin" : ""}`}
+          />
+          {isChecking ? "Checking connection…" : "Retry"}
+        </button>
+
+        {/* Back home link */}
+        <Link
+          href="/"
+          className="block text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition"
+        >
+          Go to home page
+        </Link>
+
+        {/* Cached attendance data */}
+        {cachedAttendance && (
+          <div className="mt-6 text-left rounded-xl border border-border bg-card/40 p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              Last cached attendance data
+            </div>
+            {lastSeen && (
+              <p className="text-xs text-muted-foreground">
+                Last updated: {lastSeen}
+              </p>
+            )}
+            <pre className="text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap break-words">
+              {JSON.stringify(cachedAttendance, null, 2)}
+            </pre>
+          </div>
+        )}
+
+        {/* Auto-reconnect notice */}
+        <p className="text-xs text-muted-foreground">
+          This page will reload automatically when your connection is restored.
+        </p>
       </div>
     </div>
   );

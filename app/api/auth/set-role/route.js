@@ -1,5 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
@@ -13,7 +14,7 @@ import { setRoleSchema } from "@/lib/validations/auth";
 export const POST = withValidation(
   setRoleSchema,
   withErrorHandler(async (request, data) => {
-    const decodedToken = await authenticateRequest(request);
+    const decodedToken = await requireAuth(request);
 
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const rateLimitResult = await checkRateLimit(`set_role_${ip}_${decodedToken.uid}`);

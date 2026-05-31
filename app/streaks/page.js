@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
 import { doc, updateDoc } from "firebase/firestore";
+import { normalizeStreakCount } from "@/lib/streakUtils";
 
 export default function StreaksPage() {
   const [streak, setStreak] = useState(0);
@@ -36,11 +37,13 @@ export default function StreaksPage() {
       let storedHistory = [];
 
       if (userProfile) {
-        storedStreak = userProfile.siteStreak || 0;
+        storedStreak = normalizeStreakCount(userProfile.siteStreak);
         storedLastVisit = userProfile.siteLastVisit || "";
         storedHistory = userProfile.siteVisitHistory || [];
       } else {
-        storedStreak = parseInt(localStorage.getItem("learnova_site_streak") || "0", 10);
+        storedStreak = normalizeStreakCount(
+          localStorage.getItem("learnova_site_streak"),
+        );
         storedLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
         try {
           const historyStr = localStorage.getItem("learnova_site_visit_history");

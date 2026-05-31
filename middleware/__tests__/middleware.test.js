@@ -29,9 +29,13 @@ describe("Middleware Rate Limiting", () => {
     const AUTH_RATE_LIMITED_PATHS = [
       "/api/auth/login",
       "/api/auth/signup",
+      "/api/auth/logout",
       "/api/auth/forgot-password",
       "/api/auth/reset-password",
+      "/api/auth/verify-email",
       "/api/auth/verify-otp",
+      "/api/auth/verify-email",
+      "/api/auth/logout",
     ];
 
     it("identifies all auth routes correctly", () => {
@@ -42,10 +46,14 @@ describe("Middleware Rate Limiting", () => {
       expect(isAuthRoute("/api/auth/login")).toBe(true);
       expect(isAuthRoute("/api/auth/login/")).toBe(true);
       expect(isAuthRoute("/api/auth/signup")).toBe(true);
+      expect(isAuthRoute("/api/auth/logout")).toBe(true);
       expect(isAuthRoute("/api/auth/forgot-password")).toBe(true);
       expect(isAuthRoute("/api/auth/reset-password")).toBe(true);
+      expect(isAuthRoute("/api/auth/verify-email")).toBe(true);
       expect(isAuthRoute("/api/auth/verify-otp")).toBe(true);
       expect(isAuthRoute("/api/auth/verify-otp/callback")).toBe(true);
+      expect(isAuthRoute("/api/auth/verify-email")).toBe(true);
+      expect(isAuthRoute("/api/auth/logout")).toBe(true);
     });
 
     it("does not match non-auth routes", () => {

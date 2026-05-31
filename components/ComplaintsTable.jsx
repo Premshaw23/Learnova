@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useAuthContext } from "@/contexts/AuthContext";
 import {
   Search,
   Filter,
@@ -14,6 +15,8 @@ export default function ComplaintsTable({
   complaints = [],
   onRaiseComplaint,
 }) {
+  const { user } = useAuthContext();
+  const isAdmin = user?.role === "admin";
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -126,6 +129,7 @@ export default function ComplaintsTable({
                 <th className="px-6 py-4">Priority</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Date</th>
+                {isAdmin && <th>Email</th>}
 
               </tr>
             </thead>
@@ -207,6 +211,12 @@ export default function ComplaintsTable({
                     <td className="px-6 py-5">
                       {c.date}
                     </td>
+
+                    {isAdmin && (
+                      <td className="px-6 py-5">
+                        {c.email}
+                      </td>
+                    )}
 
                   </tr>
                 ))

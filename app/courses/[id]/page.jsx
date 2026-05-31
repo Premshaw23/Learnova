@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
-import React, { useState, useEffect } from "react";
+import { useParams, useRouter, notFound } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   BookOpen, 
@@ -11,16 +10,20 @@ import {
   Sparkles, 
   CheckCircle,
   PlayCircle,
-  Users
+  Users,
+  Trash2
 } from "lucide-react";
 import ShareButton from "@/components/ui/ShareButton";
 import StudyDeck from "@/components/flashcards/StudyDeck";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import ReadingTimeBadge from "@/components/ui/ReadingTimeBadge";
+import Tooltip from "@/components/ui/Tooltip";
+import DailyQuoteCard from "@/components/ui/DailyQuoteCard";
 import toast from "react-hot-toast";
-import { useParams, useRouter, notFound } from "next/navigation"; // 🌟 Added notFound here
-import { routeParamSchema } from "@/lib/validations/auth"; // 🌟 Added your validation schema
+import { routeParamSchema } from "@/lib/validations/auth";
 import MarkdownRenderer from "@/components/ui/MarkdownRenderer";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -29,7 +32,7 @@ export default function CourseDetailPage() {
   const validationCheck = routeParamSchema.safeParse({ id: params.id });
   
   if (!validationCheck.success) {
-    return notFound(); // Gracesfully triggers Next.js 404 handler interface instead of crashing client UI
+    notFound();
   }
 
   const [mounted, setMounted] = useState(false);
@@ -41,6 +44,9 @@ export default function CourseDetailPage() {
   const [backText, setBackText] = useState("");
   const [originText, setOriginText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [lastProgress, setLastProgress] = useState(null);
+  const [notes, setNotes] = useState([]);
+  const [noteText, setNoteText] = useState("");
 
   // --- AI TIMELINE FEATURE STATES ---
   const videoRef = useRef(null);
@@ -68,9 +74,54 @@ export default function CourseDetailPage() {
 
   useEffect(() => {
     setMounted(true);
+    
+    // Load progress from localStorage
+    try {
+      const saved = localStorage.getItem("learnova_continue_learning");
+      if (saved) {
+        const allProgress = JSON.parse(saved);
+        if (allProgress[params.id]) {
+          setLastProgress(allProgress[params.id]);
+        }
+      }
+
+      // Load timestamp notes
+      const savedNotes = localStorage.getItem(`video_notes_${params.id}`);
+      if (savedNotes) {
+        try {
+          setNotes(JSON.parse(savedNotes));
+        } catch (e) { console.error("Failed to parse notes", e); }
+      }
+    } catch (e) {
+      console.error("Failed to load progress:", e);
+    }
   }, []);
 
-  
+  const saveProgress = (lesson, moduleTitle) => {
+    const progressData = {
+      lessonTitle: lesson.title,
+      moduleTitle: moduleTitle,
+      timestamp: Date.now()
+    };
+    setLastProgress(progressData);
+    
+    try {
+      const saved = localStorage.getItem("learnova_continue_learning");
+      const allProgress = saved ? JSON.parse(saved) : {};
+      allProgress[params.id] = progressData;
+      localStorage.setItem("learnova_continue_learning", JSON.stringify(allProgress));
+    } catch (e) { console.error(e); }
+  };
+
+  // Persist notes when they change
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem(`video_notes_${params.id}`, JSON.stringify(notes));
+    }
+  }, [notes, mounted, params.id]);
+
+  const toggleStudyPod = () => setIsPodActive(!isPodActive);
+
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredTimestamps([]);
@@ -144,7 +195,9 @@ export default function CourseDetailPage() {
         </button>
 
         <div className="flex items-center gap-3">
-          <ShareButton className="shadow-lg border-zinc-800/60" />
+          <Tooltip content="Share this course" placement="bottom">
+            <ShareButton className="shadow-lg border-zinc-800/60" />
+          </Tooltip>
         </div>
       </header>
 
@@ -185,11 +238,39 @@ export default function CourseDetailPage() {
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-50 via-zinc-100 to-zinc-400 mb-6 leading-tight">
             {course.title}
           </h1>
+
+          {/* 💡 DAILY MOTIVATION 💡 */}
+          <div className="mb-8">
+            <DailyQuoteCard />
+          </div>
+
+          {/* 🎯 RESUME LEARNING BANNER 🎯 */}
+          {lastProgress && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 p-5 rounded-2xl border border-indigo-500/30 bg-indigo-500/5 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block mb-0.5">Resume your last lesson</span>
+                  <h3 className="text-sm font-bold text-zinc-100">{lastProgress.lessonTitle} <span className="text-zinc-500 font-normal ml-2">in {lastProgress.moduleTitle}</span></h3>
+                </div>
+              </div>
+              <Tooltip content={`Jump back to: ${lastProgress.lessonTitle}`} placement="top">
+                <button onClick={() => toast.success("Returning to your last spot...")} className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/20">Resume Learning</button>
+              </Tooltip>
+            </motion.div>
+          )}
+
           {/* 2. Outer Layout Splitter Wrapper */}
-          <div className={`flex flex-col ${isPodActive ? "lg:flex-row gap-6 items-start" : "w-full"}`}></div>
+          <div className={`flex flex-col ${isPodActive ? "lg:flex-row gap-6 items-start" : "w-full"}`}>
             
             {/* 3. Left Side Content Area */}
-            <div className={`transition-all duration-300 ${isPodActive ? "w-full lg:flex-1" : "w-full"}`}></div>
+            <div className={`transition-all duration-300 ${isPodActive ? "w-full lg:flex-1" : "w-full"}`}>
           {/* 🌟 AI INTERACTIVE TIMELINE INTERFACE 🌟 */}
           <div className="my-8 p-6 rounded-2xl border border-zinc-800 bg-zinc-900/30 shadow-xl">
             {/* The Video Stream */}
@@ -251,6 +332,64 @@ export default function CourseDetailPage() {
                 ))}
               </div>
             )}
+
+            {/* 📝 VIDEO TIMESTAMP NOTES SECTION 📝 */}
+            <div className="mt-8 pt-6 border-t border-zinc-800/60">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Personal Timestamp Notes</h3>
+                <span className="text-[10px] text-zinc-500 font-medium px-2 py-0.5 rounded-full bg-zinc-800/50">{notes.length} Total</span>
+              </div>
+              
+              <div className="flex gap-2 mb-6">
+                <input 
+                  type="text"
+                  placeholder="Take a quick note at the current video time..."
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
+                  className="flex-1 px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+                <button 
+                  onClick={handleAddNote}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shrink-0 shadow-lg shadow-indigo-600/10 active:scale-95"
+                >
+                  Save Note
+                </button>
+              </div>
+
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {notes.length > 0 ? (
+                  notes.map((note) => (
+                    <div 
+                      key={note.id}
+                      className="group relative bg-zinc-950/40 border border-zinc-800/50 rounded-xl p-4 hover:border-zinc-700/80 hover:bg-zinc-900/40 transition-all cursor-pointer"
+                      onClick={() => handleSeek(note.timestamp)}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex gap-4">
+                          <span className="text-indigo-400 font-mono text-xs font-bold shrink-0 mt-0.5 px-2 py-1 rounded bg-indigo-500/5 border border-indigo-500/10">
+                            {note.formattedTime}
+                          </span>
+                          <p className="text-sm text-zinc-300 leading-relaxed font-medium">{note.text}</p>
+                        </div>
+                        <Tooltip content="Delete note" placement="top">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
+                            className="opacity-0 group-hover:opacity-100 p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-10 rounded-2xl bg-zinc-950/20 border border-dashed border-zinc-800/80">
+                    <p className="text-sm text-zinc-500 italic">No timestamp notes yet. Save a moment to revisit it later.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="mb-8 max-w-3xl">
@@ -270,18 +409,20 @@ export default function CourseDetailPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
-              <button
-                    onClick={toggleStudyPod}
-                    type="button"
-                    className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-200 select-none border border-zinc-800 backdrop-blur-md ${
-                      isPodActive 
-                        ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shadow-md" 
-                        : "bg-zinc-900/80 hover:bg-zinc-800 text-indigo-400 hover:text-indigo-300 shadow-lg"
-                    }`}
-                  >
-                    <Users className="w-5 h-5" />
-                    {isPodActive ? "Close Pod View" : "Start Study Pod"}
-                  </button>
+              <Tooltip content={isPodActive ? "Hide collaboration panel" : "Collaborate with others in real-time"} placement="bottom">
+                <button
+                      onClick={toggleStudyPod}
+                      type="button"
+                      className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-200 select-none border border-zinc-800 backdrop-blur-md ${
+                        isPodActive 
+                          ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shadow-md" 
+                          : "bg-zinc-900/80 hover:bg-zinc-800 text-indigo-400 hover:text-indigo-300 shadow-lg"
+                      }`}
+                    >
+                      <Users className="w-5 h-5" />
+                      {isPodActive ? "Close Pod View" : "Start Study Pod"}
+                    </button>
+              </Tooltip>
               <button
                 onClick={() => toast.success("Enrolling in course...")}
                 type="button"
@@ -312,8 +453,12 @@ export default function CourseDetailPage() {
                   <div className="divide-y divide-zinc-800/30">
                     {mod.lessons.map((lesson, lIdx) => (
                       <div 
-                        key={lIdx} 
-                        className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-zinc-900/30 transition-colors duration-150"
+                        key={lIdx}
+                        onClick={() => {
+                          saveProgress(lesson, mod.title);
+                          toast.success(`Viewing: ${lesson.title}`);
+                        }}
+                        className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-zinc-900/30 transition-colors duration-150 cursor-pointer group/lesson"
                       >
                         <div className="flex items-center gap-3">
                           {lesson.completed ? (
@@ -321,7 +466,7 @@ export default function CourseDetailPage() {
                           ) : (
                             <PlayCircle className="w-5 h-5 text-zinc-500 shrink-0" />
                           )}
-                          <span className={`text-sm ${lesson.completed ? "text-zinc-400 line-through" : "text-zinc-300"}`}>
+                          <span className={`text-sm transition-colors ${lesson.completed ? "text-zinc-400 line-through" : "text-zinc-300 group-hover/lesson:text-indigo-400"}`}>
                             {lesson.title}
                           </span>
                         </div>
@@ -335,6 +480,7 @@ export default function CourseDetailPage() {
               ))}
             </div>
           </section>
+            </div>
             {/* 5. Right Side Collaborative Live Workspace Panel */}
             {isPodActive && (
               <div className="w-full lg:w-[400px] lg:sticky lg:top-24 border border-zinc-800 bg-zinc-900/60 rounded-2xl overflow-hidden h-[calc(100vh-140px)] flex flex-col backdrop-blur-md shadow-2xl z-20 p-4">
@@ -360,7 +506,8 @@ export default function CourseDetailPage() {
                 />
               </div>
             )}
-        </motion.div>
+          </div>
+
 
           {/* Study / Flashcards */}
           <section className="mb-8">
@@ -410,7 +557,7 @@ export default function CourseDetailPage() {
                       if(!frontText.trim()||!backText.trim()){ toast.error("Both front and back are required"); return; }
                       try{
                         setSubmitting(true);
-                        const res = await fetch('/api/flashcards',{
+                        const res = await apiFetch('/api/flashcards',{
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ front: frontText, back: backText, origin: originText })

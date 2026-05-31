@@ -1,13 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildStyles, CircularProgressbar } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import { motion } from "framer-motion";
 import { Activity, Thermometer } from "lucide-react";
+import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/storage";
 
 export default function StressMeter() {
   const [stress, setStress] = useState(36);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedStress = safeLocalStorageGet("learnova-wellness-stress", 36);
+    const normalizedStress = Math.min(100, Math.max(0, Number(savedStress) || 36));
+    setStress(normalizedStress);
+    setIsHydrated(true);
+  }, []);
+
+  const handleStressChange = (value) => {
+    const normalizedValue = Math.min(100, Math.max(0, Number(value) || 36));
+    setStress(normalizedValue);
+    if (typeof window !== "undefined") {
+      safeLocalStorageSet("learnova-wellness-stress", normalizedValue);
+    }
+  };
 
   const level = useMemo(() => {
     if (stress < 35) return "Low Stress";
@@ -72,7 +90,7 @@ export default function StressMeter() {
               min="0"
               max="100"
               value={stress}
-              onChange={(event) => setStress(Number(event.target.value))}
+              onChange={(event) => handleStressChange(event.target.value)}
               className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-slate-700 accent-violet-500"
             />
             <div className="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">

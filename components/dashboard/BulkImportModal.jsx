@@ -2,6 +2,8 @@ import React, { useState, useRef } from "react";
 import { Upload, X, FileText, CheckCircle, AlertCircle, Loader2, Download } from "lucide-react";
 import Papa from "papaparse";
 import { toast } from "react-hot-toast";
+import { apiFetch } from "@/lib/apiClient";
+
 
 const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
   const [file, setFile] = useState(null);
@@ -101,7 +103,7 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
           const { auth } = await import("@/lib/firebaseConfig");
           const token = await auth.currentUser?.getIdToken();
 
-          const response = await fetch("/api/institute/bulk-import", {
+          const response = await apiFetch("/api/institute/bulk-import", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

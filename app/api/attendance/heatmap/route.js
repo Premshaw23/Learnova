@@ -1,13 +1,14 @@
-import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { ForbiddenError } from "@/lib/errors";
 import { getFirestore } from "firebase-admin/firestore";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { requireAuth } from "@/lib/rbac";
 import { fail, success } from "@/lib/api-response";
 
 export const GET = withErrorHandler(async (request) => {
   initFirebaseAdmin();
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
 
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
@@ -38,21 +39,20 @@ export const GET = withErrorHandler(async (request) => {
   const snapshot = await firestoreDb
     .collection("attendance_records")
     .where("userId", "==", userId)
+    .where("date", ">=", firstDayStr)
+    .where("date", "<=", lastDayStr)
     .get();
 
   const attendance = [];
   snapshot.forEach((doc) => {
     const data = doc.data();
-    const dateStr = data.date;
-    if (dateStr >= firstDayStr && dateStr <= lastDayStr) {
-      attendance.push({
-        date: dateStr,
-        status: data.status || "present",
-        subject: data.subject || "",
-        markedAt: data.timestamp ? data.timestamp.toDate().toISOString() : null,
-        _id: doc.id,
-      });
-    }
+    attendance.push({
+      date: data.date,
+      status: data.status || "present",
+      subject: data.subject || "",
+      markedAt: data.timestamp ? data.timestamp.toDate().toISOString() : null,
+      _id: doc.id,
+    });
   });
 
   // Sort by date ascending to match the original API contract

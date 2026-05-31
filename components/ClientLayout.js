@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import dynamic from "next/dynamic";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
@@ -9,9 +9,15 @@ import ShortcutsModal from "@/components/ShortcutsModal";
 import SearchModal from "@/components/SearchModal";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { useSessionMonitor } from "@/hooks/useSessionMonitor";
+import {
+  ensureClientCsrfToken,
+  getClientCsrfToken,
+  shouldAttachCsrfToken,
+} from "@/lib/csrf";
 
 const modalInitialState = {
   isShortcutsOpen: false,
@@ -43,21 +49,28 @@ const modalEventMap = {
   "learnova:open-search": "OPEN_SEARCH",
 };
 
+const CSRF_FETCH_PATCH_FLAG = "__learnovaCsrfFetchPatched";
+
 const InstallPWA = dynamic(() => import("@/components/InstallPWA"), {
   ssr: false,
   loading: () => null,
 });
 
-const LearnovaChatbot = dynamic(() => import("@/components/ChatBot"), {
+const LearnovaChatbot = dynamic(() => import("@/components/LearnovaChatbot"), {
   ssr: false,
   loading: () => null,
 });
 
-export default function ClientLayout() {
+export default function ClientLayout({ children }) {
   const [modalState, dispatch] = useReducer(modalReducer, modalInitialState);
+  
+  // Visibility state tracking logic for Nova Chat Modal
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  
   const { user, userProfile } = useAuth();
 
   useOfflineQueue();
+  useSessionMonitor();
 
   const handleSearch = useCallback(() => {
     dispatch({ type: "OPEN_SEARCH" });
@@ -69,6 +82,7 @@ export default function ClientLayout() {
 
   const handleEscape = useCallback(() => {
     dispatch({ type: "CLOSE_ALL" });
+    setIsChatOpen(false); 
     window.dispatchEvent(new CustomEvent("learnova:escape"));
   }, []);
 
@@ -87,6 +101,73 @@ export default function ClientLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    let cancelled = false;
+    const originalFetch = window.fetch.bind(window);
+
+    if (!window[CSRF_FETCH_PATCH_FLAG]) {
+      window.fetch = async (input, init = {}) => {
+        const requestInput = input instanceof Request ? input : null;
+        const requestUrl =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : requestInput?.url || "";
+        const requestMethod =
+          (init.method || requestInput?.method || "GET").toUpperCase();
+
+        if (shouldAttachCsrfToken(requestUrl, requestMethod)) {
+          let csrfToken = getClientCsrfToken();
+          if (!csrfToken) {
+            csrfToken = await ensureClientCsrfToken(originalFetch);
+          }
+
+          if (csrfToken) {
+            const requestHeaders = new Headers(requestInput?.headers || init.headers || {});
+            if (!requestHeaders.has("x-csrf-token")) {
+              requestHeaders.set("X-CSRF-Token", csrfToken);
+            }
+
+            if (requestInput) {
+              input = new Request(requestInput, { headers: requestHeaders });
+            } else {
+              init = { ...init, headers: requestHeaders };
+            }
+          }
+        }
+
+        return originalFetch(input, init);
+      };
+
+      window[CSRF_FETCH_PATCH_FLAG] = true;
+    }
+
+    const bootstrapCsrf = async () => {
+      if (!getClientCsrfToken()) {
+        await ensureClientCsrfToken(originalFetch);
+      }
+    };
+
+    bootstrapCsrf().catch(() => {
+      if (!cancelled) {
+        console.warn("[csrf] Failed to bootstrap CSRF token");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      if (window[CSRF_FETCH_PATCH_FLAG]) {
+        window.fetch = originalFetch;
+        delete window[CSRF_FETCH_PATCH_FLAG];
+      }
+    };
+  }, []);
+
   // Central Consistency Streak & Firestore Synchronization Hook
   useEffect(() => {
     if (typeof window === "undefined" || !user) return;
@@ -98,8 +179,11 @@ export default function ClientLayout() {
         const localToday = new Date(today.getTime() - (offset * 60 * 1000));
         const todayDateStr = localToday.toISOString().split("T")[0];
 
-        // 1. Get client-side localStorage values
         let clientStreak = parseInt(localStorage.getItem("learnova_site_streak") || "0", 10);
+        // 1. Get client-side localStorage values
+        clientStreak = normalizeStreakCount(
+          localStorage.getItem("learnova_site_streak"),
+        );
         let clientLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
         let clientHistory = [];
         try {
@@ -110,8 +194,9 @@ export default function ClientLayout() {
         }
         if (!Array.isArray(clientHistory)) clientHistory = [];
 
-        // 2. Fetch Firestore profile variables
         const firestoreStreak = userProfile?.siteStreak || 0;
+        // 2. Fetch Firestore profile variables
+        firestoreStreak = normalizeStreakCount(userProfile?.siteStreak);
         const firestoreLastVisit = userProfile?.siteLastVisit || "";
         const firestoreHistory = userProfile?.siteVisitHistory || [];
 
@@ -119,8 +204,6 @@ export default function ClientLayout() {
         let lastVisit = clientLastVisit;
         let history = [...clientHistory];
 
-        // 3. Bidirectional Sync & Restore Logic
-        // Case A: Device has no streak records, but Firestore does! (New device login / local storage cleared)
         if (!lastVisit && firestoreLastVisit) {
           currentStreak = firestoreStreak;
           lastVisit = firestoreLastVisit;
@@ -131,12 +214,10 @@ export default function ClientLayout() {
           localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
         }
 
-        // Case B: Process today's check-in if last visit is different
         if (lastVisit !== todayDateStr) {
           let updatedStreak = currentStreak;
           
           if (!lastVisit) {
-            // New streak initialization
             updatedStreak = 1;
           } else {
             const lastVisitDate = new Date(lastVisit);
@@ -145,10 +226,8 @@ export default function ClientLayout() {
             const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
             if (diffDays === 1) {
-              // Consecutive check-in
               updatedStreak += 1;
             } else if (diffDays > 1) {
-              // Streak broken
               updatedStreak = 1;
             }
           }
@@ -163,12 +242,10 @@ export default function ClientLayout() {
           currentStreak = updatedStreak;
           lastVisit = todayDateStr;
 
-          // Save to LocalStorage
           localStorage.setItem("learnova_site_streak", currentStreak.toString());
           localStorage.setItem("learnova_site_last_visit", lastVisit);
           localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
 
-          // Trigger a beautiful notification
           if (currentStreak > 1) {
             toast.success(`🔥 Blazing visit streak! ${currentStreak} consecutive days. Keep it up!`, {
               icon: "🔥",
@@ -181,14 +258,12 @@ export default function ClientLayout() {
             });
           }
         } else {
-          // Same day visit, ensure today is in history
           if (!history.includes(todayDateStr)) {
             history.push(todayDateStr);
             localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
           }
         }
 
-        // 4. Update Firestore if the local variables differ from Firestore to keep them perfectly in sync
         const needsSync = 
           currentStreak !== firestoreStreak ||
           lastVisit !== firestoreLastVisit ||
@@ -196,11 +271,15 @@ export default function ClientLayout() {
 
         if (needsSync && user.uid) {
           const userDocRef = doc(db, "users", user.uid);
-          await updateDoc(userDocRef, {
-            siteStreak: currentStreak,
-            siteLastVisit: lastVisit,
-            siteVisitHistory: history,
-          });
+         await setDoc(
+  userDocRef,
+  {
+    siteStreak: currentStreak,
+    siteLastVisit: lastVisit,
+    siteVisitHistory: history,
+  },
+  { merge: true }
+);
         }
 
       } catch (error) {
@@ -208,7 +287,6 @@ export default function ClientLayout() {
       }
     };
 
-    // Delay slightly to allow auth profile variables to load properly
     const timer = setTimeout(syncStreak, 1500);
     return () => clearTimeout(timer);
   }, [user, userProfile]);
@@ -223,6 +301,8 @@ export default function ClientLayout() {
 
   return (
     <>
+      {children}
+      
       <InstallPWA />
       <ShortcutsModal
         isOpen={modalState.isShortcutsOpen}
@@ -232,8 +312,15 @@ export default function ClientLayout() {
         isOpen={modalState.isSearchOpen}
         onClose={() => dispatch({ type: "CLOSE_ALL" })}
       />
+      
+      {/* 💥 DEAD SPARKLE FLOATING BUTTON REMOVED FROM HERE FOR CLEAN VIEWPORT CONTROL */}
+
       <ErrorBoundary>
-        <LearnovaChatbot />
+        <LearnovaChatbot 
+          isOpen={isChatOpen}
+          user={user}
+          onClose={() => setIsChatOpen(false)}
+        />
       </ErrorBoundary>
     </>
   );

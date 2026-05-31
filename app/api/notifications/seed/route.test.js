@@ -6,7 +6,6 @@ import { assertApiSuccess } from "../../../../testUtils/assertApiSuccess";
 import { assertApiError } from "../../../../testUtils/assertApiError";
 
 vi.mock("../../../../lib/error-handler", () => {
-  const { AppError } = require("../../../../lib/errors");
   return {
     authenticateRequest: vi.fn(),
     withErrorHandler: (handler) => {
@@ -14,10 +13,10 @@ vi.mock("../../../../lib/error-handler", () => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
+          if (error && (error.statusCode !== undefined || error.name === "AppError")) {
             const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
             return {
-              status: error.statusCode,
+              status: error.statusCode || 500,
               json: async () => ({ error: payload }),
             };
           }
@@ -36,17 +35,16 @@ vi.mock("../../../../lib/rateLimit", () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
+const mockCollection = {
+  insertMany: vi.fn().mockResolvedValue({ acknowledged: true }),
+};
+
 vi.mock("../../../../lib/mongodb", () => {
-  const mockCollection = {
-    insertMany: vi.fn().mockResolvedValue({ acknowledged: true }),
-  };
   const mockDb = {
     collection: vi.fn(() => mockCollection),
   };
   return {
     connectDb: vi.fn(() => Promise.resolve(mockDb)),
-    _mockCollection: mockCollection,
-    _mockDb: mockDb,
   };
 });
 
@@ -60,12 +58,9 @@ vi.mock("next/server", () => ({
 }));
 
 describe("notifications seed route", () => {
-  let mockCollection;
-
   beforeEach(() => {
     vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("../../../../lib/mongodb")._mockCollection;
   });
 
   const createMockRequest = (headers = {}) => {

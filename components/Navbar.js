@@ -239,6 +239,7 @@ export function Navbar() {
 
   const navigationItems = [
     { href: "/", label: "Home", icon: Home },
+    { href: "/about", label: "About", icon: BookOpen },
     { href: "/wellness", label: "Wellness", icon: HeartPulse },
     { href: "/productivity", label: "Focus", icon: Sparkles },
     { href: "/activity", label: "Activities", icon: Activity },

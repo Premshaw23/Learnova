@@ -2,7 +2,8 @@ import { put, del } from "@vercel/blob";
 import { randomUUID } from "crypto";
 import { connectDb } from "@/lib/mongodb";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { AppError, ValidationError, ForbiddenError } from "@/lib/errors";
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -128,10 +129,7 @@ export const POST =
       }
 
       // Authenticate
-      const decodedToken =
-        await authenticateRequest(
-          req
-        );
+      const decodedToken = await requireAuth(req);
 
       // Form data
       const formData =

@@ -1,36 +1,52 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CloudOff, RefreshCw, CheckCircle, Database } from "lucide-react";
 import { getOutboxRecords } from "@/lib/offlineStore";
 import { getQueuedMutations } from "@/lib/offlineQueue";
 import { syncAttendanceQueue } from "@/lib/syncService";
 
+const SYNCED_BANNER_DURATION_MS = 3000;
+
 export default function OfflineIndicator() {
   const [isOffline, setIsOffline] = useState(false);
   const [queueCount, setQueueCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [justSynced, setJustSynced] = useState(false);
+  const prevIsSyncing = useRef(false);
 
   const checkQueue = async () => {
     try {
-      const records = await getOutboxRecords();
-      const mutations = await getQueuedMutations();
+      const [records, mutations] = await Promise.all([
+        getOutboxRecords(),
+        getQueuedMutations(),
+      ]);
+
       setQueueCount(records.length + mutations.length);
-    } catch (e) {
-      console.error("Failed to check queue", e);
+    } catch (error) {
+      console.error("Failed to check queue", error);
     }
   };
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
     setIsOffline(!navigator.onLine);
     checkQueue();
 
     const handleOnline = async () => {
       setIsOffline(false);
-      setIsSyncing(true);
-      await syncAttendanceQueue();
       await checkQueue();
-      setIsSyncing(false);
+      setIsSyncing(true);
+
+      try {
+        await syncAttendanceQueue();
+      } finally {
+        setIsSyncing(false);
+        await checkQueue();
+      }
     };
 
     const handleOffline = () => {
@@ -38,12 +54,18 @@ export default function OfflineIndicator() {
       checkQueue();
     };
 
-    const handleSyncComplete = (event) => {
+    const handleSyncComplete = () => {
       checkQueue();
     };
 
     const handleMessage = (event) => {
-      if (event.data && (event.data.type === "SYNC_COMPLETE" || event.data.type === "MUTATIONS_SYNC_COMPLETE" || event.data.type === "MUTATION_QUEUED")) {
+      const type = event.data?.type;
+
+      if (
+        type === "SYNC_COMPLETE" ||
+        type === "MUTATIONS_SYNC_COMPLETE" ||
+        type === "MUTATION_QUEUED"
+      ) {
         checkQueue();
       }
     };
@@ -59,8 +81,7 @@ export default function OfflineIndicator() {
     window.addEventListener("learnova:mutations-sync-complete", handleLocalEvent);
     navigator.serviceWorker?.addEventListener("message", handleMessage);
 
-    // Poll queue every 10 seconds just in case
-    const interval = setInterval(checkQueue, 10000);
+    const interval = window.setInterval(checkQueue, 10000);
 
     return () => {
       window.removeEventListener("online", handleOnline);
@@ -69,42 +90,65 @@ export default function OfflineIndicator() {
       window.removeEventListener("learnova:mutation-queued", handleLocalEvent);
       window.removeEventListener("learnova:mutations-sync-complete", handleLocalEvent);
       navigator.serviceWorker?.removeEventListener("message", handleMessage);
-      
-      // Ensure interval is cleared
-      if (interval) {
-        clearInterval(interval);
-      }
+      window.clearInterval(interval);
     };
   }, []);
 
-  if (!isOffline && queueCount === 0 && !isSyncing) return null;
+  useEffect(() => {
+    let timer;
+
+    if (prevIsSyncing.current && !isSyncing && queueCount === 0 && !isOffline) {
+      setJustSynced(true);
+      timer = window.setTimeout(() => {
+        setJustSynced(false);
+      }, SYNCED_BANNER_DURATION_MS);
+    }
+
+    prevIsSyncing.current = isSyncing;
+
+    return () => {
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [isOffline, isSyncing, queueCount]);
+
+  if (!isOffline && queueCount === 0 && !isSyncing && !justSynced) {
+    return null;
+  }
 
   return (
-    <div className="fixed bottom-20 sm:bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div className="fixed bottom-20 right-4 z-50 flex flex-col gap-2 sm:bottom-4">
       {isOffline && (
-        <div className="bg-red-500/90 text-white backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium animate-pulse">
-          <CloudOff className="w-4 h-4" />
+        <div className="animate-pulse rounded-full bg-red-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-md flex items-center gap-2">
+          <CloudOff className="h-4 w-4" />
           Offline Mode
         </div>
       )}
 
       {queueCount > 0 && !isSyncing && (
-        <div className="bg-yellow-500/90 text-white backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium">
-          <Database className="w-4 h-4" />
+        <div className="rounded-full bg-yellow-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-md flex items-center gap-2">
+          <Database className="h-4 w-4" />
           {queueCount} record{queueCount !== 1 ? "s" : ""} queued
         </div>
       )}
 
       {isSyncing && (
-        <div className="bg-blue-500/90 text-white backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium">
-          <RefreshCw className="w-4 h-4 animate-spin" />
+        <div className="rounded-full bg-blue-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-md flex items-center gap-2">
+          <RefreshCw className="h-4 w-4 animate-spin" />
           Syncing records...
         </div>
       )}
-      
-      {!isOffline && queueCount === 0 && isSyncing === false && (
-        <div className="bg-green-500/90 text-white backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium animate-fade-out" style={{ animationDuration: '3s', animationFillMode: 'forwards' }}>
-          <CheckCircle className="w-4 h-4" />
+
+      {justSynced && (
+        <div
+          className="animate-fade-out rounded-full bg-green-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-md flex items-center gap-2"
+          style={{
+            animationDuration: `${SYNCED_BANNER_DURATION_MS}ms`,
+            animationFillMode: "forwards",
+          }}
+        >
+          <CheckCircle className="h-4 w-4" />
           Synced
         </div>
       )}

@@ -23,7 +23,7 @@ const syncSchema = z.object({
       queuedAt: z.number(),
       date: z.string().optional(),
     })
-  ).min(1),
+  ).min(1).max(100, "Too many records in a single sync batch"),
 });
 
 // Minimum face-match confidence required to record attendance.

@@ -1,5 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler, authenticateRequest, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { awardXp } from "@/lib/gamification-service";
@@ -9,7 +10,7 @@ import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
 
 export const POST = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+  const decodedToken = await requireAuth(request);
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`attendance_record_${ip}_${decodedToken.uid}`);

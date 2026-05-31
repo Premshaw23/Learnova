@@ -41,6 +41,38 @@ export const getUserActivities = async (userId) => {
   }
 };
 
+/**
+ * Flexible activity record used by the heatmap.
+ * @typedef {{ date: string; count: number }} ActivityRecord
+ */
+
+/**
+ * Fetches aggregated activity counts grouped by day.
+ * @param {string} userId
+ * @returns {Promise<ActivityRecord[]>}
+ */
+export const getUserActivity = async (userId) => {
+  if (!userId) return [];
+
+  const rawActivities = await getUserActivities(userId);
+
+  const grouped = rawActivities.reduce((acc, item) => {
+    const timestamp = item.timestamp instanceof Date ? item.timestamp : new Date(item.timestamp);
+    const dateKey = timestamp.toISOString().slice(0, 10);
+
+    acc[dateKey] = (acc[dateKey] || 0) + 1;
+    return acc;
+  }, {});
+
+  return Object.entries(grouped)
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+};
+
+/**
+ * Removes an activity by ID (used for optimistic rollback or explicit deletion).
+ * @param {string} activityId - The ID of the document to delete
+ */
 export const removeActivity = async (activityId) => {
   if (!activityId) return;
   try {

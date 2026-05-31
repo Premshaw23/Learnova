@@ -38,25 +38,37 @@ function unregisterConnection(connId) {
   }
 }
 
-// ── Shared Notice Listener Bus ─────────────────────────────────────────────────
+// ── Shared Notice Listener Bus (institute-scoped) ──────────────────────────────
 const noticeListeners = new Map();
 
-function addNoticeListener(userId, cb) {
-  if (!noticeListeners.has(userId)) {
-    noticeListeners.set(userId, new Set());
+function addNoticeListener(instituteId, userId, cb) {
+  const instKey = instituteId || "global";
+  if (!noticeListeners.has(instKey)) {
+    noticeListeners.set(instKey, new Map());
   }
-  noticeListeners.get(userId).add(cb);
+  const userListeners = noticeListeners.get(instKey);
+  if (!userListeners.has(userId)) {
+    userListeners.set(userId, new Set());
+  }
+  userListeners.get(userId).add(cb);
 }
 
-function removeNoticeListener(userId, cb) {
-  const cbs = noticeListeners.get(userId);
+function removeNoticeListener(instituteId, userId, cb) {
+  const instKey = instituteId || "global";
+  const userListeners = noticeListeners.get(instKey);
+  if (!userListeners) return;
+  const cbs = userListeners.get(userId);
   if (!cbs) return;
   cbs.delete(cb);
-  if (cbs.size === 0) noticeListeners.delete(userId);
+  if (cbs.size === 0) userListeners.delete(userId);
+  if (userListeners.size === 0) noticeListeners.delete(instKey);
 }
 
 function broadcastNotice(doc) {
-  for (const [, cbs] of noticeListeners) {
+  const instKey = String(doc.instituteId) || "global";
+  const userListeners = noticeListeners.get(instKey);
+  if (!userListeners) return;
+  for (const [, cbs] of userListeners) {
     for (const cb of cbs) cb(doc);
   }
 }
@@ -201,7 +213,7 @@ export async function GET(request) {
             unregisterConnection(connId);
             connId = null;
           }
-          removeNoticeListener(userId, onNotice);
+          removeNoticeListener(instituteId, userId, onNotice);
           if (noticeListeners.size === 0) {
             stopChangeStream();
             stopPolling();
@@ -259,7 +271,7 @@ export async function GET(request) {
           }
         };
 
-        addNoticeListener(userId, onNotice);
+        addNoticeListener(instituteId, userId, onNotice);
 
         if (!sharedStream) {
           startChangeStream();

@@ -1,55 +1,98 @@
 "use client";
 
-import React from "react";
-import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { cn } from "@/lib/utils";
+import React, { useState, useId, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 /**
- * A highly accessible, robust Tooltip component powered by Radix UI primitives.
- * Supports hover, keyboard focus, custom placement, and light/dark theme aesthetics.
- * Fully compatible with both `content` and `text` props for seamless integration.
- *
- * @param {Object} props
- * @param {React.ReactNode} props.children - The trigger element.
- * @param {React.ReactNode} [props.content] - The tooltip content.
- * @param {React.ReactNode} [props.text] - @deprecated Use `props.content` instead. Fallback content prop for backward compatibility.
- * @param {'top' | 'bottom' | 'left' | 'right'} [props.position="top"] - Placement of the tooltip content relative to the trigger.
- * @param {string} [props.className] - Additional styling classes for the tooltip content.
- * @param {number} [props.delayDuration=200] - Open delay in milliseconds.
+ * A reusable, accessible Tooltip component with intelligent positioning.
+ * 
+ * @param {React.ReactNode} children - The trigger element.
+ * @param {React.ReactNode} content - Tooltip text or component.
+ * @param {'top' | 'bottom' | 'left' | 'right'} placement - Initial placement.
+ * @param {number} delay - Delay in ms before showing.
  */
-export default function Tooltip({
-  children,
-  content,
-  text,
-  position = "top",
-  className = "",
-  delayDuration = 200,
-}) {
-  const displayContent = content || text;
+const Tooltip = ({ 
+  children, 
+  content, 
+  placement = "top", 
+  delay = 200 
+}) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [adjustedPlacement, setAdjustedPlacement] = useState(placement);
+  const tooltipId = useId();
+  const timeoutRef = useRef(null);
+  const tooltipRef = useRef(null);
 
-  if (!displayContent) return <>{children}</>;
+  const showTooltip = () => {
+    timeoutRef.current = setTimeout(() => setIsVisible(true), delay);
+  };
+
+  const hideTooltip = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsVisible(false);
+    setAdjustedPlacement(placement); // Reset to preferred placement
+  };
+
+  useEffect(() => {
+    if (isVisible && tooltipRef.current) {
+      const rect = tooltipRef.current.getBoundingClientRect();
+      const viewport = { w: window.innerWidth, h: window.innerHeight };
+      
+      let next = placement;
+      if (placement === "top" && rect.top < 0) next = "bottom";
+      else if (placement === "bottom" && rect.bottom > viewport.h) next = "top";
+      else if (placement === "left" && rect.left < 0) next = "right";
+      else if (placement === "right" && rect.right > viewport.w) next = "left";
+
+      if (next !== adjustedPlacement) setAdjustedPlacement(next);
+    }
+  }, [isVisible, placement, adjustedPlacement]);
+
+  const positionClasses = {
+    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
+    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
+    left: "right-full top-1/2 -translate-y-1/2 mr-2",
+    right: "left-full top-1/2 -translate-y-1/2 ml-2",
+  };
+
+  const arrowClasses = {
+    top: "bottom-[-4px] left-1/2 -translate-x-1/2 border-r border-b",
+    bottom: "top-[-4px] left-1/2 -translate-x-1/2 border-l border-t",
+    left: "right-[-4px] top-1/2 -translate-y-1/2 border-r border-t",
+    right: "left-[-4px] top-1/2 -translate-y-1/2 border-l border-b",
+  };
 
   return (
-    <TooltipPrimitive.Provider delayDuration={delayDuration}>
-      <TooltipPrimitive.Root>
-        <TooltipPrimitive.Trigger asChild>
-          {children}
-        </TooltipPrimitive.Trigger>
-        <TooltipPrimitive.Portal>
-          <TooltipPrimitive.Content
-            side={position}
-            align="center"
-            sideOffset={4}
-            className={cn(
-              "z-50 overflow-hidden rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-50 shadow-md animate-in fade-in-50 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-50 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:bg-zinc-100 dark:text-zinc-900 border border-zinc-800 dark:border-zinc-200/20 max-w-xs break-words",
-              className
-            )}
+    <div 
+      className="relative inline-block"
+      onMouseEnter={showTooltip}
+      onMouseLeave={hideTooltip}
+      onFocus={showTooltip}
+      onBlur={hideTooltip}
+    >
+      {React.isValidElement(children) ? (
+        React.cloneElement(children, { "aria-describedby": isVisible ? tooltipId : undefined })
+      ) : children}
+
+      <AnimatePresence>
+        {isVisible && content && (
+          <motion.div
+            ref={tooltipRef}
+            id={tooltipId}
+            role="tooltip"
+            initial={{ opacity: 0, scale: 0.96, y: adjustedPlacement === "top" ? 4 : adjustedPlacement === "bottom" ? -4 : 0 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+            className={`absolute z-[100] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-100 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl backdrop-blur-md whitespace-nowrap pointer-events-none ${positionClasses[adjustedPlacement]}`}
           >
-            {displayContent}
-            <TooltipPrimitive.Arrow className="fill-zinc-900 dark:fill-zinc-100" />
-          </TooltipPrimitive.Content>
-        </TooltipPrimitive.Portal>
-      </TooltipPrimitive.Root>
-    </TooltipPrimitive.Provider>
+            {content}
+            <div className={`absolute w-1.5 h-1.5 bg-zinc-900 border-zinc-800 rotate-45 ${arrowClasses[adjustedPlacement]}`} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
-}
+};
+
+export default Tooltip;

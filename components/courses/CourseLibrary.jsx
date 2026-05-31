@@ -2,10 +2,28 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Clock, Star, ArrowRight, BookOpen, Search, RotateCcw, Loader2 } from "lucide-react";
+import {
+  Clock,
+  Star,
+  ArrowRight,
+  BookOpen,
+  Search,
+  RotateCcw,
+  Loader2,
+  Bookmark,
+  BookmarkCheck,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import Badge from "@/components/ui/Badge";
+import { apiFetch } from "@/lib/apiClient";
+import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/storage";
+import {
+  SAVED_COURSES_STORAGE_KEY,
+  getSavedCourses,
+  sanitizeSavedCourseIds,
+} from "@/lib/courses";
+
 
 const getDifficultyVariant = (difficulty) => {
   const diff = difficulty?.toLowerCase();
@@ -26,11 +44,14 @@ export default function CourseLibrary({
   q,
   total,
   limit = 6,
+  allCourses = [],
 }) {
   const [courses, setCourses] = useState(initialCourses);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(initialHasMore);
+  const [savedCourseIds, setSavedCourseIds] = useState([]);
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
 
   // Sync state if initial courses change (e.g. search filter or category chip select re-fetches from server)
   useEffect(() => {
@@ -39,13 +60,18 @@ export default function CourseLibrary({
     setHasMore(initialHasMore);
   }, [initialCourses, initialHasMore]);
 
+  useEffect(() => {
+    const savedIds = safeLocalStorageGet(SAVED_COURSES_STORAGE_KEY, []);
+    setSavedCourseIds(sanitizeSavedCourseIds(savedIds, allCourses));
+  }, [allCourses]);
+
   const loadMoreCourses = async () => {
     if (isLoading) return;
     setIsLoading(true);
 
     try {
       const nextPage = page + 1;
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/courses?q=${encodeURIComponent(q)}&category=${encodeURIComponent(
           category
         )}&page=${nextPage}&limit=${limit}`
@@ -65,28 +91,85 @@ export default function CourseLibrary({
     }
   };
 
+  const handleToggleSavedCourse = (course) => {
+    setSavedCourseIds((currentIds) => {
+      const existingIds = sanitizeSavedCourseIds(currentIds, allCourses);
+      const isAlreadySaved = existingIds.includes(course.id);
+      const nextIds = isAlreadySaved
+        ? existingIds.filter((id) => id !== course.id)
+        : [...existingIds, course.id];
+
+      const didPersist = safeLocalStorageSet(SAVED_COURSES_STORAGE_KEY, nextIds);
+
+      if (!didPersist) {
+        toast.error("Could not update saved courses on this device.");
+        return existingIds;
+      }
+
+      toast.success(
+        isAlreadySaved
+          ? "Course removed from saved list"
+          : "Course saved for later"
+      );
+
+      return nextIds;
+    });
+  };
+
+  const savedCourses = getSavedCourses(savedCourseIds, {
+    courses: allCourses,
+    q,
+    category,
+  });
+  const visibleCourses = showSavedOnly ? savedCourses : courses;
+  const visibleTotal = showSavedOnly ? savedCourses.length : total;
+  const savedCourseIdSet = new Set(savedCourseIds);
+
   return (
     <div className="space-y-8">
       {/* Search Result Counter */}
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => setShowSavedOnly((current) => !current)}
+          aria-pressed={showSavedOnly}
+          aria-label={showSavedOnly ? "Show all courses" : "Show saved courses"}
+          className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all duration-200 sm:w-auto ${
+            showSavedOnly
+              ? "border-amber-400/50 bg-amber-400/15 text-amber-200 shadow-lg shadow-amber-500/10"
+              : "border-slate-800 bg-slate-900/60 text-slate-300 hover:border-amber-400/40 hover:text-amber-200"
+          }`}
+        >
+          {showSavedOnly ? (
+            <BookmarkCheck className="h-4 w-4 fill-amber-300 text-amber-300" />
+          ) : (
+            <Bookmark className="h-4 w-4" />
+          )}
+          <span>{showSavedOnly ? "All courses" : "Saved courses"}</span>
+          <span className="rounded-full bg-slate-950/80 px-2 py-0.5 text-xs text-white">
+            {savedCourseIds.length}
+          </span>
+        </button>
         <div className="text-sm font-medium text-slate-400 bg-slate-900/40 border border-slate-800/80 px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm">
-          Showing <span className="text-indigo-400 font-bold">{courses.length}</span> of{" "}
-          <span className="text-white">{total}</span> courses
+          Showing <span className="text-indigo-400 font-bold">{visibleCourses.length}</span> of{" "}
+          <span className="text-white">{visibleTotal}</span>{" "}
+          {showSavedOnly ? "saved courses" : "courses"}
         </div>
       </div>
 
-      {courses.length > 0 ? (
+      {visibleCourses.length > 0 ? (
         <div className="space-y-12">
           {/* Courses Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
             <AnimatePresence mode="popLayout">
-              {courses.map((course, index) => {
+              {visibleCourses.map((course, index) => {
                 const instructorInitials = course.instructor
                   .split(" ")
                   .filter((n) => n.length > 0)
                   .map((n) => n[0])
                   .join("")
                   .substring(0, 2);
+                const isSaved = savedCourseIdSet.has(course.id);
 
                 return (
                   <motion.div
@@ -106,6 +189,27 @@ export default function CourseLibrary({
                         className={`w-full h-40 bg-gradient-to-tr ${course.color} rounded-xl relative flex items-center justify-center p-6 text-center select-none shadow-inner group-hover:brightness-105 transition-all duration-300`}
                       >
                         <div className="absolute inset-0 bg-black/10 mix-blend-overlay rounded-xl" />
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSavedCourse(course)}
+                          aria-pressed={isSaved}
+                          aria-label={
+                            isSaved
+                              ? `Remove ${course.title} from saved courses`
+                              : `Save ${course.title} to saved courses`
+                          }
+                          className={`absolute right-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all duration-200 active:scale-95 ${
+                            isSaved
+                              ? "border-amber-200/60 bg-amber-300 text-slate-950 shadow-lg shadow-amber-500/20"
+                              : "border-white/30 bg-black/20 text-white/85 hover:border-amber-200/60 hover:text-amber-200"
+                          }`}
+                        >
+                          {isSaved ? (
+                            <BookmarkCheck className="h-4 w-4 fill-current" />
+                          ) : (
+                            <Bookmark className="h-4 w-4" />
+                          )}
+                        </button>
                         <BookOpen className="w-10 h-10 text-white/30 absolute left-4 bottom-4 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
                         <span className="text-lg font-black text-white tracking-wider leading-snug drop-shadow-md">
                           {course.categoryLabel}
@@ -167,7 +271,7 @@ export default function CourseLibrary({
           </div>
 
           {/* Load More Button */}
-          {hasMore && (
+          {!showSavedOnly && hasMore && (
             <div className="flex justify-center pt-6">
               <button
                 onClick={loadMoreCourses}
@@ -201,16 +305,29 @@ export default function CourseLibrary({
           </h3>
 
           <p className="text-sm text-slate-400 max-w-md leading-relaxed mb-8 relative z-10">
-            No courses matching your criteria. Try adjusting your search query, or clear your filters to explore our full selection of classes.
+            {showSavedOnly
+              ? "No saved courses match the current filters. Save courses from the library or clear your filters to review your shortlist."
+              : "No courses matching your criteria. Try adjusting your search query, or clear your filters to explore our full selection of classes."}
           </p>
 
-          <Link
-            href="/courses"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 active:scale-95 transition-all duration-200 select-none relative z-10"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Reset All Filters
-          </Link>
+          {showSavedOnly ? (
+            <button
+              type="button"
+              onClick={() => setShowSavedOnly(false)}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 active:scale-95 transition-all duration-200 select-none relative z-10"
+            >
+              <RotateCcw className="w-4 h-4" />
+              View All Courses
+            </button>
+          ) : (
+            <Link
+              href="/courses"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 active:scale-95 transition-all duration-200 select-none relative z-10"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset All Filters
+            </Link>
+          )}
         </div>
       )}
     </div>
