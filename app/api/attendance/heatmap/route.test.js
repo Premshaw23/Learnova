@@ -24,6 +24,7 @@ vi.mock("next/server", () => ({
     json: (body, init = {}) => ({
       status: init.status ?? 200,
       json: async () => body,
+      ...body,
     }),
   },
 }));
@@ -44,7 +45,7 @@ describe("attendance heatmap route", () => {
     const response = await GET(request);
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.attendance).toEqual([]);
+    expect(body.data.attendance).toEqual([]);
   });
 
   test("rejects query with 403 Forbidden if uid does not match authenticated user", async () => {
@@ -115,10 +116,10 @@ describe("attendance heatmap route", () => {
     expect(response.status).toBe(200);
 
     const body = await response.json();
-    expect(body.attendance).toHaveLength(2);
+    expect(body.data.attendance).toHaveLength(2);
 
     // Verify correct filtering of June record and date sorting (2026-05-02 before 2026-05-15)
-    expect(body.attendance[0]).toEqual({
+    expect(body.data.attendance[0]).toEqual({
       date: "2026-05-02",
       status: "present",
       subject: "Science",
@@ -126,7 +127,7 @@ describe("attendance heatmap route", () => {
       _id: "doc-2",
     });
 
-    expect(body.attendance[1]).toEqual({
+    expect(body.data.attendance[1]).toEqual({
       date: "2026-05-15",
       status: "present",
       subject: "Math",
