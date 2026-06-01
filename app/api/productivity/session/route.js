@@ -16,9 +16,6 @@ const sessionSchema = z.object({
     .int("duration must be an integer")
     .min(1, "duration must be at least 1 minute")
     .max(480, "duration cannot exceed 8 hours"),
-  completedAt: z
-    .string({ message: "completedAt is required" })
-    .datetime({ message: "completedAt must be a valid ISO date string" }),
   type: z.enum(["focus", "break"], {
     message: "type must be either 'focus' or 'break'",
   }),
@@ -83,7 +80,7 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError(firstError);
   }
 
-  const { duration, completedAt, type } = validation.data;
+  const { duration, type } = validation.data;
   const now = new Date().toISOString();
 
   const db = await connectDb();
@@ -92,7 +89,7 @@ export const POST = withErrorHandler(async (request) => {
   const sessionDoc = {
     firebaseUid: userId,
     duration,
-    completedAt,
+    completedAt: now,
     type,
     createdAt: now,
   };
@@ -112,7 +109,7 @@ export const POST = withErrorHandler(async (request) => {
 
   return NextResponse.json({
     success: true,
-    session: { duration, completedAt, type },
+    session: { duration, completedAt: now, type },
     xpAwarded,
   });
 });
