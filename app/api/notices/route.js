@@ -62,6 +62,9 @@ async function publishNotice(request) {
     });
   } catch (mongoError) {
     console.error("Failed to sync notice to MongoDB:", mongoError);
+    // Rollback Firestore doc to prevent inconsistent state
+    await adminDb.collection("notices").doc(result.id).delete().catch(() => {});
+    throw new AppError("Failed to sync notice to secondary store", 502);
   }
 
   // Publish to Redis for real-time SSE delivery across serverless instances
@@ -69,6 +72,14 @@ async function publishNotice(request) {
     await publishNoticeToRedis(noticeWithId);
   } catch (redisError) {
     console.error("Failed to publish notice to Redis:", redisError);
+    // Rollback Firestore doc to prevent inconsistent state
+    await adminDb.collection("notices").doc(result.id).delete().catch(() => {});
+    // Also rollback MongoDB
+    try {
+      const mongoDb = await connectDb();
+      await mongoDb.collection("notices").deleteOne({ _id: result.id });
+    } catch {}
+    throw new AppError("Failed to publish notice to real-time stream", 502);
   }
 
   return NextResponse.json({
