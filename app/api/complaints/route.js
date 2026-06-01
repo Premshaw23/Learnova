@@ -1,38 +1,52 @@
-import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
+import { requireAuth } from "@/lib/rbac";
+import { parseJSON, withErrorHandler } from "@/lib/error-handler";
+import { AppError, ValidationError } from "@/lib/errors";
+import { jsonSuccess } from "@/lib/api-response";
+import { z } from "zod";
 
-export async function POST(req) {
-  try {
-    const body = await req.json();
-    const { category, subject, description, priority } = body;
 
-    // Validation
-    if (!category || !subject || !description || !priority) {
-      return NextResponse.json(
-        { message: "All fields are required" },
-        { status: 400 }
-      );
-    }
+export const dynamic = "force-dynamic";
 
-    const db = await connectDb();
+const complaintsSchema = z.object({
+  category: z.string().min(1, "Category is required"),
+  subject: z.string().min(1, "Subject is required"),
+  description: z.string().min(1, "Description is required"),
+  priority: z.string().min(1, "Priority is required"),
+});
 
-    await db.collection("complaints").insertOne({
-      category,
-      subject,
-      description,
-      priority,
-      createdAt: new Date(),
-    });
+const MAX_COMPLAINT_PAYLOAD_BYTES = 1024 * 10;
 
-    return NextResponse.json(
-      { message: "Complaint submitted successfully" },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { message: "Server error" },
-      { status: 500 }
-    );
+export const POST = withErrorHandler(async (req) => {
+  const decodedToken = await requireAuth(req);
+
+  const body = await parseJSON(req, MAX_COMPLAINT_PAYLOAD_BYTES);
+
+  const validation = complaintsSchema.safeParse(body);
+  if (!validation.success) {
+    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+    throw new ValidationError(firstError);
   }
-}
+
+  const { category, subject, description, priority } = validation.data;
+
+  let db;
+  try {
+    db = await connectDb();
+  } catch (error) {
+    throw new AppError("Database connection failed. Please try again.", 503);
+  }
+
+  await db.collection("complaints").insertOne({
+    userId: decodedToken.uid,
+    userEmail: decodedToken.email,
+    category,
+    subject,
+    description,
+    priority,
+    status: "pending",
+    createdAt: new Date(),
+  });
+
+  return jsonSuccess({ message: "Complaint submitted successfully" });
+});

@@ -27,21 +27,35 @@ export function useTimeout(callback, delay, immediate = false) {
     }
   };
 
+  const start = () => {
+    if (delay !== null && delay !== undefined) {
+      timeoutRef.current = setTimeout(() => {
+        callbackRef.current();
+        timeoutRef.current = null;
+      }, delay);
+    }
+  };
+
   useEffect(() => {
     if (immediate) {
       callbackRef.current();
     }
 
-    if (delay !== null && delay !== undefined) {
-      timeoutRef.current = setTimeout(() => {
-        callbackRef.current();
-      }, delay);
-    }
+    start();
 
     return clear;
   }, [delay, immediate]);
 
-  return { clear, reset: () => clear() };
+  return {
+    clear,
+    reset: () => {
+      clear();
+      if (immediate) {
+        callbackRef.current();
+      }
+      start();
+    },
+  };
 }
 
 /**

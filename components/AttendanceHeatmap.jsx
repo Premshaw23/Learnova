@@ -166,7 +166,7 @@ const AttendanceHeatmap = ({ recentActivity = [] }) => {
   const isEmpty = values.length === 0;
 
   return (
-    <div className="bg-black/40 backdrop-blur-xl rounded-[2rem] border border-white/10 p-6 shadow-2xl transition-all duration-500">
+    <div className="w-full max-w-full overflow-hidden bg-black/40 backdrop-blur-xl rounded-[2rem] border border-white/10 p-6 shadow-2xl transition-all duration-500">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.28em] text-slate-400">

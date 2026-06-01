@@ -56,7 +56,11 @@ export default function EmailVerificationPage() {
         setResendCooldown((prev) => prev - 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [resendCooldown]);
 
   const handleResendVerification = async () => {

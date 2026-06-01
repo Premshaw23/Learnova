@@ -1,23 +1,74 @@
-// 1. Enhanced layout.js with proper structured data for sitelinks
-
-import { NotificationProvider } from "@/contexts/NotificationContext";
-import { FirestoreProvider } from "@/contexts/FirestoreContext";
+// ─── Next.js core & React ────────────────────────────────────────────────────
 import React from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
+
+// ─── Third-party libraries ───────────────────────────────────────────────────
 import { Toaster } from "react-hot-toast";
+
+// ─── Global styles ───────────────────────────────────────────────────────────
 import "./globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ThemeProvider } from "@/components/ThemeProvider";
+
+// ─── Layout & structural components ─────────────────────────────────────────
 import ClientLayout from "@/components/ClientLayout";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
 import ScrollToTop from "@/components/ScrollToTop";
-import BackToTop from "@/components/BackToTop";
+import BackToTop from "@/components/ui/BackToTop";
 import OfflineIndicator from "@/components/OfflineIndicator";
+import ScrollProgress from "@/components/ui/ScrollProgress";
 import NextTopLoader from "nextjs-toploader";
 
+// 🎯 FIX: Explicitly loading overlays
 
+import RouteAnnouncer from "@/components/RouteAnnouncer";
+
+import ErrorBoundary from "@/components/ErrorBoundary";
+
+// ─── Command palette (wrapper owns isOpen state via useCommandPalette hook) ──
+// Conflict resolved: use CommandPaletteWrapper, NOT CommandPalette directly.
+// CommandPalette requires isOpen + onClose props — it has no internal state.
+// CommandPaletteWrapper wires the hook so the palette responds to Ctrl+K.
+
+// ─── Context providers (all wrapped inside AllProviders) ─────────────────────
+// AllProviders composes: ThemeProvider → AuthProvider → FirestoreProvider → NotificationProvider
+import AllProviders from "./providers/AllProviders";
+
+// ─── SEO metadata & structured data ─────────────────────────────────────────
+import { siteStructuredData } from "@/lib/seo/siteStructuredData";
+
+// 🎯 FIX: Explicitly loading overlays
+import CommandPaletteWrapper from "@/components/CommandPalette";
+import ShortcutsModal from "@/components/ShortcutsModal";
+
+
+// Validate environment variables at startup (server-side only).
+// ─── Environment validation (server-side only, runs once at startup) ─────────
+// Kept outside the component so it runs at module load time, not per-render.
+// throwOnError:false keeps local dev working even without all secrets set.
+
+
+if (typeof window === "undefined") {
+  try {
+    const { validateEnv } = require("@/lib/env");
+    validateEnv({
+
+      throwOnError: false,
+
+      throwOnError: false, // Avoid failing the build during local/CI evaluation
+
+      throwOnError: false,
+      throwOnError: false, // Avoid failing the build during local/CI evaluation
+
+      warnOnce: true,
+    });
+  } catch (error) {
+    console.error("Environment validation failed:", error.message);
+    throw error;
+  }
+}
+
+// ─── Font configuration ───────────────────────────────────────────────────────
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -194,6 +245,13 @@ const jsonLd = [
       },
       {
         "@type": "SiteNavigationElement",
+        name: "Wellness",
+        description:
+          "Explore mental health and productivity tools for a balanced study journey",
+        url: "https://learnova-web.vercel.app/wellness",
+      },
+      {
+        "@type": "SiteNavigationElement",
         name: "About Learnova",
         description:
           "Learn about our mission to transform education through technology",
@@ -221,35 +279,54 @@ export const viewport = {
   ],
 };
 
+// ─── Root layout ──────────────────────────────────────────────────────────────
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Favicons */}
+        {/* ── Favicons ── */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
 
-        {/* Canonical and sitemap */}
+        {/* ── Sitemap ── */}
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+        {/* ── JSON-LD structured data for SEO ── */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }}
         />
       </head>
+
       <body
+        suppressHydrationWarning
         className={`font-sans ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen transition-colors duration-300`}
       >
+        {/* ── Accessibility: skip-to-content link ── */}
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[9999] focus:p-4 focus:bg-blue-600 focus:text-white focus:font-bold focus:outline-none focus:ring-2"
         >
           Skip to Main Content
         </a>
-          {/* Cursor glow removed per UX preference */}
+
+
+        {/* ── All context providers (Theme, Auth, Firestore, Notifications) ── */}
+
           
-        <ThemeProvider>
+
+        {/* ── All context providers (Theme, Auth, Firestore, Notifications) ── */}
+
+        <AllProviders>
+          {/* Note: Ensure these providers (ThemeProvider, AuthProvider, etc.) 
+              are actually imported and exported correctly in AllProviders 
+              or placed here individually if AllProviders doesn't cover them. */}
+
+          <ScrollProgress />
+
+          {/* ── Route-change loading bar ── */}
           <NextTopLoader
             color="#4f46e5"
             initialPosition={0.08}
@@ -261,33 +338,46 @@ export default function RootLayout({ children }) {
             speed={200}
             shadow="0 0 10px #4f46e5,0 0 5px #4f46e5"
           />
-          <AuthProvider>
-            <FirestoreProvider>
-              <NotificationProvider>
-                <Suspense fallback={null}>
-                  <main id="main-content" className="outline-none" tabIndex="-1">
-                    <PageTransition>{children}</PageTransition>
-                  </main>
 
-                  <ScrollToTop />
+          <Suspense fallback={null}>
 
-                  <Footer />
-                  <ClientLayout />
-                  <BackToTop />
+            {/* ── Main page content with error boundary + page transitions ── */}
+            <main id="main-content" className="outline-none" tabIndex="-1">
+              <ErrorBoundary>
+                <PageTransition>{children}</PageTransition>
+              </ErrorBoundary>
+            </main>
 
-                  <Toaster
-                    position="top-right"
-                    toastOptions={{
-                      duration: 4000,
-                      style: { fontWeight: 600 },
-                    }}
-                  />
-                  <OfflineIndicator />
-                </Suspense>
-              </NotificationProvider>
-            </FirestoreProvider>
-          </AuthProvider>
-        </ThemeProvider>
+            {/* ── Scroll restoration on route change ── */}
+            <ScrollToTop />
+            <Footer />
+
+            {/* ── Client-only layout: modals, chatbot, PWA install, streak sync ── */}
+            <ClientLayout />
+
+            {/* ── Back-to-top floating button ── */}
+            <BackToTop />
+
+            {/* ── Screen-reader route announcer for accessibility ── */}
+            <RouteAnnouncer />
+
+            {/* Single Toaster configuration */}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: { fontWeight: 600 },
+              }}
+            />
+
+            <OfflineIndicator />
+            <CommandPaletteWrapper />
+
+            {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
+            <ShortcutsModal />
+          </Suspense>
+        </AllProviders>
+
       </body>
     </html>
   );

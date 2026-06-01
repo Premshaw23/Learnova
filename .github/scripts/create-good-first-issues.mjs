@@ -267,7 +267,7 @@ Even a small test suite gives contributors confidence that their changes don't b
 ## 🔍 Relevant Files / Folders
 
 - \`components/AuthForm.js\`
-- \`package.json\` (check for existing test setup; add Jest + React Testing Library if not present)
+- \`package.json\` (check for existing test setup; add Vitest + React Testing Library if not present)
 
 ## 💡 Expected Solution
 
@@ -278,7 +278,7 @@ Create \`components/__tests__/AuthForm.test.js\` with tests covering:
 4. Shows validation error when password is empty on submit
 5. Calls \`onSubmit\` when valid data is entered
 
-Use **Jest** and **React Testing Library** (both standard in Next.js projects).
+Use **Vitest** and **React Testing Library** (both standard in this project).
 
 ## ✅ Acceptance Criteria
 

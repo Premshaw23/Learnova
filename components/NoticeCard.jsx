@@ -125,8 +125,54 @@ const createPdfDownload = (notice) => {
   const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   
   doc.text(`Author: ${notice.author || "Unknown"}`, margin, cursorY);
-  doc.text(`Published: ${dateStr} at ${timeStr}`, margin + 65, cursorY);
-  doc.text(`Priority: ${(notice.priority || "medium").toUpperCase()}`, margin + 130, cursorY);
+  doc.text(`Published: ${dateStr} at ${timeStr}`, margin + 62, cursorY);
+  
+  // Color-coded priority badges matching UI
+  const priority = (notice.priority || "medium").toLowerCase();
+  doc.text("Priority:", margin + 130, cursorY);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  if (priority === "high") {
+    doc.setFillColor(254, 226, 226); // Red-100
+    doc.setTextColor(220, 38, 38);  // Red-600
+  } else if (priority === "low") {
+    doc.setFillColor(209, 250, 229); // Emerald-100
+    doc.setTextColor(5, 150, 105);   // Emerald-600
+  } else {
+    doc.setFillColor(254, 243, 199); // Amber-100
+    doc.setTextColor(217, 119, 6);   // Amber-600
+  }
+  doc.roundedRect(margin + 144, cursorY - 3.5, 18, 5, 1, 1, "F");
+  doc.text(priority.toUpperCase(), margin + 146, cursorY - 0.1);
+  
+  // Revert defaults
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont("helvetica", "normal");
+
+  // Render Tags row with styled pills
+  cursorY += 7;
+  const tags = notice.tags || [];
+  if (tags.length > 0) {
+    doc.text("Tags:", margin, cursorY);
+    let tagX = margin + 11;
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    tags.forEach((tag) => {
+      const tagText = `#${tag}`;
+      const tagWidth = doc.getTextWidth(tagText);
+      doc.setFillColor(243, 244, 246); // Slate-100
+      doc.setTextColor(71, 85, 105);   // Slate-600
+      doc.roundedRect(tagX, cursorY - 3.2, tagWidth + 4, 4.5, 1, 1, "F");
+      doc.text(tagText, tagX + 2, cursorY + 0.1);
+      tagX += tagWidth + 7;
+    });
+
+    // Revert defaults
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont("helvetica", "normal");
+  }
 
   // Horizontal Rule under Metadata
   cursorY += 4;

@@ -18,7 +18,7 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { getWeekdaysSince } from "@/services/statsService";
+import { getWeekdaysSince } from "@/lib/dateUtils";
 
 ChartJS.register(
   CategoryScale,
@@ -95,15 +95,21 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
   const [activeTrendTab, setActiveTrendTab] = useState("weekly");
 
   useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
 
     const fetchAttendance = async () => {
+      if (!userId) {
+        if (isMounted) {
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
-        setLoading(true);
-        setError(null);
+        if (isMounted) {
+          setLoading(true);
+          setError(null);
+        }
 
         const attendanceQuery = query(
           collection(db, "attendance_records"),
@@ -111,12 +117,16 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
         );
 
         const snapshot = await getDocs(attendanceQuery);
+
+        if (!isMounted) return;
+
         const records = snapshot.docs.map((doc) => doc.data() || {});
         const totalPresent = records.length;
         const totalClasses = getWeekdaysSince();
 
         const safeTotalClasses = totalClasses > 0 ? totalClasses : 1;
         let totalAbsent = safeTotalClasses - totalPresent;
+
         if (totalAbsent < 0) totalAbsent = 0;
 
         const attendancePercentage = Math.round(
@@ -124,6 +134,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
         );
 
         setAttendanceRecords(records);
+
         setStats({
           totalPresent,
           totalAbsent,
@@ -131,16 +142,23 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
           percentage: Math.min(100, attendancePercentage),
         });
       } catch (err) {
+        if (!isMounted) return;
+
         console.error(err);
         setError("Failed to load attendance analytics.");
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchAttendance();
-  }, [userId]);
 
+    return () => {
+      isMounted = false;
+    };
+  }, [userId]);
   const subjectPerformance = useMemo(() => {
     const subjectMap = new Map();
 
@@ -196,17 +214,22 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
     }
 
     const now = new Date();
+    const recordsByMonth = attendanceRecords.reduce((monthMap, record) => {
+      if (typeof record.date !== "string") {
+        return monthMap;
+      }
+
+      const monthKey = record.date.slice(0, 7);
+      monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + 1);
+      return monthMap;
+    }, new Map());
+
     return Array.from({ length: 6 }).map((_, index) => {
       const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      const availableRecords = attendanceRecords.filter(
-        (record) =>
-          typeof record.date === "string" &&
-          record.date.startsWith(monthKey),
-      );
       const weekdays = countWeekdaysInMonth(date.getFullYear(), date.getMonth());
       const attendance = Math.round(
-        (availableRecords.length / Math.max(1, weekdays)) * 100,
+        ((recordsByMonth.get(monthKey) || 0) / Math.max(1, weekdays)) * 100,
       );
 
       return {
