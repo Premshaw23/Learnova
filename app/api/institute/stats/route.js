@@ -63,10 +63,7 @@ export const GET = withErrorHandler(async (request) => {
     todayAttendance = Math.round((presentCount / totalStudents) * 1000) / 10;
   } catch (err) {
     console.error("Error fetching institute stats from Firestore:", err);
-    return NextResponse.json(
-      { error: "Dashboard data temporarily unavailable" },
-      { status: 502 }
-    );
+    throw new AppError("Dashboard data temporarily unavailable", 502);
   }
 
   const teachers = teacherDocs.map((t) => ({
