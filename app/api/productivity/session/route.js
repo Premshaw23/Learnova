@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const DEFAULT_DAYS_BACK = 7;
+const MAX_DAYS_BACK = 90;
 const MAX_SESSION_PAYLOAD_BYTES = 1024 * 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -48,6 +49,11 @@ export function parseSessionDateRange(searchParams, now = new Date()) {
     1,
     Math.ceil((endDate.getTime() - startDate.getTime()) / DAY_MS)
   );
+
+  // Cap the window to prevent unbounded scans
+  if (daySpan > MAX_DAYS_BACK) {
+    throw new ValidationError(`Date range cannot exceed ${MAX_DAYS_BACK} days`);
+  }
 
   return {
     startDate: startDate.toISOString(),
