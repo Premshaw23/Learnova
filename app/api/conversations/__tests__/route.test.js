@@ -2,6 +2,21 @@ import { POST } from "@/app/api/conversations/route";
 import { requireAuth } from "@/lib/rbac";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { detectInjection } from "@/utils/promptGuard";
+import { UnauthorizedError } from "@/lib/errors";
+
+const { mockChatCompletionsCreate } = vi.hoisted(() => ({
+  mockChatCompletionsCreate: vi.fn(),
+}));
+
+vi.mock("groq-sdk", () => ({
+  Groq: vi.fn().mockImplementation(() => ({
+    chat: {
+      completions: {
+        create: mockChatCompletionsCreate,
+      },
+    },
+  })),
+}));
 
 vi.mock("@/lib/rbac", () => ({
   requireAuth: vi.fn(),
@@ -37,7 +52,7 @@ describe("POST /api/conversations - Auth Security", () => {
   });
 
   test("rejects unauthenticated request with 401 when requireAuth throws", async () => {
-    requireAuth.mockRejectedValue(new Error("Unauthorized"));
+    requireAuth.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
     const req = createMockRequest({}, { messages: [{ text: "Hello" }] });
     const response = await POST(req);
@@ -48,7 +63,7 @@ describe("POST /api/conversations - Auth Security", () => {
   });
 
   test("rejects request with invalid auth token", async () => {
-    requireAuth.mockRejectedValue(new Error("Unauthorized"));
+    requireAuth.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
     const req = createMockRequest(
       { authorization: "Bearer invalid-token" },
@@ -66,6 +81,13 @@ describe("POST /api/conversations - Auth Security", () => {
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
     detectInjection.mockReturnValue({ isInjection: false });
 
+    const mockStream = {
+      [Symbol.asyncIterator]: async function* () {
+        yield { choices: [{ delta: { content: "Hello" } }] };
+      },
+    };
+    mockChatCompletionsCreate.mockResolvedValue(mockStream);
+
     const req = createMockRequest(
       { authorization: "Bearer valid-token" },
       { messages: [{ role: "user", content: "Hello" }] }
@@ -75,3 +97,4 @@ describe("POST /api/conversations - Auth Security", () => {
     expect(response.status).toBe(200);
   });
 });
+
