@@ -202,7 +202,11 @@ export const PATCH = withErrorHandler(async (request) => {
   }
 
   const operatorRole = isOperatorAdmin ? "admin" : "owner";
-  console.log(`[Audit Log] Settings updated successfully for target user: ${targetUserId} by operator: ${decodedToken.uid} (Role: ${operatorRole})`);
+  logger.info("Settings updated successfully", {
+    targetUserId,
+    operator: decodedToken.uid,
+    role: operatorRole
+  });
 
   return success({ message: "Settings saved successfully" });
 });

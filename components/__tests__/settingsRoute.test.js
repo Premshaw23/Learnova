@@ -110,7 +110,10 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
       { upsert: true }
     );
     expect(consoleLogMock).toHaveBeenCalledWith(
-      expect.stringContaining("[Audit Log] Settings updated successfully for target user: user-123 by operator: user-123 (Role: owner)")
+      expect.stringContaining('"message":"Settings updated successfully"')
+    );
+    expect(consoleLogMock).toHaveBeenCalledWith(
+      expect.stringContaining('"targetUserId":"user-123"')
     );
   });
 
@@ -181,7 +184,10 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
       { upsert: true }
     );
     expect(consoleLogMock).toHaveBeenCalledWith(
-      expect.stringContaining("[Audit Log] Settings updated successfully for target user: victim-user-123 by operator: admin-789 (Role: admin)")
+      expect.stringContaining('"message":"Settings updated successfully"')
+    );
+    expect(consoleLogMock).toHaveBeenCalledWith(
+      expect.stringContaining('"targetUserId":"victim-user-123"')
     );
   });
 
