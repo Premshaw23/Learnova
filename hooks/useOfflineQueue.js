@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 /**
@@ -6,6 +6,10 @@ import toast from "react-hot-toast";
  * handle network recovery, and display hot toasts when mutations are queued or replayed.
  */
 export function useOfflineQueue() {
+  const [syncing, setSyncing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
+
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
@@ -20,11 +24,18 @@ export function useOfflineQueue() {
           });
           // Dispatch custom event for UI components to update their status
           window.dispatchEvent(new CustomEvent("learnova:mutation-queued"));
+
+          setPendingCount((prev) => prev + 1);
+
           break;
 
         case "MUTATIONS_SYNC_COMPLETE":
           const { successCount, failCount } = event.data;
           
+          setSyncing(false);
+          setFailedCount(failCount);
+          setPendingCount(0);
+
           // Clear any queued loading toast
           toast.dismiss("offline-mutation-queued");
 
@@ -54,6 +65,7 @@ export function useOfflineQueue() {
     };
 
     const handleOnline = async () => {
+      setSyncing(true);
       // Trigger background sync registration
       if ("SyncManager" in window) {
         try {
@@ -81,4 +93,10 @@ export function useOfflineQueue() {
       window.removeEventListener("online", handleOnline);
     };
   }, []);
+
+  return {
+    syncing,
+    pendingCount,
+    failedCount,
+  };
 }
