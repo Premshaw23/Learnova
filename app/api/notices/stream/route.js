@@ -196,7 +196,10 @@ export async function GET(request) {
           }));
           sendEvent("initial", formattedNotices);
           if (initialNotices.length > 0) {
-            lastNoticeTime = initialNotices[0].createdAt || new Date();
+            lastNoticeTime = initialNotices.reduce((latest, n) => {
+              const t = n.createdAt;
+              return t && t > latest ? t : latest;
+            }, initialNotices[0].createdAt || new Date());
           }
         } catch (err) {
           console.error("Initial fetch error:", err);
