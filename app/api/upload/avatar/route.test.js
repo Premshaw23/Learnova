@@ -66,7 +66,7 @@ describe("POST /api/upload/avatar", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.url).toBe("https://public.blob.vercel-storage.com/avatar.jpg");
+    expect(body.data.url).toBe("https://public.blob.vercel-storage.com/avatar.jpg");
     expect(uploadAvatarToBlob).toHaveBeenCalledWith({
       file,
       uid: "user-123",

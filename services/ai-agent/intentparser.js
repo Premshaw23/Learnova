@@ -39,7 +39,7 @@ export function matchUserIntent(prompt) {
 
   // 3. TRIGGER STUDENT ALERT PATTERN
   if (lower.includes("alert") || lower.includes("warn") || lower.includes("notify")) {
-    const idMatches = prompt.match(/(STU-\d+|\b\d{4}\b)/ig) || [];
+    const idMatches = prompt.match(/(STU-?\d+|\b\d{4}\b)/ig) || [];
     const targetStudentIds = idMatches.length > 0 ? idMatches.map(id => id.toUpperCase()) : ["STU-2049"];
     const messageQuoteMatch = prompt.match(/"([^"]+)"/);
     const alertPayloadMessage = messageQuoteMatch ? messageQuoteMatch[1] : "Urgent academic alert: Please review your profile panel notifications link.";
@@ -58,5 +58,18 @@ export async function parseUserIntent(prompt) {
   if (!match.matched) {
     return JSON.stringify({ status: 'error', error: 'Could not parse user intent' });
   }
-  return JSON.stringify({ status: 'success', tool: match.tool, data: match.args });
+  const result = {
+    status: 'success',
+    tool: match.tool,
+    data: match.args
+  };
+
+  if (match.tool === "check_room_availability") {
+    result.roomId = match.args.roomId;
+    result.date = match.args.date;
+  } else if (match.tool === "trigger_student_alert") {
+    result.notifiedCount = match.args.studentIds ? match.args.studentIds.length : 0;
+  }
+
+  return JSON.stringify(result);
 }

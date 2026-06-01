@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
+import { requireRole } from "@/lib/rbac";
 
 export async function POST(request) {
   try {
+    // Authenticate and authorize — only teachers and admins can modify curricula
+    const { payload, profile } = await requireRole(request, ["teacher", "admin"]);
+
     const body = await request.json();
     const { courseId, modules } = body;
 
@@ -26,6 +30,20 @@ export async function POST(request) {
       if (process.env.MONGODB_URI) {
         const db = await connectDb();
 
+        // Ownership check: only the original creator or an admin can modify a curriculum
+        if (profile?.role !== "admin") {
+          const existing = await db.collection("course_curriculums").findOne(
+            { courseId },
+            { projection: { ownerId: 1 } }
+          );
+          if (existing && existing.ownerId !== payload.uid) {
+            return NextResponse.json(
+              { success: false, error: "Forbidden: You do not own this course curriculum" },
+              { status: 403 }
+            );
+          }
+        }
+
         // Structure the modules list to enforce position sequences
         const structuredModules = modules.map((mod, modIdx) => ({
           id: mod.id,
@@ -46,8 +64,12 @@ export async function POST(request) {
           {
             $set: {
               modules: structuredModules,
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
+            $setOnInsert: {
+              ownerId: payload.uid,
+              createdAt: new Date(),
+            },
           },
           { upsert: true }
         );

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
+import { requireRole, requireAuth } from "@/lib/rbac";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { ForbiddenError, ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 
@@ -13,20 +13,21 @@ export const POST = withErrorHandler(async (request) => {
     throw new ForbiddenError("Not allowed in production");
   }
 
-  // 2. Authentication check: Only admin is allowed to seed
-  await requireRole(request, ["admin"]);
+  // 2. Authentication check
+  const decodedToken = await requireAuth(request);
 
   // 3. Body parsing and validation
-  let body;
-  try {
-    body = await request.json();
-  } catch (err) {
-    throw new ValidationError("Invalid JSON payload");
-  }
+  const body = await parseJSON(request, 1024 * 10);
 
   const { userId } = body;
   if (!userId) {
     throw new ValidationError("userId is required");
+  }
+
+  // Allow admins to seed any user, but non-admins can only seed notifications for their own account
+  const isAdmin = decodedToken.role === "admin";
+  if (!isAdmin && decodedToken.uid !== userId) {
+    throw new ForbiddenError("Forbidden: You can only seed notifications for your own account");
   }
 
   // 4. Rate limiting check

@@ -62,22 +62,44 @@ export const POST = withErrorHandler(async (request) => {
 
   // 2. Find orphaned Firebase Auth accounts (exist in Auth but not in any DB)
   try {
-    const authUsers = [];
-    // List users from Firestore to compare against Auth
-    const firestoreUsers = await db.collection("users").limit(1000).get();
+    const PAGE_SIZE = 500;
+
+    // Page through Firestore users
     const firestoreUids = new Set();
-    firestoreUsers.docs.forEach((doc) => {
-      firestoreUids.add(doc.id);
-    });
+    let firestoreCursor = null;
+    do {
+      let firestoreQuery = db.collection("users").limit(PAGE_SIZE);
+      if (firestoreCursor) {
+        firestoreQuery = firestoreQuery.startAfter(firestoreCursor);
+      }
+      const firestoreSnapshot = await firestoreQuery.get();
+      if (firestoreSnapshot.empty) break;
+      firestoreSnapshot.docs.forEach((doc) => firestoreUids.add(doc.id));
+      firestoreCursor = firestoreSnapshot.docs[firestoreSnapshot.docs.length - 1];
+    } while (firestoreCursor);
 
-    // Check MongoDB users
-    const mongoUsers = await mongoDB.collection("users").find({}).limit(1000).toArray();
+    // Page through MongoDB users
     const mongoUids = new Set();
-    mongoUsers.forEach((u) => {
-      if (u.firebaseUid) mongoUids.add(u.firebaseUid);
-    });
+    const mongoUsersMap = new Map();
+    let mongoCursor = null;
+    do {
+      let mongoQuery = mongoDB.collection("users").find({}).limit(PAGE_SIZE);
+      if (mongoCursor) {
+        mongoQuery = mongoQuery.skip(mongoCursor);
+      }
+      const mongoBatch = await mongoQuery.toArray();
+      if (mongoBatch.length === 0) break;
+      mongoBatch.forEach((u) => {
+        if (u.firebaseUid) {
+          mongoUids.add(u.firebaseUid);
+          mongoUsersMap.set(u.firebaseUid, u);
+        }
+      });
+      mongoCursor = (mongoCursor || 0) + mongoBatch.length;
+    } while (mongoCursor && mongoUids.size === mongoCursor);
 
-    // Find UIDs that are in Firestore but not MongoDB → reconcile
+    // Bulk-reconcile: Firestore → MongoDB
+    const mongoBulkOps = [];
     for (const uid of firestoreUids) {
       if (!mongoUids.has(uid)) {
         const firestoreDoc = await db.collection("users").doc(uid).get();
@@ -85,37 +107,45 @@ export const POST = withErrorHandler(async (request) => {
         if (!firestoreData) continue;
 
         const now = new Date().toISOString();
-        await mongoDB.collection("users").updateOne(
-          { firebaseUid: uid },
-          {
-            $set: {
-              firebaseUid: uid,
-              email: firestoreData.email || "",
-              name: firestoreData.fullName || "",
-              fullName: firestoreData.fullName || "",
-              role: firestoreData.role || "student",
-              lastLogin: now,
+        mongoBulkOps.push({
+          updateOne: {
+            filter: { firebaseUid: uid },
+            update: {
+              $set: {
+                firebaseUid: uid,
+                email: firestoreData.email || "",
+                name: firestoreData.fullName || "",
+                fullName: firestoreData.fullName || "",
+                role: firestoreData.role || "student",
+                lastLogin: now,
+              },
+              $setOnInsert: {
+                totalXp: 0,
+                currentLevel: 1,
+                xpToNextLevel: 100,
+                currentStreak: 0,
+                unlockedBadges: [],
+                attendanceHistory: [],
+                createdAt: now,
+              },
             },
-            $setOnInsert: {
-              totalXp: 0,
-              currentLevel: 1,
-              xpToNextLevel: 100,
-              currentStreak: 0,
-              unlockedBadges: [],
-              attendanceHistory: [],
-              createdAt: now,
-            },
+            upsert: true,
           },
-          { upsert: true }
-        );
-        results.mongoToFirestoreReconciled++;
+        });
       }
     }
+    if (mongoBulkOps.length > 0) {
+      const bulkResult = await mongoDB.collection("users").bulkWrite(mongoBulkOps, { ordered: false });
+      results.mongoToFirestoreReconciled = bulkResult.upsertedCount + bulkResult.modifiedCount;
+    }
 
-    // Find UIDs that are in MongoDB but not Firestore → reconcile
+    // Bulk-reconcile: MongoDB → Firestore
+    let firestoreBatch = db.batch();
+    let firestoreBatchSize = 0;
+    let firestoreBatchOps = 0;
     for (const uid of mongoUids) {
       if (!firestoreUids.has(uid)) {
-        const mongoUser = mongoUsers.find((u) => u.firebaseUid === uid);
+        const mongoUser = mongoUsersMap.get(uid);
         if (!mongoUser) continue;
 
         const profile = {
@@ -126,10 +156,21 @@ export const POST = withErrorHandler(async (request) => {
           createdAt: mongoUser.createdAt || new Date().toISOString(),
           lastLogin: mongoUser.lastLogin || null,
         };
-        await db.collection("users").doc(uid).set(profile, { merge: true });
-        results.firestoreToMongoReconciled++;
+        firestoreBatch.set(db.collection("users").doc(uid), profile, { merge: true });
+        firestoreBatchSize++;
+        firestoreBatchOps++;
+
+        if (firestoreBatchSize >= 500) {
+          await firestoreBatch.commit();
+          firestoreBatch = db.batch();
+          firestoreBatchSize = 0;
+        }
       }
     }
+    if (firestoreBatchSize > 0) {
+      await firestoreBatch.commit();
+    }
+    results.firestoreToMongoReconciled = firestoreBatchOps;
   } catch (err) {
     results.errors.push(`DB reconciliation failed: ${err.message}`);
   }

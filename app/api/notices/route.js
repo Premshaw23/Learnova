@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { z } from "zod";
 import { connectDb } from "@/lib/mongodb";
+import { publishNoticeToRedis } from "@/app/api/notices/stream/route";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,14 +35,14 @@ async function publishNotice(request) {
 
   const adminDb = getAdminDb();
 
-  const instituteId = profile.instituteId || null;
+  const instituteId = profile.instituteId || profile.uid;
 
   const newNotice = {
     ...validData,
+    instituteId,
     author: decodedToken.name || decodedToken.email.split("@")[0],
     authorId: decodedToken.uid,
     authorRole: profile.role,
-    instituteId,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -50,7 +51,9 @@ async function publishNotice(request) {
     .collection("notices")
     .add(newNotice);
 
-  // Sync to MongoDB for SSE Change Stream support
+  const noticeWithId = { ...newNotice, _id: result.id, id: result.id };
+
+  // Sync to MongoDB for historical queries and fallback polling
   try {
     const mongoDb = await connectDb();
     await mongoDb.collection("notices").insertOne({
@@ -61,9 +64,16 @@ async function publishNotice(request) {
     console.error("Failed to sync notice to MongoDB:", mongoError);
   }
 
+  // Publish to Redis for real-time SSE delivery across serverless instances
+  try {
+    await publishNoticeToRedis(noticeWithId);
+  } catch (redisError) {
+    console.error("Failed to publish notice to Redis:", redisError);
+  }
+
   return NextResponse.json({
     success: true,
-    notice: { id: result.id, ...newNotice }
+    notice: noticeWithId,
   });
 }
 

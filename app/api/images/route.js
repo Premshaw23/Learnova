@@ -4,6 +4,7 @@ import { withErrorHandler } from "@/lib/error-handler";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { del } from "@vercel/blob";
 import { connectDb } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import {
@@ -28,7 +29,7 @@ export const GET = withErrorHandler(async (request) => {
   const users = db.collection("users");
   const requestingUser = await users.findOne(
     { firebaseUid: decodedToken.uid },
-    { projection: { _id: 1 } }
+    { projection: { _id: 1, instituteId: 1 } }
   );
 
   if (!requestingUser) {
@@ -39,6 +40,20 @@ export const GET = withErrorHandler(async (request) => {
     const profile = await getUserProfile(decodedToken.uid);
     if (!profile || !["admin", "teacher"].includes(profile.role)) {
       throw new ForbiddenError("You can only view your own profile image");
+    }
+
+    if (profile.role !== "admin") {
+      const targetUser = await users.findOne(
+        { _id: new ObjectId(id) },
+        { projection: { instituteId: 1 } }
+      );
+      if (
+        !targetUser ||
+        !requestingUser.instituteId ||
+        requestingUser.instituteId.toString() !== targetUser.instituteId?.toString()
+      ) {
+        throw new ForbiddenError("You can only view images within your own institute");
+      }
     }
   }
 
@@ -80,7 +95,7 @@ export const POST = withErrorHandler(async (request) => {
       faceDescriptor,
     });
   } catch (error) {
-    await del(blobUrl).catch(() => {});
+    await Promise.resolve(del(blobUrl)).catch(() => {});
     throw error;
   }
 

@@ -40,7 +40,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
 
     verifyFirebaseToken.mockImplementation(async (token) => {
       if (!token || token === "invalid-token") return { valid: false, reason: "Invalid" };
-      return { valid: true, decodedToken: { uid: "mock-uid", email: "user@domain.com" } };
+      return { valid: true, decodedToken: { uid: "mock-uid", email: "user@domain.com", email_verified: true, role: "teacher" } };
     });
 
     getUserProfile.mockResolvedValue({ role: "teacher" });
@@ -85,7 +85,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error.message).toBe("Unauthorized");
+    expect(body.error).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -96,7 +96,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error.message).toBe("Unauthorized");
+    expect(body.error).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -189,7 +189,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const body11 = await response11.json();
 
     expect(response11.status).toBe(429);
-    expect(body11.error.message).toContain("Too many attempts");
+    expect(body11.error).toContain("Too many attempts");
   });
 
   test("does not expose hasImage flag for student role to prevent enumeration", async () => {
@@ -200,6 +200,12 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     mockToArray.mockResolvedValue(mockUsers);
 
     getUserProfile.mockResolvedValue({ role: "student" });
+
+    // student token needs role claim too
+    verifyFirebaseToken.mockImplementation(async (token) => {
+      if (!token || token === "invalid-token") return { valid: false, reason: "Invalid" };
+      return { valid: true, decodedToken: { uid: "mock-uid", email: "user@domain.com", email_verified: true, role: "student" } };
+    });
 
     const req = createMockRequest("valid-token");
     const response = await GET(req);

@@ -24,6 +24,7 @@ export default function AuthForm({
   onRoleChange,
   onToggleLogin,
   onForgotPassword,
+  errors: externalErrors = {},
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -37,7 +38,8 @@ export default function AuthForm({
     confirmPassword: "", 
   });
 
-  const [errors, setErrors] = useState({});
+  const [internalErrors, setErrors] = useState({});
+  const errors = { ...internalErrors, ...externalErrors };
   const { fullName, instituteName, email, password, inviteCode, confirmPassword } = formData;
 
   const passwordStrength = useMemo(
@@ -50,7 +52,7 @@ export default function AuthForm({
   );
 
   const clearError = (field) => {
-  if (errors[field]) {
+  if (internalErrors[field]) {
     setErrors((prev) => {
       const updatedErrors = { ...prev };
       delete updatedErrors[field];
@@ -78,7 +80,7 @@ const handleFieldChange = (field) => (value) => {
       [field]: value,
     }));
 
-    if (errors[field]) {
+    if (internalErrors[field]) {
       validateField(field, value);
     }
 

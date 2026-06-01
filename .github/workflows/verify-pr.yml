@@ -25,4 +25,4 @@ jobs:
         run: npm run lint --if-present
 
       - name: Execute Vitest Unit Tests
-        run: npm run test -- hooks/__tests__/useSafePolling.test.js
+        run: npm run test

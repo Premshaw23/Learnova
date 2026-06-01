@@ -23,6 +23,10 @@ vi.mock("@/lib/mongodb", () => ({
   connectDb: vi.fn(),
 }));
 
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+}));
+
 describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Tests", () => {
   let mockUpdateOne;
   let originalConsoleLog;
@@ -82,7 +86,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("allows user to update their own settings successfully (no userId specified in body)", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
     mockUpdateOne.mockResolvedValue({ acknowledged: true });
 
     const req = createMockRequest(
@@ -93,7 +97,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.message).toBe("Settings saved successfully");
+    expect(body.data.message).toBe("Settings saved successfully");
     expect(mockUpdateOne).toHaveBeenCalledWith(
       { userId: "user-123" },
       expect.objectContaining({
@@ -111,7 +115,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("allows user to update their own settings successfully when bodyUserId matches authenticated uid", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
     mockUpdateOne.mockResolvedValue({ acknowledged: true });
 
     const req = createMockRequest(
@@ -122,7 +126,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.message).toBe("Settings saved successfully");
+    expect(body.data.message).toBe("Settings saved successfully");
     expect(mockUpdateOne).toHaveBeenCalledWith(
       { userId: "user-123" },
       expect.objectContaining({
@@ -136,7 +140,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("rejects standard user trying to update another user's settings with 403 Forbidden", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
     getUserProfile.mockResolvedValue({ role: "student" }); // Not an admin
 
     const req = createMockRequest(
@@ -153,7 +157,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("allows admin to update another user's settings successfully with 200 OK and logs audit line", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "admin-789", email: "admin@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "admin-789", email: "admin@example.com", email_verified: true });
     getUserProfile.mockResolvedValue({ role: "admin" });
     mockUpdateOne.mockResolvedValue({ acknowledged: true });
 
@@ -165,7 +169,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.message).toBe("Settings saved successfully");
+    expect(body.data.message).toBe("Settings saved successfully");
     expect(mockUpdateOne).toHaveBeenCalledWith(
       { userId: "victim-user-123" },
       expect.objectContaining({
@@ -182,7 +186,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("rejects request with unrecognized fields with 400 Bad Request", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
 
     const req = createMockRequest(
       { authorization: "Bearer valid-token" },

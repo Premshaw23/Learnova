@@ -52,6 +52,7 @@ import BadgeGallery from "./gamification/BadgeGallery";
 
 import ComplaintForm from "@/components/ComplaintForm";
 import StreakTracker from "@/components/ui/StreakTracker";
+import AttendanceInsights from "@/components/AttendanceInsights";
 
 const AttendanceHeatmap = dynamic(
   () => import("./AttendanceHeatmap"),
@@ -233,8 +234,6 @@ const StudentDashboard = () => {
 
   const [viewMode, setViewMode] = useState("heatmap");
   const [showComplaint, setShowComplaint] = useState(false);
-  const [skillPath, setSkillPath] = useState("standard");
-  const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(false);
   const lastScheduleTickRef = useRef(getScheduleTickKey(new Date()));
 
   const attendanceStats = useMemo(() => {
@@ -403,6 +402,11 @@ const StudentDashboard = () => {
             getInitials={getUserInitials}
           />
         </div>
+      </div>
+
+      {/* Attendance Insights */}
+      <div className="max-w-7xl mx-auto mt-6 px-6">
+        <AttendanceInsights recentActivity={recentActivity} />
       </div>
 
       {/* Adaptive Content Sections */}

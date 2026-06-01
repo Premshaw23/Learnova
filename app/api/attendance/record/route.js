@@ -8,6 +8,8 @@ import { getLocalDateKey } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
+import { connectDb } from "@/lib/mongodb";
+
 
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
@@ -55,19 +57,20 @@ export const POST = withErrorHandler(async (request) => {
   const resolvedName = userProfile?.fullName || decodedToken.name || decodedToken.displayName || decodedToken.email?.split("@")[0] || "Unknown User";
   const resolvedEmail = userProfile?.email || decodedToken.email || "unknown@learnova.edu";
 
+  let alreadyRecorded = false;
   const sagaResult = await executeSaga({
     operationType: "attendance_record",
     uid: decodedToken.uid,
     steps: [
       {
         name: "write_attendance",
-        execute: async () => {
+        execute: async (ctx) => {
           const docRef = db.collection("attendance_records").doc(`${userId}_${normalizedDate}`);
           await db.runTransaction(async (transaction) => {
             const existingDoc = await transaction.get(docRef);
             if (existingDoc.exists) {
               // Mark as already recorded — don't throw (idempotent)
-              sagaResult._alreadyRecorded = true;
+              ctx._alreadyRecorded = true;
               return;
             }
 
@@ -91,9 +94,39 @@ export const POST = withErrorHandler(async (request) => {
         compensate: null, // Attendance writes are append-only
       },
       {
-        name: "award_xp",
+        name: "write_mongodb_attendance",
         execute: async () => {
-          if (sagaResult._alreadyRecorded) {
+          if (alreadyRecorded) {
+            return;
+          }
+          const mongoDB = await connectDb();
+          await mongoDB.collection("attendance").updateOne(
+            { userId, date: normalizedDate },
+            {
+              $set: {
+                userId,
+                studentName: resolvedName,
+                email: resolvedEmail,
+                instituteId,
+                timestamp: new Date(),
+                date: normalizedDate,
+                status: "present",
+                confidenceScore: normalizedConfidence,
+                offlineSynced: false,
+              },
+            },
+            { upsert: true }
+          );
+        },
+        compensate: async () => {
+          const mongoDB = await connectDb();
+          await mongoDB.collection("attendance").deleteOne({ userId, date: normalizedDate });
+        },
+      },
+      {
+        name: "award_xp",
+        execute: async (ctx) => {
+          if (ctx._alreadyRecorded) {
             // Don't award XP if attendance was already recorded
             return;
           }
@@ -106,7 +139,7 @@ export const POST = withErrorHandler(async (request) => {
     ],
   });
 
-  if (sagaResult._alreadyRecorded) {
+  if (sagaResult.context._alreadyRecorded) {
     return jsonSuccess({ alreadyRecorded: true }, 200);
   }
 

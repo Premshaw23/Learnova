@@ -122,6 +122,14 @@ export const PATCH = withErrorHandler(async (request) => {
   }
 
   const { userId: bodyUserId, ...settings } = parsed.data;
+
+  // Restrict institute-level settings to privileged roles only
+  if (settings.institute) {
+    const profile = await getUserProfile(decodedToken.uid);
+    if (!profile || !["admin", "institute"].includes(profile.role)) {
+      throw new ForbiddenError("Forbidden: Only institute admins can modify institute settings.");
+    }
+  }
   
   let targetUserId = decodedToken.uid;
   let isOperatorAdmin = false;
@@ -193,7 +201,8 @@ export const PATCH = withErrorHandler(async (request) => {
     }
   }
 
-  
+  const operatorRole = isOperatorAdmin ? "admin" : "owner";
+  console.log(`[Audit Log] Settings updated successfully for target user: ${targetUserId} by operator: ${decodedToken.uid} (Role: ${operatorRole})`);
 
   return success({ message: "Settings saved successfully" });
 });

@@ -2,12 +2,18 @@ import { renderHook } from "@testing-library/react";
 import { useOfflineQueue } from "../useOfflineQueue";
 import toast from "react-hot-toast";
 
-vi.mock("react-hot-toast", () => ({
-  loading: vi.fn(),
-  success: vi.fn(),
-  error: vi.fn(),
-  dismiss: vi.fn(),
-}));
+vi.mock("react-hot-toast", () => {
+  const mockToast = {
+    loading: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    dismiss: vi.fn(),
+  };
+  return {
+    default: mockToast,
+    ...mockToast,
+  };
+});
 
 describe("useOfflineQueue hook", () => {
   let swListeners = {};

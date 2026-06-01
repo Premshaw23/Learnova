@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const DEFAULT_DAYS_BACK = 7;
+const MAX_DAYS_BACK = 90;
 const MAX_SESSION_PAYLOAD_BYTES = 1024 * 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -16,9 +17,6 @@ const sessionSchema = z.object({
     .int("duration must be an integer")
     .min(1, "duration must be at least 1 minute")
     .max(480, "duration cannot exceed 8 hours"),
-  completedAt: z
-    .string({ message: "completedAt is required" })
-    .datetime({ message: "completedAt must be a valid ISO date string" }),
   type: z.enum(["focus", "break"], {
     message: "type must be either 'focus' or 'break'",
   }),
@@ -52,6 +50,11 @@ export function parseSessionDateRange(searchParams, now = new Date()) {
     Math.ceil((endDate.getTime() - startDate.getTime()) / DAY_MS)
   );
 
+  // Cap the window to prevent unbounded scans
+  if (daySpan > MAX_DAYS_BACK) {
+    throw new ValidationError(`Date range cannot exceed ${MAX_DAYS_BACK} days`);
+  }
+
   return {
     startDate: startDate.toISOString(),
     endDate: endDate.toISOString(),
@@ -83,7 +86,7 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError(firstError);
   }
 
-  const { duration, completedAt, type } = validation.data;
+  const { duration, type } = validation.data;
   const now = new Date().toISOString();
 
   const db = await connectDb();
@@ -92,7 +95,7 @@ export const POST = withErrorHandler(async (request) => {
   const sessionDoc = {
     firebaseUid: userId,
     duration,
-    completedAt,
+    completedAt: now,
     type,
     createdAt: now,
   };
@@ -112,7 +115,7 @@ export const POST = withErrorHandler(async (request) => {
 
   return NextResponse.json({
     success: true,
-    session: { duration, completedAt, type },
+    session: { duration, completedAt: now, type },
     xpAwarded,
   });
 });

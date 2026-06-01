@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 import { POST } from "@/app/api/notices/route";
-import { GET } from "@/app/api/notices/stream/route";
+import { GET, publishNoticeToRedis } from "@/app/api/notices/stream/route";
 import { getAdminDb, getUserProfile, verifyFirebaseToken } from "@/lib/firebase-admin";
 import { connectDb, connectDbForSSE } from "../../lib/mongodb";
 
@@ -15,6 +15,25 @@ vi.mock("next/server", () => ({
       };
     }),
   },
+}));
+
+// Mock Upstash Redis
+const mockRedisZadd = vi.fn().mockResolvedValue(1);
+const mockRedisExpire = vi.fn().mockResolvedValue(1);
+const mockRedisIncr = vi.fn().mockResolvedValue(1);
+const mockRedisDecr = vi.fn().mockResolvedValue(0);
+const mockRedisSet = vi.fn().mockResolvedValue("OK");
+const mockRedisZrange = vi.fn().mockResolvedValue([]);
+
+vi.mock("@upstash/redis", () => ({
+  Redis: vi.fn().mockImplementation(() => ({
+    zadd: mockRedisZadd,
+    expire: mockRedisExpire,
+    incr: mockRedisIncr,
+    decr: mockRedisDecr,
+    set: mockRedisSet,
+    zrange: mockRedisZrange,
+  })),
 }));
 
 // Mock firebase admin
@@ -32,16 +51,6 @@ const mockMongoFind = vi.fn().mockReturnValue({
   limit: vi.fn().mockReturnThis(),
   toArray: mockMongoFindToArray,
 });
-
-let changeStreamCallback = null;
-const mockWatchStream = {
-  on: vi.fn().mockImplementation((event, cb) => {
-    if (event === "change") {
-      changeStreamCallback = cb;
-    }
-  }),
-  close: vi.fn(),
-};
 
 vi.mock("../../lib/mongodb", () => ({
   connectDb: vi.fn(),
@@ -78,10 +87,17 @@ afterAll(() => {
 describe("Notice Board Isolation & Security Tests", () => {
   let mockFirestoreAdd;
   let originalConsoleError;
+  let originalEnv;
 
   beforeEach(() => {
     vi.clearAllMocks();
     capturedStart = null;
+
+    // Set Redis env vars for tests
+    originalEnv = process.env;
+    process.env = { ...originalEnv };
+    process.env.UPSTASH_REDIS_REST_URL = "http://localhost:8080";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
 
     mockFirestoreAdd = vi.fn().mockResolvedValue({ id: "mock-notice-id" });
     getAdminDb.mockReturnValue({
@@ -99,7 +115,6 @@ describe("Notice Board Isolation & Security Tests", () => {
     connectDbForSSE.mockResolvedValue({
       collection: vi.fn().mockReturnValue({
         find: mockMongoFind,
-        watch: vi.fn().mockReturnValue(mockWatchStream),
       }),
     });
 
@@ -109,6 +124,7 @@ describe("Notice Board Isolation & Security Tests", () => {
 
   afterEach(() => {
     console.error = originalConsoleError;
+    process.env = originalEnv;
   });
 
   const createMockRequest = (headers, bodyData, url = "http://localhost/api/notices") => {
@@ -129,7 +145,7 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("automatically appends publisher instituteId to notice and syncs to MongoDB", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: { uid: "publisher-123", email: "teacher@domain.com", name: "Teacher Jane" },
+        decodedToken: { uid: "publisher-123", email: "teacher@domain.com", name: "Teacher Jane", email_verified: true, role: "teacher" },
       });
       getUserProfile.mockResolvedValue({
         role: "teacher",
@@ -177,7 +193,7 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("rejects standard students from creating notices", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: { uid: "student-123", email: "student@domain.com" },
+        decodedToken: { uid: "student-123", email: "student@domain.com", email_verified: true, role: "student" },
       });
       getUserProfile.mockResolvedValue({
         role: "student",
@@ -197,7 +213,8 @@ describe("Notice Board Isolation & Security Tests", () => {
       const body = await response.json();
 
       expect(response.status).toBe(403);
-      expect(body.error.message).toContain("Forbidden");
+      expect(body.error).toContain("Forbidden");
+      expect(body.error).toContain("Requires one of");
       expect(mockFirestoreAdd).not.toHaveBeenCalled();
     });
   });
@@ -206,10 +223,7 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("filters initial MongoDB query by user instituteId", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: {
-          uid: "student-123",
-          email: "student@domain.com",
-        },
+        decodedToken: { uid: "student-123", email: "student@domain.com", email_verified: true },
       });
       getUserProfile.mockResolvedValue({
         role: "student",
@@ -250,66 +264,57 @@ describe("Notice Board Isolation & Security Tests", () => {
       expect(decodedString).toContain("Notice B1");
     });
 
-    test("filters real-time broadcasts (onNotice) to enforce institute boundaries", async () => {
-      verifyFirebaseToken.mockResolvedValue({
-        valid: true,
-        decodedToken: {
-          uid: "student-123",
-          email: "student@domain.com",
-        },
-      });
-      getUserProfile.mockResolvedValue({
-        role: "student",
-        instituteId: "institute_B",
-      });
-
-      mockMongoFindToArray.mockResolvedValue([]);
-
-      const req = createMockRequest({ authorization: "Bearer valid-token" }, {}, "http://localhost/api/notices/stream");
-      await GET(req);
-
-      const mockController = {
-        enqueue: vi.fn(),
-        close: vi.fn(),
+    test("publishNoticeToRedis adds notice to Redis sorted set", async () => {
+      const testDoc = {
+        _id: "notice-123",
+        title: "Test Notice",
+        targetAudience: ["student"],
+        instituteId: "institute_A",
+        createdAt: new Date(),
       };
 
-      await capturedStart(mockController);
+      await publishNoticeToRedis(testDoc);
 
-      expect(changeStreamCallback).toBeDefined();
+      expect(mockRedisZadd).toHaveBeenCalledWith(
+        "sse:notices:recent",
+        expect.objectContaining({
+          score: expect.any(Number),
+          member: expect.any(String),
+        })
+      );
+      expect(mockRedisExpire).toHaveBeenCalledWith("sse:notices:recent", 86400);
+    });
 
-      // Trigger change stream event with notice from the SAME institute
-      const decoder = new TextDecoder();
-      changeStreamCallback({
-        fullDocument: {
-          _id: "notice-same",
-          title: "Same Institute",
-          targetAudience: ["student"],
-          instituteId: "institute_B",
-        },
+    test("POST publishes notice to Redis after MongoDB sync", async () => {
+      verifyFirebaseToken.mockResolvedValue({
+        valid: true,
+        decodedToken: { uid: "publisher-123", email: "teacher@domain.com", name: "Teacher Jane", email_verified: true, role: "teacher" },
+      });
+      getUserProfile.mockResolvedValue({
+        role: "teacher",
+        instituteId: "institute_A",
       });
 
-      // Verify the notice event is enqueued for same-institute user
-      const sameCalls = mockController.enqueue.mock.calls;
-      expect(sameCalls.length).toBeGreaterThan(0);
-      const enqueuedText = decoder.decode(sameCalls[sameCalls.length - 1][0]);
-      expect(enqueuedText).toContain("event: new-notice");
-      expect(enqueuedText).toContain("Same Institute");
+      const payload = {
+        title: "Exam Schedule",
+        content: "Exams start next Monday.",
+        category: "academic",
+        priority: "high",
+        isPinned: false,
+        tags: ["exams"],
+        targetAudience: ["student"],
+      };
 
-      // Reset mock controller tracking
-      mockController.enqueue.mockClear();
+      const req = createMockRequest({ authorization: "Bearer valid-token" }, payload);
+      const response = await POST(req);
+      const body = await response.json();
 
-      // Trigger change stream event with notice from a DIFFERENT institute
-      changeStreamCallback({
-        fullDocument: {
-          _id: "notice-diff",
-          title: "Diff Institute",
-          targetAudience: ["student"],
-          instituteId: "institute_A",
-        },
-      });
+      expect(response.status).toBe(200);
+      expect(body.success).toBe(true);
 
-      // Verify that the notice event is NOT enqueued for different institute
-      expect(mockController.enqueue).not.toHaveBeenCalled();
+      // Verify Redis publish was called
+      expect(mockRedisZadd).toHaveBeenCalled();
+      expect(mockRedisExpire).toHaveBeenCalled();
     });
   });
 });

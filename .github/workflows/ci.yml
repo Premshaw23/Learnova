@@ -28,17 +28,24 @@ jobs:
           cache: npm
 
       - name: 📚 Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
+        run: npm ci
 
       - name: 🧪 Run unit tests
-        run: npm test -- hooks/__tests__/useSafePolling.test.js
+        run: npm test
 
       - name: 🔧 Fix Tailwind CSS native binding
         run: |
           OXIDE_VER=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
           npm install --no-save "@tailwindcss/oxide-linux-x64-gnu@${OXIDE_VER}"
+
+      - name: ⚡ Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
       - name: 🔨 Build project
         run: npm run build

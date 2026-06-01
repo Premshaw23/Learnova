@@ -46,6 +46,19 @@ vi.mock("@/lib/dateUtils", () => ({
   getLocalDateKey: vi.fn(() => "2026-05-25"),
 }));
 
+vi.mock("@/lib/mongodb", () => {
+  const mockDb = {
+    collection: vi.fn(() => ({
+      updateOne: vi.fn().mockResolvedValue({}),
+      deleteOne: vi.fn().mockResolvedValue({}),
+    })),
+  };
+  return {
+    connectDb: vi.fn().mockResolvedValue(mockDb),
+  };
+});
+
+
 vi.mock("firebase-admin/firestore", () => ({
   getFirestore: vi.fn(),
   FieldValue: {

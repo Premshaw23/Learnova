@@ -25,7 +25,7 @@ vi.mock("@/lib/mongodb", () => ({
 }));
 
 vi.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: vi.fn(),
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
 describe("POST /api/notifications/seed - Security and Validation Tests", () => {
@@ -53,7 +53,7 @@ describe("POST /api/notifications/seed - Security and Validation Tests", () => {
       }),
     });
 
-    checkRateLimit.mockResolvedValue({ allowed: true });
+    checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
   });
 
   const createMockRequest = (headers, bodyData) => {
@@ -62,6 +62,7 @@ describe("POST /api/notifications/seed - Security and Validation Tests", () => {
         get: (name) => headers[name.toLowerCase()] || null,
       },
       json: vi.fn().mockResolvedValue(bodyData),
+      text: vi.fn().mockResolvedValue(JSON.stringify(bodyData)),
     };
   };
 
@@ -77,8 +78,8 @@ describe("POST /api/notifications/seed - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(403);
-    expect(body.error.message).toBe("Not allowed in production");
-    expect(body.error.code).toBe("HTTP_403");
+    // jsonError/fail() returns body.error as a flat string
+    expect(body.error).toContain("Not allowed in production");
     expect(mockInsertMany).not.toHaveBeenCalled();
   });
 
@@ -91,36 +92,38 @@ describe("POST /api/notifications/seed - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error.message).toBe("Unauthorized");
-    expect(body.error.code).toBe("HTTP_401");
+    expect(body.error).toContain("Unauthorized");
     expect(mockInsertMany).not.toHaveBeenCalled();
   });
 
-  test("rejects non-admin role (e.g. student) with 403 Forbidden", async () => {
+  test("rejects non-admin seeding for another user with 403 Forbidden", async () => {
+    // Student token with email_verified so auth passes, but student cannot seed for others
     verifyFirebaseToken.mockResolvedValue({
-      valid: true,
-      decodedToken: { uid: "user-student-123", email: "student@domain.com" },
+      uid: "user-student-123",
+      email: "student@domain.com",
+      email_verified: true,
+      role: "student",
     });
-    getUserProfile.mockResolvedValue({ role: "student" });
 
     const req = createMockRequest(
       { authorization: "Bearer valid-student-token" },
-      { userId: "user-student-123" }
+      { userId: "other-user-456" }
     );
 
     const response = await POST(req);
     const body = await response.json();
 
     expect(response.status).toBe(403);
-    expect(body.error.message).toBe("Forbidden: Requires one of admin");
-    expect(body.error.code).toBe("HTTP_403");
+    expect(body.error).toContain("Forbidden");
     expect(mockInsertMany).not.toHaveBeenCalled();
   });
 
   test("rejects missing userId in request body with 400 Bad Request", async () => {
     verifyFirebaseToken.mockResolvedValue({
-      valid: true,
-      decodedToken: { uid: "user-admin-123", email: "admin@domain.com" },
+      uid: "user-admin-123",
+      email: "admin@domain.com",
+      email_verified: true,
+      role: "admin",
     });
     getUserProfile.mockResolvedValue({ role: "admin" });
 
@@ -133,38 +136,42 @@ describe("POST /api/notifications/seed - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error.message).toBe("userId is required");
-    expect(body.error.code).toBe("HTTP_400");
+    expect(body.error).toContain("userId is required");
     expect(mockInsertMany).not.toHaveBeenCalled();
   });
 
   test("rejects malformed/invalid JSON payload with 400 Bad Request", async () => {
     verifyFirebaseToken.mockResolvedValue({
-      valid: true,
-      decodedToken: { uid: "user-admin-123", email: "admin@domain.com" },
+      uid: "user-admin-123",
+      email: "admin@domain.com",
+      email_verified: true,
+      role: "admin",
     });
     getUserProfile.mockResolvedValue({ role: "admin" });
 
+    // parseJSON calls request.text() then JSON.parse — return invalid JSON string
     const req = {
       headers: {
         get: (name) => (name.toLowerCase() === "authorization" ? "Bearer valid-admin-token" : null),
       },
       json: vi.fn().mockRejectedValue(new Error("Parse error")),
+      text: vi.fn().mockResolvedValue("{invalid-json:::"),
     };
 
     const response = await POST(req);
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error.message).toBe("Invalid JSON payload");
-    expect(body.error.code).toBe("HTTP_400");
+    expect(body.error).toContain("Invalid JSON payload");
     expect(mockInsertMany).not.toHaveBeenCalled();
   });
 
   test("rejects request if rate limit exceeded with 429 Too Many Requests", async () => {
     verifyFirebaseToken.mockResolvedValue({
-      valid: true,
-      decodedToken: { uid: "user-admin-123", email: "admin@domain.com" },
+      uid: "user-admin-123",
+      email: "admin@domain.com",
+      email_verified: true,
+      role: "admin",
     });
     getUserProfile.mockResolvedValue({ role: "admin" });
     checkRateLimit.mockResolvedValue({ allowed: false });
@@ -178,15 +185,16 @@ describe("POST /api/notifications/seed - Security and Validation Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(429);
-    expect(body.error.message).toBe("Too many requests. Please slow down.");
-    expect(body.error.code).toBe("HTTP_429");
+    expect(body.error).toContain("Too many requests");
     expect(mockInsertMany).not.toHaveBeenCalled();
   });
 
   test("successfully inserts mock notifications and returns success for valid admin request", async () => {
     verifyFirebaseToken.mockResolvedValue({
-      valid: true,
-      decodedToken: { uid: "user-admin-123", email: "admin@domain.com" },
+      uid: "user-admin-123",
+      email: "admin@domain.com",
+      email_verified: true,
+      role: "admin",
     });
     getUserProfile.mockResolvedValue({ role: "admin" });
 

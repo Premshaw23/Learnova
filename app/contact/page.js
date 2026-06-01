@@ -17,20 +17,13 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Twitter,
   Linkedin,
   Facebook,
   Sparkles,
 } from "lucide-react";
 import emailjs from "@emailjs/browser";
 import toast from "react-hot-toast";
-
-function XIcon({ size = 18, className }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  );
-}
 
 export default function Contact() {
   const { theme } = useTheme();
@@ -59,6 +52,7 @@ export default function Contact() {
   const [cooldown, setCooldown] = useState(false);
   const [cooldownTimer, setCooldownTimer] = useState(0);
   const cooldownIntervalRef = useRef(null);
+  const [charCount, setCharCount] = useState(0);
 
   useEffect(() => {
     const savedDraft = localStorage.getItem("learnova_contact_form_draft");
@@ -99,12 +93,18 @@ export default function Contact() {
   }, []);
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    const updatedFormData = { ...formData, [name]: value };
-    setFormData(updatedFormData);
-    localStorage.setItem("learnova_contact_form_draft", JSON.stringify(updatedFormData));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
-  };
+  const { name, value } = e.target;
+  const updatedFormData = { ...formData, [name]: value };
+  setFormData(updatedFormData);
+  localStorage.setItem("learnova_contact_form_draft", JSON.stringify(updatedFormData));
+
+  if (name === "message") {
+    setCharCount(value.length);
+  }
+
+  setErrors((prev) => ({ ...prev, [name]: "" }));
+};
+
 
   const validateForm = () => {
     const newErrors = {};
@@ -185,6 +185,7 @@ export default function Contact() {
       toast.success("Message sent successfully!");
       localStorage.removeItem("learnova_contact_form_draft");
       setFormData({ name: "", email: "", company: "", message: "" });
+      setCharCount(0);
       setErrors({});
     } catch (error) {
       console.error("[Contact Form] EmailJS error:", error);
@@ -223,9 +224,9 @@ export default function Contact() {
 
   const socialLinks = [
     {
-      icon: XIcon,
-      label: "X",
-      href: "https://x.com/learnova",
+      icon: Twitter,
+      label: "Twitter",
+      href: "https://twitter.com/learnova",
       color: "hover:text-blue-500 hover:border-blue-300 dark:hover:text-blue-400 dark:hover:border-blue-400/50",
     },
     {
@@ -442,11 +443,25 @@ export default function Contact() {
                             maxLength={1000}
                             className={`${inputClass} resize-none`}
                           />
-                          {/* FIX: Reserve space for error message to avoid jump */}
+                          {/* Live character counter — error replaces it after a submit attempt */}
                           <div className="min-h-[1.25rem]">
-                            {errors.message && (
+                            {errors.message ? (
                               <p className="text-red-500 dark:text-red-400 text-xs font-medium">
                                 {errors.message}
+                              </p>
+                            ) : (
+                              <p
+                                className={`text-xs font-medium transition-colors duration-200 ${
+                                  charCount >= 10 && charCount <= 500
+                                    ? "text-green-600 dark:text-green-400"
+                                    : charCount > 500
+                                    ? "text-orange-500 dark:text-orange-400"
+                                    : "text-red-500 dark:text-red-400"
+                                }`}
+                              >
+                                {charCount < 10
+                                  ? `${charCount} / 10 minimum characters`
+                                  : `${charCount} / 500`}
                               </p>
                             )}
                           </div>

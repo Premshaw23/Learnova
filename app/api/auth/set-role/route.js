@@ -16,8 +16,7 @@ export const POST = withValidation(
   withErrorHandler(async (request, data) => {
     const decodedToken = await requireAuth(request);
 
-    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    const rateLimitResult = await checkRateLimit(`set_role_${ip}_${decodedToken.uid}`);
+    const rateLimitResult = await checkRateLimit(`set_role_${decodedToken.uid}`);
     if (!rateLimitResult.allowed) {
       throw new AppError("Too many attempts. Please try again later.", 429);
     }

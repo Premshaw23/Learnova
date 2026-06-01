@@ -4,7 +4,7 @@ import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { parseJSON } from "@/lib/error-handler";
-import { executeSaga, findExistingOperation, markIdempotent } from "@/lib/transactionCoordinator";
+import { findExistingOperation, markIdempotent } from "@/lib/transactionCoordinator";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import crypto from "crypto";
@@ -58,119 +58,131 @@ export async function POST(req) {
     const failedImports = [];
     const createdAuthUids = [];
 
-    // Process students sequentially with per-student rollback
-    for (const student of students) {
-      const { name, email, rollNo, department } = student;
-      const defaultPassword = crypto.randomUUID();
-      let studentAuthUid = null;
+    // Batch phase 1: Firebase Auth – look up existing users in bulk
+    const authIdentifiers = students.map((s) => ({ email: s.email }));
+    const existingAuthUsers = [];
+    let getUsersResult;
+    try {
+      getUsersResult = await admin.auth().getUsers(authIdentifiers);
+      existingAuthUsers.push(...getUsersResult.users.map((u) => u.email));
+    } catch {}
 
-      try {
-        // Per-student saga: Auth → Firestore → MongoDB
-        const sagaResult = await executeSaga({
-          operationType: "bulk_import_student",
-          uid: `bulk_${email}`,
-          steps: [
-            {
-              name: "create_firebase_auth",
-              execute: async () => {
-                let userRecord;
-                try {
-                  userRecord = await admin.auth().getUserByEmail(email);
-                } catch (error) {
-                  if (error.code === 'auth/user-not-found') {
-                    userRecord = await admin.auth().createUser({
-                      email: email,
-                      password: defaultPassword,
-                      displayName: name,
-                    });
-                  } else {
-                    throw error;
-                  }
-                }
-                studentAuthUid = userRecord.uid;
-                createdAuthUids.push(userRecord.uid);
-                return userRecord;
-              },
-              compensate: async () => {
-                if (studentAuthUid) {
-                  try {
-                    await admin.auth().deleteUser(studentAuthUid);
-                    const idx = createdAuthUids.indexOf(studentAuthUid);
-                    if (idx > -1) createdAuthUids.splice(idx, 1);
-                  } catch {}
-                }
-              },
-            },
-            {
-              name: "write_firestore",
-              execute: async () => {
-                await firestore.collection("users").doc(studentAuthUid).set({
-                  fullName: name,
-                  email: email,
-                  role: "student",
-                  rollNo: rollNo,
-                  department: department,
-                  createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                  isBulkImported: true,
-                }, { merge: true });
-              },
-              compensate: async () => {
-                if (studentAuthUid) {
-                  try {
-                    await firestore.collection("users").doc(studentAuthUid).delete();
-                  } catch {}
-                }
-              },
-            },
-            {
-              name: "write_mongodb",
-              execute: async () => {
-                const existingMongoUser = await mongoUsers.findOne({
-                  $or: [{ email }, { rollNo }],
-                });
-
-                if (!existingMongoUser) {
-                  await mongoUsers.insertOne({
-                    name,
-                    rollNo,
-                    email,
-                    department,
-                    firebaseUid: studentAuthUid,
-                    isBulkImported: true,
-                    createdAt: new Date(),
-                  });
-                }
-              },
-              compensate: async () => {
-                if (studentAuthUid) {
-                  try {
-                    await mongoUsers.deleteOne({ firebaseUid: studentAuthUid });
-                  } catch {}
-                }
-              },
-            },
-          ],
-        });
-
-        if (sagaResult.success) {
-          successfulImports++;
-        } else {
+    // Batch phase 2: Create non-existing Firebase Auth users in bulk
+    const usersToCreate = students.filter((s) => !existingAuthUsers.includes(s.email));
+    if (usersToCreate.length > 0) {
+      const createResult = await admin.auth().createUsers(
+        usersToCreate.map((s) => ({
+          email: s.email,
+          password: crypto.randomUUID(),
+          displayName: s.name,
+        }))
+      );
+      if (createResult.failed.length > 0) {
+        for (const fail of createResult.failed) {
           failedImports.push({
-            email,
-            rollNo,
-            reason: sagaResult.fullyCompensated
-              ? `Failed at step "${sagaResult.failedStep}" (rolled back)`
-              : `Failed at step "${sagaResult.failedStep}" — manual cleanup may be needed`,
+            email: fail.index !== undefined ? students[fail.index]?.email : "unknown",
+            rollNo: fail.index !== undefined ? students[fail.index]?.rollNo : "unknown",
+            reason: fail.error?.message || "Firebase Auth creation failed",
           });
         }
-      } catch (err) {
-        failedImports.push({
-          email,
-          rollNo,
-          reason: err.message,
-        });
       }
     }
+
+    // Build firebaseUid map: email → uid
+    const emailToUid = new Map();
+    const allAuthUsers = await admin.auth().getUsers(authIdentifiers);
+    for (const user of allAuthUsers.users) {
+      if (user.email) {
+        emailToUid.set(user.email, user.uid);
+      }
+    }
+
+    // Batch phase 3: Gather all UIDs for students that passed Auth
+    const validStudents = students.filter((s) => {
+      const alreadyFailed = failedImports.some((f) => f.email === s.email);
+      return !alreadyFailed && emailToUid.has(s.email);
+    });
+
+    for (const s of validStudents) {
+      const uid = emailToUid.get(s.email);
+      if (uid) {
+        createdAuthUids.push(uid);
+        s._firebaseUid = uid;
+      }
+    }
+
+    // Batch phase 4: Bulk Firestore writes
+    const BATCH_LIMIT = 500;
+    let firestoreBatch = firestore.batch();
+    let batchCount = 0;
+    for (const student of validStudents) {
+      const uid = student._firebaseUid;
+      if (!uid) continue;
+      firestoreBatch.set(
+        firestore.collection("users").doc(uid),
+        {
+          fullName: student.name,
+          email: student.email,
+          role: "student",
+          rollNo: student.rollNo,
+          department: student.department,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          isBulkImported: true,
+        },
+        { merge: true }
+      );
+      batchCount++;
+      if (batchCount >= BATCH_LIMIT) {
+        await firestoreBatch.commit();
+        firestoreBatch = firestore.batch();
+        batchCount = 0;
+      }
+    }
+    if (batchCount > 0) {
+      await firestoreBatch.commit();
+    }
+
+    // Batch phase 5: Bulk MongoDB writes with existence pre-check
+    const emails = validStudents.map((s) => s.email);
+    const rollNos = validStudents.map((s) => s.rollNo).filter(Boolean);
+    const existingMongo = await mongoUsers.find({
+      $or: [{ email: { $in: emails } }, { rollNo: { $in: rollNos } }],
+    }).project({ email: 1, rollNo: 1 }).toArray();
+    const existingMongoEmails = new Set(existingMongo.map((u) => u.email));
+    const existingMongoRollNos = new Set(existingMongo.map((u) => u.rollNo).filter(Boolean));
+
+    const mongoBulkOps = [];
+    for (const student of validStudents) {
+      if (existingMongoEmails.has(student.email) || (student.rollNo && existingMongoRollNos.has(student.rollNo))) {
+        failedImports.push({
+          email: student.email,
+          rollNo: student.rollNo,
+          reason: "Duplicate: email or roll number already exists",
+        });
+        continue;
+      }
+      mongoBulkOps.push({
+        insertOne: {
+          document: {
+            name: student.name,
+            rollNo: student.rollNo,
+            email: student.email,
+            department: student.department,
+            firebaseUid: student._firebaseUid,
+            isBulkImported: true,
+            createdAt: new Date(),
+          },
+        },
+      });
+    }
+
+    if (mongoBulkOps.length > 0) {
+      await mongoUsers.bulkWrite(mongoBulkOps, { ordered: false });
+    }
+
+    successfulImports = validStudents.length - failedImports.filter((f) =>
+      validStudents.some((s) => s.email === f.email)
+    ).length;
 
     const resultPayload = {
       success: true,

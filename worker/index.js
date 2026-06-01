@@ -5,11 +5,16 @@ const STORE_NAME = "attendance_outbox";
 const MUTATIONS_STORE = "offline_mutations";
 const DB_VERSION = 2;
 
-let csrfTokenCache = null;
+let csrfTokenCache = null; // { token: string, fetchedAt: number }
 let csrfTokenPromise = null;
+const CSRF_TOKEN_TTL_MS = 6 * 24 * 60 * 60 * 1000; // 6 days (1 day before cookie expiry)
 
 function isUnsafeMethod(method) {
   return ["POST", "PUT", "PATCH", "DELETE"].includes((method || "GET").toUpperCase());
+}
+
+function clearCsrfCache() {
+  csrfTokenCache = null;
 }
 
 function isSameOriginApiUrl(url) {
@@ -23,28 +28,35 @@ function isSameOriginApiUrl(url) {
 
 async function getCsrfToken() {
   if (csrfTokenCache) {
-    return csrfTokenCache;
+    // Check if cached token has expired (6 days TTL)
+    if (Date.now() - csrfTokenCache.fetchedAt < CSRF_TOKEN_TTL_MS) {
+      return csrfTokenCache.token;
+    }
+    // Token expired, clear cache and fetch fresh
+    csrfTokenCache = null;
   }
 
   if (csrfTokenPromise) {
     return csrfTokenPromise;
   }
 
-  csrfTokenPromise = fetch("/api/auth/csrf", {
-    method: "GET",
-    credentials: "same-origin",
-    cache: "no-store",
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        return null;
-      }
+csrfTokenPromise = fetch("/api/auth/csrf", {
+  method: "GET",
+  credentials: "same-origin",
+  cache: "no-store",
+})
+.then(async (response) => {
+  if (!response.ok) {
+    return null;
+  }
 
-      const data = await response.json().catch(() => null);
-      const csrfToken = data?.csrfToken || null;
-      csrfTokenCache = csrfToken;
-      return csrfToken;
-    })
+  const data = await response.json().catch(() => null);
+  const csrfToken = data?.csrfToken || null;
+  if (csrfToken) {
+    csrfTokenCache = { token: csrfToken, fetchedAt: Date.now() };
+  }
+  return csrfToken;
+})
     .catch(() => null)
     .finally(() => {
       csrfTokenPromise = null;
@@ -103,24 +115,33 @@ async function removeFromOutbox(id) {
 async function syncAttendanceSW() {
   const records = await getOutboxRecords();
   if (records.length === 0) return;
-
   const BATCH_SIZE = 50;
   let totalSynced = 0;
-
   try {
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
       const batch = records.slice(i, i + BATCH_SIZE);
-      const csrfHeaders = await withCsrfHeaders("/api/attendance/sync", "POST", {
-        "Content-Type": "application/json",
-      });
-
-      const response = await fetch("/api/attendance/sync", {
+      let response = await fetch("/api/attendance/sync", {
         method: "POST",
-        headers: csrfHeaders,
+        headers: await withCsrfHeaders("/api/attendance/sync", "POST", {
+          "Content-Type": "application/json",
+        }),
         credentials: "same-origin",
         body: JSON.stringify({ records: batch }),
       });
-
+      
+      // Handle 403 by clearing CSRF cache and retrying once
+      if (response.status === 403) {
+        clearCsrfCache();
+        response = await fetch("/api/attendance/sync", {
+          method: "POST",
+          headers: await withCsrfHeaders("/api/attendance/sync", "POST", {
+            "Content-Type": "application/json",
+          }),
+          credentials: "same-origin",
+          body: JSON.stringify({ records: batch }),
+        });
+      }
+      
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -132,22 +153,21 @@ async function syncAttendanceSW() {
             await removeFromOutbox(id);
           }
         }
-      } else {
-        throw new Error(`Failed to sync batch: ${response.status} ${response.statusText}`);
-      }
-    }
-
-    if (totalSynced > 0) {
-      const clients = await self.clients.matchAll();
-      clients.forEach((client) => {
-        client.postMessage({ type: "SYNC_COMPLETE", count: totalSynced });
-      });
-    }
-  } catch (error) {
-    console.error("[Service Worker] Error during background sync:", error);
-    throw error;
-  }
-}
+       } else {
+         throw new Error(`Failed to sync batch: ${response.status} ${response.statusText}`);
+       }
+     }
+     if (totalSynced > 0) {
+       const clients = await self.clients.matchAll();
+       clients.forEach((client) => {
+         client.postMessage({ type: "SYNC_COMPLETE", count: totalSynced });
+       });
+     }
+   } catch (error) {
+     console.error("[Service Worker] Error during background sync:", error);
+     throw error;
+   }
+ }
 
 /**
  * Replays all queued mutation requests in IndexedDB sequentially.
@@ -158,22 +178,29 @@ async function replayQueuedMutations() {
   const store = tx.objectStore(MUTATIONS_STORE);
   const requests = await store.getAll();
   await tx.done;
-
   if (requests.length === 0) return;
-
   let successCount = 0;
   let failCount = 0;
-
   for (const req of requests) {
     try {
-      const csrfHeaders = await withCsrfHeaders(req.url, req.method, req.headers);
-      const response = await fetch(req.url, {
+      let response = await fetch(req.url, {
         method: req.method,
-        headers: csrfHeaders,
+        headers: await withCsrfHeaders(req.url, req.method, req.headers),
         body: req.body,
         credentials: "same-origin",
       });
-
+      
+      // Handle 403 by clearing CSRF cache and retrying once
+      if (response.status === 403) {
+        clearCsrfCache();
+        response = await fetch(req.url, {
+          method: req.method,
+          headers: await withCsrfHeaders(req.url, req.method, req.headers),
+          body: req.body,
+          credentials: "same-origin",
+        });
+      }
+      
       if (response.ok) {
         const writeTx = db.transaction(MUTATIONS_STORE, "readwrite");
         await writeTx.objectStore(MUTATIONS_STORE).delete(req.id);
@@ -183,25 +210,24 @@ async function replayQueuedMutations() {
         console.error(`[Service Worker] Replay failed for queued request ${req.url}: Status ${response.status}`);
         failCount++;
       }
-    } catch (err) {
-      console.error(`[Service Worker] Replay connection error for queued request ${req.url}:`, err);
-      failCount++;
-      // Stop processing the remaining requests if the network is still unreachable
-      break;
-    }
-  }
-
-  if (successCount > 0 || failCount > 0) {
-    const clients = await self.clients.matchAll();
-    clients.forEach((client) => {
-      client.postMessage({
-        type: "MUTATIONS_SYNC_COMPLETE",
-        successCount,
-        failCount,
-      });
-    });
-  }
-}
+     } catch (err) {
+       console.error(`[Service Worker] Replay connection error for queued request ${req.url}:`, err);
+       failCount++;
+       // Stop processing the remaining requests if the network is still unreachable
+       break;
+     }
+   }
+   if (successCount > 0 || failCount > 0) {
+     const clients = await self.clients.matchAll();
+     clients.forEach((client) => {
+       client.postMessage({
+         type: "MUTATIONS_SYNC_COMPLETE",
+         successCount,
+         failCount,
+       });
+     });
+   }
+ }
 
 self.addEventListener("sync", (event) => {
   if (event.tag === "sync-attendance") {
