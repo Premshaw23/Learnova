@@ -1,3 +1,4 @@
+import { Navbar } from "@/components/Navbar";
 import {
   BookOpen,
   ShieldCheck,
@@ -103,8 +104,10 @@ const reviews = [
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-background pt-28 pb-20">
-      <div className="max-w-7xl mx-auto px-6">
+    <>
+      <Navbar />
+      <main className="min-h-screen bg-background pt-28 pb-20">
+        <div className="max-w-7xl mx-auto px-6">
         {/* HERO */}
         <section className="text-center mb-24">
           <div className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium mb-6">
@@ -112,7 +115,7 @@ export default function AboutPage() {
             AI-Powered Educational Platform
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-linear-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
             Transforming Education Through Intelligence & Innovation
           </h1>
 
@@ -171,7 +174,7 @@ export default function AboutPage() {
                   key={index}
                   className="rounded-3xl border p-6 hover:-translate-y-2 transition-all duration-300 bg-card shadow-sm hover:shadow-xl"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-linear-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white mb-4">
                     <Icon size={22} />
                   </div>
 
@@ -271,7 +274,7 @@ export default function AboutPage() {
         </section>
 
         {/* CTA */}
-        <section className="rounded-[40px] bg-gradient-to-r from-blue-600 to-violet-600 text-white text-center p-12">
+        <section className="rounded-[40px] bg-linear-to-r from-blue-600 to-violet-600 text-white text-center p-12">
           <h2 className="text-4xl font-bold mb-4">
             Ready to Transform Learning?
           </h2>
@@ -298,7 +301,8 @@ export default function AboutPage() {
             </a>
           </div>
         </section>
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }

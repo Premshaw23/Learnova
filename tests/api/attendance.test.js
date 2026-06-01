@@ -40,14 +40,27 @@ vi.mock('@/lib/rateLimit', () => ({
   checkRateLimit: vi.fn(() => ({ allowed: true })),
 }));
 
-vi.mock('@/lib/errors', () => ({
-  AppError: class AppError extends Error {
-    constructor(message, statusCode) {
+vi.mock('@/lib/errors', () => {
+  class AppError extends Error {
+    constructor(message, statusCode = 500) {
       super(message);
       this.statusCode = statusCode;
     }
-  },
-}));
+  }
+  return {
+    AppError,
+    ForbiddenError: class ForbiddenError extends AppError {
+      constructor(message = "Forbidden") {
+        super(message, 403);
+      }
+    },
+    ValidationError: class ValidationError extends AppError {
+      constructor(message = "Bad Request") {
+        super(message, 400);
+      }
+    },
+  };
+});
 
 import { authenticateRequest, parseJSON } from '@/lib/error-handler';
 import { getUserProfile } from '@/lib/firebase-admin';
@@ -82,7 +95,7 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
   });
 
   it('returns 403 when userId does not match authenticated uid', async () => {
-    authenticateRequest.mockResolvedValue({ uid: 'user-abc' });
+    authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-xyz', // different user
       confidenceScore: 85,
@@ -97,7 +110,7 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
   });
 
   it('returns 400 when confidenceScore is below minimum threshold (60)', async () => {
-    authenticateRequest.mockResolvedValue({ uid: 'user-abc' });
+    authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
       confidenceScore: 50,
@@ -112,7 +125,7 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
   });
 
   it('returns 400 when confidenceScore is missing (undefined)', async () => {
-    authenticateRequest.mockResolvedValue({ uid: 'user-abc' });
+    authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
       confidenceScore: undefined,
@@ -125,7 +138,7 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
   });
 
   it('returns 400 when confidenceScore is a non-numeric string', async () => {
-    authenticateRequest.mockResolvedValue({ uid: 'user-abc' });
+    authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
       confidenceScore: 'high',
@@ -138,7 +151,7 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
   });
 
   it('returns 400 when confidenceScore exceeds 100', async () => {
-    authenticateRequest.mockResolvedValue({ uid: 'user-abc' });
+    authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
       confidenceScore: 110,
@@ -154,6 +167,7 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     authenticateRequest.mockResolvedValue({
       uid: 'user-abc',
       email: 'test@learnova.edu',
+      email_verified: true,
     });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
@@ -178,6 +192,7 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     authenticateRequest.mockResolvedValue({
       uid: 'user-abc',
       email: 'test@learnova.edu',
+      email_verified: true,
     });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',

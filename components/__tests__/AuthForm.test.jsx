@@ -16,7 +16,7 @@ const defaultProps = {
   errors: {},
   setErrors: vi.fn(),
   isLoading: false,
-  onSubmit: vi.fn((e) => e.preventDefault()),
+  onSubmit: vi.fn(),
   onGoogleLogin: vi.fn(),
   onRoleChange: vi.fn(),
   onToggleLogin: vi.fn(),
@@ -56,7 +56,7 @@ describe("AuthForm", () => {
 
   test("calls onSubmit when form is submitted", async () => {
     const user = userEvent.setup();
-    const handleSubmit = vi.fn((e) => e.preventDefault());
+    const handleSubmit = vi.fn();
 
     render(<AuthForm {...defaultProps} onSubmit={handleSubmit} />);
 

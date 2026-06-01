@@ -16,9 +16,11 @@ export const GET = withErrorHandler(async (request) => {
   const { payload } = await requireRole(request, ["student", "teacher", "admin"]);
   const url = new URL(request.url);
   const courseId = url.searchParams.get("courseId") || undefined;
+  const cursor = url.searchParams.get("cursor") || undefined;
 
-  const items = await FlashcardModel.getUserFlashcards(payload.uid, { courseId });
-  return NextResponse.json(items);
+  const items = await FlashcardModel.getUserFlashcards(payload.uid, { courseId, cursor });
+  const nextCursor = items.length > 0 ? items[items.length - 1]._id.toString() : null;
+  return NextResponse.json({ items, nextCursor });
 });
 
 export const POST = withErrorHandler(async (request) => {

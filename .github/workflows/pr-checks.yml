@@ -20,9 +20,7 @@ jobs:
           cache: 'npm'
 
       - name: 📚 Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+        run: npm ci
 
       - name: 🔍 Check for secrets in files
         run: echo "✅ Using GitHub's native secret scanning"
@@ -34,6 +32,14 @@ jobs:
             exit 1
           fi
           echo "✅ .env files properly ignored"
+
+      - name: 🧩 Check for unresolved merge conflict markers
+        run: |
+          if grep -rI "^<<<<<<< \|^=======$\|^>>>>>>> " --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" --include="*.css" --include="*.json" --include="*.yml" --include="*.yaml" --include="*.md" .next node_modules .git 2>/dev/null; then
+            echo "❌ Unresolved merge conflict markers found!"
+            exit 1
+          fi
+          echo "✅ No merge conflict markers detected"
 
       - name: 📋 Check file sizes
         run: |

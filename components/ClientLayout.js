@@ -9,7 +9,7 @@ import ShortcutsModal from "@/components/ShortcutsModal";
 import SearchModal from "@/components/SearchModal";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, runTransaction } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useSessionMonitor } from "@/hooks/useSessionMonitor";
@@ -264,22 +264,28 @@ export default function ClientLayout({ children }) {
           }
         }
 
-        const needsSync = 
-          currentStreak !== firestoreStreak ||
-          lastVisit !== firestoreLastVisit ||
-          JSON.stringify(history) !== JSON.stringify(firestoreHistory);
-
-        if (needsSync && user.uid) {
+        if (user.uid) {
           const userDocRef = doc(db, "users", user.uid);
-         await setDoc(
-  userDocRef,
-  {
-    siteStreak: currentStreak,
-    siteLastVisit: lastVisit,
-    siteVisitHistory: history,
-  },
-  { merge: true }
-);
+          await runTransaction(db, async (transaction) => {
+            const snapshot = await transaction.get(userDocRef);
+            if (!snapshot.exists()) return;
+
+            const storedStreak = normalizeStreakCount(snapshot.data().siteStreak);
+            const storedLastVisit = snapshot.data().siteLastVisit || "";
+            const storedHistory = Array.isArray(snapshot.data().siteVisitHistory)
+              ? snapshot.data().siteVisitHistory
+              : [];
+
+            const mergedStreak = Math.max(currentStreak, storedStreak);
+            const mergedLastVisit = lastVisit > storedLastVisit ? lastVisit : storedLastVisit;
+            const mergedHistory = [...new Set([...storedHistory, ...history])].slice(-30);
+
+            transaction.set(userDocRef, {
+              siteStreak: mergedStreak,
+              siteLastVisit: mergedLastVisit,
+              siteVisitHistory: mergedHistory,
+            }, { merge: true });
+          });
         }
 
       } catch (error) {

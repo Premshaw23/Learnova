@@ -41,8 +41,6 @@ import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 import CommandPaletteWrapper from "@/components/CommandPalette";
 import ShortcutsModal from "@/components/ShortcutsModal";
 
-import CommandPalette from "../components/CommandPalette";
-
 
 // Validate environment variables at startup (server-side only).
 // ─── Environment validation (server-side only, runs once at startup) ─────────
@@ -354,23 +352,16 @@ export default function RootLayout({ children }) {
             <ScrollToTop />
             <Footer />
 
-            <ClientLayout />
-            <BackToTop />
-
             {/* ── Client-only layout: modals, chatbot, PWA install, streak sync ── */}
             <ClientLayout />
 
             {/* ── Back-to-top floating button ── */}
             <BackToTop />
 
-
             {/* ── Screen-reader route announcer for accessibility ── */}
             <RouteAnnouncer />
-            <OfflineIndicator />
 
             {/* Single Toaster configuration */}
-
-
             <Toaster
               position="top-right"
               toastOptions={{
@@ -381,18 +372,9 @@ export default function RootLayout({ children }) {
 
             <OfflineIndicator />
             <CommandPaletteWrapper />
-            
+
             {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
             <ShortcutsModal />
-
-            
-            <CommandPalette />
-
-
-
-            <CommandPalette />
-
-            <CommandPaletteWrapper />
           </Suspense>
         </AllProviders>
 

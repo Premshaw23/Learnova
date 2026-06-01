@@ -335,13 +335,16 @@ export const POST =
 
       const sagaKey = idempotencyKey || `register_${decodedToken.uid}_${Date.now()}`;
 
+      let uploadedBlobUrl = null;
+      let insertedUser = null;
+
       const sagaResult = await executeSaga({
         operationType: "register",
         uid: decodedToken.uid,
         steps: [
           {
             name: "upload_blob",
-            execute: async () => {
+            execute: async (ctx) => {
               const blob =
                 await put(
                   fileName,
@@ -353,26 +356,25 @@ export const POST =
                       "public",
                   }
                 );
-              // Store blob URL on the saga context for subsequent steps
-              sagaResult._blobUrl = blob.url;
+              ctx._blobUrl = blob.url;
               return blob;
             },
-            compensate: async () => {
-              if (sagaResult._blobUrl) {
+            compensate: async (ctx) => {
+              if (ctx._blobUrl) {
                 try {
-                  await del(sagaResult._blobUrl);
+                  await del(ctx._blobUrl);
                 } catch {}
               }
             },
           },
           {
             name: "write_mongodb",
-            execute: async () => {
+            execute: async (ctx) => {
               const user = {
                 name: sanitizedName,
                 rollNo: sanitizedRollNo,
                 email,
-                image: sagaResult._blobUrl,
+                image: ctx._blobUrl,
                 firebaseUid: decodedToken.uid,
               };
 
@@ -385,17 +387,17 @@ export const POST =
                   user
                 );
 
-              sagaResult._insertedUser = {
+              ctx._insertedUser = {
                 _id: result.insertedId,
                 name: user.name,
                 rollNo: user.rollNo,
                 email: user.email,
               };
             },
-            compensate: async () => {
-              if (sagaResult._insertedUser?._id) {
+            compensate: async (ctx) => {
+              if (ctx._insertedUser?._id) {
                 try {
-                  await users.deleteOne({ _id: sagaResult._insertedUser._id });
+                  await users.deleteOne({ _id: ctx._insertedUser._id });
                 } catch {}
               }
             },
@@ -413,7 +415,7 @@ export const POST =
 
       const resultPayload = {
         message: "User registered successfully",
-        user: sagaResult._insertedUser,
+        user: sagaResult.context._insertedUser,
       };
 
       // Mark as idempotent for retry dedup

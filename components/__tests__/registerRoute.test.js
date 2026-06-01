@@ -43,7 +43,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
     verifyFirebaseToken.mockImplementation(async (token) => {
       if (!token || token === "invalid-token") return null;
-      return { uid: "mock-uid", email: token };
+      return { uid: "mock-uid", email: token, email_verified: true };
     });
 
     mockFindOne = vi.fn();
@@ -67,6 +67,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
       return {
         uid: "mock-uid",
         email: token.includes("@") ? token : "user@domain.com",
+        email_verified: true,
       };
     });
   });
@@ -242,7 +243,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Internal server error");
+    expect(body.error).toBe("Registration failed. Please try again.");
     expect(put).toHaveBeenCalled();
     expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
   });

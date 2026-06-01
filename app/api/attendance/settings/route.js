@@ -23,18 +23,9 @@ const postSchema = z.object({
 });
 
 export const GET = withErrorHandler(async (request) => {
-  const decodedToken = await requireAuth(request);
+  const { profile } = await requireRole(request, ["teacher", "admin"]);
 
   initializeFirebase();
-
-  const { getUserProfile } = await import("@/lib/firebase-admin");
-  const profile = await getUserProfile(decodedToken.uid);
-  if (!profile) {
-    return NextResponse.json(
-      { error: "User profile not found" },
-      { status: 404 }
-    );
-  }
 
   const { getSettingsDocId } = await import("@/utils/passcodeUtils");
   const settingsDocId = getSettingsDocId(profile);

@@ -29,11 +29,22 @@ export const GET = async (request) => {
     const twoWeeksAgo = new Date(now);
     twoWeeksAgo.setDate(now.getDate() - 14);
 
-    // Aggregate attendance per student
-    const pipeline = [
+    // Discover distinct institutes with attendance data for tenant-scoped processing
+    const distinctInstitutes = await db
+      .collection("attendance")
+      .distinct("instituteId", {
+        date: { $gte: fourWeeksAgo.toISOString().slice(0, 10) },
+      });
+
+    let processed = 0;
+    let alertsSent = 0;
+    const errors = [];
+
+    const basePipeline = (instituteId) => [
       {
         $match: {
           date: { $gte: fourWeeksAgo.toISOString().slice(0, 10) },
+          ...(instituteId ? { instituteId } : {}),
         },
       },
       {
@@ -75,9 +86,7 @@ export const GET = async (request) => {
               $cond: [
                 {
                   $and: [
-                    {
-                      $lt: ["$date", twoWeeksAgo.toISOString().slice(0, 10)],
-                    },
+                    { $lt: ["$date", twoWeeksAgo.toISOString().slice(0, 10)] },
                     { $gte: ["$date", fourWeeksAgo.toISOString().slice(0, 10)] },
                     { $in: ["$status", ["present", "late"]] },
                   ],
@@ -92,15 +101,8 @@ export const GET = async (request) => {
               $cond: [
                 {
                   $and: [
-                    {
-                      $lt: ["$date", twoWeeksAgo.toISOString().slice(0, 10)],
-                    },
-                    {
-                      $gte: [
-                        "$date",
-                        fourWeeksAgo.toISOString().slice(0, 10),
-                      ],
-                    },
+                    { $lt: ["$date", twoWeeksAgo.toISOString().slice(0, 10)] },
+                    { $gte: ["$date", fourWeeksAgo.toISOString().slice(0, 10)] },
                   ],
                 },
                 1,
@@ -112,17 +114,16 @@ export const GET = async (request) => {
       },
     ];
 
-    const records = await db
-      .collection("attendance")
-      .aggregate(pipeline)
-      .toArray();
+    for (const instituteId of distinctInstitutes) {
+      const records = await db
+        .collection("attendance")
+        .aggregate(basePipeline(instituteId))
+        .toArray();
 
-    let processed = 0;
-    let alertsSent = 0;
-    const errors = [];
+      if (records.length === 0) continue;
 
-    for (const rec of records) {
-      try {
+      // Batch upsert risk scores
+      const riskBulkOps = records.map((rec) => {
         const attendanceRate =
           rec.totalDays === 0
             ? 100
@@ -152,58 +153,75 @@ export const GET = async (request) => {
         if (trend === "declining") riskScore = Math.min(100, riskScore + 10);
         if (trend === "improving") riskScore = Math.max(0, riskScore - 5);
 
-        // Upsert risk score document
-        await db.collection("attendance_risk_scores").updateOne(
-          {
-            userId: rec._id.userId,
-            instituteId: rec._id.instituteId,
-          },
-          {
-            $set: {
-              studentName: rec.studentName,
-              email: rec.email,
-              attendanceRate,
-              totalDays: rec.totalDays,
-              presentDays: rec.presentDays,
-              trend,
-              riskLevel,
-              riskScore: Math.round(riskScore),
-              lastUpdated: now.toISOString(),
-            },
-          },
-          { upsert: true },
-        );
-
-        // Trigger email alert if attendance dropped below 80%
-        if (attendanceRate < 80 && rec.email) {
-          const alreadyAlerted = await db
-            .collection("attendance_alerts")
-            .findOne({
-              userId: rec._id.userId,
-              alertDate: now.toISOString().slice(0, 10),
-            });
-
-          if (!alreadyAlerted) {
-            // Store alert record so we don't re-send today
-            await db.collection("attendance_alerts").insertOne({
+        return {
+          updateOne: {
+            filter: {
               userId: rec._id.userId,
               instituteId: rec._id.instituteId,
-              studentName: rec.studentName,
-              email: rec.email,
-              attendanceRate,
-              riskLevel,
-              alertDate: now.toISOString().slice(0, 10),
-              sentAt: now.toISOString(),
-              emailStatus: "pending", // EmailJS call happens client-side via webhook
-            });
-            alertsSent++;
-          }
-        }
+            },
+            update: {
+              $set: {
+                studentName: rec.studentName,
+                email: rec.email,
+                attendanceRate,
+                totalDays: rec.totalDays,
+                presentDays: rec.presentDays,
+                trend,
+                riskLevel,
+                riskScore: Math.round(riskScore),
+                lastUpdated: now.toISOString(),
+              },
+            },
+            upsert: true,
+          },
+        };
+      });
 
-        processed++;
-      } catch (err) {
-        errors.push({ userId: rec._id.userId, error: err.message });
+      await db.collection("attendance_risk_scores").bulkWrite(riskBulkOps, { ordered: false });
+
+      // Batch check and insert alerts for students below threshold
+      const alertCandidates = records.filter((r) => {
+        const rate = r.totalDays === 0 ? 100 : Math.round((r.presentDays / r.totalDays) * 1000) / 10;
+        return rate < 80 && r.email;
+      });
+
+      if (alertCandidates.length > 0) {
+        const candidateIds = alertCandidates.map((r) => r._id.userId);
+        const todayStr = now.toISOString().slice(0, 10);
+        const alreadyAlerted = await db
+          .collection("attendance_alerts")
+          .find({
+            userId: { $in: candidateIds },
+            alertDate: todayStr,
+          })
+          .project({ userId: 1 })
+          .toArray();
+        const alertedSet = new Set(alreadyAlerted.map((a) => a.userId));
+
+        const alertInserts = alertCandidates
+          .filter((r) => !alertedSet.has(r._id.userId))
+          .map((r) => {
+            const rate = Math.round((r.presentDays / r.totalDays) * 1000) / 10;
+            return {
+              userId: r._id.userId,
+              instituteId: r._id.instituteId,
+              studentName: r.studentName,
+              email: r.email,
+              attendanceRate: rate,
+              riskLevel: rate < 75 ? "at_risk" : "warning",
+              alertDate: todayStr,
+              sentAt: now.toISOString(),
+              emailStatus: "pending",
+            };
+          });
+
+        if (alertInserts.length > 0) {
+          await db.collection("attendance_alerts").insertMany(alertInserts);
+          alertsSent += alertInserts.length;
+        }
       }
+
+      processed += records.length;
     }
 
     return jsonSuccess({

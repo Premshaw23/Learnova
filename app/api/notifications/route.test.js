@@ -2,6 +2,7 @@ import { GET, PATCH } from "./route";
 import { parseJSON } from "../../../lib/error-handler";
 import { checkRateLimit } from "../../../lib/rateLimit";
 import clientPromise from "../../../lib/mongodb";
+import { UnauthorizedError } from "../../../lib/errors";
 import { assertApiSuccess } from "../../../testUtils/assertApiSuccess";
 import { assertApiError } from "../../../testUtils/assertApiError";
 
@@ -129,7 +130,6 @@ describe("notifications route", () => {
     });
 
     test("rejects request with 401 Unauthorized if token is missing or invalid", async () => {
-      const { UnauthorizedError } = require("../../../lib/errors");
       const { requireAuth } = await import("../../../lib/rbac");
       requireAuth.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
@@ -188,7 +188,6 @@ describe("notifications route", () => {
     });
 
     test("rejects request with 401 if unauthorized", async () => {
-      const { UnauthorizedError } = require("../../../lib/errors");
       const { requireAuth } = await import("../../../lib/rbac");
       requireAuth.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 

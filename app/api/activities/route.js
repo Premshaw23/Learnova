@@ -36,6 +36,7 @@ export const GET = withErrorHandler(async (request) => {
     .collection("activities")
     .where("userId", "==", decodedToken.uid)
     .orderBy("timestamp", "desc")
+    .limit(100)
     .get();
 
   const activities = snapshot.docs.map((doc) => ({

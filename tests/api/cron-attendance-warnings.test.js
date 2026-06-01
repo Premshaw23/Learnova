@@ -1,5 +1,7 @@
 import { GET } from '@/app/api/cron/attendance-warnings/route';
 import { connectDb } from '@/lib/mongodb';
+import { initializeFirebase } from '@/lib/firebase-admin';
+import admin from 'firebase-admin';
 import { NextResponse } from 'next/server';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -7,13 +9,24 @@ vi.mock('@/lib/mongodb', () => ({
   connectDb: vi.fn(),
 }));
 
+vi.mock('@/lib/firebase-admin', () => ({
+  initializeFirebase: vi.fn(),
+}));
+
+vi.mock('firebase-admin', () => ({
+  default: {
+    firestore: vi.fn(),
+  },
+}));
+
 describe('Cron Job: Attendance Warnings', () => {
   let mockDb;
   let settingsCollection;
   let usersCollection;
-  let attendanceCollection;
   let notificationsCollection;
   let warningLogsCollection;
+  let mockFirestore;
+  let mockAttendanceCollection;
 
   beforeEach(() => {
     settingsCollection = {
@@ -21,10 +34,6 @@ describe('Cron Job: Attendance Warnings', () => {
       toArray: vi.fn(),
     };
     usersCollection = {
-      find: vi.fn().mockReturnThis(),
-      toArray: vi.fn(),
-    };
-    attendanceCollection = {
       find: vi.fn().mockReturnThis(),
       toArray: vi.fn(),
     };
@@ -36,12 +45,25 @@ describe('Cron Job: Attendance Warnings', () => {
       insertMany: vi.fn(),
     };
 
+    mockAttendanceCollection = {
+      where: vi.fn().mockReturnThis(),
+      get: vi.fn(),
+    };
+
+    mockFirestore = {
+      collection: vi.fn((name) => {
+        if (name === 'attendance_records') return mockAttendanceCollection;
+        return {};
+      }),
+    };
+
+    admin.firestore.mockReturnValue(mockFirestore);
+
     mockDb = {
       collection: vi.fn((name) => {
         switch (name) {
           case 'settings': return settingsCollection;
           case 'users': return usersCollection;
-          case 'attendance': return attendanceCollection;
           case 'notifications': return notificationsCollection;
           case 'warning_logs': return warningLogsCollection;
           default: return {};
@@ -83,23 +105,27 @@ describe('Cron Job: Attendance Warnings', () => {
     ]);
 
     usersCollection.toArray.mockResolvedValue([
-      { uid: 'student-1', role: 'student', email: 's1@test.com' },
-      { uid: 'student-2', role: 'student', email: 's2@test.com' }
+      { firebaseUid: 'student-1', role: 'student', email: 's1@test.com' },
+      { firebaseUid: 'student-2', role: 'student', email: 's2@test.com' }
     ]);
 
     warningLogsCollection.findOne.mockResolvedValue(null);
 
     // Student 1: 50% attendance (below 75%)
-    // Student 2: 100% attendance
-    attendanceCollection.toArray
-      .mockResolvedValueOnce([
-        { userId: 'student-1', status: 'present' },
-        { userId: 'student-1', status: 'absent' }
-      ])
-      .mockResolvedValueOnce([
-        { userId: 'student-2', status: 'present' },
-        { userId: 'student-2', status: 'present' }
-      ]);
+    mockAttendanceCollection.get
+      .mockResolvedValueOnce({
+        docs: [
+          { data: () => ({ userId: 'student-1', status: 'present' }) },
+          { data: () => ({ userId: 'student-1', status: 'absent' }) }
+        ]
+      })
+      // Student 2: 100% attendance
+      .mockResolvedValueOnce({
+        docs: [
+          { data: () => ({ userId: 'student-2', status: 'present' }) },
+          { data: () => ({ userId: 'student-2', status: 'present' }) }
+        ]
+      });
 
     const res = await GET(mockRequest());
     const data = await res.json();
@@ -119,7 +145,7 @@ describe('Cron Job: Attendance Warnings', () => {
     ]);
 
     usersCollection.toArray.mockResolvedValue([
-      { uid: 'student-1', role: 'student', email: 's1@test.com' }
+      { firebaseUid: 'student-1', role: 'student', email: 's1@test.com' }
     ]);
 
     // Mock recent warning log exists
@@ -131,5 +157,22 @@ describe('Cron Job: Attendance Warnings', () => {
     expect(data.success).toBe(true);
     expect(data.warningsIssued).toBe(0);
     expect(notificationsCollection.insertMany).not.toHaveBeenCalled();
+  });
+
+  it('should skip students without firebaseUid', async () => {
+    settingsCollection.toArray.mockResolvedValue([
+      { institute: { enableAttendanceAutomation: true, lowAttendanceThreshold: 75 } }
+    ]);
+
+    usersCollection.toArray.mockResolvedValue([
+      { role: 'student', email: 's1@test.com' }
+    ]);
+
+    const res = await GET(mockRequest());
+    const data = await res.json();
+
+    expect(data.success).toBe(true);
+    expect(data.warningsIssued).toBe(0);
+    expect(mockAttendanceCollection.get).not.toHaveBeenCalled();
   });
 });

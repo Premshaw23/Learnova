@@ -8,7 +8,9 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { awardXp } from "@/lib/gamification-service";
 import { executeSaga } from "@/lib/transactionCoordinator";
+import { connectDb } from "@/lib/mongodb";
 import { z } from "zod";
+
 
 export const dynamic = "force-dynamic";
 
@@ -179,6 +181,34 @@ async function handleSync(request) {
             });
           },
           compensate: null, // Attendance writes are append-only; no rollback needed
+        },
+        {
+          name: "write_mongodb_attendance",
+          execute: async () => {
+            const mongoDB = await connectDb();
+            await mongoDB.collection("attendance").updateOne(
+              { userId: decodedToken.uid, date: recordDate },
+              {
+                $set: {
+                  userId: decodedToken.uid,
+                  studentName: serverIdentity.studentName,
+                  email: serverIdentity.email,
+                  instituteId,
+                  timestamp: new Date(record.queuedAt),
+                  date: recordDate,
+                  status: "present",
+                  confidenceScore: normalizedConfidence,
+                  offlineSynced: true,
+                  queuedAt: new Date(record.queuedAt),
+                },
+              },
+              { upsert: true }
+            );
+          },
+          compensate: async () => {
+            const mongoDB = await connectDb();
+            await mongoDB.collection("attendance").deleteOne({ userId: decodedToken.uid, date: recordDate });
+          },
         },
         {
           name: "award_xp",

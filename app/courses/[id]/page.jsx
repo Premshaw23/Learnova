@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react"; // Removed duplicate import of useParams and useRouter
 import { useParams, useRouter, notFound } from "next/navigation";
 import { motion } from "framer-motion";
 import { 

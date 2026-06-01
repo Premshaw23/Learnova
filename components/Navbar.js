@@ -237,6 +237,12 @@ export function Navbar() {
     }
   };
 
+  const isRouteActive = (href) => {
+    if (!pathname) return false;
+    if (href === "/") return pathname === href;
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
   const navigationItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/about", label: "About", icon: BookOpen },
@@ -366,7 +372,7 @@ export function Navbar() {
                   key={item.href}
                   href={item.href}
                   label={item.label}
-                  isActive={pathname === item.href}
+                  isActive={isRouteActive(item.href)}
                 />
               ))}
             </div>

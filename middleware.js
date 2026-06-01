@@ -121,16 +121,22 @@ async function rateLimit(ip, pathname, request) {
 let lastCleanupTime = 0;
 
 function cleanupRateLimitMap() {
-  const now = Date.now();
+  try {
+    const now = Date.now();
 
-  if (now - lastCleanupTime < 5 * 60 * 1000) return;
+    if (now - lastCleanupTime < 5 * 60 * 1000) return;
 
-  lastCleanupTime = now;
+    lastCleanupTime = now;
 
-  for (const [key, entry] of devRateLimitMap.entries()) {
-    if (now > entry.resetTime) {
-      devRateLimitMap.delete(key);
+    if (devRateLimitMap.size === 0) return;
+
+    for (const [key, entry] of devRateLimitMap.entries()) {
+      if (now > entry.resetTime) {
+        devRateLimitMap.delete(key);
+      }
     }
+  } catch {
+    // Cleanup failure must never crash the middleware
   }
 }
 

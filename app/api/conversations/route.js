@@ -9,7 +9,7 @@ import { requireAuth } from "@/lib/rbac";
 import { AppError } from "@/lib/errors";
 
 // Initialize the official Groq SDK client instance
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_groq_api_key" });
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -68,6 +68,22 @@ export async function POST(request) {
       });
     }
 
+    // 3b. Cap conversation history to prevent unbounded token growth
+    const MAX_MESSAGES = 20;
+    const MAX_TOTAL_CHARS = 15000;
+    let trimmedMessages = messages.slice(-MAX_MESSAGES);
+    let totalChars = trimmedMessages.reduce((sum, m) => sum + ((m.text || m.content || "").length), 0);
+    if (totalChars > MAX_TOTAL_CHARS) {
+      // Keep the last message (current query) and drop from earlier messages until under limit
+      const lastMsg = trimmedMessages[trimmedMessages.length - 1];
+      const earlier = trimmedMessages.slice(0, -1);
+      while (earlier.length > 0 && totalChars > MAX_TOTAL_CHARS) {
+        const dropped = earlier.shift();
+        totalChars -= (dropped.text || dropped.content || "").length;
+      }
+      trimmedMessages = [...earlier, lastMsg];
+    }
+
     // 4. Content Safety and Prompt Injection Interception
     const lastMsgObj = messages[messages.length - 1];
     const latestMessage = lastMsgObj?.text || lastMsgObj?.content || "";
@@ -119,9 +135,10 @@ export async function POST(request) {
 
     // 5. Structure Context Array & Inject Grounding Guardrails
     const sanitizedInput = sanitizeMessage(trimmedMessage);
-    const processedMessages = messages.map((msg, index) => {
+    const processedMessages = trimmedMessages.map((msg, index) => {
       const isBotMessage = msg.isBot || msg.role === "assistant";
-      const rawText = index === messages.length - 1 ? sanitizedInput : (msg.text || msg.content || "");
+      const isLast = index === trimmedMessages.length - 1;
+      const rawText = isLast ? sanitizedInput : (msg.text || msg.content || "");
       
       return {
         role: isBotMessage ? "assistant" : "user",

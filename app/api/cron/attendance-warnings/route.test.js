@@ -43,9 +43,7 @@ describe("attendance warnings cron authorization", () => {
     expect(connectDb).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toMatchObject({
       success: false,
-      error: {
-        message: "Internal server error",
-      },
+      error: "Internal server error",
     });
   });
 });

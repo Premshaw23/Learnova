@@ -7,6 +7,17 @@ vi.mock("@/lib/error-handler", () => ({
   withErrorHandler: (handler) => handler,
 }));
 
+vi.mock("@/lib/api-response", () => ({
+  success: (data) => ({
+    status: 200,
+    json: async () => data,
+  }),
+  fail: (status, code, message) => ({
+    status,
+    json: async () => ({ error: message }),
+  }),
+}));
+
 vi.mock("@/lib/rbac", () => ({
   requireAuth: vi.fn(),
 }));
