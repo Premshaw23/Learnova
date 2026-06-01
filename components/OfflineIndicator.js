@@ -11,6 +11,7 @@ const SYNCED_BANNER_DURATION_MS = 3000;
 export default function OfflineIndicator() {
   const [isOffline, setIsOffline] = useState(false);
   const [queueCount, setQueueCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [justSynced, setJustSynced] = useState(false);
   const prevIsSyncing = useRef(false);
@@ -61,6 +62,10 @@ export default function OfflineIndicator() {
     const handleMessage = (event) => {
       const type = event.data?.type;
 
+      if (type === "MUTATIONS_SYNC_COMPLETE") {
+        setFailedCount(event.data?.failCount || 0);
+      }
+      
       if (
         type === "SYNC_COMPLETE" ||
         type === "MUTATIONS_SYNC_COMPLETE" ||
@@ -130,6 +135,12 @@ export default function OfflineIndicator() {
         <div className="rounded-full bg-yellow-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-md flex items-center gap-2">
           <Database className="h-4 w-4" />
           {queueCount} record{queueCount !== 1 ? "s" : ""} queued
+        </div>
+      )}
+
+      {failedCount > 0 && (
+        <div className="rounded-full bg-red-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-md flex items-center gap-2">
+          ❌ {failedCount} sync failed
         </div>
       )}
 
