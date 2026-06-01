@@ -9,7 +9,10 @@ import { requireAuth } from "@/lib/rbac";
 import { AppError } from "@/lib/errors";
 
 // Initialize the official Groq SDK client instance
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_groq_api_key" });
+const groq = new Groq({ 
+  apiKey: process.env.GROQ_API_KEY || "dummy_groq_api_key",
+  dangerouslyAllowBrowser: true 
+});
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -107,12 +110,20 @@ export async function POST(request) {
 
     // ── 🎯 LOCALIZED AGENT INTENT INTERCEPTION STREAM GENERATORS ──
     try {
-      const agentIntercept = await parseUserIntent(trimmedMessage);
-      if (agentIntercept && (agentIntercept.matched || agentIntercept.success)) {
+      const agentInterceptStr = await parseUserIntent(trimmedMessage);
+      let agentIntercept = null;
+      if (agentInterceptStr) {
+        try {
+          agentIntercept = JSON.parse(agentInterceptStr);
+        } catch (e) {
+          console.warn("[nova-intent-error] Failed to parse intent JSON string:", e.message);
+        }
+      }
+      if (agentIntercept && agentIntercept.status === "success") {
         return createStreamingResponse({
           success: true,
-          actionTriggered: agentIntercept.toolName || agentIntercept.actionTriggered || "Attendance Query Intercept",
-          data: agentIntercept.response || agentIntercept.data
+          actionTriggered: agentIntercept.tool || "Attendance Query Intercept",
+          data: agentIntercept.data
         });
       }
     } catch (parseError) {

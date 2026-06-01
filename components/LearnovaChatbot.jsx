@@ -582,18 +582,27 @@ export default function LearnovaChatbot() {
       let interceptedData = null;
 
       try {
-        let actionResponse = null;
+        let actionResponseStr = null;
 
         // Isolate parser from unauthorized invocation failures
         if (user) {
           try {
-            actionResponse = await parseUserIntent(text);
+            actionResponseStr = await parseUserIntent(text);
           } catch (e) {
             console.error("Local intent parser dropped:", e);
           }
         }
 
-        if (actionResponse && (actionResponse.matched || actionResponse.success)) {
+        let actionResponse = null;
+        if (actionResponseStr) {
+          try {
+            actionResponse = JSON.parse(actionResponseStr);
+          } catch (e) {
+            console.warn("Failed to parse local intent response JSON:", e);
+          }
+        }
+
+        if (actionResponse && actionResponse.status === "success") {
           botText = `I intercepted an architectural lookup event matching your request parameter criteria. Here are the target profiles retrieved from infrastructure indexing:`;
           interceptedData = actionResponse.data;
         } else {
