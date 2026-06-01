@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
-import MoodTracker from "@/components/MoodTracker";
+import MoodTracker from "@/components/MoodTracker.jsx";
 import StressMeter from "@/components/StressMeter";
 import BreathingExercise from "@/components/BreathingExercise";
 import MotivationCard from "@/components/MotivationCard";
