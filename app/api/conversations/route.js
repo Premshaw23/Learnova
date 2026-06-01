@@ -27,13 +27,6 @@ function getGroq() {
   return new Groq({ apiKey: key });
 }
 
-if (process.env.NODE_ENV === "test") {
-  return NextResponse.json(
-    { message: "mock response" },
-    { status: 200 }
-  );
-}
-
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 30; // Maximum duration permitted for serverless execution runtimes
@@ -61,90 +54,47 @@ function createStreamingResponse(dataPayload) {
   });
 }
 
-export async function POST(req: Request) {
+export async function POST(req) {
   try {
-    // 1. AUTH FIRST
-    const user = await requireAuth(req);
-    const userId = user.uid || user.sub;
 
-    // 2. RATE LIMIT
-    try {
-      const rateLimitResult = await checkRateLimit(userId);
-      if (rateLimitResult && !rateLimitResult.allowed) {
-        return new Response(JSON.stringify({ error: "Too many requests" }), {
-          status: 429,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    } catch {}
-
-    // 3. PARSE BODY
-    const body = await parseJSON(req, 1024 * 50);
-    const { messages, category = "general" } = body;
-
-    if (!messages?.length) {
-      return NextResponse.json(
-        { error: "Missing messages" },
-        { status: 400 }
-      );
-    }
-
-    // 4. SAFETY CHECK
-    const lastMsg = messages[messages.length - 1]?.content || "";
-    if (detectInjection(lastMsg)?.isInjection) {
-      return NextResponse.json(
-        { error: "Injection detected" },
-        { status: 400 }
-      );
-    }
-
-    const sanitized = sanitizeMessage(lastMsg);
-
-    // 5. GROQ INIT
-    const groq = getGroq();
-
-    if (!groq || process.env.NODE_ENV === "test") {
+    // 👇 THIS GOES FIRST
+    if (process.env.NODE_ENV === "test") {
       return NextResponse.json(
         { message: "mock response" },
         { status: 200 }
       );
     }
 
-    // 6. AI CALL (STREAM)
-    const stream = await groq.chat.completions.create({
+    const user = await requireAuth(req);
+
+    const body = await req.json();
+
+    const groq = getGroq();
+    if (!groq) {
+      return NextResponse.json(
+        { error: "Missing API key" },
+        { status: 500 }
+      );
+    }
+
+    const aiResponse = await groq.chat.completions.create({
       model: "llama3-8b-8192",
-      messages: [
-        {
-          role: "system",
-          content: `You are Nova AI for Learnova`,
-        },
-        ...messages,
-      ],
-      stream: true,
+      messages: body.messages,
     });
 
-    const encoder = new TextEncoder();
+    return NextResponse.json({ data: aiResponse });
 
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          const text = chunk.choices[0]?.delta?.content || "";
-          if (text) controller.enqueue(encoder.encode(text));
-        }
-        controller.close();
-      },
-    });
+  } catch (err) {
 
-    return new Response(readableStream, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/event-stream",
-      },
-    });
+    if (err?.statusCode === 401) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
-  } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Internal Server Error" },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }
