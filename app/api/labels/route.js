@@ -1,3 +1,5 @@
+import { initializeFirebase } from "@/lib/firebase-admin";
+import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
 import { AppError } from "@/lib/errors";
 import { jsonSuccess } from "@/lib/api-response";
@@ -21,7 +23,24 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   // Authentication and Role Verification
-  const { profile } = await requireRole(request, ["admin", "teacher", "student"]);
+  const { payload, profile } = await requireRole(request, ["admin", "teacher", "student"]);
+
+  // Scope to caller's institute (admins see all, others see only their institute)
+  let instituteScopeUids = null;
+  if (profile?.instituteId && profile?.role !== "admin") {
+    initializeFirebase();
+    const firestoreDb = admin.firestore();
+    const scopeSnapshot = await firestoreDb
+      .collection("users")
+      .where("instituteId", "==", profile.instituteId)
+      .select()
+      .get();
+    instituteScopeUids = new Set(scopeSnapshot.docs.map((d) => d.id));
+
+    if (instituteScopeUids.size === 0) {
+      return jsonSuccess([], 200);
+    }
+  }
 
   // Search query — escape metacharacters to prevent ReDoS
   const { searchParams } = new URL(request.url);
@@ -44,7 +63,10 @@ export const GET = withErrorHandler(async (request) => {
   const users = db.collection("users");
 
   const allUsers = await users
-    .find(query, {
+    .find({
+      ...query,
+      ...(instituteScopeUids ? { firebaseUid: { $in: [...instituteScopeUids] } } : {}),
+    }, {
       projection: {
         _id: 1,
         name: 1,
