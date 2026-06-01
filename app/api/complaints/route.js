@@ -20,6 +20,12 @@ const MAX_COMPLAINT_PAYLOAD_BYTES = 1024 * 10;
 export const POST = withErrorHandler(async (req) => {
   const decodedToken = await requireAuth(req);
 
+  // Rate limit: max 3 complaints per hour per user
+  const rateLimitResult = await checkRateLimit(`complaints_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many complaints. Please try again later.", 429);
+  }
+
   const body = await parseJSON(req, MAX_COMPLAINT_PAYLOAD_BYTES);
 
   const validation = complaintsSchema.safeParse(body);
@@ -35,6 +41,18 @@ export const POST = withErrorHandler(async (req) => {
     db = await connectDb();
   } catch (error) {
     throw new AppError("Database connection failed. Please try again.", 503);
+  }
+
+  // Dedupe: reject duplicate identical submissions within the last hour
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const existing = await db.collection("complaints").findOne({
+    userId: decodedToken.uid,
+    subject,
+    description,
+    createdAt: { $gte: oneHourAgo },
+  });
+  if (existing) {
+    throw new AppError("Duplicate complaint: A similar complaint was already submitted recently.", 409);
   }
 
   await db.collection("complaints").insertOne({
