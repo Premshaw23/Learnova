@@ -121,23 +121,24 @@ export const POST =
   withErrorHandler(
     async (req) => {
       // Rate limiting
-      const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
-      const rateLimitResult = await checkRateLimit(`register_ip_${ip}`);
+      const decodedToken = await requireAuth(req);
+      const rateLimitResult = await checkRateLimit(`register_${decodedToken.uid}`);
 
       if (!rateLimitResult.allowed) {
         throw new AppError("Too many registration attempts. Please try again later.", 429);
       }
-
-      // Authenticate
-      const decodedToken = await requireAuth(req);
 
       // Form data
       const formData =
         await req.formData();
 
       // Check for idempotency key to prevent duplicate registrations on retry
-      const idempotencyKey = formData.get("idempotencyKey");
-      if (idempotencyKey && typeof idempotencyKey === "string") {
+      // Namespace the key by user UID to prevent cross-user collisions
+      const rawIdempotencyKey = formData.get("idempotencyKey");
+      const idempotencyKey = rawIdempotencyKey && typeof rawIdempotencyKey === "string"
+        ? `${decodedToken.uid}:${rawIdempotencyKey}`
+        : null;
+      if (idempotencyKey) {
         const existing = await findExistingOperation(idempotencyKey);
         if (existing?.idempotentResult) {
           return jsonSuccess(existing.idempotentResult, 201);
@@ -418,7 +419,7 @@ export const POST =
         user: sagaResult.context._insertedUser,
       };
 
-      // Mark as idempotent for retry dedup
+      // Mark as idempotent for retry dedup (already namespaced with uid above)
       if (idempotencyKey) {
         await markIdempotent(idempotencyKey, resultPayload);
       }
