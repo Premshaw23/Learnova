@@ -18,8 +18,6 @@ export default function AIProductivityInsights({
   setLoading(true);
 
   try {
-    setLoading(true);
-
     if (!user) {
       alert("Please login to generate AI insights.");
       return;
