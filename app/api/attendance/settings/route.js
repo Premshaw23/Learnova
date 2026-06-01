@@ -46,14 +46,11 @@ export const GET = withErrorHandler(async (request) => {
     .get();
 
   if (!settingsDoc.exists) {
-    // Fallback for existing data
-    settingsDoc = await db
-      .collection("attendance_settings")
-      .doc("current_settings")
-      .get();
+    return NextResponse.json(
+      { error: "Attendance settings not configured" },
+      { status: 404 }
+    );
   }
-
-  if (!settingsDoc.exists) {
     return NextResponse.json(
       { error: "Attendance settings not configured" },
       { status: 404 }
