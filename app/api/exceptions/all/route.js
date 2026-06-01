@@ -17,9 +17,8 @@ const ALLOWED_SORT_FIELDS = new Set([
 ]);
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, ["admin", "teacher"]);
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`exceptions_all_${ip}_${decodedToken.uid}`);
+  const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher"]);
+  const rateLimitResult = await checkRateLimit(`exceptions_all_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
@@ -56,8 +55,13 @@ export const GET = withErrorHandler(async (request) => {
     const db = await connectDb();
     const collection = db.collection("exceptions");
 
-    // Search query
+    // Institute scope: teachers see only their own institute's exceptions
     let query = {};
+    if (profile?.role === "teacher" && profile?.instituteId) {
+      query.instituteId = profile.instituteId;
+    } else if (profile?.role === "teacher") {
+      query.instituteId = decodedToken.uid;
+    }
 
     if (search) {
       query.$or = [
