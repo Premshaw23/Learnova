@@ -53,22 +53,23 @@ async function publishNotice(request) {
 
   const noticeWithId = { ...newNotice, _id: result.id, id: result.id };
 
-  // Sync to MongoDB for historical queries and fallback polling
-  try {
-    const mongoDb = await connectDb();
-    await mongoDb.collection("notices").insertOne({
-      ...newNotice,
-      _id: result.id,
-    });
-  } catch (mongoError) {
-    console.error("Failed to sync notice to MongoDB:", mongoError);
-  }
+  // Parallel sync to MongoDB and Redis (neither depends on the other)
+  const [mongoResult, redisResult] = await Promise.allSettled([
+    (async () => {
+      const mongoDb = await connectDb();
+      await mongoDb.collection("notices").insertOne({
+        ...newNotice,
+        _id: result.id,
+      });
+    })(),
+    publishNoticeToRedis(noticeWithId),
+  ]);
 
-  // Publish to Redis for real-time SSE delivery across serverless instances
-  try {
-    await publishNoticeToRedis(noticeWithId);
-  } catch (redisError) {
-    console.error("Failed to publish notice to Redis:", redisError);
+  if (mongoResult.status === "rejected") {
+    console.error("Failed to sync notice to MongoDB:", mongoResult.reason);
+  }
+  if (redisResult.status === "rejected") {
+    console.error("Failed to publish notice to Redis:", redisResult.reason);
   }
 
   return NextResponse.json({
