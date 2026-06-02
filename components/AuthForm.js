@@ -104,16 +104,23 @@ const handleFieldChange = (field) => (value) => {
   const handleSubmit = (event) => {
     event.preventDefault();
 
+    const submitData = isLogin
+      ? formData
+      : {
+          ...formData,
+          password: password.trim(),
+          confirmPassword: confirmPassword.trim(),
+        };
     const fieldsToValidate = isLogin
       ? ["email", "password"]
       : ["fullName", "email", "password", "confirmPassword"];
     const nextErrors = {};
 
     fieldsToValidate.forEach((field) => {
-      const result = validateAuthField(field, formData[field], {
+      const result = validateAuthField(field, submitData[field], {
         isLogin,
-        password,
-        confirmPassword,
+        password: submitData.password,
+        confirmPassword: submitData.confirmPassword,
       });
 
       if (result !== true) {
@@ -126,7 +133,7 @@ const handleFieldChange = (field) => (value) => {
       return;
     }
 
-    if (!isLogin && password !== confirmPassword) {
+    if (!isLogin && submitData.password !== submitData.confirmPassword) {
       setErrors((prev) => ({
         ...prev,
         confirmPassword: "Passwords do not match",
@@ -135,7 +142,7 @@ const handleFieldChange = (field) => (value) => {
     }
 
     // Pass the local state object cleanly to the parent's submit function
-    onSubmit(formData); 
+    onSubmit(submitData); 
   };
 
   const selectedRoleConfig = selectedRole ? ROLE_CONFIG[selectedRole] : null;
