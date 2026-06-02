@@ -4,9 +4,9 @@ import { requireAuth } from "@/lib/rbac";
 import { ValidationError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
-import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 import { verifyPasscode } from "@/utils/passcodeUtils";
+import { checkRateLimit, RATE_LIMIT_POLICIES } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`passcode_${ip}_${decodedToken?.uid}`);
+  const rateLimitResult = await checkRateLimit(`passcode_${ip}_${decodedToken?.uid}`, RATE_LIMIT_POLICIES.VALIDATE_PASSCODE);
 
   if (!rateLimitResult.allowed) {
     return NextResponse.json(

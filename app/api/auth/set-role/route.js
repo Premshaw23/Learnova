@@ -2,7 +2,7 @@ import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { initializeFirebase } from "@/lib/firebase-admin";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { checkRateLimit, RATE_LIMIT_POLICIES } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
@@ -16,7 +16,7 @@ export const POST = withValidation(
   withErrorHandler(async (request, data) => {
     const decodedToken = await requireAuth(request);
 
-    const rateLimitResult = await checkRateLimit(`set_role_${decodedToken.uid}`);
+    const rateLimitResult = await checkRateLimit(`set_role_${decodedToken.uid}`, RATE_LIMIT_POLICIES.SET_ROLE);
     if (!rateLimitResult.allowed) {
       throw new AppError("Too many attempts. Please try again later.", 429);
     }

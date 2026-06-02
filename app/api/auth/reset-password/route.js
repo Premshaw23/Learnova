@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { checkRateLimit, RATE_LIMIT_POLICIES } from "@/lib/rateLimit";
 import { parseJSON } from "@/lib/error-handler";
 
 const MAX_RESET_PASSWORD_PAYLOAD_BYTES = 1024;
@@ -28,7 +28,7 @@ export async function POST(request) {
     // Rate limit both by IP and by email to prevent spamming
     const ip = request.headers.get("x-forwarded-for") || "unknown";
     const rateLimitKey = `reset_pwd_${sanitizedEmail}_${ip}`;
-    const rateLimitResult = await checkRateLimit(rateLimitKey);
+    const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMIT_POLICIES.RESET_PASSWORD);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
