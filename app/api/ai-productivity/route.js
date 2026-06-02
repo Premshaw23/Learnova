@@ -1,11 +1,14 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 import { callGroq } from "@/lib/ai/groq";
+import { requireAuth } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const POST = withErrorHandler(async (request) => {
+  await requireAuth(request);
+
   const analytics = await parseJSON(request);
 
   const {
@@ -17,9 +20,19 @@ export const POST = withErrorHandler(async (request) => {
     peakFocusHours = "Unknown",
   } = analytics;
 
+  // Clamp numeric inputs to prevent prompt injection and unreasonable values
+  const sanitized = {
+    totalFocusMinutes: Math.min(Math.max(Number(totalFocusMinutes) || 0, 0), 100000),
+    averageSessionDuration: Math.min(Math.max(Number(averageSessionDuration) || 0, 0), 1440),
+    completedFocusSessions: Math.min(Math.max(Number(completedFocusSessions) || 0, 0), 10000),
+    focusStreak: Math.min(Math.max(Number(focusStreak) || 0, 0), 365),
+    consistencyScore: Math.min(Math.max(Number(consistencyScore) || 0, 0), 100),
+    peakFocusHours: typeof peakFocusHours === "string" ? peakFocusHours.slice(0, 100) : "Unknown",
+  };
+
   if (
-  totalFocusMinutes === 0 &&
-  completedFocusSessions === 0
+  sanitized.totalFocusMinutes === 0 &&
+  sanitized.completedFocusSessions === 0
 ) {
   return jsonSuccess({
     strength:
@@ -36,12 +49,12 @@ You are an expert productivity coach.
 
 Analyze the following productivity metrics:
 
-Total Focus Time: ${totalFocusMinutes} minutes
-Average Session Duration: ${averageSessionDuration} minutes
-Completed Focus Sessions: ${completedFocusSessions}
-Focus Streak: ${focusStreak} days
-Consistency Score: ${consistencyScore}%
-Peak Focus Hours: ${peakFocusHours}
+Total Focus Time: ${sanitized.totalFocusMinutes} minutes
+Average Session Duration: ${sanitized.averageSessionDuration} minutes
+Completed Focus Sessions: ${sanitized.completedFocusSessions}
+Focus Streak: ${sanitized.focusStreak} days
+Consistency Score: ${sanitized.consistencyScore}%
+Peak Focus Hours: ${sanitized.peakFocusHours}
 
 Return ONLY valid JSON.
 
