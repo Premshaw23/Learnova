@@ -45,6 +45,7 @@ function buildPageCsp() {
     "media-src 'self' blob:",
     "worker-src 'self' blob:",
     `frame-src ${Array.from(new Set(frameSrc)).join(" ")}`,
+    "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -374,7 +375,7 @@ export async function middleware(request) {
 
   if (isPage) {
     response.headers.set("Content-Security-Policy", buildPageCsp());
-    response.headers.set("X-Frame-Options", "SAMEORIGIN");
+    response.headers.set("X-Frame-Options", "DENY");
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     response.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
