@@ -120,6 +120,7 @@ describe("Parent Portal Feature Tests", () => {
     };
 
     getFirestore.mockReturnValue({
+      getAll: vi.fn(async (...refs) => Promise.all(refs.map(r => r.get()))),
       collection: vi.fn((colName) => {
         const colData = store[colName] || {};
         return {
@@ -137,7 +138,9 @@ describe("Parent Portal Feature Tests", () => {
           doc: vi.fn((docId) => {
             const docVal = colData[docId];
             return {
+              id: docId,
               get: vi.fn(async () => ({
+                id: docId,
                 exists: docVal !== undefined,
                 data: () => docVal,
               })),
