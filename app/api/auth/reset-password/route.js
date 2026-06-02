@@ -37,7 +37,12 @@ export async function POST(request) {
       );
     }
 
-    // Call the identitytoolkit REST API to send the reset email directly from the backend
+    // Call the identitytoolkit REST API to send the reset email directly from the backend.
+    // NOTE: Firebase API keys are public by design. Security is enforced through
+    // authorized domains, CORS settings, and API constraints rather than key secrecy.
+    // Using the public API key server-side here allows us to trigger the REST API
+    // (sendOobCode) to delegate actual email delivery to Firebase's native templates
+    // without requiring complex SMTP server setup on the backend.
     const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
