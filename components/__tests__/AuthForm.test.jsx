@@ -60,7 +60,12 @@ describe("AuthForm", () => {
 
     render(<AuthForm {...defaultProps} onSubmit={handleSubmit} />);
 
+    const emailInput = screen.getByPlaceholderText("Enter your email");
+    const passwordInput = screen.getByPlaceholderText("Enter your password");
     const submitBtn = screen.getByRole("button", { name: /sign in/i });
+
+    await user.type(emailInput, "test@example.com");
+    await user.type(passwordInput, "Password123!");
     await user.click(submitBtn);
 
     expect(handleSubmit).toHaveBeenCalledTimes(1);
