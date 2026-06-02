@@ -5,6 +5,11 @@ import {
   validateRequired,
 } from "@/utils/formValidation";
 
+/**
+ * Builds the password requirement checklist displayed in signup forms.
+ * @param {string} [password=""] - Password value to inspect.
+ * @returns {Array<{label: string, met: boolean}>} Requirement labels and pass/fail state.
+ */
 export const getPasswordRequirementFlags = (password = "") => {
   const value = String(password || "");
 
@@ -17,6 +22,13 @@ export const getPasswordRequirementFlags = (password = "") => {
   };
 };
 
+/**
+ * Validates an auth form field and returns either true or an inline error message.
+ * @param {string} field - Field name to validate.
+ * @param {string} value - Current field value.
+ * @param {{isLogin?: boolean, password?: string}} [context] - Additional form state used by conditional rules.
+ * @returns {true|string} True when valid, otherwise a user-facing validation message.
+ */
 export const validateAuthField = (field, value, context = {}) => {
   switch (field) {
     case "fullName":
