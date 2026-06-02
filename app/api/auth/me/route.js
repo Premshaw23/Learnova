@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
-import { getUserProfile } from "@/lib/firebase-admin";
+import { initFirebaseAdmin } from "@/lib/firebase-admin";
+import admin from "firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 
@@ -26,7 +27,9 @@ export const GET = withErrorHandler(async (request) => {
     throw new AppError("Too many requests. Please slow down.", 429);
   }
 
-  const profile = await getUserProfile(decodedToken.uid);
+  initFirebaseAdmin();
+  const profileSnap = await admin.firestore().collection("users").doc(decodedToken.uid).select("role").get();
+  const profile = profileSnap.exists ? { role: profileSnap.data()?.role } : null;
 
   return NextResponse.json({
     uid: decodedToken.uid,
