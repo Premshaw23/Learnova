@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
@@ -26,19 +27,16 @@ export const GET = withErrorHandler(async (request) => {
   const { searchParams } = new URL(request.url);
 
     // Pagination - extract and validate query parameters
-    const pageParam = searchParams.get("page");
+    const cursor = searchParams.get("cursor");
     const limitParam = searchParams.get("limit");
     
-    const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
     const limit = limitParam ? Math.min(100, Math.max(1, parseInt(limitParam, 10))) : 20;
 
     // Validate pagination parameters
-    if (isNaN(page) || isNaN(limit)) {
+    if (isNaN(limit)) {
       const { ValidationError } = require("@/lib/errors");
       throw new ValidationError("Invalid pagination parameters");
     }
-
-    const skip = (page - 1) * limit;
 
     // Search — escape metacharacters and cap length to prevent ReDoS
     const rawSearch = searchParams.get("search") || "";
@@ -82,28 +80,38 @@ export const GET = withErrorHandler(async (request) => {
       ];
     }
 
-    // Total count
-    const total = await collection.countDocuments(query);
+    // Cursor-based pagination (replaces inefficient skip())
+    if (cursor) {
+      if (!ObjectId.isValid(cursor)) {
+        const { ValidationError } = require("@/lib/errors");
+        throw new ValidationError("Invalid cursor");
+      }
+      query._id = { $gt: new ObjectId(cursor) };
+    }
+
+    // Total count (only without cursor to avoid recounting every page)
+    const total = cursor ? 0 : await collection.countDocuments(query);
 
     // Fetch paginated data
     const exceptions = await collection
       .find(query)
-      .sort({ [sortBy]: sortOrder })
-      .skip(skip)
-      .limit(limit)
+      .sort({ [sortBy]: sortOrder, _id: 1 })
+      .limit(limit + 1)
       .toArray();
 
-    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = exceptions.length > limit;
+    if (hasNextPage) exceptions.pop();
+
+    const nextCursor = hasNextPage ? exceptions[exceptions.length - 1]._id.toString() : null;
 
     return jsonSuccess(
       {
         exceptions,
         pagination: {
-          total,
-          page,
+          total: cursor ? -1 : total,
           limit,
-          totalPages,
-          hasNextPage: page < totalPages,
+          nextCursor,
+          hasNextPage,
         },
       },
       200,
