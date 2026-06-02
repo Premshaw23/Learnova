@@ -124,7 +124,7 @@ describe("/api/images route orchestration", () => {
     requireAuth.mockResolvedValue({ uid });
     connectDb.mockResolvedValue({
       collection: vi.fn().mockReturnValue({
-        findOne: vi.fn().mockResolvedValue({ _id: ownId }),
+        findOne: vi.fn().mockResolvedValue({ _id: otherId }),
         createIndex: vi.fn(),
       }),
     });
@@ -150,7 +150,7 @@ describe("/api/images route orchestration", () => {
     requireAuth.mockResolvedValue({ uid });
     connectDb.mockResolvedValue({
       collection: vi.fn().mockReturnValue({
-        findOne: vi.fn().mockResolvedValue({ _id: ownId }),
+        findOne: vi.fn().mockResolvedValue({ _id: otherId }),
         createIndex: vi.fn(),
       }),
     });
@@ -179,7 +179,9 @@ describe("/api/images route orchestration", () => {
 
   test("GET allows teacher to view any user's image", async () => {
     const uid = "teacher-uid-1";
+    const ownId = new ObjectId();
     const otherId = new ObjectId();
+    const instituteId = "inst-999";
 
     requireAuth.mockResolvedValue({ uid });
     
@@ -214,6 +216,7 @@ describe("/api/images route orchestration", () => {
     const uid = "orphan-uid";
 
     requireAuth.mockResolvedValue({ uid });
+    getUserImageFromDb.mockRejectedValue(new NotFoundError("User not found"));
     connectDb.mockResolvedValue({
       collection: vi.fn().mockReturnValue({
         findOne: vi.fn().mockResolvedValue(null),
