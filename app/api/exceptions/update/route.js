@@ -68,6 +68,12 @@ export const PUT = withErrorHandler(async (request) => {
 
     // Perform teacher-specific assignment validation (CWE-639 resolution)
     if (profile.role === "teacher") {
+      // Enforce institute boundary: if the exception has an instituteId, it must match the teacher's institute
+      const teacherInstituteId = profile.instituteId;
+      if (teacherInstituteId && exception.instituteId && String(exception.instituteId) !== String(teacherInstituteId)) {
+        throw new ForbiddenError("Forbidden: Exception does not belong to your institute.");
+      }
+
       const teacherSubjects = profile.subjects || [];
       const exceptionClass = exception.className || exception.class;
       let isAuthorized = false;
@@ -81,8 +87,13 @@ export const PUT = withErrorHandler(async (request) => {
       if (!isAuthorized && exception.studentEmail) {
         const studentProfile = await getUserProfileByEmail(exception.studentEmail);
         if (studentProfile) {
+          // Also verify the student belongs to the same institute
+          if (teacherInstituteId && studentProfile.instituteId && String(studentProfile.instituteId) !== String(teacherInstituteId)) {
+            throw new ForbiddenError("Forbidden: Student does not belong to your institute.");
+          }
           const studentSubjects = studentProfile.subjects || studentProfile.classes || [];
-          const hasOverlap = studentSubjects.some((subject) => teacherSubjects.includes(subject));
+          const teacherSubjectsSet = new Set(teacherSubjects);
+          const hasOverlap = studentSubjects.some((subject) => teacherSubjectsSet.has(subject));
           if (hasOverlap) {
             isAuthorized = true;
           }
