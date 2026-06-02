@@ -80,7 +80,6 @@ const CommentSection = ({ noticeId }) => {
       }
     }
   };
-  }, [storageKey]);
 
   // 3. Handle comment submission without needing a live backend database connection
   const handleSubmitComment = (e) => {
