@@ -171,6 +171,7 @@ export const useAuth = () => {
 
   useEffect(() => {
     if (!auth) {
+      setError("Authentication is not configured.");
       setLoading(false);
       return;
     }
@@ -197,6 +198,14 @@ export const useAuth = () => {
           // Create a new token refresh manager with exponential backoff retry
           refreshManagerRef.current = createTokenRefreshManager(firebaseUser, handleSessionExpired);
           refreshManagerRef.current.start();
+
+          if (!db || !firebaseUser?.uid) {
+            if (isMounted()) {
+              setUserProfile(null);
+              setLoading(false);
+            }
+            return;
+          }
 
           // Listen to the user profile document in real-time for profile data
           const userDocRef = doc(db, "users", firebaseUser.uid);
@@ -287,7 +296,9 @@ export const useAuth = () => {
         refreshManagerRef.current = null;
       }
       await clearAuthSessionCookie();
-      await firebaseSignOut(auth);
+      if (auth) {
+        await firebaseSignOut(auth);
+      }
       if (isMounted()) {
         setUser(null);
         setUserProfile(null);
