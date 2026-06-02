@@ -8,6 +8,7 @@ import { AppError, ValidationError, ForbiddenError } from "@/lib/errors";
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { executeSaga, findExistingOperation, markIdempotent } from "@/lib/transactionCoordinator";
+import { validateFaceDescriptor } from "@/lib/images/imagesService";
 
 export const dynamic = "force-dynamic";
 
@@ -168,12 +169,9 @@ export const POST =
       let faceDescriptor = null;
       if (rawFaceDescriptor) {
         try {
-          faceDescriptor = JSON.parse(rawFaceDescriptor);
-          if (!Array.isArray(faceDescriptor)) {
-            throw new Error();
-          }
-        } catch {
-          return jsonError("Invalid face descriptor format", 400);
+          faceDescriptor = validateFaceDescriptor(rawFaceDescriptor);
+        } catch (error) {
+          return jsonError(error.message || "Invalid face descriptor format", 400);
         }
       }
 

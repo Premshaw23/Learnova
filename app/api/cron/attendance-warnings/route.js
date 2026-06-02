@@ -193,37 +193,61 @@ export async function GET(request) {
 
     for (const settings of allSettings) {
       const threshold = settings.institute.lowAttendanceThreshold || 75;
+      const instituteId = settings.userId;
+      if (!instituteId) continue;
 
-      // Fetch all students from MongoDB
-      const students = await db.collection('users').find({ role: 'student' }).toArray();
+      // Scope attendance by institute — the settings doc's userId is the institute admin's uid,
+      // which matches the instituteId stored on attendance records.
+      // Fetch all unique students with attendance in this institute
+      const distinctStudentIds = await db.collection('attendance').distinct('userId', { instituteId });
 
-      for (const student of students) {
-        const studentUid = student.firebaseUid;
-        if (!studentUid) continue;
+      if (distinctStudentIds.length === 0) continue;
 
-        // Check recent warning logs to prevent spam
-        const recentLog = await db.collection('warning_logs').findOne({
-          userId: studentUid,
-          createdAt: { $gte: cooldownDate }
-        });
+      // Batch-check recent warning logs for all students in this institute
+      const recentLogs = await db.collection('warning_logs').find({
+        userId: { $in: distinctStudentIds },
+        createdAt: { $gte: cooldownDate },
+      }).project({ userId: 1 }).toArray();
+      const warnedUserIds = new Set(recentLogs.map((l) => l.userId));
 
-        if (recentLog) {
-          continue;
+      // Batch-fetch attendance for all students in this institute
+      const attendanceRecords = await db.collection('attendance').find({
+        userId: { $in: distinctStudentIds },
+        instituteId,
+      }).toArray();
+
+      const attendanceByUser = new Map();
+      for (const rec of attendanceRecords) {
+        if (!attendanceByUser.has(rec.userId)) {
+          attendanceByUser.set(rec.userId, []);
         }
+        attendanceByUser.get(rec.userId).push(rec);
+      }
 
-        // Fetch attendance records from Firestore attendance_records collection
-        const attendanceSnapshot = await firestore
-          .collection('attendance_records')
-          .where('userId', '==', studentUid)
-          .get();
+      // Batch-fetch user profiles for all students needing evaluation
+      const studentsToCheck = distinctStudentIds.filter((id) => !warnedUserIds.has(id));
+      if (studentsToCheck.length === 0) continue;
 
-        const studentAttendance = attendanceSnapshot.docs.map(doc => doc.data());
+      const studentDocs = await db.collection('users').find({
+        $or: [
+          { uid: { $in: studentsToCheck } },
+          { firebaseUid: { $in: studentsToCheck } },
+        ],
+      }).project({ uid: 1, firebaseUid: 1, email: 1, name: 1, fullName: 1 }).toArray();
 
+      for (const student of studentDocs) {
+        const uid = student.uid || student.firebaseUid;
+        if (!uid) continue;
+
+        const studentAttendance = attendanceByUser.get(uid) || [];
         const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
 
         if (evaluation.isBelowThreshold) {
+          const email = student.email;
+          const name = student.name || student.fullName || 'Student';
+
           notificationsToInsert.push({
-            userId: studentUid,
+            userId: uid,
             title: 'Low Attendance Warning',
             message: `Your current attendance is ${evaluation.percentage}%, which is below the required ${threshold}%. Please improve your attendance.`,
             type: 'warning',
@@ -232,16 +256,16 @@ export async function GET(request) {
           });
 
           warningLogsToInsert.push({
-            userId: studentUid,
+            userId: uid,
             percentage: evaluation.percentage,
             threshold,
             createdAt: now,
           });
 
-          if (student.email) {
+          if (email) {
             emailsToSend.push({
-              to_email: student.email,
-              to_name: student.fullName || student.name || 'Student',
+              to_email: email,
+              to_name: name,
               attendance_percentage: evaluation.percentage,
               threshold,
             });
