@@ -85,6 +85,7 @@ vi.mock('@/lib/mongodb', () => ({
   })),
 }));
 
+// Mock rbac requireAuth to delegate to authenticateRequest mock
 // Mock rbac requireAuth as a spy
 vi.mock('@/lib/rbac', () => ({
   requireAuth: vi.fn(),
