@@ -130,6 +130,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-xyz', // different user
+      studentName: 'Test User',
+      email: 'test@learnova.edu',
       confidenceScore: 85,
       date: '2026-05-28',
     });
@@ -203,6 +205,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
+      studentName: 'Test User',
+      email: 'test@learnova.edu',
       confidenceScore: 85,
       date: '2026-05-28',
     });
@@ -228,6 +232,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
+      studentName: 'Test User',
+      email: 'test@learnova.edu',
       confidenceScore: 85,
       date: '2026-05-28',
     });
@@ -291,6 +297,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     });
     parseJSON.mockResolvedValue({
       userId: 'student-456',
+      studentName: 'Test User',
+      email: 'test@learnova.edu',
       confidenceScore: 90,
       date: '2026-05-28',
     });
