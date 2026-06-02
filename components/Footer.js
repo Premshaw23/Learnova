@@ -111,7 +111,7 @@ export default function Footer() {
             </div>
             <p className="text-sm text-slate-300 leading-6 max-w-xs">AI-powered engagement and smart attendance for modern campuses.</p>
             <div className="flex flex-wrap items-center gap-3">
-              <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition-transform duration-200 hover:-translate-y-0.5">
+              <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950">
                 Get Started <ArrowUpRight className="h-4 w-4" />
               </Link>
             </div>
@@ -127,7 +127,7 @@ export default function Footer() {
     aria-label="Discord"
     whileHover={{ scale: 1.15, y: -3 }}
     whileTap={{ scale: 0.95 }}
-    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/30 hover:border-purple-500/50 hover:text-purple-400"
+    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 backdrop-blur-sm transition-all duration-200 ease-out hover:shadow-lg hover:shadow-purple-500/30 hover:border-purple-500/50 hover:text-purple-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
   >
     <FaDiscord size={18} />
   </motion.a>
