@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Clock,
@@ -53,6 +54,7 @@ export default function CourseLibrary({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [savedCourseIds, setSavedCourseIds] = useState([]);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [brokenThumbnailIds, setBrokenThumbnailIds] = useState(() => new Set());
   const isMounted = useIsMounted();
 
   // Sync state if initial courses change (e.g. search filter or category chip select re-fetches from server)
@@ -174,6 +176,7 @@ export default function CourseLibrary({
                   .join("")
                   .substring(0, 2);
                 const isSaved = savedCourseIdSet.has(course.id);
+                const hasThumbnail = Boolean(course.thumbnailUrl) && !brokenThumbnailIds.has(course.id);
 
                 return (
                   <motion.div
@@ -192,6 +195,22 @@ export default function CourseLibrary({
                       <div
                         className={`w-full h-40 bg-gradient-to-tr ${course.color} rounded-xl relative flex items-center justify-center p-6 text-center select-none shadow-inner group-hover:brightness-105 transition-all duration-300`}
                       >
+                        {hasThumbnail ? (
+                          <Image
+                            src={course.thumbnailUrl}
+                            alt=""
+                            fill
+                            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                            className="rounded-xl object-cover"
+                            onError={() =>
+                              setBrokenThumbnailIds((currentIds) => {
+                                const nextIds = new Set(currentIds);
+                                nextIds.add(course.id);
+                                return nextIds;
+                              })
+                            }
+                          />
+                        ) : null}
                         <div className="absolute inset-0 bg-black/10 mix-blend-overlay rounded-xl" />
                         <button
                           type="button"
