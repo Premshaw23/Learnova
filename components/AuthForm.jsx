@@ -104,6 +104,28 @@ const handleFieldChange = (field) => (value) => {
   const handleSubmit = (event) => {
     event.preventDefault();
 
+    const fieldsToValidate = isLogin
+      ? ["email", "password"]
+      : ["fullName", "email", "password", "confirmPassword"];
+    const nextErrors = {};
+
+    fieldsToValidate.forEach((field) => {
+      const result = validateAuthField(field, formData[field], {
+        isLogin,
+        password,
+        confirmPassword,
+      });
+
+      if (result !== true) {
+        nextErrors[field] = result;
+      }
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...nextErrors }));
+      return;
+    }
+
     if (!isLogin && password !== confirmPassword) {
       setErrors((prev) => ({
         ...prev,
@@ -245,7 +267,7 @@ const handleFieldChange = (field) => (value) => {
             {isLoading ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Processing...
+                {isLogin ? "Logging in..." : "Registering..."}
               </>
             ) : (
               <>

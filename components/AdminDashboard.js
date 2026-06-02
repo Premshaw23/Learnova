@@ -38,8 +38,8 @@ import SkeletonCard from "@/components/ui/SkeletonCard";
 
 // CRITICAL FIX: Imported missing useAuth hook to prevent ReferenceError crash
 import { useAuth } from "@/hooks/useAuth";
-import { getOutboxRecords, removeFromOutbox, clearOutbox } from "@/lib/offlineStore";
-import { syncAttendanceQueue } from "@/lib/syncService";
+import { getPendingActions as getOutboxRecords, removePendingAction as removeFromOutbox, clearPendingActions as clearOutbox } from "@/db/offlineStore";
+import { triggerOfflineSync } from "@/utils/offlineRequestHandler";
 import { apiFetch } from "@/lib/apiClient";
 import { useIsMounted } from "@/hooks/useIsMounted";
 
@@ -86,6 +86,14 @@ const SuperAdminDashboard = () => {
   const [sessionRejectedCount, setSessionRejectedCount] = useState(0);
   const [onlineStatus, setOnlineStatus] = useState(true);
   const [selectedRecordPayload, setSelectedRecordPayload] = useState(null);
+
+  // Parent student linking states
+  const [links, setLinks] = useState([]);
+  const [linksLoading, setLinksLoading] = useState(false);
+  const [parentEmail, setParentEmail] = useState("");
+  const [studentEmail, setStudentEmail] = useState("");
+  const [linkingSubmitLoading, setLinkingSubmitLoading] = useState(false);
+  const [linkSearchQuery, setLinkSearchQuery] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -219,6 +227,227 @@ const SuperAdminDashboard = () => {
       controller.abort();
     };
   }, [user]);
+
+  const fetchLinks = async () => {
+    if (!user) return;
+    setLinksLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await apiFetch("/api/admin/parent-student-link", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLinks(data.links || []);
+      } else {
+        toast.error("Failed to load parent-student links");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error loading links");
+    } finally {
+      setLinksLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "parent student linking") {
+      fetchLinks();
+    }
+  }, [activeTab, user]);
+
+  const handleCreateLink = async (e) => {
+    e.preventDefault();
+    if (!parentEmail.trim() || !studentEmail.trim()) {
+      toast.error("Both emails are required");
+      return;
+    }
+    setLinkingSubmitLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await apiFetch("/api/admin/parent-student-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          parentEmail: parentEmail.trim(),
+          studentEmail: studentEmail.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Accounts linked successfully!");
+        setParentEmail("");
+        setStudentEmail("");
+        fetchLinks();
+      } else {
+        toast.error(data.error || "Failed to link accounts");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error creating relationship link");
+    } finally {
+      setLinkingSubmitLoading(false);
+    }
+  };
+
+  const handleDeleteLink = async (parentId, studentId) => {
+    if (!window.confirm("Are you sure you want to remove this parent-student relationship?")) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await apiFetch(`/api/admin/parent-student-link?parentId=${parentId}&studentId=${studentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        toast.success("Relationship removed successfully");
+        fetchLinks();
+      } else {
+        toast.error("Failed to delete relationship link");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error deleting link");
+    }
+  };
+
+  const renderParentStudentLinking = () => {
+    const filteredLinks = links.filter((link) => {
+      const query = linkSearchQuery.toLowerCase();
+      return (
+        link.parentName.toLowerCase().includes(query) ||
+        link.parentEmail.toLowerCase().includes(query) ||
+        link.studentName.toLowerCase().includes(query) ||
+        link.studentEmail.toLowerCase().includes(query)
+      );
+    });
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2 font-display">
+            <Users className="w-6 h-6 text-pink-400" />
+            Parent-Student Account Linking Manager
+          </h2>
+          <p className="text-sm text-gray-400">
+            Establish and manage relationships between Parent roles and Student accounts.
+          </p>
+        </div>
+
+        {/* Link creation form */}
+        <div className="bg-gray-800/40 border border-white/10 rounded-2xl p-6 shadow-xl space-y-4">
+          <h3 className="text-lg font-semibold text-white">Link New Accounts</h3>
+          <form onSubmit={handleCreateLink} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Parent Email</label>
+              <input
+                type="email"
+                required
+                value={parentEmail}
+                onChange={(e) => setParentEmail(e.target.value)}
+                placeholder="parent@example.com"
+                className="w-full bg-black/40 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Student Email</label>
+              <input
+                type="email"
+                required
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+                placeholder="student@example.com"
+                className="w-full bg-black/40 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={linkingSubmitLoading}
+              className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-semibold py-2.5 px-6 rounded-xl transition-all duration-300 shadow-md hover:shadow-pink-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 h-[42px]"
+            >
+              {linkingSubmitLoading ? "Linking..." : "Link Accounts"}
+            </button>
+          </form>
+        </div>
+
+        {/* Relationship records list */}
+        <div className="bg-black/40 border border-white/10 rounded-2xl p-5 shadow-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-gray-400" />
+              Active Relationship Links
+            </h3>
+            <div className="relative w-full sm:w-64">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
+              </span>
+              <input
+                type="text"
+                value={linkSearchQuery}
+                onChange={(e) => setLinkSearchQuery(e.target.value)}
+                placeholder="Search parent/student..."
+                className="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
+              />
+            </div>
+          </div>
+
+          {linksLoading ? (
+            <div className="py-12 text-center text-gray-400 flex items-center justify-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-pink-400" />
+              Loading relationships...
+            </div>
+          ) : filteredLinks.length === 0 ? (
+            <div className="py-12 text-center border border-dashed border-gray-700 rounded-xl space-y-2">
+              <Users className="w-10 h-10 text-gray-500 mx-auto" />
+              <p className="font-medium text-gray-300">No linked accounts found</p>
+              <p className="text-xs text-gray-500">Links will show up here after linking parent and student accounts.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-gray-700/50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-800/50 text-gray-400 text-xs font-medium uppercase tracking-wider">
+                    <tr className="border-b border-gray-700/50">
+                      <th className="px-4 py-3 text-left">Parent Name</th>
+                      <th className="px-4 py-3 text-left">Parent Email</th>
+                      <th className="px-4 py-3 text-left">Student Name</th>
+                      <th className="px-4 py-3 text-left">Student Email</th>
+                      <th className="px-4 py-3 text-left">Linked At</th>
+                      <th className="px-4 py-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700/50 text-gray-300">
+                    {filteredLinks.map((link) => (
+                      <tr key={link.id} className="hover:bg-gray-800/30 transition-colors">
+                        <td className="px-4 py-4 font-semibold text-white">{link.parentName}</td>
+                        <td className="px-4 py-4 font-mono text-xs">{link.parentEmail}</td>
+                        <td className="px-4 py-4 font-semibold text-white">{link.studentName}</td>
+                        <td className="px-4 py-4 font-mono text-xs">{link.studentEmail}</td>
+                        <td className="px-4 py-4 text-xs">
+                          {link.createdAt ? new Date(link.createdAt).toLocaleString() : "N/A"}
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <button
+                            onClick={() => handleDeleteLink(link.parentId, link.studentId)}
+                            className="text-red-400 hover:text-red-300 p-1.5 hover:bg-red-500/10 rounded-lg transition-all"
+                            aria-label="Delete relationship link"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const renderOverview = () => (
     <div className="space-y-6">
@@ -932,7 +1161,7 @@ const SuperAdminDashboard = () => {
       },
       ...prev,
     ]);
-    await syncAttendanceQueue();
+    await triggerOfflineSync();
     const records = await getOutboxRecords();
     setOutboxRecords(records || []);
   };
@@ -1254,7 +1483,7 @@ const SuperAdminDashboard = () => {
 
       {/* Tabs Navigation */}
       <div className="flex items-center gap-4 border-b border-white/10 pb-2">
-        {["overview", "institutes", "monitoring", "security", "sync reconciliation"].map((tab) => (
+        {["overview", "institutes", "monitoring", "security", "sync reconciliation", "parent student linking"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1277,6 +1506,7 @@ const SuperAdminDashboard = () => {
           {activeTab === "monitoring" && renderSystemMonitoring()}
           {activeTab === "security" && renderSecurityCenter()}
           {activeTab === "sync reconciliation" && renderSyncInspector()}
+          {activeTab === "parent student linking" && renderParentStudentLinking()}
         </div>
       </div>
     </div>

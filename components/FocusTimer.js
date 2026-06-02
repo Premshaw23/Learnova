@@ -3,16 +3,51 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Clock, Play, Pause, RefreshCcw } from "lucide-react";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 const defaultDuration = 25 * 60;
 
 export default function FocusTimer() {
   const [secondsLeft, setSecondsLeft] = useState(defaultDuration);
   const [isRunning, setIsRunning] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const isMounted = useIsMounted();
+
+  useEffect(() => {
+    setIsClient(true);
+    const saved = localStorage.getItem("learnova_focus_timer");
+    if (saved) {
+      try {
+        const { isRunning: savedIsRunning, secondsLeft: savedSecondsLeft, lastUpdated } = JSON.parse(saved);
+        if (savedIsRunning && lastUpdated) {
+          const elapsed = Math.floor((Date.now() - lastUpdated) / 1000);
+          const remaining = savedSecondsLeft - elapsed;
+          if (remaining > 0) {
+            setSecondsLeft(remaining);
+            setIsRunning(true);
+          } else {
+            setSecondsLeft(0);
+            setIsRunning(false);
+          }
+        } else if (savedSecondsLeft !== undefined) {
+          setSecondsLeft(savedSecondsLeft);
+          setIsRunning(false);
+        }
+      } catch (e) {
+        console.error("Failed to parse timer state");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    localStorage.setItem("learnova_focus_timer", JSON.stringify({ isRunning, secondsLeft, lastUpdated: Date.now() }));
+  }, [isRunning, secondsLeft, isClient]);
 
   useEffect(() => {
     if (!isRunning) return undefined;
     const interval = window.setInterval(() => {
+      if (!isMounted()) return;
       setSecondsLeft((current) => {
         if (current <= 1) {
           setIsRunning(false);
@@ -22,7 +57,7 @@ export default function FocusTimer() {
       });
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, isMounted]);
 
   const minutes = useMemo(() => String(Math.floor(secondsLeft / 60)).padStart(2, "0"), [secondsLeft]);
   const seconds = useMemo(() => String(secondsLeft % 60).padStart(2, "0"), [secondsLeft]);
@@ -51,8 +86,8 @@ export default function FocusTimer() {
       <div className="mt-8 grid gap-6 sm:grid-cols-[1fr_auto] items-center">
         <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/90 dark:bg-slate-900/80 p-8 text-center shadow-sm">
           <p className="text-sm uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Session timer</p>
-          <p className="mt-4 text-[4rem] font-semibold text-slate-950 dark:text-slate-100 leading-none">{minutes}</p>
-          <p className="text-[4rem] font-semibold text-slate-950 dark:text-slate-100 leading-none">:{seconds}</p>
+          <p className="mt-4 text-[4rem] font-semibold text-slate-950 dark:text-slate-100 leading-none">{isClient ? minutes : "25"}</p>
+          <p className="text-[4rem] font-semibold text-slate-950 dark:text-slate-100 leading-none">:{isClient ? seconds : "00"}</p>
         </div>
 
         <div className="space-y-3">

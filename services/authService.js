@@ -19,6 +19,19 @@ import { ROLE_CONFIG } from "@/constants/userRoles";
 const FIREBASE_CONFIG_ERROR =
   "Firebase is not configured. Please add your Firebase environment variables to .env.local and restart the development server.";
 
+// ─── Mock Auth Mode (development only) ──────────────────────────
+const isMockAuthMode =
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_MOCK_AUTH === "true";
+
+const MOCK_USER = {
+  uid: "mock-user-001",
+  email: "mock@learnova.dev",
+  displayName: "Mock User",
+  emailVerified: true,
+  role: "student",
+};
+
 const syncCustomClaims = async ({ user, role, fullName }) => {
   try {
     const token = await user.getIdToken();
@@ -37,6 +50,11 @@ const syncCustomClaims = async ({ user, role, fullName }) => {
     if (response.ok) {
       // Force refresh token so the custom claims are present in the client-side session immediately
       await user.getIdToken(true).catch(() => {});
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      if (errorData?.error?.includes('already registered')) {
+        await user.getIdToken(true).catch(() => {});
+      }
     }
   } catch {
     // Keep login non-blocking if claim migration fails.
@@ -102,7 +120,7 @@ export const loginWithEmail = async (email, password, selectedRole) => {
     // Update last login
     await setDoc(doc(db, "users", user.uid), {
       lastLogin: new Date(),
-    });
+    }, { merge: true });
 
     return { success: true, userData: { role: userRole } };
   } catch (err) {
@@ -315,7 +333,7 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
     // Update last login for existing users
     await setDoc(doc(db, "users", user.uid), {
       lastLogin: new Date(),
-    });
+    }, { merge: true });
 
     return { success: true, userData: { role: userRole || selectedRole } };
   } catch (err) {

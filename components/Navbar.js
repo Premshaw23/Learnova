@@ -97,7 +97,7 @@ function NavLink({ href, label, isActive }) {
       <span
         className={`relative z-10 transition-colors duration-300 ${
           isActive
-            ? "text-blue-600 dark:text-blue-400"
+            ? "text-blue-600 font-semibold dark:text-blue-400"
             : "text-zinc-700 dark:text-zinc-300 group-hover:text-blue-600 dark:group-hover:text-blue-300"
         }`}
       >
@@ -232,6 +232,8 @@ export function Navbar() {
         return "/institute/dashboard";
       case "admin":
         return "/admin/dashboard";
+      case "parent":
+        return "/parent/dashboard";
       default:
         return "/profile";
     }
@@ -707,7 +709,7 @@ export function Navbar() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed top-4 right-4 max-w-[85vw] w-64 rounded-2xl shadow-2xl p-4 space-y-4 z-[90] flex flex-col"
+              className="fixed top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] max-w-[calc(100vw-2rem)] w-64 rounded-2xl shadow-2xl p-4 sm:p-5 space-y-4 z-[90] flex flex-col"
               style={{
                 backdropFilter: "blur(24px)",
                 WebkitBackdropFilter: "blur(24px)",
@@ -772,16 +774,16 @@ export function Navbar() {
                 className="flex flex-col gap-0.5"
               >
                 {navigationItems.map((item) => {
-                  const isActive = pathname === item.href;
+                  const isActive = isRouteActive(item.href);
                   return (
                     <motion.div key={item.href} variants={staggerItem}>
                       <Link
                         href={item.href}
                         onClick={() => setIsMenuOpen(false)}
-                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                           isActive
-                            ? "bg-blue-50 dark:bg-blue-600/15 text-blue-600 dark:text-blue-400"
-                            : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5"
+                            ? "bg-blue-50 dark:bg-blue-600/15 text-blue-600 font-semibold dark:text-blue-400"
+                            : "text-zinc-700 font-medium dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5"
                         }`}
                       >
                         <item.icon

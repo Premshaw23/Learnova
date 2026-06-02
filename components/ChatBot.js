@@ -293,7 +293,7 @@ async function generateBotResponse(userMessage, currentCategory, idToken, update
     const headers = { "Content-Type": "application/json" };
     if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
     
-    const response = await apiFetch("/api/groq", {
+    const payload = await apiFetch("/api/groq", {
       method: "POST",
       headers,
       body: JSON.stringify({ 
@@ -305,8 +305,7 @@ async function generateBotResponse(userMessage, currentCategory, idToken, update
       }),
     });
 
-    if (response.ok) {
-      const payload = await response.json();
+    if (payload) {
       return payload?.data?.message || payload?.message;
     }
   } catch {
@@ -408,6 +407,7 @@ export default function LearnovaChatbot() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [currentCategory, setCurrentCategory] = useState("general");
   const [isScrolling, setIsScrolling] = useState(false);
+  const requestInFlightRef = useRef(false);
 
   useEffect(() => {
     let scrollTimeout;
@@ -457,8 +457,8 @@ export default function LearnovaChatbot() {
 
         if (!isMounted) return;
 
-        if (response.ok) {
-          const payload = await response.json();
+        if (response && response.success !== false) {
+          const payload = response;
           const history = payload?.data || [];
           if (history.length > 0) {
             const historyMessages = [];
@@ -574,7 +574,9 @@ export default function LearnovaChatbot() {
   const handleSendMessage = useCallback(
     async (messageText) => {
       const text = (typeof messageText === "string" ? messageText : inputMessage).trim();
-      if (!text || text.length > 1000 || isLoading) return;
+      if (!text || text.length > 1000 || isLoading || requestInFlightRef.current) return;
+
+      requestInFlightRef.current = true;
 
       const userMsg = {
         id: Date.now(),
@@ -588,8 +590,6 @@ export default function LearnovaChatbot() {
       setInputMessage("");
       if (textareaRef.current) textareaRef.current.style.height = "auto";
       setIsLoading(true);
-
-      await new Promise((r) => setTimeout(r, 600));
 
       let botText = "";
       let idToken = null;
@@ -626,6 +626,7 @@ export default function LearnovaChatbot() {
       userHasScrolledUp.current = false;
       setMessages((prev) => [...prev, botMsg]);
       setIsLoading(false);
+      requestInFlightRef.current = false;
 
       if (idToken) {
         await saveConversation(text, botText, idToken);

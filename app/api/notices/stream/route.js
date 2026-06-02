@@ -179,6 +179,7 @@ export async function GET(request) {
 
         // Fetch initial notices from MongoDB
         let lastNoticeTime = new Date();
+        let lastNoticeId = null;
         try {
           const db = await connectDbForSSE();
           const noticesCollection = db.collection("notices");
@@ -196,7 +197,12 @@ export async function GET(request) {
           }));
           sendEvent("initial", formattedNotices);
           if (initialNotices.length > 0) {
-            lastNoticeTime = initialNotices[0].createdAt || new Date();
+            const newest = initialNotices.reduce((latest, n) => {
+              const t = n.createdAt;
+              return t && t > latest.createdAt ? n : latest;
+            }, initialNotices[0]);
+            lastNoticeTime = newest.createdAt || new Date();
+            lastNoticeId = newest._id?.toString() || newest.id || null;
           }
         } catch (err) {
           console.error("Initial fetch error:", err);
@@ -221,6 +227,12 @@ export async function GET(request) {
                 if (!isConnected) break;
                 try {
                   const doc = typeof member === "string" ? JSON.parse(member) : member;
+                  const docId = doc._id || doc.id;
+                  const memberTime = new Date(doc.createdAt).getTime();
+                  // Skip the notice that was the last processed watermark (deterministic tie-breaker)
+                  if (memberTime === lastNoticeTime.getTime() && docId === lastNoticeId) {
+                    continue;
+                  }
                   if (
                     doc.targetAudience &&
                     doc.targetAudience.includes(userRole) &&
@@ -228,12 +240,14 @@ export async function GET(request) {
                   ) {
                     sendEvent("new-notice", {
                       ...doc,
-                      id: doc._id || doc.id,
+                      id: docId,
                     });
                   }
-                  const memberTime = new Date(doc.createdAt).getTime();
                   if (memberTime > lastNoticeTime.getTime()) {
                     lastNoticeTime = new Date(doc.createdAt);
+                    lastNoticeId = docId;
+                  } else if (memberTime === lastNoticeTime.getTime() && docId !== lastNoticeId) {
+                    lastNoticeId = docId;
                   }
                 } catch {}
               }

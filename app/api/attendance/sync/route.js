@@ -222,9 +222,15 @@ async function handleSync(request) {
       ],
     });
 
-    successfulIds.push(record.id);
-
-    processedUserDates.add(userDateKey);
+    if (sagaResult.success) {
+      successfulIds.push(record.id);
+      processedUserDates.add(userDateKey);
+    } else {
+      console.error(`[attendance-sync] Saga failed for user ${decodedToken.uid} date ${recordDate}: ${sagaResult.error}`);
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
+    }
   }
 
   return NextResponse.json({

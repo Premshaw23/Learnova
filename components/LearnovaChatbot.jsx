@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 // 🛠️ Local Fallback Intent Router Interface
@@ -449,34 +450,44 @@ export default function LearnovaChatbot() {
   const [currentCategory, setCurrentCategory] = useState("general");
   const [isScrolling, setIsScrolling] = useState(false);
 
-  // MongoDB Sync State Tracking Hooks
   const [chatHistory, setChatHistory] = useState([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const isMounted = useIsMounted();
 
   // Fetch callback handler pulling recent activity logs from MongoDB endpoint
-  const fetchChatHistory = useCallback(async () => {
+  const fetchChatHistory = useCallback(async (page = 1, append = false) => {
     if (!user) return;
     setIsHistoryLoading(true);
     try {
-      const response = await fetch("/api/conversations");
+      const response = await fetch(`/api/conversations?page=${page}&limit=10`);
       if (response.ok) {
         const result = await response.json();
         if (result.success && Array.isArray(result.data)) {
-          setChatHistory(result.data);
+          if (isMounted()) {
+            if (append) {
+              setChatHistory(prev => [...prev, ...result.data]);
+            } else {
+              setChatHistory(result.data);
+            }
+            setHasMoreHistory(result.data.length === 10);
+            setHistoryPage(page);
+          }
         }
       }
     } catch (error) {
       console.error("Failed to recover user chat logs:", error);
     } finally {
-      setIsHistoryLoading(false);
+      if (isMounted()) setIsHistoryLoading(false);
     }
-  }, [user]);
+  }, [user, isMounted]);
 
   // Lifecycle watcher syncing background drawer items when conversation view triggers
   useEffect(() => {
     if (isOpen && user) {
-      fetchChatHistory();
+      fetchChatHistory(1, false);
     }
   }, [isOpen, user, fetchChatHistory]);
 
@@ -626,18 +637,20 @@ export default function LearnovaChatbot() {
         timestamp: new Date(),
       };
 
-      userHasScrolledUp.current = false;
-      setMessages((prev) => [...prev, botMsg]);
-      setIsLoading(false);
+      if (isMounted()) {
+        userHasScrolledUp.current = false;
+        setMessages((prev) => [...prev, botMsg]);
+        setIsLoading(false);
+      }
 
-      if (user) {
+      if (user && isMounted()) {
         try {
           await saveConversation(text, botText);
-          fetchChatHistory();
+          if (isMounted()) fetchChatHistory(1, false);
         } catch {}
       }
     },
-    [inputMessage, isLoading, currentCategory, user, messages, fetchChatHistory]
+    [inputMessage, isLoading, currentCategory, user, messages, fetchChatHistory, isMounted]
   );
 
   const handleKeyDown = (e) => {
@@ -782,28 +795,39 @@ export default function LearnovaChatbot() {
                   <button onClick={() => setIsHistoryOpen(false)} className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"><X size={16} /></button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-none">
-                  {isHistoryLoading ? (
+                  {isHistoryLoading && historyPage === 1 ? (
                     <div className="text-xs text-gray-500 text-center py-8 flex items-center justify-center gap-2">
                       <RefreshCw size={14} className="animate-spin" /> Fetching recent nodes...
                     </div>
                   ) : chatHistory.length === 0 ? (
                     <div className="text-xs text-gray-500 text-center py-8">No previous structural logs matched under this session.</div>
                   ) : (
-                    chatHistory.map((session, index) => (
-                      <div 
-                        key={index} 
-                        onClick={() => {
-                          handleSendMessage(session.userMessage);
-                          setIsHistoryOpen(false);
-                        }}
-                        className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
-                          isDarkMode ? 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]' : 'bg-white border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        <p className="font-medium truncate text-purple-400 mb-0.5">💬 {session.userMessage}</p>
-                        <p className="text-gray-400 dark:text-gray-500 line-clamp-2 text-[11px] leading-relaxed">{session.botMessage}</p>
-                      </div>
-                    ))
+                    <>
+                      {chatHistory.map((session, index) => (
+                        <div 
+                          key={index} 
+                          onClick={() => {
+                            handleSendMessage(session.userMessage);
+                            setIsHistoryOpen(false);
+                          }}
+                          className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                            isDarkMode ? 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]' : 'bg-white border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          <p className="font-medium truncate text-purple-400 mb-0.5">💬 {session.userMessage}</p>
+                          <p className="text-gray-400 dark:text-gray-500 line-clamp-2 text-[11px] leading-relaxed">{session.botMessage}</p>
+                        </div>
+                      ))}
+                      {hasMoreHistory && (
+                        <button 
+                          onClick={() => fetchChatHistory(historyPage + 1, true)} 
+                          disabled={isHistoryLoading}
+                          className="w-full p-2 mt-2 rounded border text-xs cursor-pointer bg-white/5 border-white/10 hover:bg-white/10 transition-colors text-purple-400 disabled:opacity-50"
+                        >
+                          {isHistoryLoading ? "Loading..." : "Load More"}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

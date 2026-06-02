@@ -37,6 +37,16 @@ export const GET = withErrorHandler(async (request) => {
       }
     : {};
 
+  if (profile.role !== "admin") {
+    if (profile.instituteId) {
+      query.instituteId = profile.instituteId;
+    } else {
+      // If a non-admin (like a student) doesn't have an instituteId,
+      // they shouldn't be able to search other users globally.
+      query.instituteId = "unassigned_no_match";
+    }
+  }
+
   // Database — faceDescriptor is excluded from the projection.
   // Biometric embeddings are sensitive personal data and must not be
   // returned to arbitrary authenticated callers.

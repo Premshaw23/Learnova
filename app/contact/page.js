@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import FormSkeleton from "@/components/ui/FormSkeleton";
 import { CONTACT_INFO } from "@/constants/contact";
+import ContributorsShowcase from "@/components/ContributorsShowcase";
 import {
   Mail,
   Phone,
@@ -69,7 +70,7 @@ export default function Contact() {
     const COOLDOWN_MS = 60 * 1000;
     const lastSubmit = localStorage.getItem("learnova_contact_last_submit");
     if (lastSubmit) {
-      const elapsed = Date.now() - parseInt(lastSubmit);
+      const elapsed = Date.now() - parseInt(lastSubmit, 10);
       const remaining = Math.ceil((COOLDOWN_MS - elapsed) / 1000);
       if (remaining > 0) {
         setCooldown(true);
@@ -87,24 +88,24 @@ export default function Contact() {
         }, 1000);
       }
     }
+
     return () => {
       if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
     };
   }, []);
 
   const handleInputChange = (e) => {
-  const { name, value } = e.target;
-  const updatedFormData = { ...formData, [name]: value };
-  setFormData(updatedFormData);
-  localStorage.setItem("learnova_contact_form_draft", JSON.stringify(updatedFormData));
+    const { name, value } = e.target;
+    const updatedFormData = { ...formData, [name]: value };
+    setFormData(updatedFormData);
+    localStorage.setItem("learnova_contact_form_draft", JSON.stringify(updatedFormData));
 
-  if (name === "message") {
-    setCharCount(value.length);
-  }
+    if (name === "message") {
+      setCharCount(value.length);
+    }
 
-  setErrors((prev) => ({ ...prev, [name]: "" }));
-};
-
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -119,6 +120,26 @@ export default function Contact() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const startCooldown = () => {
+    const COOLDOWN_SECONDS = 60;
+    setCooldown(true);
+    setCooldownTimer(COOLDOWN_SECONDS);
+
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+
+    cooldownIntervalRef.current = setInterval(() => {
+      setCooldownTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownIntervalRef.current);
+          cooldownIntervalRef.current = null;
+          setCooldown(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -130,15 +151,17 @@ export default function Contact() {
       setTimeout(() => router.push("/auth"), 2000);
       return;
     }
+
     const COOLDOWN_MS = 60 * 1000;
     const lastSubmit = localStorage.getItem("learnova_contact_last_submit");
-    if (lastSubmit && Date.now() - parseInt(lastSubmit) < COOLDOWN_MS) {
+    if (lastSubmit && Date.now() - parseInt(lastSubmit, 10) < COOLDOWN_MS) {
       setSubmitStatus({
         type: "error",
         message: `Please wait ${cooldownTimer} seconds before sending another message.`,
       });
       return;
     }
+
     if (!validateForm()) {
       setSubmitStatus({
         type: "error",
@@ -146,6 +169,7 @@ export default function Contact() {
       });
       return;
     }
+
     if (
       !process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID ||
       !process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ||
@@ -157,8 +181,10 @@ export default function Contact() {
       });
       return;
     }
+
     setIsSubmitting(true);
     setSubmitStatus(null);
+
     try {
       const templateParams = {
         from_name: formData.name,
@@ -172,21 +198,25 @@ export default function Contact() {
         email: "test-admin@learnova.com",
         receiver_email: "test-admin@learnova.com",
       };
+
       await emailjs.send(
         process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
         process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
         templateParams,
         process.env.NEXT_PUBLIC_EMAILJS_USER_ID
       );
+
       setSubmitStatus({
         type: "success",
         message: "Thank you! Your message has been sent successfully.",
       });
       toast.success("Message sent successfully!");
       localStorage.removeItem("learnova_contact_form_draft");
+      localStorage.setItem("learnova_contact_last_submit", Date.now().toString());
       setFormData({ name: "", email: "", company: "", message: "" });
       setCharCount(0);
       setErrors({});
+      startCooldown();
     } catch (error) {
       console.error("[Contact Form] EmailJS error:", error);
       setSubmitStatus({
@@ -247,7 +277,6 @@ export default function Contact() {
   const cardClass =
     "bg-white dark:bg-card backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-border shadow-md shadow-slate-200/60 dark:shadow-none ring-1 ring-black/[0.04] dark:ring-white/5";
 
- 
   const inputClass =
     "w-full p-4 bg-white dark:bg-background border border-slate-300/90 dark:border-border/80 rounded-xl text-slate-900 dark:text-foreground placeholder:text-slate-400/90 dark:placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/60 transition-colors duration-200 shadow-sm dark:shadow-none text-sm";
 
@@ -293,7 +322,6 @@ export default function Contact() {
         <Navbar />
 
         {loading ? (
-          
           <section className="pt-20 md:pt-24 pb-16 px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto">
               <FormSkeleton />
@@ -302,7 +330,7 @@ export default function Contact() {
         ) : (
           <>
             {/* ── Hero ── */}
-            
+
             <section className="pt-20 md:pt-24 pb-8 md:pb-10 px-4 sm:px-6 lg:px-8">
               <div className="max-w-4xl mx-auto text-center">
                 {/* Badge */}
@@ -328,29 +356,24 @@ export default function Contact() {
               </div>
             </section>
 
-            
             <div className="px-4 sm:px-6 lg:px-8 pb-20 md:pb-24">
               <div className="max-w-7xl mx-auto">
-
                 <div className="grid lg:grid-cols-2 gap-8 md:gap-10 lg:gap-12 items-start">
-
                   {/* ── Contact Form ── */}
                   <div className="relative">
-                    <div className={`${cardClass} p-6 sm:p-8 lg:p-10 hover:border-accent/40 dark:hover:border-accent/30 transition-colors duration-300`}>
-
+                    <div
+                      className={`${cardClass} p-6 sm:p-8 lg:p-10 hover:border-accent/40 dark:hover:border-accent/30 transition-colors duration-300`}
+                    >
                       {/* Form header */}
                       <div className="mb-7 pb-5 border-b border-slate-100 dark:border-border/50">
-                        <h2 className={sectionHeadingClass}>
-                          Send us a Message
-                        </h2>
+                        <h2 className={sectionHeadingClass}>Send us a Message</h2>
                         <p className="text-slate-500 dark:text-muted-foreground mt-2 ml-3 text-sm">
-                          Fill out the form below and our team will get back to
-                          you within 24 hours.
+                          Fill out the form below and our team will get back to you
+                          within 24 hours.
                         </p>
                       </div>
 
                       <form onSubmit={handleSubmit} className="space-y-5">
-                        
                         <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 items-start">
                           <div className="flex flex-col gap-1.5">
                             <label
@@ -369,7 +392,6 @@ export default function Contact() {
                               maxLength={100}
                               className={inputClass}
                             />
-                            
                             <div className="min-h-[1.25rem]">
                               {errors.name && (
                                 <p className="text-red-500 dark:text-red-400 text-xs font-medium">
@@ -406,7 +428,6 @@ export default function Contact() {
                           </div>
                         </div>
 
-                        {/* Company */}
                         <div className="flex flex-col gap-1.5">
                           <label
                             htmlFor="contact-company"
@@ -425,7 +446,6 @@ export default function Contact() {
                           />
                         </div>
 
-                        {/* Message */}
                         <div className="flex flex-col gap-1.5">
                           <label
                             htmlFor="contact-message"
@@ -443,7 +463,6 @@ export default function Contact() {
                             maxLength={1000}
                             className={`${inputClass} resize-none`}
                           />
-                          {/* Live character counter — error replaces it after a submit attempt */}
                           <div className="min-h-[1.25rem]">
                             {errors.message ? (
                               <p className="text-red-500 dark:text-red-400 text-xs font-medium">
@@ -484,8 +503,6 @@ export default function Contact() {
                           </div>
                         )}
 
-                        {/* Submit button */}
-
                         <button
                           type="submit"
                           disabled={isSubmitting || cooldown}
@@ -512,10 +529,7 @@ export default function Contact() {
                     </div>
                   </div>
 
-                  {/* ── Right column ── */}
                   <div className="space-y-5 md:space-y-6">
-
-                    {/* Contact Details */}
                     <div className={`${cardClass} p-6 sm:p-8`}>
                       <h3 className={`${sectionHeadingClass} mb-5`}>
                         Get in Touch
@@ -554,7 +568,6 @@ export default function Contact() {
                       </div>
                     </div>
 
-                    {/* Business Hours */}
                     <div className={`${cardClass} p-6 sm:p-8`}>
                       <div className="flex items-center gap-3 mb-5">
                         <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
@@ -601,11 +614,8 @@ export default function Contact() {
                       </div>
                     </div>
 
-                    {/* Social Links */}
                     <div className={`${cardClass} p-6 sm:p-8`}>
-                      <h3 className={`${sectionHeadingClass} mb-4`}>
-                        Follow Us
-                      </h3>
+                      <h3 className={`${sectionHeadingClass} mb-4`}>Follow Us</h3>
 
                       <div className="flex gap-3 flex-wrap">
                         {socialLinks.map((social, index) => (
@@ -629,6 +639,8 @@ export default function Contact() {
                 </div>
               </div>
             </div>
+
+            <ContributorsShowcase />
           </>
         )}
       </div>

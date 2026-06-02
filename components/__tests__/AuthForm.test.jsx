@@ -60,6 +60,12 @@ describe("AuthForm", () => {
 
     render(<AuthForm {...defaultProps} onSubmit={handleSubmit} />);
 
+    const emailInput = screen.getByPlaceholderText(/enter your email/i);
+    const passwordInput = screen.getByPlaceholderText(/enter your password/i);
+
+    await user.type(emailInput, "test@example.com");
+    await user.type(passwordInput, "Password123!");
+
     const submitBtn = screen.getByRole("button", { name: /sign in/i });
     await user.click(submitBtn);
 
@@ -69,9 +75,9 @@ describe("AuthForm", () => {
   test("shows loading state when isLoading is true", () => {
     render(<AuthForm {...defaultProps} isLoading={true} />);
 
-    expect(screen.getByText("Processing...")).toBeInTheDocument();
+    expect(screen.getByText("Logging in...")).toBeInTheDocument();
 
-    const submitBtn = screen.getByRole("button", { name: /processing/i });
+    const submitBtn = screen.getByRole("button", { name: /logging in/i });
     expect(submitBtn).toBeDisabled();
   });
 

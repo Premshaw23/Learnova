@@ -18,4 +18,4 @@ if (!global.Response.json) {
     json: async () => body,
     headers: new Map(Object.entries(init.headers || {})),
   });
-}
+}

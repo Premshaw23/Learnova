@@ -158,7 +158,7 @@ export const metadata = {
     images: ["/og-image.jpg"],
   },
   other: {
-    "google-site-verification": "3qjYnT7GW81-zwJBwv3wJABvxbiSOgDyAlTCKxh9nEs",
+    "google-site-verification": process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? "",
   },
 };
 
@@ -354,12 +354,11 @@ export default function RootLayout({ children }) {
 
             {/* ── Client-only layout: modals, chatbot, PWA install, streak sync ── */}
             <ClientLayout />
-
-            {/* ── Back-to-top floating button ── */}
             <BackToTop />
 
             {/* ── Screen-reader route announcer for accessibility ── */}
             <RouteAnnouncer />
+            <OfflineIndicator />
 
             {/* Single Toaster configuration */}
             <Toaster
@@ -370,8 +369,11 @@ export default function RootLayout({ children }) {
               }}
             />
 
-            <OfflineIndicator />
             <CommandPaletteWrapper />
+            
+            {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
+            <ShortcutsModal />
+            <CommandPalette />
 
             {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
             <ShortcutsModal />

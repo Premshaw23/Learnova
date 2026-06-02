@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import ShareButton from "@/components/ui/ShareButton";
 import toast from "react-hot-toast";
-import { db } from "@/lib/firebaseConfig";
+import { db, isMockAuthMode, MOCK_USER } from "@/lib/firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { updateActivityProgress } from "@/services/activityService";
@@ -82,16 +82,16 @@ const Confetti = () => {
   );
 };
 
-const MOCK_USER = { uid: "mock-student-uid-947", email: "mock.student@learnova.edu" };
-
 export default function ActivityGame() {
   const params = useParams();
   const router = useRouter();
   const { user: realUser, loading: authLoading } = useAuth();
 
-  // Temporary local development-only authentication bypass for offline testing
-  const isDev = process.env.NODE_ENV === "development";
-  const user = realUser || (isDev ? MOCK_USER : null);
+  // Development-only authentication bypass — requires explicit opt-in.
+  // Set NEXT_PUBLIC_ENABLE_DEV_MOCK_AUTH=true in .env.local to enable.
+  // Uses the centralized MOCK_USER from lib/firebaseConfig (single source of truth).
+  // NEVER set the opt-in flag on staging, preview, or production deployments.
+  const user = realUser || (isMockAuthMode ? MOCK_USER : null);
 
   const [mounted, setMounted] = useState(false);
   const [activityData, setActivityData] = useState(null);

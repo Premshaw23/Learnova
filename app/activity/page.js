@@ -316,7 +316,7 @@ export default function ActivityPage() {
 
   const handleEnrollActivity = async (activity) => {
     if (!user) {
-      toast.error("Please login to enroll.");
+      router.push("/auth");
       return;
     }
 

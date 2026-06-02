@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { initFirebaseAdmin, getAdminDb } from "@/lib/firebase-admin";
+import { initFirebaseAdmin, getAdminDb, getUserProfile } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
@@ -17,6 +17,9 @@ export async function POST(req) {
   try {
     // Authenticate and authorize — only institute or admin can bulk-import
     const { payload: decodedToken } = await requireRole(req, ["institute", "admin"]);
+
+    const profile = await getUserProfile(decodedToken.uid);
+    const instituteId = profile?.instituteId || decodedToken.uid;
 
     const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
     const rateLimitResult = await checkRateLimit(`bulk_import_${ip}_${decodedToken.uid}`);
@@ -88,6 +91,7 @@ export async function POST(req) {
       }
     }
 
+
     // Build firebaseUid map: email → uid
     const emailToUid = new Map();
     const allAuthUsers = await admin.auth().getUsers(authIdentifiers);
@@ -111,6 +115,11 @@ export async function POST(req) {
       }
     }
 
+    // Set Firebase custom claims for all created auth users
+    await Promise.all(createdAuthUids.map(uid =>
+      admin.auth().setCustomUserClaims(uid, { role: 'student', instituteId })
+    ));
+
     // Batch phase 4: Bulk Firestore writes
     const BATCH_LIMIT = 500;
     let firestoreBatch = firestore.batch();
@@ -126,6 +135,7 @@ export async function POST(req) {
           role: "student",
           rollNo: student.rollNo,
           department: student.department,
+          instituteId,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           isBulkImported: true,
         },
@@ -169,6 +179,7 @@ export async function POST(req) {
             email: student.email,
             department: student.department,
             firebaseUid: student._firebaseUid,
+            instituteId,
             isBulkImported: true,
             createdAt: new Date(),
           },

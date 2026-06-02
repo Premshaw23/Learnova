@@ -5,6 +5,7 @@ import { auth, db } from "@/lib/firebaseConfig";
 import { onIdTokenChanged, signOut as firebaseSignOut } from "firebase/auth";
 import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { getClientCsrfToken } from "@/lib/csrf";
+import { useIsMounted } from "./useIsMounted";
 
 /**
  * Cookie utility helpers for writing/deleting client cookies
@@ -51,6 +52,9 @@ const clearAuthSessionCookie = async () => {
 
   await fetch("/api/auth/session", {
     method: "DELETE",
+    headers: {
+      ...(getClientCsrfToken() ? { "X-CSRF-Token": getClientCsrfToken() } : {}),
+    },
     credentials: "same-origin",
   }).catch((error) => {
     console.warn("[useAuth] Failed to clear auth session cookie:", error?.message);
@@ -157,11 +161,13 @@ export const useAuth = () => {
 
   const refreshManagerRef = useRef(null);
   const unsubscribeSnapshotRef = useRef(null);
+  const isMounted = useIsMounted();
 
   const handleSessionExpired = useCallback(() => {
+    if (!isMounted()) return;
     setSessionExpired(true);
     setError("Your session has expired. Please sign in again.");
-  }, []);
+  }, [isMounted]);
 
   useEffect(() => {
     if (!auth) {
@@ -184,7 +190,9 @@ export const useAuth = () => {
 
       try {
         if (firebaseUser) {
-          setUser(firebaseUser);
+          if (isMounted()) {
+            setUser(firebaseUser);
+          }
 
           // Create a new token refresh manager with exponential backoff retry
           refreshManagerRef.current = createTokenRefreshManager(firebaseUser, handleSessionExpired);
@@ -196,7 +204,7 @@ export const useAuth = () => {
             try {
               if (userDoc.exists()) {
                 const profileData = userDoc.data();
-                setUserProfile(profileData);
+                if (isMounted()) setUserProfile(profileData);
 
                 // Sync auth token cookie
                 const token = await firebaseUser.getIdToken();
@@ -210,40 +218,48 @@ export const useAuth = () => {
                   setCookie("userRole", claimsRole, 7);
                 }
               } else {
-                setUserProfile(null);
+                if (isMounted()) setUserProfile(null);
+                await clearAuthSessionCookie();
                 deleteCookie("authToken");
                 deleteCookie("userRole");
               }
-              setLoading(false);
+              if (isMounted()) setLoading(false);
             } catch (snapErr) {
               console.error("Error in profile snapshot listener:", snapErr);
-              setError(snapErr.message);
-              setLoading(false);
+              if (isMounted()) {
+                setError(snapErr.message);
+                setLoading(false);
+              }
             }
           }, (snapError) => {
-            setLoading(false);
+            if (isMounted()) setLoading(false);
           });
         } else {
-          setUser(null);
-          setUserProfile(null);
+          if (isMounted()) {
+            setUser(null);
+            setUserProfile(null);
+          }
 
           // Clear auth cookies
+          await clearAuthSessionCookie();
           deleteCookie("authToken");
           deleteCookie("userRole");
 
-          // Clear only auth-sensitive caches and preserve static/app shell caches
           await clearAuthSensitiveCaches();
-          setLoading(false);
+          if (isMounted()) setLoading(false);
         }
 
-        setError(null);
+        if (isMounted()) setError(null);
       } catch (err) {
-        setError(err.message);
-        setUser(null);
-        setUserProfile(null);
+        if (isMounted()) {
+          setError(err.message);
+          setUser(null);
+          setUserProfile(null);
+        }
+        await clearAuthSessionCookie();
         deleteCookie("authToken");
         deleteCookie("userRole");
-        setLoading(false);
+        if (isMounted()) setLoading(false);
       }
     });
 
@@ -272,17 +288,18 @@ export const useAuth = () => {
       }
       await clearAuthSessionCookie();
       await firebaseSignOut(auth);
-      setUser(null);
-      setUserProfile(null);
-      setSessionExpired(false);
+      if (isMounted()) {
+        setUser(null);
+        setUserProfile(null);
+        setSessionExpired(false);
+      }
 
       // Critical Security Fix: Clear authentication cookies to prevent zombie sessions in Next.js middleware
       deleteCookie("userRole");
 
-      // Clear only auth-sensitive caches and preserve static/app shell caches
       await clearAuthSensitiveCaches();
     } catch (err) {
-      setError(err.message);
+      if (isMounted()) setError(err.message);
     }
   };
 

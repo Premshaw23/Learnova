@@ -33,6 +33,7 @@ export default function EmailVerificationPage() {
       case "teacher": return "/teacher/dashboard";
       case "institute": return "/institute/dashboard";
       case "admin": return "/admin/dashboard";
+      case "parent": return "/parent/dashboard";
       default: return "/profile";
     }
   };

@@ -178,7 +178,7 @@ const Dashboard = () => {
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
                         {course.title}
                       </h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3 text-ellipsis overflow-hidden leading-relaxed">
                         {course.description}
                       </p>
                     </div>

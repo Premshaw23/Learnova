@@ -45,6 +45,14 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
   const modalContainerRef = useRef(null);
   const triggerElementRef = useRef(null);
+  const componentMounted = useRef(true);
+
+  useEffect(() => {
+    componentMounted.current = true;
+    return () => {
+      componentMounted.current = false;
+    };
+  }, []);
 
   // Close exception modal on Escape key press
   useEffect(() => {
@@ -302,6 +310,8 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         });
       });
 
+      if (!componentMounted.current) return;
+
       const userLat = position.coords.latitude;
       const userLng = position.coords.longitude;
       const distance = calculateDistance(
@@ -333,6 +343,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         );
       }
     } catch (error) {
+      if (!componentMounted.current) return;
       setRetryCount((prev) => prev + 1);
 
       if (error.code === 1) {
@@ -352,7 +363,9 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         );
       }
     } finally {
-      setIsLoading(false);
+      if (componentMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -436,6 +449,8 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         });
       });
 
+      if (!componentMounted.current) return;
+
       const userLat = position.coords.latitude;
       const userLng = position.coords.longitude;
       const distance = calculateDistance(
@@ -460,6 +475,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
       toast.success("Current location captured successfully");
     } catch (error) {
+      if (!componentMounted.current) return;
       // In getCurrentLocationForException, add error handling for denied permissions
       if (error.code === 1) {
         toast.error(
@@ -467,7 +483,9 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         );
       }
     } finally {
-      setModalLocationLoading(false);
+      if (componentMounted.current) {
+        setModalLocationLoading(false);
+      }
     }
   };
 

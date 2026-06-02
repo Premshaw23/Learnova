@@ -18,7 +18,12 @@ import {
   Check,
   Download,
   Sparkles,
+  Copy,
+  CalendarPlus,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useIsMounted } from "@/hooks/useIsMounted";
+
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -77,6 +82,7 @@ const byDayMap = {
 };
 
 export default function Timetable({ role = "student" }) {
+  const { user } = useAuth();
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
   const [selectedDay, setSelectedDay] = useState(
     days.includes(today) ? today : "Monday"
@@ -86,11 +92,21 @@ export default function Timetable({ role = "student" }) {
   
   // Dynamic State & CRUD Modals State
   const [mounted, setMounted] = useState(false);
+  const isMounted = useIsMounted();
   const [timetableData, setTimetableData] = useState(mockTimetable);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [calendarToken, setCalendarToken] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [modalMode, setModalMode] = useState("add"); // "add" | "edit"
   const [editingIndex, setEditingIndex] = useState(null);
   const [originalDay, setOriginalDay] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    isOpen: false,
+    day: "",
+    index: null,
+    subject: "",
+  });
   
   const [formData, setFormData] = useState({
     subject: "",
@@ -101,6 +117,36 @@ export default function Timetable({ role = "student" }) {
     startTime: "09:00",
     endTime: "10:30",
   });
+
+  // Fetch timetable from backend if authenticated
+  useEffect(() => {
+    const fetchBackendTimetable = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/timetable/sync", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (!isMounted()) return;
+          if (data.data?.timetableData) {
+            setTimetableData(data.data.timetableData);
+            localStorage.setItem("learnova_custom_timetable", JSON.stringify(data.data.timetableData));
+          }
+          if (data.data?.calendarToken) {
+            setCalendarToken(data.data.calendarToken);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch timetable from backend:", err);
+      }
+    };
+    
+    if (user && mounted) {
+      fetchBackendTimetable();
+    }
+  }, [user, mounted, isMounted]);
 
   // Client-side Hydration Safe loading of timetableData
   useEffect(() => {
@@ -123,89 +169,39 @@ export default function Timetable({ role = "student" }) {
     }
   }, []);
 
-  const saveTimetable = (newData) => {
+  const saveTimetable = async (newData) => {
     setTimetableData(newData);
     localStorage.setItem("learnova_custom_timetable", JSON.stringify(newData));
-  };
-
-  // Timetable push reminder scheduler
-  useEffect(() => {
-    if (pushStatus !== "granted" || !mounted) return;
-
-    const timerIds = [];
-    const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
-    const todayClasses = timetableData[todayName] || [];
-
-    todayClasses.forEach((cls) => {
-      const [startStr] = cls.time.split("-");
-      if (!startStr) return;
-      const [hours, minutes] = startStr.split(":").map(Number);
-
-      const now = new Date();
-      const classTime = new Date();
-      classTime.setHours(hours, minutes, 0, 0);
-
-      // Reminder is 10 minutes before class
-      const reminderTime = new Date(classTime.getTime() - 10 * 60 * 1000);
-
-      if (classTime > now) {
-        if (reminderTime > now) {
-          const delay = reminderTime.getTime() - now.getTime();
-          const timerId = setTimeout(() => {
-            triggerNotification(cls);
-          }, delay);
-          timerIds.push(timerId);
-        } else {
-          // Class starts in less than 10m but hasn't started yet - trigger alert immediately
-          triggerNotification(cls, true);
+    
+    // Sync to backend if authenticated
+    if (user) {
+      setIsSyncing(true);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/timetable/sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ timetableData: newData })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data?.calendarToken && isMounted()) {
+            setCalendarToken(data.data.calendarToken);
+          }
         }
+      } catch (err) {
+        console.error("Failed to sync timetable:", err);
+      } finally {
+        if (isMounted()) setIsSyncing(false);
       }
-    });
-
-    return () => {
-      timerIds.forEach((id) => clearTimeout(id));
-    };
-  }, [pushStatus, timetableData, mounted]);
-
-  const triggerNotification = (cls, immediate = false) => {
-    if (typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") return;
-
-    const [startStr] = cls.time.split("-");
-    if (!startStr) return;
-    const [hours, minutes] = startStr.split(":").map(Number);
-    const classTime = new Date();
-    classTime.setHours(hours, minutes, 0, 0);
-
-    const minsLeft = immediate
-      ? Math.max(1, Math.round((classTime.getTime() - Date.now()) / 60000))
-      : 10;
-
-    const title = `Class starting in ${minsLeft}m: ${cls.subject}`;
-    const options = {
-      body: `📍 Location: ${cls.room}\n👨‍🏫 Instructor: ${cls.teacher}\n⏰ Schedule: ${cls.time}`,
-      icon: "/logo-icon.png",
-      badge: "/logo-icon.png",
-      vibrate: [100, 50, 100],
-      tag: `class-reminder-${cls.subject}-${cls.time}`,
-      data: {
-        url: "/timetable"
-      },
-      actions: [
-        { action: "open", title: "View Timetable" },
-        { action: "close", title: "Dismiss" }
-      ]
-    };
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.showNotification(title, options);
-      }).catch(() => {
-        new Notification(title, options);
-      });
-    } else {
-      new Notification(title, options);
     }
+    window.dispatchEvent(new Event("timetable-updated"));
   };
+
+  // Timetable push reminder scheduler is now handled globally by useTimetableReminders hook
 
   const handleTogglePush = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
@@ -221,7 +217,9 @@ export default function Timetable({ role = "student" }) {
       if (permission === "granted") {
         if ("serviceWorker" in navigator) {
           navigator.serviceWorker.register("/sw.js")
-            .then((reg) => {})
+            .then((reg) => {
+              console.log("Service Worker registered successfully with scope:", reg.scope);
+            })
             .catch((err) => console.error("SW Registration failed:", err));
         }
       }
@@ -325,13 +323,12 @@ export default function Timetable({ role = "student" }) {
       toast.success("New class added!");
     }
 
-    // Chronologically sort day's classes
-    Object.keys(updatedData).forEach((d) => {
-      updatedData[d] = (updatedData[d] || []).sort((a, b) => {
-        const aStart = a.time.split("-")[0] || "00:00";
-        const bStart = b.time.split("-")[0] || "00:00";
-        return getMinutesOfTime(aStart) - getMinutesOfTime(bStart);
-      });
+    // Chronologically sort target day's classes
+    const targetDay = formData.day;
+    updatedData[targetDay] = (updatedData[targetDay] || []).sort((a, b) => {
+      const aStart = a.time.split("-")[0] || "00:00";
+      const bStart = b.time.split("-")[0] || "00:00";
+      return getMinutesOfTime(aStart) - getMinutesOfTime(bStart);
     });
 
     saveTimetable(updatedData);
@@ -342,12 +339,23 @@ export default function Timetable({ role = "student" }) {
     const classToDelete = timetableData[day]?.[index];
     if (!classToDelete) return;
 
-    if (confirm(`Are you sure you want to delete ${classToDelete.subject}?`)) {
+    setDeleteConfirm({
+      isOpen: true,
+      day,
+      index,
+      subject: classToDelete.subject,
+    });
+  };
+
+  const confirmDeleteClass = () => {
+    const { day, index, subject } = deleteConfirm;
+    if (day && index !== null) {
       const updatedData = { ...timetableData };
       updatedData[day] = updatedData[day].filter((_, idx) => idx !== index);
       saveTimetable(updatedData);
-      toast.success(`Successfully deleted ${classToDelete.subject}!`);
+      toast.success(`Successfully deleted ${subject}!`);
     }
+    setDeleteConfirm({ isOpen: false, day: "", index: null, subject: "" });
   };
 
   // iCalendar Exporter
@@ -469,6 +477,17 @@ export default function Timetable({ role = "student" }) {
           </div>
         </div>
         <div className="flex items-center flex-wrap gap-2">
+          {user && (
+            <button
+              onClick={() => setIsSyncModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-purple-300 hover:bg-purple-500/20 hover:text-white hover:border-purple-500/40 transition-all duration-200 cursor-pointer shadow-sm"
+              title="Sync with Google Calendar / Apple Calendar"
+            >
+              <CalendarPlus className="w-3.5 h-3.5" />
+              <span>Sync Calendar</span>
+            </button>
+          )}
+
           {/* Export to ICS button */}
           <button
             onClick={handleExportCalendar}
@@ -776,6 +795,145 @@ export default function Timetable({ role = "student" }) {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirm.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeleteConfirm({ isOpen: false, day: "", index: null, subject: "" })}
+              className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl backdrop-blur-2xl text-center z-10"
+            >
+              <div className="flex flex-col items-center mb-4">
+                <div className="rounded-full bg-red-500/10 p-3 mb-3 border border-red-500/20">
+                  <Trash2 className="w-6 h-6 text-red-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Delete Class Schedule</h3>
+                <p className="text-white/60 text-sm mt-2">
+                  Are you sure you want to delete <span className="font-semibold text-white">{deleteConfirm.subject}</span>? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex items-center justify-center space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm({ isOpen: false, day: "", index: null, subject: "" })}
+                  className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white hover:bg-white/10 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteClass}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:brightness-110 text-sm font-semibold text-white shadow-lg transition cursor-pointer"
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Calendar Sync Modal */}
+      <AnimatePresence>
+        {isSyncModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSyncModalOpen(false)}
+              className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl backdrop-blur-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <CalendarPlus className="w-5 h-5 text-purple-400" />
+                  Sync with External Calendar
+                </h3>
+                <button
+                  onClick={() => setIsSyncModalOpen(false)}
+                  className="rounded-lg p-1.5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-sm text-white/70">
+                  Subscribe to your Learnova timetable in your favorite calendar app (Google Calendar, Apple Calendar, Outlook). Your calendar will automatically update when you make changes here.
+                </p>
+
+                {calendarToken ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                        Calendar Feed URL
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          readOnly
+                          value={`${window.location.origin}/api/timetable/ical/${calendarToken}/feed.ics`}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/api/timetable/ical/${calendarToken}/feed.ics`);
+                            toast.success("Feed URL copied to clipboard!");
+                          }}
+                          className="px-4 py-2.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 hover:text-white transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                        >
+                          <Copy className="w-4 h-4" />
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                      <a
+                        href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(`${window.location.origin}/api/timetable/ical/${calendarToken}/feed.ics`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm text-white transition-colors cursor-pointer"
+                      >
+                        <CalendarPlus className="w-4 h-4" />
+                        Google Calendar
+                      </a>
+                      <a
+                        href={`webcal://${window.location.host}/api/timetable/ical/${calendarToken}/feed.ics`}
+                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm text-white transition-colors cursor-pointer"
+                      >
+                        <CalendarPlus className="w-4 h-4" />
+                        Apple Calendar
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-white/50 mb-4">Please add a class to your timetable first to generate a sync link.</p>
+                  </div>
+                )}
+              </div>
             </motion.div>
           </div>
         )}

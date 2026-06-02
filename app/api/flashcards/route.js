@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireRole } from "@/lib/rbac";
 import * as FlashcardModel from "@/lib/models/flashcardModel";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 const createSchema = z.object({
   front: z.string().min(1),
@@ -19,13 +20,26 @@ export const GET = withErrorHandler(async (request) => {
   const cursor = url.searchParams.get("cursor") || undefined;
 
   const items = await FlashcardModel.getUserFlashcards(payload.uid, { courseId, cursor });
-  const nextCursor = items.length > 0 ? items[items.length - 1]._id.toString() : null;
+  const nextCursor = items.length > 0
+    ? JSON.stringify({
+        dueDate: items[items.length - 1].dueDate,
+        updatedAt: items[items.length - 1].updatedAt,
+        _id: items[items.length - 1]._id.toString(),
+      })
+    : null;
   return NextResponse.json({ items, nextCursor });
 });
 
 export const POST = withErrorHandler(async (request) => {
   const { payload } = await requireRole(request, ["student", "teacher", "admin"]);
-  const body = await request.json();
+  
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const limited = await checkRateLimit(`flashcards_post_${ip}_${payload.uid}`);
+  if (!limited.allowed) {
+    return NextResponse.json({ success: false, error: "Too many requests. Please slow down." }, { status: 429 });
+  }
+
+  const body = await parseJSON(request, 1024 * 10);
 
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {

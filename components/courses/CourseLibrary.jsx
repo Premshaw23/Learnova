@@ -23,6 +23,7 @@ import {
   getSavedCourses,
   sanitizeSavedCourseIds,
 } from "@/lib/courses";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 
 const getDifficultyVariant = (difficulty) => {
@@ -52,6 +53,7 @@ export default function CourseLibrary({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [savedCourseIds, setSavedCourseIds] = useState([]);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const isMounted = useIsMounted();
 
   // Sync state if initial courses change (e.g. search filter or category chip select re-fetches from server)
   useEffect(() => {
@@ -78,16 +80,18 @@ export default function CourseLibrary({
       );
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success && isMounted()) {
         setCourses((prev) => [...prev, ...data.courses]);
         setPage(nextPage);
         setHasMore(data.hasMore);
       }
     } catch (error) {
       console.error("Failed to load more courses:", error);
-      toast.error("Failed to load more courses. Please check your connection.");
+      if (isMounted()) {
+        toast.error("Failed to load more courses. Please check your connection.");
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted()) setIsLoading(false);
     }
   };
 
@@ -198,7 +202,7 @@ export default function CourseLibrary({
                               ? `Remove ${course.title} from saved courses`
                               : `Save ${course.title} to saved courses`
                           }
-                          className={`absolute right-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all duration-200 active:scale-95 ${
+                          className={`absolute right-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
                             isSaved
                               ? "border-amber-200/60 bg-amber-300 text-slate-950 shadow-lg shadow-amber-500/20"
                               : "border-white/30 bg-black/20 text-white/85 hover:border-amber-200/60 hover:text-amber-200"
@@ -240,7 +244,7 @@ export default function CourseLibrary({
                       </h3>
 
                       {/* Course Description */}
-                      <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed">
+                      <p className="text-sm text-slate-400 line-clamp-2 text-ellipsis overflow-hidden leading-relaxed">
                         {course.description}
                       </p>
                     </div>
@@ -258,7 +262,7 @@ export default function CourseLibrary({
 
                       <Link
                         href={`/courses/${course.id}`}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:border-slate-700 hover:text-white text-xs font-bold text-slate-300 transition-all duration-300 select-none group/btn shadow-md"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:border-slate-700 hover:text-white text-xs font-bold text-slate-300 transition-all duration-300 select-none group/btn shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
                       >
                         Explore
                         <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover/btn:translate-x-1 group-hover/btn:text-white transition-all duration-200" />

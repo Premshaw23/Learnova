@@ -3,6 +3,8 @@ import { authenticateRequest, parseJSON, withErrorHandler } from "@/lib/error-ha
 import { validateGroqBody, callGroq } from "@/lib/ai/groq";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { detectInjection, sanitizeMessage } from "@/utils/promptGuard";
+import { GROQ_API_URL } from "@/lib/ai/groq";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

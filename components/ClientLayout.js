@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useReducer, useState } from "react";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
+import { normalizeStreakCount } from "@/lib/streakUtils";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ShortcutsModal from "@/components/ShortcutsModal";
 import SearchModal from "@/components/SearchModal";
@@ -11,13 +13,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
 import { doc, runTransaction } from "firebase/firestore";
 import { toast } from "react-hot-toast";
-import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useSessionMonitor } from "@/hooks/useSessionMonitor";
 import {
   ensureClientCsrfToken,
   getClientCsrfToken,
   shouldAttachCsrfToken,
 } from "@/lib/csrf";
+import { useTimetableReminders } from "@/hooks/useTimetableReminders";
+import { addRecentlyVisitedPage } from "@/utils/recentlyVisitedPages";
+import { getRouteDisplayName } from "@/lib/navigation";
 
 const modalInitialState = {
   isShortcutsOpen: false,
@@ -68,9 +73,11 @@ export default function ClientLayout({ children }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   
   const { user, userProfile } = useAuth();
+  const pathname = usePathname();
 
-  useOfflineQueue();
+  useOfflineSync();
   useSessionMonitor();
+  useTimetableReminders();
 
   const handleSearch = useCallback(() => {
     dispatch({ type: "OPEN_SEARCH" });
@@ -179,11 +186,8 @@ export default function ClientLayout({ children }) {
         const localToday = new Date(today.getTime() - (offset * 60 * 1000));
         const todayDateStr = localToday.toISOString().split("T")[0];
 
-        let clientStreak = parseInt(localStorage.getItem("learnova_site_streak") || "0", 10);
+        let clientStreak = normalizeStreakCount(localStorage.getItem("learnova_site_streak"));
         // 1. Get client-side localStorage values
-        clientStreak = normalizeStreakCount(
-          localStorage.getItem("learnova_site_streak"),
-        );
         let clientLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
         let clientHistory = [];
         try {
@@ -194,9 +198,7 @@ export default function ClientLayout({ children }) {
         }
         if (!Array.isArray(clientHistory)) clientHistory = [];
 
-        const firestoreStreak = userProfile?.siteStreak || 0;
-        // 2. Fetch Firestore profile variables
-        firestoreStreak = normalizeStreakCount(userProfile?.siteStreak);
+        const firestoreStreak = normalizeStreakCount(userProfile?.siteStreak) ?? 0;
         const firestoreLastVisit = userProfile?.siteLastVisit || "";
         const firestoreHistory = userProfile?.siteVisitHistory || [];
 
@@ -302,6 +304,15 @@ export default function ClientLayout({ children }) {
     onHelp: handleHelp,
     onEscape: handleEscape,
   });
+
+  useEffect(() => {
+    if (!pathname || typeof window === "undefined") return;
+
+    addRecentlyVisitedPage({
+      path: pathname,
+      name: getRouteDisplayName(pathname, document.title),
+    });
+  }, [pathname]);
   
   useIdleTimeout();
 

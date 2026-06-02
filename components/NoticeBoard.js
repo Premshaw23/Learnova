@@ -23,8 +23,12 @@ const CATEGORIES = [
   { id: "general", label: "General" },
   { id: "technical", label: "Technical" },
 ];
-
 const SmartNoticeBoard = () => {
+  // ── Modal State for Issue #2008 ──────────
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [noticeTitle, setNoticeTitle] = useState("");
+  const [noticeDescription, setNoticeDescription] = useState("");
+
   const { user, userProfile, loading: authLoading } = useAuth();
 
   // ── Consume the shared pooled subscription from FirestoreContext ──────────
@@ -514,6 +518,55 @@ const SmartNoticeBoard = () => {
                 notices in real-time.
               </p>
             </div>
+            {/* ── CREATE NOTICE BUTTON ────────── */}
+      <div className="fixed bottom-8 right-8">
+        <button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-full font-bold shadow-xl transition-all"
+        >
+          + Create Notice
+        </button>
+      </div>
+
+      {/* ── CREATE NOTICE MODAL (ISSUE #2008) ────────── */}
+      <AnimatePresence>
+        {isCreateModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          >
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-4">
+              <h3 className="text-xl font-bold text-white">Create New Notice</h3>
+              <input 
+                value={noticeTitle}
+                onChange={(e) => setNoticeTitle(e.target.value)}
+                placeholder="Title"
+                className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white"
+              />
+              
+              {/* DESCRIPTION TEXTAREA WITH CHARACTER COUNTER */}
+              <textarea
+                value={noticeDescription}
+                onChange={(e) => setNoticeDescription(e.target.value)}
+                maxLength={1000}
+                rows={5}
+                placeholder="Enter description..."
+                className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white resize-none"
+              />
+              <div className={`text-xs text-right ${noticeDescription.length > 900 ? 'text-red-500' : 'text-slate-500'}`}>
+                {noticeDescription.length} / 1000
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400">Cancel</button>
+                <button className="bg-indigo-600 px-4 py-2 rounded-lg text-white">Post</button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

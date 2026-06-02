@@ -101,6 +101,9 @@ const InstituteDashboard = () => {
     teachers,
     attendanceRequests,
     setAttendanceRequests,
+    loadMoreRequests,
+    hasMoreRequests,
+    loadingRequests,
     loading: initialLoading,
     error,
   } = useAttendance({ role: "institute", user });
@@ -831,6 +834,17 @@ const InstituteDashboard = () => {
             </div>
           ))}
         </div>
+        {hasMoreRequests && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={loadMoreRequests}
+              disabled={loadingRequests}
+              className="px-6 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingRequests ? "Loading..." : "Load More Requests"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

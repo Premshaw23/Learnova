@@ -40,6 +40,17 @@ vi.mock('@/lib/rateLimit', () => ({
   checkRateLimit: vi.fn(() => ({ allowed: true })),
 }));
 
+vi.mock('@/lib/mongodb', () => ({
+  connectDb: vi.fn(() => ({
+    collection: vi.fn(() => ({
+      insertOne: vi.fn(),
+      updateOne: vi.fn(),
+      deleteOne: vi.fn(),
+      findOne: vi.fn(),
+    })),
+  })),
+}));
+
 vi.mock('@/lib/errors', () => {
   class AppError extends Error {
     constructor(message, statusCode = 500) {
@@ -62,10 +73,29 @@ vi.mock('@/lib/errors', () => {
   };
 });
 
+// Mock MongoDB connectDb used by the route and transactionCoordinator
+vi.mock('@/lib/mongodb', () => ({
+  connectDb: vi.fn(async () => ({
+    collection: vi.fn(() => ({
+      updateOne: vi.fn().mockResolvedValue({ upsertedCount: 1 }),
+      insertOne: vi.fn().mockResolvedValue({ insertedId: 'mock-id' }),
+      deleteOne: vi.fn().mockResolvedValue({ deletedCount: 1 }),
+      findOne: vi.fn().mockResolvedValue(null),
+    })),
+  })),
+}));
+
+// Mock rbac requireAuth to delegate to authenticateRequest mock
+// Mock rbac requireAuth as a spy
+vi.mock('@/lib/rbac', () => ({
+  requireAuth: vi.fn(),
+}));
+
 import { authenticateRequest, parseJSON } from '@/lib/error-handler';
 import { getUserProfile } from '@/lib/firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { requireAuth } from '@/lib/rbac';
 import { POST } from '@/app/api/attendance/record/route';
 
 function makeRequest(overrides = {}) {
@@ -92,6 +122,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true });
+    // Wire requireAuth to delegate to the authenticateRequest spy
+    requireAuth.mockImplementation(async (request) => authenticateRequest(request));
   });
 
   it('returns 403 when userId does not match authenticated uid', async () => {
@@ -211,6 +243,63 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
 
     expect(response.status).toBe(201);
     expect(data.alreadyRecorded).toBe(false);
+  });
+
+  it('allows teacher or admin to submit attendance for another user', async () => {
+    authenticateRequest.mockResolvedValue({
+      uid: 'teacher-123',
+      role: 'teacher',
+      email: 'teacher@learnova.edu',
+      email_verified: true,
+    });
+    parseJSON.mockResolvedValue({
+      userId: 'student-456',
+      studentName: 'Jane Doe',
+      email: 'jane@learnova.edu',
+      confidenceScore: 90,
+      date: '2026-05-28',
+    });
+    getUserProfile.mockImplementation(async (uid) => {
+      if (uid === 'student-456') {
+        return {
+          fullName: 'Jane Doe',
+          email: 'jane@learnova.edu',
+          instituteId: 'inst-1',
+        };
+      }
+      return {
+        fullName: 'Teacher One',
+        email: 'teacher@learnova.edu',
+        instituteId: 'inst-1',
+      };
+    });
+    getFirestore.mockReturnValue(makeFirestoreDb({ docExists: false }));
+
+    const response = await POST(makeRequest());
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.alreadyRecorded).toBe(false);
+  });
+
+  it('rejects student attempting to submit attendance for another user', async () => {
+    authenticateRequest.mockResolvedValue({
+      uid: 'student-123',
+      role: 'student',
+      email: 'student@learnova.edu',
+      email_verified: true,
+    });
+    parseJSON.mockResolvedValue({
+      userId: 'student-456',
+      confidenceScore: 90,
+      date: '2026-05-28',
+    });
+
+    const response = await POST(makeRequest());
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toBe('Forbidden: Cannot submit attendance for another user');
   });
 
   it('only exports POST — no DELETE handler', async () => {

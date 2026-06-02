@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CommentSection from "../CommentSection";
 
@@ -39,10 +39,9 @@ describe("CommentSection", () => {
       expect(window.localStorage.getItem("comments_homepage")).toBeTruthy(),
     );
 
-    await user.type(
-      screen.getByPlaceholderText(/write a comment or share feedback/i),
-      "This should persist{enter}",
-    );
+    const input = screen.getByPlaceholderText(/write a comment or share feedback/i);
+    await user.type(input, "This should persist");
+    fireEvent.submit(input.closest("form"));
 
     await waitFor(() => {
       expect(

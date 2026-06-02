@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Activity, RefreshCcw } from "lucide-react";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 const phases = [
   { key: "inhale", label: "Breathe In", duration: 4 },
@@ -14,10 +15,12 @@ export default function BreathingExercise() {
   const [activePhase, setActivePhase] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(phases[0].duration);
   const [isActive, setIsActive] = useState(false);
+  const isMounted = useIsMounted();
 
   useEffect(() => {
     if (!isActive) return undefined;
     const timer = window.setInterval(() => {
+      if (!isMounted()) return;
       setSecondsLeft((current) => {
         if (current <= 1) {
           setActivePhase((prev) => {

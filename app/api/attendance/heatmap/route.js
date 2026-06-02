@@ -1,18 +1,22 @@
 import { withErrorHandler } from "@/lib/error-handler";
-import { ForbiddenError } from "@/lib/errors";
+import { ForbiddenError, ValidationError } from "@/lib/errors";
 import { getFirestore } from "firebase-admin/firestore";
-import { initFirebaseAdmin } from "@/lib/firebase-admin";
+import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { requireAuth } from "@/lib/rbac";
+import { requireRole } from "@/lib/rbac";
 import { fail, success } from "@/lib/api-response";
 
 export const GET = withErrorHandler(async (request) => {
   initFirebaseAdmin();
-  const decodedToken = await requireAuth(request);
+  const { payload: decodedToken, profile } = await requireRole(request, ["student", "teacher", "admin"]);
 
   const { searchParams } = new URL(request.url);
   const requestedUserId = searchParams.get("userId");
   const month = searchParams.get("month");
+
+  if (month && !/^\d{4}-\d{2}$/.test(month)) {
+    throw new ValidationError("Invalid month format. Expected YYYY-MM.");
+  }
 
   // Derive target user from token; only allow explicit userId for admin/teacher roles
   let targetUserId;
@@ -21,7 +25,33 @@ export const GET = withErrorHandler(async (request) => {
     if (role !== "admin" && role !== "teacher") {
       throw new ForbiddenError("Forbidden: Cannot query attendance for another user");
     }
+
+    // Verify institute membership
+    const requesterProfile = await getUserProfile(decodedToken.uid);
+    const targetProfile = await getUserProfile(requestedUserId);
+    if (!requesterProfile || !targetProfile ||
+        requesterProfile.instituteId !== targetProfile.instituteId) {
+      throw new ForbiddenError("Forbidden: Cannot query attendance for users outside your institute");
+    }
+
     targetUserId = requestedUserId;
+
+    // Enforce teacher authorization boundary to prevent BOLA leaks (CWE-285)
+    if (role === "teacher") {
+      const targetProfile = await getUserProfile(targetUserId);
+      if (!targetProfile || targetProfile.role !== "student") {
+        throw new ForbiddenError("Forbidden: You are not authorized to view this user's attendance heatmap");
+      }
+      const teacherSubjects = profile?.subjects || [];
+      const studentSubjects = targetProfile.subjects || targetProfile.classes || [];
+      const studentClass = targetProfile.class || targetProfile.className;
+      const hasOverlap =
+        studentSubjects.some((subj) => teacherSubjects.includes(subj)) ||
+        (studentClass && teacherSubjects.includes(studentClass));
+      if (!hasOverlap) {
+        throw new ForbiddenError("Forbidden: You are not authorized to view this student's attendance heatmap");
+      }
+    }
   } else {
     targetUserId = decodedToken.uid;
   }

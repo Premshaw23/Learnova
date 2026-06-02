@@ -9,6 +9,8 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
 import { connectDb } from "@/lib/mongodb";
+import { recordAttendanceSchema } from "@/lib/validations/attendance";
+import { validateRequest } from "@/lib/validations/validateRequest";
 
 
 export const POST = withErrorHandler(async (request) => {
@@ -20,25 +22,24 @@ export const POST = withErrorHandler(async (request) => {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  const body = await parseJSON(request, 1024);
-  const { userId, studentName, email, confidenceScore, date } = body;
-  const normalizedDate = (date || getLocalDateKey()).toString();
+  // 1. Validate request body against schema
+  const validationResult = await validateRequest(request, recordAttendanceSchema);
+  if (!validationResult.success) {
+    return validationResult.response;
+  }
+  
+  const { userId, studentName, email, confidenceScore, date } = validationResult.data;
+  const normalizedDate = date || getLocalDateKey();
 
-  // 2. Ensure they are only submitting attendance for their own UID!
-  if (decodedToken.uid !== userId) {
+  // 2. Ensure they are only submitting attendance for their own UID, OR they are a teacher/admin!
+  const isTeacherOrAdmin = decodedToken.role === "teacher" || decodedToken.role === "admin";
+  if (decodedToken.uid !== userId && !isTeacherOrAdmin) {
     return jsonError("Forbidden: Cannot submit attendance for another user", 403);
   }
 
   // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)
-  // Fix Client-Side Spoofing by rejecting undefined, null, strings, NaN, and out of bounds numbers
   const parsedConfidence = Number(confidenceScore);
-  if (
-    confidenceScore === undefined ||
-    confidenceScore === null ||
-    Number.isNaN(parsedConfidence) ||
-    parsedConfidence < 60 ||
-    parsedConfidence > 100
-  ) {
+  if (parsedConfidence < 60) {
     return jsonError("Bad Request: Invalid or spoofed confidence score", 400);
   }
 
@@ -49,15 +50,18 @@ export const POST = withErrorHandler(async (request) => {
   // Use a deterministic doc id and a transaction to prevent duplicates and match client duplicate checks.
   initFirebaseAdmin();
   const db = getFirestore();
-  const userProfile = await getUserProfile(decodedToken.uid);
-  const instituteId = userProfile?.instituteId || null;
 
-  // Use authoritative, verified data from Firebase JWT token (decodedToken) to completely prevent
-  // client-supplied parameter spoofing and impersonation attacks.
-  const resolvedName = userProfile?.fullName || decodedToken.name || decodedToken.displayName || decodedToken.email?.split("@")[0] || "Unknown User";
-  const resolvedEmail = userProfile?.email || decodedToken.email || "unknown@learnova.edu";
 
-  let alreadyRecorded = false;
+  // Authoritatively fetch target student profile or use caller profile
+  const targetUid = userId || decodedToken.uid;
+  const userProfile = await getUserProfile(targetUid);
+  const callerProfile = decodedToken.uid !== targetUid ? await getUserProfile(decodedToken.uid) : userProfile;
+  const instituteId = userProfile?.instituteId || callerProfile?.instituteId || null;
+
+  // Use authoritative, verified data from profile to prevent client-supplied parameter spoofing
+  const resolvedName = userProfile?.fullName || (decodedToken.uid === targetUid ? (decodedToken.name || decodedToken.displayName) : null) || studentName || "Unknown User";
+  const resolvedEmail = userProfile?.email || (decodedToken.uid === targetUid ? decodedToken.email : null) || email || "unknown@learnova.edu";
+
   const sagaResult = await executeSaga({
     operationType: "attendance_record",
     uid: decodedToken.uid,
@@ -95,8 +99,8 @@ export const POST = withErrorHandler(async (request) => {
       },
       {
         name: "write_mongodb_attendance",
-        execute: async () => {
-          if (alreadyRecorded) {
+        execute: async (ctx) => {
+          if (ctx._alreadyRecorded) {
             return;
           }
           const mongoDB = await connectDb();
@@ -144,8 +148,12 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   if (!sagaResult.success) {
-    // Attendance was written but XP award failed — log for reconciliation
-    console.error(`[attendance] XP award failed for user ${userId}: ${sagaResult.error}`);
+    if (sagaResult.failedStep === "award_xp") {
+      console.error(`[attendance] XP award failed for user ${userId}: ${sagaResult.error}`);
+    } else {
+      console.error(`[attendance] Saga failed at step "${sagaResult.failedStep}" for user ${userId}: ${sagaResult.error}`);
+      return jsonError("Attendance recording failed", 502);
+    }
   }
 
   return jsonSuccess({ alreadyRecorded: false }, 201);

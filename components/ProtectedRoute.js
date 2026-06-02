@@ -71,6 +71,9 @@ export default function ProtectedRoute({
         case "admin":
           target = "/admin/dashboard";
           break;
+        case "parent":
+          target = "/parent/dashboard";
+          break;
       }
       safeRedirect(target);
       return;

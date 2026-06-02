@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,15 @@ function getAuthCookieOptions() {
 }
 
 export const POST = withErrorHandler(async (request) => {
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`session_${ip}`);
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { success: false, error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   const decodedToken = await requireAuth(request);
   const authorization = request.headers.get("authorization") || "";
   const bearerToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : null;

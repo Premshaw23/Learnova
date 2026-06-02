@@ -11,8 +11,7 @@ import {
 import { auth, db } from "@/lib/firebaseConfig";
 
 import { recalculateAttendanceRate } from "./statsService";
-import { saveToOutbox } from "@/lib/offlineStore";
-import { registerBackgroundSync } from "@/lib/syncService";
+import { handleOfflineRequest, triggerOfflineSync } from "@/utils/offlineRequestHandler";
 import { getTodayKeyLocal } from "@/lib/dateUtils";
 
 function getTodayKey() {
@@ -89,15 +88,17 @@ export async function recordAttendance({
   if (typeof window !== "undefined" && !navigator.onLine) {
     console.warn("Device is offline. Queuing attendance locally.");
 
-    await saveToOutbox({
-      userId,
-      studentName,
-      email,
-      confidenceScore: confidenceScore ?? 0,
-      date: todayKey,
+    await handleOfflineRequest("/api/attendance/record", {
+      method: "POST",
+      body: JSON.stringify({
+        userId,
+        studentName,
+        email,
+        confidenceScore: confidenceScore ?? 0,
+        date: todayKey,
+      }),
+      headers: { "Content-Type": "application/json" }
     });
-
-    await registerBackgroundSync();
 
     return {
       alreadyRecorded: false,

@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMounted } from "@/hooks/useIsMounted";
 import { Navbar } from "./Navbar";
 import ActivityHeatmap from "@/components/activity/ActivityHeatmap";
 import { apiFetch } from "@/lib/apiClient";
@@ -56,6 +57,7 @@ export default function UniversalProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const isMounted = useIsMounted();
 
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [imageError, setImageError] = useState(false);
@@ -245,19 +247,21 @@ export default function UniversalProfile() {
         twitter: formData.twitter || "",
       });
 
-      setUserData((prev) => ({
-        ...prev,
-        ...formData,
-      }));
+      if (isMounted()) {
+        setUserData((prev) => ({
+          ...prev,
+          ...formData,
+        }));
 
-      toast.success(
-        "Profile saved successfully!",
-        {
-          id: loadingToast,
-        }
-      );
+        toast.success(
+          "Profile saved successfully!",
+          {
+            id: loadingToast,
+          }
+        );
 
-      setIsEditing(false);
+        setIsEditing(false);
+      }
     } catch (error) {
       toast.error(
         error.message || "Failed to save profile.",
@@ -266,7 +270,7 @@ export default function UniversalProfile() {
         }
       );
     } finally {
-      setIsSaving(false);
+      if (isMounted()) setIsSaving(false);
     }
   };
 
@@ -368,15 +372,17 @@ export default function UniversalProfile() {
         await updateProfile(user, { photoURL: data.url });
         const userRef = doc(db, "users", user.uid);
         await updateDoc(userRef, { photoURL: data.url });
-        setAvatarUrl(data.url);
-        toast.success("Profile picture updated successfully!", { id: loadingToast });
+        if (isMounted()) {
+          setAvatarUrl(data.url);
+          toast.success("Profile picture updated successfully!", { id: loadingToast });
+        }
       } else {
         throw new Error(data.error || "Upload failed");
       }
     } catch (error) {
       toast.error(error.message || "Failed to update profile picture.", { id: loadingToast });
     } finally {
-      handleCancelPreview();
+      if (isMounted()) handleCancelPreview();
     }
   };
 
@@ -394,9 +400,11 @@ export default function UniversalProfile() {
       await updateProfile(user, { photoURL: null });
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, { photoURL: null });
-      setAvatarUrl(null);
-      setImageError(false);
-      toast.success("Profile picture removed.", { id: loadingToast });
+      if (isMounted()) {
+        setAvatarUrl(null);
+        setImageError(false);
+        toast.success("Profile picture removed.", { id: loadingToast });
+      }
     } catch (error) {
       toast.error(error.message || "Failed to remove profile picture.", { id: loadingToast });
     }

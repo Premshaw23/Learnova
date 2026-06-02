@@ -49,7 +49,6 @@ export const POST = withErrorHandler(async (request) => {
 
       // If operation failed and was fully compensated, mark as resolved
       if (op.status === "compensating" && op.fullyCompensated) {
-        const mongoDB = await connectDb();
         await mongoDB.collection("pending_operations").updateOne(
           { operationId: op.operationId },
           { $set: { status: "resolved_by_reconciliation", updatedAt: new Date() } }
@@ -82,21 +81,23 @@ export const POST = withErrorHandler(async (request) => {
     const mongoUids = new Set();
     const mongoUsersMap = new Map();
     let mongoCursor = null;
+    let lastBatchSize = 0;
     do {
-      let mongoQuery = mongoDB.collection("users").find({}).limit(PAGE_SIZE);
+      let mongoQuery = mongoDB.collection("users").find({}).sort({ _id: 1 }).limit(PAGE_SIZE);
       if (mongoCursor) {
         mongoQuery = mongoQuery.skip(mongoCursor);
       }
       const mongoBatch = await mongoQuery.toArray();
-      if (mongoBatch.length === 0) break;
+      lastBatchSize = mongoBatch.length;
+      if (lastBatchSize === 0) break;
       mongoBatch.forEach((u) => {
         if (u.firebaseUid) {
           mongoUids.add(u.firebaseUid);
           mongoUsersMap.set(u.firebaseUid, u);
         }
       });
-      mongoCursor = (mongoCursor || 0) + mongoBatch.length;
-    } while (mongoCursor && mongoUids.size === mongoCursor);
+      mongoCursor = (mongoCursor || 0) + lastBatchSize;
+    } while (lastBatchSize === PAGE_SIZE);
 
     // Bulk-reconcile: Firestore → MongoDB
     const mongoBulkOps = [];

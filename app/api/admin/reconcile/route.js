@@ -56,14 +56,52 @@ export const POST = withErrorHandler(async (request) => {
 
   // Case 1: User exists in all relevant stores (or Auth + at least one DB)
   if (hasFirestore && hasMongo) {
+    const mongoEmail = mongoUser.email || "";
+    const mongoName = mongoUser.fullName || mongoUser.name || "";
+    const mongoRole = mongoUser.role || "";
+
+    const firestoreEmail = firestoreData.email || "";
+    const firestoreName = firestoreData.fullName || "";
+    const firestoreRole = firestoreData.role || "";
+
+    const actions = [];
+    if (mongoEmail !== firestoreEmail || mongoName !== firestoreName || mongoRole !== firestoreRole) {
+      await mongoDB.collection("users").updateOne(
+        { firebaseUid: uid },
+        {
+          $set: {
+            email: firestoreEmail,
+            name: firestoreName,
+            fullName: firestoreName,
+            role: firestoreRole,
+          }
+        }
+      );
+      actions.push("aligned_mongo_details_with_firestore");
+    }
+
+    if (hasAuth && firestoreRole) {
+      try {
+        const userRecord = await admin.auth().getUser(uid);
+        const currentRole = userRecord.customClaims?.role;
+        if (currentRole !== firestoreRole) {
+          await admin.auth().setCustomUserClaims(uid, { role: firestoreRole });
+          actions.push("aligned_custom_claims_with_firestore");
+        }
+      } catch (err) {
+        logger.error(`[reconcile] Failed to align custom claims for user ${uid}:`, { error: err.message });
+      }
+    }
+
     // Also cleanup stale pending operations as a side-effect
     await cleanupOldOperations();
 
     return jsonSuccess({
-      message: "User already exists in both databases",
+      message: actions.length > 0 ? "User reconciled and aligned successfully" : "User already exists in both databases and is fully aligned",
       auth: hasAuth,
       firestore: true,
       mongo: true,
+      actions,
     });
   }
 
