@@ -4,6 +4,7 @@ import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,10 @@ export const POST = withErrorHandler(async (request) => {
   
   const { reason, details, date } = validation.data;
 
+    initFirebaseAdmin();
+    const userProfile = await getUserProfile(decodedToken.uid);
+    const instituteId = userProfile?.instituteId || null;
+
     const db = await connectDb();
 
     const exceptionData = {
@@ -64,6 +69,7 @@ export const POST = withErrorHandler(async (request) => {
       details,
       date,
       studentEmail: decodedToken.email,
+      instituteId,
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),
