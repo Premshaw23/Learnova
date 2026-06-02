@@ -59,7 +59,7 @@ export const GET = withErrorHandler(async (request) => {
     // Search query
     let query = {};
 
-    // Role-based filtering for teachers
+    // Role-based filtering for teachers and admins
     if (profile?.role === "teacher") {
       const teacherSubjects = profile.subjects || [];
       query.$and = [
@@ -70,6 +70,9 @@ export const GET = withErrorHandler(async (request) => {
           ]
         }
       ];
+    }
+    if ((profile.role === "teacher" || profile.role === "admin") && profile.instituteId) {
+      query.instituteId = profile.instituteId;
     }
 
     if (search) {

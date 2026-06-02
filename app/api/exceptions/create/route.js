@@ -4,6 +4,7 @@ import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { getUserProfile } from "@/lib/firebase-admin";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,10 @@ const exceptionCreateSchema = z.object({
     })
     .trim()
     .min(1, "Date is required"),
+  className: z
+    .string()
+    .max(200, "Class name must be under 200 characters")
+    .optional(),
 });
 
 export const POST = withErrorHandler(async (request) => {
@@ -55,15 +60,19 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError(firstError);
   }
   
-  const { reason, details, date } = validation.data;
+  const { reason, details, date, className } = validation.data;
 
     const db = await connectDb();
+    const studentProfile = await getUserProfile(decodedToken.uid);
 
     const exceptionData = {
       reason,
       details,
       date,
       studentEmail: decodedToken.email,
+      userId: decodedToken.uid,
+      className: className || null,
+      instituteId: studentProfile?.instituteId || null,
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),

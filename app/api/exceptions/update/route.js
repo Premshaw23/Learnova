@@ -66,6 +66,11 @@ export const PUT = withErrorHandler(async (request) => {
       throw new NotFoundError("Exception not found");
     }
 
+    // Institute membership check
+    if (profile.instituteId && exception.instituteId && exception.instituteId !== profile.instituteId) {
+      throw new ForbiddenError("Forbidden: Cannot update exceptions outside your institute");
+    }
+
     // Perform teacher-specific assignment validation (CWE-639 resolution)
     if (profile.role === "teacher") {
       const teacherSubjects = profile.subjects || [];

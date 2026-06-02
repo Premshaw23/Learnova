@@ -77,6 +77,11 @@ export const GET = withErrorHandler(async (request) => {
           ]
         }
       ];
+      if (profile.instituteId) {
+        query.instituteId = profile.instituteId;
+      }
+    } else if (profile.role === "admin" && profile.instituteId) {
+      query.instituteId = profile.instituteId;
     }
 
     // Search filter
