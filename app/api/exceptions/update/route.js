@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { getUserProfileByEmail } from "@/lib/firebase-admin";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireRole } from "@/lib/rbac";
+import { requireApiAccess } from "@/lib/rbac";
 import { AppError, ValidationError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { ObjectId } from "mongodb";
@@ -32,7 +32,7 @@ const exceptionUpdateSchema = z.object({
 });
 
 export const PUT = withErrorHandler(async (request) => {
-  const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher"]);
+  const { payload: decodedToken, profile } = await requireApiAccess(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`exceptions_update_${ip}_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {

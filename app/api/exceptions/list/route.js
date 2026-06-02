@@ -1,7 +1,7 @@
 // app/api/exceptions/list/route.js
 
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
+import { requireApiAccess } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { AppError } from "@/lib/errors";
@@ -21,7 +21,7 @@ const ALLOWED_SORT_FIELDS = new Set([
 ]);
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher", "student"]);
+  const { payload: decodedToken, profile } = await requireApiAccess(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`exceptions_list_${ip}_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {

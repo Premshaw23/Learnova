@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireAuth, requireRole } from "@/lib/rbac";
+import { requireApiAccess } from "@/lib/rbac";
 import { ValidationError, AppError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -23,7 +23,7 @@ const postSchema = z.object({
 });
 
 export const GET = withErrorHandler(async (request) => {
-  const { profile } = await requireRole(request, ["teacher", "admin"]);
+  const { profile } = await requireApiAccess(request);
 
   initializeFirebase();
 
@@ -58,7 +58,7 @@ export const GET = withErrorHandler(async (request) => {
 });
 
 export const POST = withErrorHandler(async (request) => {
-  const { profile } = await requireRole(request, ["teacher", "admin"]);
+  const { profile } = await requireApiAccess(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`attendance_settings_${ip}_${profile.uid}`);
   if (!rateLimitResult.allowed) {
@@ -105,7 +105,7 @@ export const POST = withErrorHandler(async (request) => {
 });
 
 export const DELETE = withErrorHandler(async (request) => {
-  const { profile } = await requireRole(request, ["teacher", "admin"]);
+  const { profile } = await requireApiAccess(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`attendance_settings_delete_${ip}_${profile.uid}`);
   if (!rateLimitResult.allowed) {

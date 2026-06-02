@@ -1,5 +1,5 @@
 import { connectDb } from "@/lib/mongodb";
-import { requireStudent } from "@/lib/rbac";
+import { requireApiAccess } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { ValidationError, AppError } from "@/lib/errors";
@@ -41,7 +41,7 @@ const exceptionCreateSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireStudent(request);
+  const { payload: decodedToken } = await requireApiAccess(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`exceptions_create_${ip}_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {
