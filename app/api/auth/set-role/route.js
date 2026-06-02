@@ -50,10 +50,12 @@ export const POST = withValidation(
       const existingRole = existingProfile.data()?.role;
 
       if (existingRole) {
-        return jsonError(
-          `Forbidden: Account is already registered as "${existingRole}". Role cannot be changed.`,
-          403
-        );
+        if (existingRole !== role) {
+          return jsonError(
+            `Forbidden: Account is already registered as "${existingRole}". Role cannot be changed.`,
+            403
+          );
+        }
       }
     } else if (decodedToken.role) {
       return jsonError(
@@ -76,9 +78,6 @@ export const POST = withValidation(
       userProfile.instituteName = instituteName;
     }
 
-    if ((role === "teacher" || role === "student") && data.instituteId) {
-      userProfile.instituteId = data.instituteId;
-    }
 
     const sagaResult = await executeSaga({
       operationType: "set_role",

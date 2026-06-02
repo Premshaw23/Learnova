@@ -2,6 +2,7 @@ import { GET } from "./route";
 import { requireAuth } from "@/lib/rbac";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { getFirestore } from "firebase-admin/firestore";
+import { getUserProfile } from "@/lib/firebase-admin";
 
 vi.mock("@/lib/error-handler", () => ({
   withErrorHandler: (handler) => handler,
@@ -28,6 +29,7 @@ vi.mock("@/lib/rateLimit", () => ({
 
 vi.mock("@/lib/firebase-admin", () => ({
   initFirebaseAdmin: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
 vi.mock("firebase-admin/firestore", () => ({
@@ -80,6 +82,11 @@ describe("attendance heatmap API route", () => {
 
   test("allows admin to query any user", async () => {
     requireAuth.mockResolvedValue({ uid: "admin-1", role: "admin" });
+    getUserProfile.mockImplementation((uid) => {
+      if (uid === "admin-1") return Promise.resolve({ instituteId: "inst-1" });
+      if (uid === "student-42") return Promise.resolve({ instituteId: "inst-1" });
+      return Promise.resolve(null);
+    });
     const { mockGet } = createMockFirestore();
     mockGet.mockResolvedValue(createMockDocs([]));
 
@@ -90,6 +97,11 @@ describe("attendance heatmap API route", () => {
 
   test("allows teacher to query any user", async () => {
     requireAuth.mockResolvedValue({ uid: "teacher-1", role: "teacher" });
+    getUserProfile.mockImplementation((uid) => {
+      if (uid === "teacher-1") return Promise.resolve({ instituteId: "inst-1" });
+      if (uid === "student-42") return Promise.resolve({ instituteId: "inst-1" });
+      return Promise.resolve(null);
+    });
     const { mockGet } = createMockFirestore();
     mockGet.mockResolvedValue(createMockDocs([]));
 

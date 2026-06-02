@@ -709,7 +709,7 @@ export function Navbar() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed top-4 right-4 max-w-[85vw] w-64 rounded-2xl shadow-2xl p-4 space-y-4 z-[90] flex flex-col"
+              className="fixed top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] max-w-[calc(100vw-2rem)] w-64 rounded-2xl shadow-2xl p-4 sm:p-5 space-y-4 z-[90] flex flex-col"
               style={{
                 backdropFilter: "blur(24px)",
                 WebkitBackdropFilter: "blur(24px)",

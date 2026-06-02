@@ -3,32 +3,23 @@ import { requireAuth } from "@/lib/rbac";
 import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 import { AppError, ValidationError } from "@/lib/errors";
 import { jsonSuccess } from "@/lib/api-response";
-import { z } from "zod";
-
+import { createComplaintSchema } from "@/lib/validations/complaints";
+import { validateRequest } from "@/lib/validations/validateRequest";
 
 export const dynamic = "force-dynamic";
 
-const complaintsSchema = z.object({
-  category: z.string().min(1, "Category is required"),
-  subject: z.string().min(1, "Subject is required"),
-  description: z.string().min(1, "Description is required"),
-  priority: z.string().min(1, "Priority is required"),
-});
 
 const MAX_COMPLAINT_PAYLOAD_BYTES = 1024 * 10;
 
 export const POST = withErrorHandler(async (req) => {
   const decodedToken = await requireAuth(req);
 
-  const body = await parseJSON(req, MAX_COMPLAINT_PAYLOAD_BYTES);
-
-  const validation = complaintsSchema.safeParse(body);
-  if (!validation.success) {
-    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
-    throw new ValidationError(firstError);
+  const validationResult = await validateRequest(req, createComplaintSchema, MAX_COMPLAINT_PAYLOAD_BYTES);
+  if (!validationResult.success) {
+    return validationResult.response;
   }
 
-  const { category, subject, description, priority } = validation.data;
+  const { category, subject, description, priority } = validationResult.data;
 
   let db;
   try {

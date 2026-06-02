@@ -1,7 +1,7 @@
 import { withErrorHandler } from "@/lib/error-handler";
 import { ForbiddenError } from "@/lib/errors";
 import { getFirestore } from "firebase-admin/firestore";
-import { initFirebaseAdmin } from "@/lib/firebase-admin";
+import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { requireAuth } from "@/lib/rbac";
 import { fail, success } from "@/lib/api-response";
@@ -21,6 +21,15 @@ export const GET = withErrorHandler(async (request) => {
     if (role !== "admin" && role !== "teacher") {
       throw new ForbiddenError("Forbidden: Cannot query attendance for another user");
     }
+
+    // Verify institute membership
+    const requesterProfile = await getUserProfile(decodedToken.uid);
+    const targetProfile = await getUserProfile(requestedUserId);
+    if (!requesterProfile || !targetProfile ||
+        requesterProfile.instituteId !== targetProfile.instituteId) {
+      throw new ForbiddenError("Forbidden: Cannot query attendance for users outside your institute");
+    }
+
     targetUserId = requestedUserId;
   } else {
     targetUserId = decodedToken.uid;

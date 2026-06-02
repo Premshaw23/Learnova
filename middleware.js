@@ -17,6 +17,7 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const PUBLIC_API_PATHS = [
   "/api/auth/csrf",
   "/api/auth/reset-password",
+  "/api/health",
 ];
 
 

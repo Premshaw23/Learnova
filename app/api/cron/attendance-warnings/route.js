@@ -191,54 +191,59 @@ export async function GET(request) {
     const warningLogsToInsert = [];
     const emailsToSend = [];
 
+    // Fetch all students with an instituteId once
+    const allStudents = await db.collection('users').find({
+      role: 'student',
+      instituteId: { $exists: true }
+    }).toArray();
+
+    // Group students by instituteId
+    const studentsByInstitute = new Map();
+    for (const student of allStudents) {
+      const instId = student.instituteId;
+      if (!instId) continue;
+      if (!studentsByInstitute.has(instId)) {
+        studentsByInstitute.set(instId, []);
+      }
+      studentsByInstitute.get(instId).push(student);
+    }
+
+    // Collect all student UIDs for batch cooldown check
+    const allStudentUids = allStudents.map(s => s.firebaseUid).filter(Boolean);
+    const recentWarningUserIds = await getRecentWarningUserIds(db, allStudentUids, cooldownDate);
+
     for (const settings of allSettings) {
       const threshold = settings.institute.lowAttendanceThreshold || 75;
-      const instituteId = settings.userId;
+      const instituteId = settings.instituteId || settings._id?.toString() || settings.userId;
       if (!instituteId) continue;
 
-      // Scope attendance by institute — the settings doc's userId is the institute admin's uid,
-      // which matches the instituteId stored on attendance records.
-      // Fetch all unique students with attendance in this institute
-      const distinctStudentIds = await db.collection('attendance').distinct('userId', { instituteId });
+      const instituteStudents = studentsByInstitute.get(instituteId) || [];
 
-      if (distinctStudentIds.length === 0) continue;
+      if (instituteStudents.length === 0) continue;
 
-      // Batch-check recent warning logs for all students in this institute
-      const recentLogs = await db.collection('warning_logs').find({
-        userId: { $in: distinctStudentIds },
-        createdAt: { $gte: cooldownDate },
-      }).project({ userId: 1 }).toArray();
-      const warnedUserIds = new Set(recentLogs.map((l) => l.userId));
+      // Load attendance from MongoDB (scoped by institute) for all students in this institute
+      const instituteStudentUids = instituteStudents.map(s => s.firebaseUid).filter(Boolean);
+      const mongoAttendance = await loadMongoAttendanceByUser(db, instituteId, instituteStudentUids);
 
-      // Batch-fetch attendance for all students in this institute
-      const attendanceRecords = await db.collection('attendance').find({
-        userId: { $in: distinctStudentIds },
-        instituteId,
-      }).toArray();
-
+      // Build attendanceByUser from mongoAttendance
       const attendanceByUser = new Map();
-      for (const rec of attendanceRecords) {
-        if (!attendanceByUser.has(rec.userId)) {
-          attendanceByUser.set(rec.userId, []);
-        }
-        attendanceByUser.get(rec.userId).push(rec);
+      for (const [uid, records] of mongoAttendance || []) {
+        attendanceByUser.set(uid, records);
       }
 
-      // Batch-fetch user profiles for all students needing evaluation
-      const studentsToCheck = distinctStudentIds.filter((id) => !warnedUserIds.has(id));
-      if (studentsToCheck.length === 0) continue;
+      for (const student of instituteStudents) {
+        const studentUid = student.firebaseUid;
+        if (!studentUid) continue;
 
-      const studentDocs = await db.collection('users').find({
-        $or: [
-          { uid: { $in: studentsToCheck } },
-          { firebaseUid: { $in: studentsToCheck } },
-        ],
-      }).project({ uid: 1, firebaseUid: 1, email: 1, name: 1, fullName: 1 }).toArray();
+        // Skip if warned recently (batch cooldown check)
+        if (recentWarningUserIds.has(studentUid)) {
+          continue;
+        }
 
-      for (const student of studentDocs) {
         const uid = student.uid || student.firebaseUid;
         if (!uid) continue;
 
+        // Use MongoDB attendance data (scoped by institute) instead of Firestore
         const studentAttendance = attendanceByUser.get(uid) || [];
         const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
 

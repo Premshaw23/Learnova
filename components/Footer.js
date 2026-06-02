@@ -17,7 +17,7 @@ function FooterLink({ href, children, external = false }) {
 
   return (
     <motion.li whileHover={{ x: 4 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
-      <LinkComponent href={href} {...externalProps} className="group flex items-center gap-2 text-sm text-slate-300 transition-colors duration-300 hover:text-white">
+      <LinkComponent href={href} {...externalProps} className="group flex items-center gap-2 text-sm text-slate-300 transition-colors duration-200 ease-out hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm">
         <span className="relative">
           {children}
           <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-gradient-to-r from-purple-400 to-blue-400 transition-all duration-300 group-hover:w-full" />
@@ -48,7 +48,7 @@ function SocialIcon({ href, icon: Icon, label, glowColor = "purple" }) {
   return (
     <motion.a href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
       whileHover={{ scale: 1.15, y: -3 }} whileTap={{ scale: 0.95 }}
-      className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 backdrop-blur-sm transition-all duration-300 hover:shadow-lg ${glowMap[glowColor]}`}
+      className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 backdrop-blur-sm transition-all duration-200 ease-out hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${glowMap[glowColor]}`}
     >
       <Icon size={18} />
     </motion.a>

@@ -293,7 +293,7 @@ async function generateBotResponse(userMessage, currentCategory, idToken, update
     const headers = { "Content-Type": "application/json" };
     if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
     
-    const response = await apiFetch("/api/groq", {
+    const payload = await apiFetch("/api/groq", {
       method: "POST",
       headers,
       body: JSON.stringify({ 
@@ -305,8 +305,7 @@ async function generateBotResponse(userMessage, currentCategory, idToken, update
       }),
     });
 
-    if (response.ok) {
-      const payload = await response.json();
+    if (payload) {
       return payload?.data?.message || payload?.message;
     }
   } catch {
@@ -458,8 +457,8 @@ export default function LearnovaChatbot() {
 
         if (!isMounted) return;
 
-        if (response.ok) {
-          const payload = await response.json();
+        if (response && response.success !== false) {
+          const payload = response;
           const history = payload?.data || [];
           if (history.length > 0) {
             const historyMessages = [];

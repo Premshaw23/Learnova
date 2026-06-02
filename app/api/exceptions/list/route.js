@@ -67,11 +67,21 @@ export const GET = withErrorHandler(async (request) => {
     // Role-based filtering
     if (profile.role === "student") {
       query.studentEmail = decodedToken.email;
+    } else if (profile.role === "teacher") {
+      const teacherSubjects = profile.subjects || [];
+      query.$and = [
+        {
+          $or: [
+            { className: { $in: teacherSubjects } },
+            { class: { $in: teacherSubjects } }
+          ]
+        }
+      ];
     }
 
     // Search filter
     if (search) {
-      query.$or = [
+      const searchOr = [
         {
           reason: {
             $regex: search,
@@ -85,6 +95,11 @@ export const GET = withErrorHandler(async (request) => {
           },
         },
       ];
+      if (query.$and) {
+        query.$and.push({ $or: searchOr });
+      } else {
+        query.$or = searchOr;
+      }
     }
 
     // Total count

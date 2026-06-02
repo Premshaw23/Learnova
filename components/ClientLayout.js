@@ -18,6 +18,7 @@ import {
   getClientCsrfToken,
   shouldAttachCsrfToken,
 } from "@/lib/csrf";
+import { useTimetableReminders } from "@/hooks/useTimetableReminders";
 
 const modalInitialState = {
   isShortcutsOpen: false,
@@ -71,6 +72,7 @@ export default function ClientLayout({ children }) {
 
   useOfflineSync();
   useSessionMonitor();
+  useTimetableReminders();
 
   const handleSearch = useCallback(() => {
     dispatch({ type: "OPEN_SEARCH" });

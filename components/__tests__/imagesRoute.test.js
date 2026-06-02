@@ -88,6 +88,7 @@ describe("/api/images route orchestration", () => {
     connectDb.mockResolvedValue({
       collection: vi.fn().mockReturnValue({
         findOne: vi.fn().mockResolvedValue({ _id: userId }),
+        createIndex: vi.fn(),
       }),
     });
     getUserImageFromDb.mockResolvedValue("https://public.blob.vercel-storage.com/a.jpg");
@@ -121,6 +122,12 @@ describe("/api/images route orchestration", () => {
     const otherId = new ObjectId();
 
     requireAuth.mockResolvedValue({ uid });
+    connectDb.mockResolvedValue({
+      collection: vi.fn().mockReturnValue({
+        findOne: vi.fn().mockResolvedValue({ _id: ownId }),
+        createIndex: vi.fn(),
+      }),
+    });
     getUserProfile.mockResolvedValue({ role: "student" });
     getUserImageFromDb.mockRejectedValue(new ForbiddenError("You do not have permission to view this image"));
 
@@ -141,6 +148,12 @@ describe("/api/images route orchestration", () => {
     const otherId = new ObjectId();
 
     requireAuth.mockResolvedValue({ uid });
+    connectDb.mockResolvedValue({
+      collection: vi.fn().mockReturnValue({
+        findOne: vi.fn().mockResolvedValue({ _id: ownId }),
+        createIndex: vi.fn(),
+      }),
+    });
     getUserProfile.mockResolvedValue({ role: "admin" });
     getUserImageFromDb.mockResolvedValue("https://public.blob.vercel-storage.com/admin-view.jpg");
     fetchAndValidateImage.mockResolvedValue({
@@ -169,7 +182,18 @@ describe("/api/images route orchestration", () => {
     const otherId = new ObjectId();
 
     requireAuth.mockResolvedValue({ uid });
-    getUserProfile.mockResolvedValue({ role: "teacher", instituteId: "inst1" });
+    
+    const findOneMock = vi.fn()
+      .mockResolvedValueOnce({ _id: ownId, instituteId })
+      .mockResolvedValueOnce({ _id: otherId, instituteId });
+
+    connectDb.mockResolvedValue({
+      collection: vi.fn().mockReturnValue({
+        findOne: findOneMock,
+        createIndex: vi.fn(),
+      }),
+    });
+    getUserProfile.mockResolvedValue({ role: "teacher" });
     getUserImageFromDb.mockResolvedValue("https://public.blob.vercel-storage.com/teacher-view.jpg");
     fetchAndValidateImage.mockResolvedValue({
       imageBuffer: new ArrayBuffer(3),
@@ -184,6 +208,29 @@ describe("/api/images route orchestration", () => {
     const response = await GET(req);
 
     expect(response.status).toBe(200);
+  });
+
+  test("GET returns 404 if authenticated user has no MongoDB record", async () => {
+    const uid = "orphan-uid";
+
+    requireAuth.mockResolvedValue({ uid });
+    connectDb.mockResolvedValue({
+      collection: vi.fn().mockReturnValue({
+        findOne: vi.fn().mockResolvedValue(null),
+        createIndex: vi.fn(),
+      }),
+    });
+
+    const req = {
+      url: "https://learnova.test/api/images?id=507f1f77bcf86cd799439011",
+      headers: { get: vi.fn() },
+    };
+
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.error).toBe("User not found");
   });
 
   test("POST orchestrates auth, file extraction, upload and DB update", async () => {
