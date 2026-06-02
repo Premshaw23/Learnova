@@ -28,7 +28,7 @@ const unwrapApiPayload = (payload) => {
   return payload;
 };
 
-export const useAttendance = ({ role, user }) => {
+export const useAttendance = ({ role, user, instituteId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -98,10 +98,16 @@ export const useAttendance = ({ role, user }) => {
   const fetchTodayAttendanceStats = useCallback(async () => {
     try {
       const today = getTodayKeyLocal();
-      const attendanceQuery = query(
-        collection(db, "attendance_records"),
-        where("date", "==", today)
-      );
+      const attendanceQuery = instituteId
+        ? query(
+            collection(db, "attendance_records"),
+            where("date", "==", today),
+            where("instituteId", "==", instituteId)
+          )
+        : query(
+            collection(db, "attendance_records"),
+            where("date", "==", today)
+          );
       const snapshot = await getDocs(attendanceQuery);
       const records = snapshot.docs.map((doc) => doc.data());
 
@@ -110,10 +116,16 @@ export const useAttendance = ({ role, user }) => {
       ).length;
       const lateToday = records.filter((r) => r.status === "late").length;
 
-      const studentsQuery = query(
-        collection(db, "users"),
-        where("role", "==", "student")
-      );
+      const studentsQuery = instituteId
+        ? query(
+            collection(db, "users"),
+            where("role", "==", "student"),
+            where("instituteId", "==", instituteId)
+          )
+        : query(
+            collection(db, "users"),
+            where("role", "==", "student")
+          );
       const studentsSnapshot = await getDocs(studentsQuery);
       const totalStudents = studentsSnapshot.size;
       const absentToday = Math.max(
@@ -194,7 +206,9 @@ export const useAttendance = ({ role, user }) => {
     const fetchStudentsAndAttendance = async () => {
       try {
         const usersRef = collection(db, "users");
-        const qStudents = query(usersRef, where("role", "==", "student"));
+        const qStudents = instituteId
+          ? query(usersRef, where("role", "==", "student"), where("instituteId", "==", instituteId))
+          : query(usersRef, where("role", "==", "student"));
         const studentDocs = await getDocs(qStudents);
 
         const studentsList = studentDocs.docs.map((doc) => ({
@@ -209,10 +223,16 @@ export const useAttendance = ({ role, user }) => {
         }));
 
         const today = getTodayKeyLocal();
-        const attendanceQuery = query(
-          collection(db, "attendance_records"),
-          where("date", "==", today)
-        );
+        const attendanceQuery = instituteId
+          ? query(
+              collection(db, "attendance_records"),
+              where("date", "==", today),
+              where("instituteId", "==", instituteId)
+            )
+          : query(
+              collection(db, "attendance_records"),
+              where("date", "==", today)
+            );
 
         unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
           const attendanceMap = new Map();

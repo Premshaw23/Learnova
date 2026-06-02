@@ -28,14 +28,18 @@ export const GET = withErrorHandler(async (request) => {
   const rawSearch = searchParams.get("search") || "";
   const search = escapeRegex(rawSearch);
 
-  const query = search
-    ? {
-        $or: [
-          { name: { $regex: search, $options: "i" } },
-          { email: { $regex: search, $options: "i" } },
-        ],
-      }
-    : {};
+  const query = {};
+
+  if (profile.instituteId) {
+    query.instituteId = profile.instituteId;
+  }
+
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
+  }
 
   // Database — faceDescriptor is excluded from the projection.
   // Biometric embeddings are sensitive personal data and must not be

@@ -76,6 +76,10 @@ export const POST = withValidation(
       userProfile.instituteName = instituteName;
     }
 
+    if ((role === "teacher" || role === "student") && data.instituteId) {
+      userProfile.instituteId = data.instituteId;
+    }
+
     const sagaResult = await executeSaga({
       operationType: "set_role",
       uid: decodedToken.uid,
