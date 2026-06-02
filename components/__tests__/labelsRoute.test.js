@@ -118,7 +118,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
       { name: "Bob", email: "bob@domain.com", sensitiveField: "secret", hasImage: true },
     ]);
     expect(connectDb).toHaveBeenCalled();
-    expect(mockFind).toHaveBeenCalledWith({}, { projection: { _id: 1, name: 1, email: 1, image: 1 } });
+    expect(mockFind).toHaveBeenCalledWith({ instituteId: "unassigned_no_match" }, { projection: { _id: 1, name: 1, email: 1, image: 1 } });
     expect(mockLimit).toHaveBeenCalledWith(50);
   });
 
@@ -137,6 +137,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
           { name: { $regex: "alice", $options: "i" } },
           { email: { $regex: "alice", $options: "i" } },
         ],
+        instituteId: "unassigned_no_match",
       },
       { projection: { _id: 1, name: 1, email: 1, image: 1 } }
     );
@@ -159,6 +160,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
           { name: { $regex: "test\\.\\*\\+\\?", $options: "i" } },
           { email: { $regex: "test\\.\\*\\+\\?", $options: "i" } },
         ],
+        instituteId: "unassigned_no_match",
       },
       { projection: { _id: 1, name: 1, email: 1, image: 1 } }
     );

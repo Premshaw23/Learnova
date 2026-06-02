@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import * as jose from "jose";
-import { Redis } from "@upstash/redis";
 import { validateCsrfRequest } from "@/lib/csrf";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -13,132 +12,14 @@ const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY;
 // acceptance window for expired or revoked tokens.
 const CLOCK_TOLERANCE_SECONDS = 60;
 
-// ─── Rate Limiting ────────────────────────────────────────────────────────────
-// Uses Upstash Redis (Vercel KV) as a centralized store so that rate limit
-// state is shared across all serverless/edge instances, preventing bypass
-// attacks. Falls back to per-instance memory only during local development.
 
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const RATE_LIMIT_MAX = 5;
-
-let redisClient;
-
-function getRedis() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
-
-// Dev-only in-memory fallback (never used in production)
-const devRateLimitMap = new Map();
-
-const AUTH_RATE_LIMITED_PATHS = [
-  "/api/auth/login",
-  "/api/signup",
-  "/api/auth/signup",
-  "/api/auth/logout",
-  "/api/auth/forgot-password",
-  "/api/auth/reset-password",
-  "/api/auth/verify-email",
-  "/api/auth/verify-otp",
-  "/api/auth/verify-email",
-  "/api/auth/logout",
-];
 
 const PUBLIC_API_PATHS = [
   "/api/auth/csrf",
   "/api/auth/reset-password",
 ];
 
-function isAuthRoute(pathname) {
-  return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
-}
 
-async function rateLimit(ip, pathname, request) {
-  const sessionFingerprint = request.cookies.get("__Secure-next-auth.session-token")?.value
-    || request.cookies.get("next-auth.session-token")?.value
-    || request.cookies.get("authToken")?.value
-    || "";
-  const key = `ratelimit:auth:${ip}_${pathname}_${sessionFingerprint.slice(0, 16)}`;
-  const limit = RATE_LIMIT_MAX;
-  const windowMs = RATE_LIMIT_WINDOW_MS;
-
-  const hasRedis =
-    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
-
-  if (hasRedis) {
-    try {
-      const redis = getRedis();
-      const now = Date.now();
-      const windowStart = now - windowMs;
-
-      const multi = redis.multi();
-      multi.zremrangebyscore(key, 0, windowStart);
-      multi.zadd(key, { score: now, member: `${now}-${Math.random()}` });
-      multi.zcard(key);
-      multi.expire(key, Math.ceil(windowMs / 1000));
-      const [, , count] = await multi.exec();
-
-      const current = Number(count);
-      if (current > limit) {
-        const oldest = await redis.zrange(key, 0, 0, { withScores: true });
-        const resetTime = oldest.length >= 2 ? Number(oldest[1]) + windowMs : now + windowMs;
-        const retryAfter = Math.ceil((resetTime - now) / 1000);
-        return { allowed: false, remaining: 0, retryAfter };
-      }
-
-      return { allowed: true, remaining: limit - current };
-    } catch (err) {
-      console.error("[rate-limit] Upstash Redis error — denying request:", err);
-      return { allowed: false, remaining: 0, retryAfter: Math.ceil(windowMs / 1000) };
-    }
-  }
-
-  // Development-only in-memory fallback
-  const entry = devRateLimitMap.get(key);
-  const now = Date.now();
-
-  if (!entry || now > entry.resetTime) {
-    devRateLimitMap.set(key, { count: 1, resetTime: now + windowMs });
-    return { allowed: true, remaining: limit - 1 };
-  }
-
-  if (entry.count >= limit) {
-    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
-    return { allowed: false, remaining: 0, retryAfter };
-  }
-
-  entry.count += 1;
-  return { allowed: true, remaining: limit - entry.count };
-}
-
-// Periodically clean up expired entries to prevent unbounded memory growth
-// This runs on every middleware invocation but only cleans every 5 minutes
-let lastCleanupTime = 0;
-
-function cleanupRateLimitMap() {
-  try {
-    const now = Date.now();
-
-    if (now - lastCleanupTime < 5 * 60 * 1000) return;
-
-    lastCleanupTime = now;
-
-    if (devRateLimitMap.size === 0) return;
-
-    for (const [key, entry] of devRateLimitMap.entries()) {
-      if (now > entry.resetTime) {
-        devRateLimitMap.delete(key);
-      }
-    }
-  } catch {
-    // Cleanup failure must never crash the middleware
-  }
-}
 
 // ─── CSP ──────────────────────────────────────────────────────────────────────
 
@@ -344,39 +225,9 @@ export async function middleware(request) {
   const { pathname } = request.nextUrl;
   const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
 
-  // Clean up expired rate limit entries periodically
-  cleanupRateLimitMap();
-
   // NOTE: CSRF validation applies only for cookie-authenticated requests.
   // Requests authenticated via Authorization: Bearer <token> are not CSRF-vulnerable.
   // Defer CSRF validation until after token extraction/verification below.
-
-  // ── 1. Rate limiting for auth API routes ──
-  if (isAuthRoute(pathname)) {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
-
-    const { allowed, remaining, retryAfter } = await rateLimit(ip, pathname, request);
-
-    if (!allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Too many attempts. Please try again in ${retryAfter} seconds.`,
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfter),
-            "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
-            "X-RateLimit-Remaining": "0",
-          },
-        }
-      );
-    }
-  }
 
   // ── 2. CSP: only for HTML pages, not assets or APIs ──
   const isPage =
@@ -441,7 +292,7 @@ export async function middleware(request) {
   if (
     pathname.startsWith("/api/") &&
     pathname !== "/api/check-groq-config" &&
-    !isAuthRoute(pathname)
+    !PUBLIC_API_PATHS.some((path) => pathname.startsWith(path))
   ) {
     if (!matchedDashboard) {
       if (!isTokenValid) {

@@ -6,6 +6,7 @@ import { del } from "@vercel/blob";
 import { connectDb } from "@/lib/mongodb";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import logger from "@/utils/logger";
 import {
   extractImageFileFromFormData,
   fetchAndValidateImage,
@@ -19,30 +20,31 @@ import {
 export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(async (request) => {
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
+  const rateLimitResult = await checkRateLimit(`images_get_${ip}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
+
   const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid) || { role: "student" };
 
-  const db = await connectDb();
-  const users = db.collection("users");
-  const requestingUser = await users.findOne(
-    { firebaseUid: decodedToken.uid },
-    { projection: { _id: 1 } }
-  );
+  const imageUrl = await getUserImageFromDb({ 
+    id, 
+    callerUid: decodedToken.uid,
+    callerRole: profile.role,
+    callerInstituteId: profile.instituteId
+  });
 
-  if (!requestingUser) {
-    throw new NotFoundError("User not found");
-  }
+  logger.info("Image accessed", {
+    userId: decodedToken.uid,
+    targetId: id,
+    timestamp: new Date().toISOString()
+  });
 
-  if (requestingUser._id.toString() !== id) {
-    const profile = await getUserProfile(decodedToken.uid);
-    if (!profile || !["admin", "teacher"].includes(profile.role)) {
-      throw new ForbiddenError("You can only view your own profile image");
-    }
-  }
-
-  const imageUrl = await getUserImageFromDb({ id });
   const { imageBuffer, contentType } = await fetchAndValidateImage(imageUrl);
 
   return new NextResponse(imageBuffer, {
