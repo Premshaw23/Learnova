@@ -25,9 +25,8 @@ export async function POST(request) {
       );
     }
     
-    // Rate limit both by IP and by email to prevent spamming
-    const ip = request.headers.get("x-forwarded-for") || "unknown";
-    const rateLimitKey = `reset_pwd_${sanitizedEmail}_${ip}`;
+    // Rate limit by email to prevent spamming (IP is not used as x-forwarded-for is trivially spoofed)
+    const rateLimitKey = `reset_pwd_${sanitizedEmail}`;
     const rateLimitResult = await checkRateLimit(rateLimitKey);
 
     if (!rateLimitResult.allowed) {
