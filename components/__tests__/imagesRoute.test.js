@@ -120,6 +120,7 @@ describe("/api/images route orchestration", () => {
   test("GET rejects when user requests another user's image and is not admin or teacher", async () => {
     const uid = "firebase-uid-1";
     const otherId = new ObjectId();
+    const ownId = new ObjectId();
 
     requireAuth.mockResolvedValue({ uid });
     connectDb.mockResolvedValue({
@@ -146,6 +147,7 @@ describe("/api/images route orchestration", () => {
   test("GET allows admin to view any user's image", async () => {
     const uid = "admin-uid-1";
     const otherId = new ObjectId();
+    const ownId = new ObjectId();
 
     requireAuth.mockResolvedValue({ uid });
     connectDb.mockResolvedValue({
@@ -180,6 +182,8 @@ describe("/api/images route orchestration", () => {
   test("GET allows teacher to view any user's image", async () => {
     const uid = "teacher-uid-1";
     const otherId = new ObjectId();
+    const ownId = new ObjectId();
+    const instituteId = "inst-1";
 
     requireAuth.mockResolvedValue({ uid });
     
@@ -214,12 +218,7 @@ describe("/api/images route orchestration", () => {
     const uid = "orphan-uid";
 
     requireAuth.mockResolvedValue({ uid });
-    connectDb.mockResolvedValue({
-      collection: vi.fn().mockReturnValue({
-        findOne: vi.fn().mockResolvedValue(null),
-        createIndex: vi.fn(),
-      }),
-    });
+    getUserImageFromDb.mockRejectedValue(new NotFoundError("User not found"));
 
     const req = {
       url: "https://learnova.test/api/images?id=507f1f77bcf86cd799439011",

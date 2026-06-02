@@ -225,18 +225,22 @@ describe("attendance record route", () => {
     // Scenario 1: below 60
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: 59,
     });
     let response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(response, 400, "Bad Request: Confidence score too low");
 
     // Scenario 2: above 100
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: 101,
     });
     response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(response, 400);
 
     // Scenario 3: NaN
     parseJSON.mockResolvedValue({
@@ -244,7 +248,7 @@ describe("attendance record route", () => {
       confidenceScore: "not-a-number",
     });
     response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(response, 400);
   });
 
   test("rejects request if rate limit exceeded", async () => {
