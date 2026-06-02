@@ -28,7 +28,10 @@ export const GET = withErrorHandler(async (request) => {
     return jsonError("User not found", 404);
   }
 
-  const instituteId = profile.instituteId || profile.uid;
+  if (!profile.instituteId) {
+    return jsonError("User profile missing instituteId. Please contact your institute admin.", 400);
+  }
+  const instituteId = profile.instituteId;
 
   // Two-week window dates
   const now = new Date();
