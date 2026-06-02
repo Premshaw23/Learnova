@@ -24,40 +24,44 @@ export const GET = withErrorHandler(async (request) => {
   let todayAttendance = 0;
 
   try {
-    const studentsSnap = await db
-      .collection("users")
-      .where("instituteId", "==", uid)
-      .where("role", "==", "student")
-      .get();
+    const today = new Date().toISOString().slice(0, 10);
+
+    const [studentsSnap, teachersSnap, classesSnap, reqSnap, attSnap] = await Promise.all([
+      db.collection("users")
+        .where("instituteId", "==", uid)
+        .where("role", "==", "student")
+        .select("fullName", "name", "email", "status")
+        .limit(10000)
+        .get(),
+      db.collection("users")
+        .where("instituteId", "==", uid)
+        .where("role", "==", "teacher")
+        .select("fullName", "name", "email", "classCount", "attendanceRate", "status", "department")
+        .limit(1000)
+        .get(),
+      db.collection("classes")
+        .where("instituteId", "==", uid)
+        .select("name", "status")
+        .limit(1000)
+        .get(),
+      db.collection("attendance_requests")
+        .where("instituteId", "==", uid)
+        .orderBy("createdAt", "desc")
+        .select("status", "createdAt", "studentEmail")
+        .limit(20)
+        .get(),
+      db.collection("attendance_records")
+        .where("instituteId", "==", uid)
+        .where("date", "==", today)
+        .select("status")
+        .get(),
+    ]);
+
     studentDocs = studentsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-    const teachersSnap = await db
-      .collection("users")
-      .where("instituteId", "==", uid)
-      .where("role", "==", "teacher")
-      .get();
     teacherDocs = teachersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-    const classesSnap = await db
-      .collection("classes")
-      .where("instituteId", "==", uid)
-      .get();
     classes = classesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-    const reqSnap = await db
-      .collection("attendance_requests")
-      .where("instituteId", "==", uid)
-      .orderBy("createdAt", "desc")
-      .limit(20)
-      .get();
     attendanceRequests = reqSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-    const today = new Date().toISOString().slice(0, 10);
-    const attSnap = await db
-      .collection("attendance_records")
-      .where("instituteId", "==", uid)
-      .where("date", "==", today)
-      .get();
     const presentCount = attSnap.docs.filter((d) => (d.data().status ?? "present") === "present").length;
     const totalStudents = studentDocs.length || 1;
     todayAttendance = Math.round((presentCount / totalStudents) * 1000) / 10;
