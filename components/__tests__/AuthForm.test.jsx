@@ -60,6 +60,11 @@ describe("AuthForm", () => {
 
     render(<AuthForm {...defaultProps} onSubmit={handleSubmit} />);
 
+    const emailInput = screen.getByPlaceholderText("Enter your email");
+    const passwordInput = screen.getByPlaceholderText("Enter your password");
+    await user.type(emailInput, "test@example.com");
+    await user.type(passwordInput, "password123");
+
     const submitBtn = screen.getByRole("button", { name: /sign in/i });
     await user.click(submitBtn);
 

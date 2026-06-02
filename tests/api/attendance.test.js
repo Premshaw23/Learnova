@@ -129,7 +129,9 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
   it('returns 403 when userId does not match authenticated uid', async () => {
     authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
-      userId: 'user-xyz', // different user
+      userId: 'user-xyz',
+      studentName: 'Other User',
+      email: 'other@example.com',
       confidenceScore: 85,
       date: '2026-05-28',
     });
@@ -145,6 +147,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
+      studentName: 'Test User',
+      email: 'test@example.com',
       confidenceScore: 50,
       date: '2026-05-28',
     });
@@ -160,6 +164,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
+      studentName: 'Test User',
+      email: 'test@example.com',
       confidenceScore: undefined,
       date: '2026-05-28',
     });
@@ -173,6 +179,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
+      studentName: 'Test User',
+      email: 'test@example.com',
       confidenceScore: 'high',
       date: '2026-05-28',
     });
@@ -186,6 +194,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     authenticateRequest.mockResolvedValue({ uid: 'user-abc', email_verified: true });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
+      studentName: 'Test User',
+      email: 'test@example.com',
       confidenceScore: 110,
       date: '2026-05-28',
     });
@@ -203,6 +213,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
+      studentName: 'Test User',
+      email: 'test@learnova.edu',
       confidenceScore: 85,
       date: '2026-05-28',
     });
@@ -228,6 +240,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     });
     parseJSON.mockResolvedValue({
       userId: 'user-abc',
+      studentName: 'Test User',
+      email: 'test@learnova.edu',
       confidenceScore: 85,
       date: '2026-05-28',
     });
@@ -291,6 +305,8 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
     });
     parseJSON.mockResolvedValue({
       userId: 'student-456',
+      studentName: 'Jane Doe',
+      email: 'jane@example.com',
       confidenceScore: 90,
       date: '2026-05-28',
     });
