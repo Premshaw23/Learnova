@@ -1,7 +1,7 @@
 import { POST } from "./route";
 import { parseJSON } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
@@ -61,8 +61,8 @@ vi.mock("@/lib/mongodb", () => {
 
 vi.mock("firebase-admin/firestore", () => ({
   getFirestore: vi.fn(),
-  FieldValue: {
-    serverTimestamp: vi.fn(() => "server-timestamp"),
+  Timestamp: {
+    fromDate: vi.fn((d) => ({ seconds: Math.floor(d.getTime() / 1000), nanoseconds: 0 })),
   },
 }));
 
@@ -146,7 +146,7 @@ describe("attendance record route", () => {
         status: "present",
         confidenceScore: 0.75,
         offlineSynced: false,
-        timestamp: FieldValue.serverTimestamp.mock.results[0].value,
+        timestamp: Timestamp.fromDate(expect.any(Date)),
       }),
       { merge: true },
     );
