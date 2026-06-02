@@ -2,7 +2,7 @@ import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { awardXp } from "@/lib/gamification-service";
 import { getLocalDateKey } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -30,6 +30,9 @@ export const POST = withErrorHandler(async (request) => {
   
   const { userId, studentName, email, confidenceScore, date } = validationResult.data;
   const normalizedDate = date || getLocalDateKey();
+
+  // Single authoritative timestamp for both Firestore and MongoDB to prevent drift
+  const attendanceTimestamp = new Date();
 
   // 2. Ensure they are only submitting attendance for their own UID, OR they are a teacher/admin!
   const isTeacherOrAdmin = decodedToken.role === "teacher" || decodedToken.role === "admin";
@@ -85,7 +88,7 @@ export const POST = withErrorHandler(async (request) => {
                 studentName: resolvedName,
                 email: resolvedEmail,
                 instituteId,
-                timestamp: FieldValue.serverTimestamp(),
+                timestamp: Timestamp.fromDate(attendanceTimestamp),
                 date: normalizedDate,
                 status: "present",
                 confidenceScore: normalizedConfidence,
@@ -112,7 +115,7 @@ export const POST = withErrorHandler(async (request) => {
                 studentName: resolvedName,
                 email: resolvedEmail,
                 instituteId,
-                timestamp: new Date(),
+                timestamp: new Date(attendanceTimestamp),
                 date: normalizedDate,
                 status: "present",
                 confidenceScore: normalizedConfidence,
@@ -135,7 +138,7 @@ export const POST = withErrorHandler(async (request) => {
             return;
           }
           await awardXp(userId, "attendance_marked", {
-            attendanceHour: new Date().getHours(),
+            attendanceHour: attendanceTimestamp.getHours(),
           });
         },
         compensate: null, // XP side-effect; failure doesn't block attendance
