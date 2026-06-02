@@ -123,3 +123,7 @@ const styles = {
     transition: "background 0.2s",
   },
 };
+      <StudentDashboard />
+    </ProtectedRoute>
+  );
+}

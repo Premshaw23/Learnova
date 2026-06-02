@@ -2,9 +2,9 @@ import { POST } from "@/app/api/groq/route";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -14,22 +14,22 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn(),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn(),
 }));
 
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout Tests", () => {
   const originalEnv = { ...process.env };
 
   beforeAll(() => {
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterAll(() => {
@@ -38,7 +38,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env = { ...originalEnv };
     process.env.GROQ_API_KEY = "mock-groq-key";
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
@@ -50,7 +50,8 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
       headers: {
         get: (name) => headers[name.toLowerCase()] || null,
       },
-      json: jest.fn().mockResolvedValue(bodyData),
+      json: vi.fn().mockResolvedValue(bodyData),
+      text: vi.fn().mockResolvedValue(JSON.stringify(bodyData)),
     };
   };
 
@@ -84,7 +85,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   test("rejects missing message input with 400 Bad Request", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
 
     const req = createMockRequest(
       { authorization: "Bearer valid-token" },
@@ -99,7 +100,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   test("rejects over-length messages with 400 Bad Request", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
 
     const longMessage = "a".repeat(2001);
     const req = createMockRequest(
@@ -115,7 +116,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   test("enforces rate limits per authenticated user and returns 429 Too Many Requests", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-rate-limit-test", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-rate-limit-test", email: "user@example.com", email_verified: true });
 
     checkRateLimit
       .mockResolvedValueOnce({ allowed: true, remaining: 9 })
@@ -132,7 +133,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
 
     global.fetch.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
         choices: [{ message: { content: "AI response" } }],
       }),
     });
@@ -160,11 +161,11 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   test("successfully resolves Groq call for authenticated, non-rate-limited requests", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-success-test", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-success-test", email: "user@example.com", email_verified: true });
 
     global.fetch.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
         choices: [{ message: { content: "Nova's warm response!" } }],
       }),
     });
@@ -183,7 +184,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   test("aborts the request and returns 504 Gateway Timeout when Groq API hangs/exceeds timeout", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
 
     // Mock fetch to simulate an AbortError being thrown
     global.fetch.mockImplementation(() => {
@@ -205,12 +206,12 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   test("maps Groq upstream error payload to API error response", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-upstream-error", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-upstream-error", email: "user@example.com", email_verified: true });
 
     global.fetch.mockResolvedValue({
       ok: false,
       status: 429,
-      json: jest.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
         error: { message: "Upstream quota exceeded" },
       }),
     });
@@ -227,12 +228,12 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   test("uses fallback message when Groq upstream error body is invalid", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-upstream-invalid-json", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-upstream-invalid-json", email: "user@example.com", email_verified: true });
 
     global.fetch.mockResolvedValue({
       ok: false,
       status: 500,
-      json: jest.fn().mockRejectedValue(new Error("Invalid JSON")),
+      json: vi.fn().mockRejectedValue(new Error("Invalid JSON")),
     });
 
     const req = createMockRequest(
@@ -244,5 +245,91 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
 
     expect(response.status).toBe(500);
     expect(body.error).toBe("Groq API request failed");
+  });
+
+  test("accepts messages array format and extracts last user message", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-msg-array", email: "user@example.com", email_verified: true });
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        choices: [{ message: { content: "Response with history" } }],
+      }),
+    });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      {
+        messages: [
+          { role: "user", content: "What is attendance?" },
+          { role: "assistant", content: "Attendance is..." },
+          { role: "user", content: "Tell me more" },
+        ],
+      }
+    );
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data.message).toBe("Response with history");
+  });
+
+  test("rejects messages array with no user role entries as missing input", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-no-user-msg", email: "user@example.com", email_verified: true });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      {
+        messages: [
+          { role: "assistant", content: "Hello" },
+        ],
+      }
+    );
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Message is required");
+  });
+
+  test("passes conversation history to Groq API request", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-history-check", email: "user@example.com", email_verified: true });
+
+    let fetchBody;
+    global.fetch.mockImplementation((url, options) => {
+      fetchBody = JSON.parse(options.body);
+      return Promise.resolve({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: "Response with memory" } }],
+        }),
+      });
+    });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      {
+        messages: [
+          { role: "user", content: "My name is Alice" },
+          { role: "assistant", content: "Nice to meet you Alice!" },
+          { role: "user", content: "What is my name?" },
+        ],
+      }
+    );
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.message).toBe("Response with memory");
+
+    const userMessages = fetchBody.messages.filter(m => m.role === "user");
+    expect(userMessages).toHaveLength(2);
+    expect(userMessages[0].content).toBe("My name is Alice");
+    expect(userMessages[1].content).toBe("What is my name?");
+
+    const assistantMessages = fetchBody.messages.filter(m => m.role === "assistant");
+    expect(assistantMessages).toHaveLength(1);
+    expect(assistantMessages[0].content).toBe("Nice to meet you Alice!");
   });
 });

@@ -1,0 +1,49 @@
+name: Issue Auto Assign & Comment
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  auto-assign-comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-assign and comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.issue.number;
+            const creator = context.payload.issue.user.login;
+
+            console.log(`Auto-assigning issue #${issueNumber} to creator: ${creator}`);
+
+            // 1. Assign the creator to the issue
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              assignees: [creator]
+            });
+
+            console.log("Posting comment 1: 'go for it'");
+
+            // 2. Post the first comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: "go for it"
+            });
+
+            console.log("Posting comment 2: 'follow me and star the repo'");
+
+            // 3. Post the second comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: "follow me and star the repo"
+            });

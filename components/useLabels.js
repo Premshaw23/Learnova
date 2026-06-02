@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export default function useLabels(user) {
   const [labels, setLabels] = useState([]);
@@ -24,7 +26,7 @@ export default function useLabels(user) {
           controller.abort();
         }, 5000);
 
-        const res = await fetch("/api/labels", {
+        const res = await apiFetch("/api/labels", {
           headers: {
             Authorization: `Bearer ${token}`,
           },

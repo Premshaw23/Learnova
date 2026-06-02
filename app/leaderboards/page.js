@@ -35,7 +35,7 @@ const Reveal = ({ children, className = "", delay = 0, y = 20 }) => (
 );
 
 // Reusable Avatar component utilizing Next.js Image optimization and robust fallbacks
-function AvatarRenderer({ avatar, name, size = 80 }) {
+function AvatarRenderer({ avatar, name, size = 80, priority = false }) {
   const [imgSrc, setImgSrc] = useState(
     avatar && (avatar.startsWith("http") || avatar.startsWith("/")) ? avatar : null
   );
@@ -51,6 +51,7 @@ function AvatarRenderer({ avatar, name, size = 80 }) {
         alt={`${name}'s avatar`}
         width={size}
         height={size}
+        priority={priority}
         className="w-full h-full object-cover rounded-full"
         onError={() => setImgSrc(null)}
       />
@@ -90,10 +91,7 @@ export default function LeaderboardsPage() {
         const q = query(collection(db, "userStats"), orderBy("totalXp", "desc"), limit(50));
         const snapshot = await getDocs(q);
         
-        const fetchedData = [];
-        let currentRank = 1;
-        
-        for (const docSnap of snapshot.docs) {
+        const fetchedData = await Promise.all(snapshot.docs.map(async (docSnap, index) => {
           const stats = docSnap.data();
           const userId = docSnap.id;
           
@@ -106,18 +104,18 @@ export default function LeaderboardsPage() {
             console.warn("Could not fetch user details for", userId);
           }
           
-          fetchedData.push({
+          return {
             id: userId,
             name: userData.displayName || "Unknown Learner",
             score: stats.totalXp || stats.score || 0,
             avatar: userData.photoURL || "👩‍🎓",
-            rank: currentRank++,
+            rank: index + 1,
             change: "same",
             streak: stats.currentStreak || stats.streak || 0,
             badges: stats.badges || (stats.unlockedBadges ? stats.unlockedBadges.length : 0),
             isCurrentUser: user?.uid === userId
-          });
-        }
+          };
+        }));
         
         if (fetchedData.length > 0) {
           setLeaderboardData(fetchedData);
@@ -139,13 +137,23 @@ export default function LeaderboardsPage() {
 
   const isDark = mounted ? theme === "dark" : true;
 
-  const displayData = leaderboardData.length > 0 ? leaderboardData : LEADERBOARD_DATA;
-  const topThree = displayData.length >= 3 ? [displayData[1], displayData[0], displayData[2]] : [];
-  const restOfList = displayData.slice(3);
-  
-  // Find current user or default to the last one
-  const currentUser = displayData.find(u => u.isCurrentUser) || displayData[displayData.length - 1] || LEADERBOARD_DATA[9];
+ const baseData =
+  leaderboardData.length > 0 ? leaderboardData : LEADERBOARD_DATA;
 
+const displayData = user
+  ? baseData
+  : baseData.filter(entry => entry.name !== "You (Current)");
+
+const topThree =
+  displayData.length >= 3
+    ? [displayData[1], displayData[0], displayData[2]]
+    : [];
+
+const restOfList = displayData.slice(3);
+
+const currentUser = user
+  ? displayData.find(u => u.isCurrentUser)
+  : null;
   const getRankStyle = (rank) => {
     switch (rank) {
       case 1:
@@ -266,7 +274,7 @@ export default function LeaderboardsPage() {
                             </motion.div>
                           )}
                           <div className={`w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center text-3xl sm:text-4xl bg-gray-800 rounded-full border-4 ${style.border} shadow-lg mb-2 z-10 ${isFirst ? 'scale-110' : ''} overflow-hidden`}>
-                            <AvatarRenderer avatar={user.avatar} name={user.name} size={isFirst ? 80 : 64} />
+                            <AvatarRenderer avatar={user.avatar} name={user.name} size={isFirst ? 80 : 64} priority={true} />
                           </div>
                           <span className="font-bold text-foreground text-xs sm:text-sm text-center truncate w-full px-2">{user.name}</span>
                           <span className={`font-black ${style.color} text-sm sm:text-base`}>{user.score} pts</span>
@@ -345,7 +353,7 @@ export default function LeaderboardsPage() {
         </main>
         
         {/* Sticky Current User Status Bar */}
-        {!loading && currentUser && (
+        {!loading && user && currentUser && (
           <motion.div 
             initial={{ y: 100 }}
             animate={{ y: 0 }}

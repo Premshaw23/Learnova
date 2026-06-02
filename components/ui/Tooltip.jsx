@@ -1,46 +1,96 @@
-import React from "react";
+"use client";
+
+import React, { useState, useId, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 /**
- * A highly reusable, accessible, and flexible Tooltip wrapper component.
- * Built with pure Tailwind CSS transitions.
- * Supports different placement directions (top, bottom, left, right),
- * prevents offscreen overflows, and implements standard accessibility tooltip roles.
+ * A reusable, accessible Tooltip component with intelligent positioning.
+ * 
+ * @param {React.ReactNode} children - The trigger element.
+ * @param {React.ReactNode} content - Tooltip text or component.
+ * @param {'top' | 'bottom' | 'left' | 'right'} placement - Initial placement.
+ * @param {number} delay - Delay in ms before showing.
  */
-const Tooltip = ({
-  children,
-  text,
-  position = "top",
-  className = "",
+const Tooltip = ({ 
+  children, 
+  content, 
+  placement = "top", 
+  delay = 200 
 }) => {
-  // Placement positioning maps
-  const positionClasses = {
-    top: "bottom-full left-1/2 -translate-x-1/2 mb-2 origin-bottom",
-    bottom: "top-full left-1/2 -translate-x-1/2 mt-2 origin-top",
-    left: "right-full top-1/2 -translate-y-1/2 mr-2 origin-right",
-    right: "left-full top-1/2 -translate-y-1/2 ml-2 origin-left",
+  const [isVisible, setIsVisible] = useState(false);
+  const [adjustedPlacement, setAdjustedPlacement] = useState(placement);
+  const tooltipId = useId();
+  const timeoutRef = useRef(null);
+  const tooltipRef = useRef(null);
+
+  const showTooltip = () => {
+    timeoutRef.current = setTimeout(() => setIsVisible(true), delay);
   };
 
-  // Tooltip arrow positioning maps
+  const hideTooltip = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsVisible(false);
+    setAdjustedPlacement(placement); // Reset to preferred placement
+  };
+
+  useEffect(() => {
+    if (isVisible && tooltipRef.current) {
+      const rect = tooltipRef.current.getBoundingClientRect();
+      const viewport = { w: window.innerWidth, h: window.innerHeight };
+      
+      let next = placement;
+      if (placement === "top" && rect.top < 0) next = "bottom";
+      else if (placement === "bottom" && rect.bottom > viewport.h) next = "top";
+      else if (placement === "left" && rect.left < 0) next = "right";
+      else if (placement === "right" && rect.right > viewport.w) next = "left";
+
+      if (next !== adjustedPlacement) setAdjustedPlacement(next);
+    }
+  }, [isVisible, placement, adjustedPlacement]);
+
+  const positionClasses = {
+    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
+    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
+    left: "right-full top-1/2 -translate-y-1/2 mr-2",
+    right: "left-full top-1/2 -translate-y-1/2 ml-2",
+  };
+
   const arrowClasses = {
-    top: "top-full left-1/2 -translate-x-1/2 -mt-1 border-t-slate-900 dark:border-t-slate-800",
-    bottom: "bottom-full left-1/2 -translate-x-1/2 -mb-1 border-b-slate-900 dark:border-b-slate-800",
-    left: "left-full top-1/2 -translate-y-1/2 -ml-1 border-l-slate-900 dark:border-l-slate-800",
-    right: "right-full top-1/2 -translate-y-1/2 -mr-1 border-r-slate-900 dark:border-r-slate-800",
+    top: "bottom-[-4px] left-1/2 -translate-x-1/2 border-r border-b",
+    bottom: "top-[-4px] left-1/2 -translate-x-1/2 border-l border-t",
+    left: "right-[-4px] top-1/2 -translate-y-1/2 border-r border-t",
+    right: "left-[-4px] top-1/2 -translate-y-1/2 border-l border-b",
   };
 
   return (
-    <div className={`relative inline-flex items-center group ${className}`}>
-      {children}
-      <div
-        className={`absolute z-50 ${positionClasses[position]} px-2.5 py-1.5 bg-slate-950 dark:bg-slate-850 text-white text-xs font-semibold rounded-lg shadow-xl border border-slate-800/80 backdrop-blur-md opacity-0 scale-90 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out whitespace-nowrap`}
-        role="tooltip"
-        aria-hidden="true"
-      >
-        {text}
-        
-        {/* Tooltip Arrow */}
-        <div className={`absolute border-4 border-transparent ${arrowClasses[position]}`} />
-      </div>
+    <div 
+      className="relative inline-block"
+      onMouseEnter={showTooltip}
+      onMouseLeave={hideTooltip}
+      onFocus={showTooltip}
+      onBlur={hideTooltip}
+    >
+      {React.isValidElement(children) ? (
+        React.cloneElement(children, { "aria-describedby": isVisible ? tooltipId : undefined })
+      ) : children}
+
+      <AnimatePresence>
+        {isVisible && content && (
+          <motion.div
+            ref={tooltipRef}
+            id={tooltipId}
+            role="tooltip"
+            initial={{ opacity: 0, scale: 0.96, y: adjustedPlacement === "top" ? 4 : adjustedPlacement === "bottom" ? -4 : 0 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+            className={`absolute z-[100] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-100 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl backdrop-blur-md whitespace-nowrap pointer-events-none ${positionClasses[adjustedPlacement]}`}
+          >
+            {content}
+            <div className={`absolute w-1.5 h-1.5 bg-zinc-900 border-zinc-800 rotate-45 ${arrowClasses[adjustedPlacement]}`} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

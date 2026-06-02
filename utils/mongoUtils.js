@@ -19,7 +19,7 @@
 export function escapeRegex(raw, maxLength = 100) {
   if (typeof raw !== "string") return "";
   // Truncate first so the escape pass operates on a bounded string
-  return raw.slice(0, maxLength).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return raw.slice(0, maxLength).replace(/[-[\]{}()*+?.,\\^$|#\s/]/g, "\\$&");
 }
 
 /**

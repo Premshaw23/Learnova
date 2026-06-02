@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
-import { requireRole } from "@/lib/rbac";
 import { ValidationError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
+import { verifyPasscode } from "@/utils/passcodeUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -51,11 +51,31 @@ export const POST = withErrorHandler(async (request) => {
   
   const { passcode } = validation.data;
 
+  const { getUserProfile } = await import("@/lib/firebase-admin");
+  const profile = await getUserProfile(decodedToken.uid);
+  if (!profile) {
+    return NextResponse.json(
+      { valid: false, error: "User profile not found." },
+      { status: 404 }
+    );
+  }
+
+  const { getSettingsDocId } = await import("@/utils/passcodeUtils");
+  const settingsDocId = getSettingsDocId(profile);
+
   const db = admin.firestore();
-  const settingsDoc = await db
+  let settingsDoc = await db
     .collection("attendance_settings")
-    .doc("current_settings")
+    .doc(settingsDocId)
     .get();
+
+  if (!settingsDoc.exists) {
+    // Fallback for existing data
+    settingsDoc = await db
+      .collection("attendance_settings")
+      .doc("current_settings")
+      .get();
+  }
 
   if (!settingsDoc.exists) {
     return NextResponse.json(
@@ -80,12 +100,12 @@ export const POST = withErrorHandler(async (request) => {
     );
   }
 
-  if (settings.passcode === passcode) {
+  if (verifyPasscode(passcode, settings.passcode)) {
     return NextResponse.json({ valid: true });
   }
 
-  return NextResponse.json({
-    valid: false,
-    error: "Invalid passcode. Please contact your teacher for the correct code.",
-  });
+  return NextResponse.json(
+    { valid: false, error: "Invalid passcode. Please contact your teacher for the correct code." },
+    { status: 401 }
+  );
 });

@@ -20,9 +20,10 @@ export default function ScrollToTop() {
       return;
     }
 
-    const scrollToTop = () => window.scrollTo(0, 0);
-    scrollToTop();
-    requestAnimationFrame(scrollToTop);
+    window.scrollTo({
+      top: 0,
+      behavior: "instant",
+    });
   }, [pathname]);
 
   return null;

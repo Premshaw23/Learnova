@@ -26,16 +26,12 @@ import {
   Save,
   X,
   Camera,
-  Star,
   Award,
   Clock,
   Activity,
   BookOpen,
   Sparkles,
   Shield,
-  Crown,
-  Zap,
-  TrendingUp,
   User2,
   GraduationCap,
   Users,
@@ -48,6 +44,9 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
+import ActivityHeatmap from "@/components/activity/ActivityHeatmap";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export default function UniversalProfile() {
   const { user, userProfile, loading } = useAuth();
@@ -60,6 +59,8 @@ export default function UniversalProfile() {
 
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [imageError, setImageError] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
 
   const [role, setRole] = useState(
     userProfile?.role || "student"
@@ -275,27 +276,33 @@ export default function UniversalProfile() {
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error(
-        "Please upload a valid image file."
-      );
+    // 1. Explicitly check for allowed image types (.jpg, .jpeg, .png, .webp)
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Only .jpg, .jpeg, .png, and .webp are supported.");
+      e.target.value = ""; // Clear the file input registry cleanly
       return;
     }
 
-    const MAX_SIZE = 5 * 1024 * 1024;
-
+    // 2. Reduce restriction boundary down to a strict 2MB limit
+    const MAX_SIZE = 2 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      toast.error(
-        "File size exceeds 5MB limit."
-      );
-
-      e.target.value = "";
-
+      toast.error("File too large. Maximum image size allowed is 2MB.");
+      e.target.value = ""; // Clear the file input registry cleanly
       return;
     }
+
+    // Show preview before uploading
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setPendingFile(file);
+    setImageError(false);
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!pendingFile || !user) return;
 
     if (!modelsLoaded) {
       toast.error("Face models are still loading. Please wait a moment.");
@@ -305,18 +312,25 @@ export default function UniversalProfile() {
     const detectToast = toast.loading("Analyzing photo for face verification...");
     let faceDescriptorString = "";
     try {
-      const fileUrl = URL.createObjectURL(file);
-      const img = await faceapi.fetchImage(fileUrl);
+      if (!faceapi.tf.getBackend()) {
+        await faceapi.tf.setBackend("cpu");
+      }
+      const fileUrl = URL.createObjectURL(pendingFile);
+      const img = await new Promise((resolve, reject) => {
+        const el = document.createElement("img");
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = fileUrl;
+      });
       const detection = await faceapi
         .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
         .withFaceDescriptor();
-
       URL.revokeObjectURL(fileUrl);
 
       if (!detection) {
         toast.error("Could not detect a clear face. Please upload a clear headshot photo.", { id: detectToast });
-        e.target.value = "";
+        handleCancelPreview(); // resets fileInputRef.current.value internally
         return;
       }
 
@@ -325,86 +339,71 @@ export default function UniversalProfile() {
     } catch (err) {
       console.error("Face detection error during profile update:", err);
       toast.error("Error analyzing image file. Please ensure it is a valid face image.", { id: detectToast });
-      e.target.value = "";
+      handleCancelPreview(); // resets fileInputRef.current.value internally
       return;
     }
 
-    const loadingToast = toast.loading(
-      "Uploading profile picture..."
-    );
-
+    const loadingToast = toast.loading("Uploading profile picture...");
     try {
       const token = await user.getIdToken();
-
       const uploadFormData = new FormData();
-
-      uploadFormData.append("file", file);
+      uploadFormData.append("file", pendingFile);
       if (faceDescriptorString) {
         uploadFormData.append("faceDescriptor", faceDescriptorString);
       }
 
-      const res = await fetch("/api/images", {
+      const res = await apiFetch("/api/images", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: uploadFormData,
       });
 
       if (!res.ok) {
-        const errorData = await res
-          .json()
-          .catch(() => ({}));
-
-        throw new Error(
-          errorData.error ||
-            "Failed to upload image"
-        );
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to upload image");
       }
 
       const data = await res.json();
-
       if (data.success && data.url) {
-        await updateProfile(user, {
-          photoURL: data.url,
-        });
-
-        const userRef = doc(
-          db,
-          "users",
-          user.uid
-        );
-
-        await updateDoc(userRef, {
-          photoURL: data.url,
-        });
-
+        await updateProfile(user, { photoURL: data.url });
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, { photoURL: data.url });
         setAvatarUrl(data.url);
-
-        toast.success(
-          "Profile picture updated successfully!",
-          {
-            id: loadingToast,
-          }
-        );
+        toast.success("Profile picture updated successfully!", { id: loadingToast });
       } else {
-        throw new Error(
-          data.error || "Upload failed"
-        );
+        throw new Error(data.error || "Upload failed");
       }
     } catch (error) {
-      toast.error(
-        error.message ||
-          "Failed to update profile picture.",
-        {
-          id: loadingToast,
-        }
-      );
+      toast.error(error.message || "Failed to update profile picture.", { id: loadingToast });
+    } finally {
+      handleCancelPreview();
+    }
+  };
+
+  const handleCancelPreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPendingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!user) return;
+    const loadingToast = toast.loading("Removing profile picture...");
+    try {
+      await updateProfile(user, { photoURL: null });
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, { photoURL: null });
+      setAvatarUrl(null);
+      setImageError(false);
+      toast.success("Profile picture removed.", { id: loadingToast });
+    } catch (error) {
+      toast.error(error.message || "Failed to remove profile picture.", { id: loadingToast });
     }
   };
 
   const getUserPhoto = () => {
-    return avatarUrl || user?.photoURL || null;
+    return previewUrl || avatarUrl || user?.photoURL || null;
   };
 
   const getUserInitials = useCallback((name) => {
@@ -575,45 +574,73 @@ export default function UniversalProfile() {
         <div className="bg-black/20 backdrop-blur-2xl rounded-3xl border border-white/10 p-6">
           <div className="flex flex-col md:flex-row gap-8">
             {/* Profile Image */}
-            <div className="relative group">
-              {getUserPhoto() && !imageError ? (
-                <Image
-                  src={getUserPhoto()}
-                  alt="Profile"
-                  width={120}
-                  height={120}
-                  onError={() =>
-                    setImageError(true)
-                  }
-                  className="w-28 h-28 rounded-full object-cover border-4 border-white/20"
-                />
-              ) : (
-                <div
-                  className={`w-28 h-28 rounded-full bg-gradient-to-br ${roleConfig.color} flex items-center justify-center border-4 border-white/20`}
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                {getUserPhoto() && !imageError ? (
+                  <Image
+                    src={getUserPhoto()}
+                    alt={`${getUserDisplayName()} profile photo`}
+                    width={120}
+                    height={120}
+                    onError={() => setImageError(true)}
+                    className="w-28 h-28 rounded-full object-cover border-4 border-white/20"
+                  />
+                ) : (
+                  <div
+                    className={`w-28 h-28 rounded-full bg-gradient-to-br ${roleConfig.color} flex items-center justify-center border-4 border-white/20`}
+                  >
+                    <span className="text-3xl font-bold">
+                      {getUserInitials(getUserDisplayName())}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleImageUpload}
+                  className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-2"
+                  title="Change photo"
                 >
-                  <span className="text-3xl font-bold">
-                    {getUserInitials(
-                      getUserDisplayName()
-                    )}
-                  </span>
+                  <Camera className="w-4 h-4" />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileChange}
+                />
+              </div>
+
+              {/* Preview confirm/cancel */}
+              {previewUrl && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmUpload}
+                    className="text-xs bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full"
+                  >
+                    Save Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelPreview}
+                    className="text-xs bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded-full"
+                  >
+                    Cancel
+                  </button>
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleImageUpload}
-                className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-2"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
-
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handleFileChange}
-              />
+              {/* Remove photo */}
+              {!previewUrl && (avatarUrl || user?.photoURL) && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  className="text-xs text-red-400 hover:text-red-300 underline"
+                >
+                  Remove photo
+                </button>
+              )}
             </div>
 
             {/* Profile Info */}
@@ -797,6 +824,10 @@ export default function UniversalProfile() {
           ))}
         </div>
 
+        <div className="mt-8">
+          <ActivityHeatmap />
+        </div>
+
         {/* Tabs */}
         <div className="bg-black/20 border border-white/10 rounded-3xl mt-8 overflow-hidden">
           <div className="border-b border-white/10">
@@ -858,7 +889,7 @@ export default function UniversalProfile() {
               <div>
                 <h3 className="text-2xl font-bold mb-6">Detailed Activity</h3>
                 <div className="relative border-l border-white/10 ml-4 space-y-8 pb-4">
-                  {recentActivity.map((item, index) => (
+                  {recentActivity.map((item) => (
                     <div key={item.id} className="relative pl-8">
                       <div className="absolute -left-3 top-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center border-4 border-gray-900">
                         <Activity className="w-3 h-3 text-white" />
@@ -953,4 +984,4 @@ export default function UniversalProfile() {
       </div>
     </div>
   );
-}
+};

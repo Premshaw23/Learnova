@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
+import TimerSkeleton from "@/components/ui/TimerSkeleton";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "react-hot-toast";
@@ -27,8 +28,15 @@ import {
   Sun,
   Moon,
   Timer,
+  GraduationCap,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { TimerSection } from "@/components/productivity/TimerSection";
+import ProductivityTrendsSection from "@/components/productivity/ProductivityTrendsSection";
+import { apiFetch } from "@/lib/apiClient";
+import { TaskSection } from "@/components/productivity/TaskSection";
+import { CalendarSection } from "@/components/productivity/CalendarSection";
+import { AgendaListSection } from "@/components/productivity/AgendaListSection";
 
 const MODES = {
   focus: { label: "Focus", seconds: 25 * 60, accent: "text-cyan-300" },
@@ -40,14 +48,29 @@ const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TASKS_KEY = "learnova_productivity_tasks";
 const AGENDA_KEY = "learnova_productivity_agenda";
 const TIME_BLOCKS = [
-  { label: "Focus", color: "bg-cyan-400" },
-  { label: "Meetings", color: "bg-purple-400" },
-  { label: "Grading", color: "bg-emerald-400" },
+  { label: "Focus", color: "bg-cyan-700" },
+  { label: "Meetings", color: "bg-purple-700" },
+  { label: "Grading", color: "bg-emerald-700" },
 ];
 const PRIORITIES = [
-  { value: "low", label: "Low", color: "border-emerald-400/40 text-emerald-200" },
-  { value: "medium", label: "Medium", color: "border-amber-400/40 text-amber-200" },
-  { value: "high", label: "High", color: "border-rose-400/40 text-rose-200" },
+  {
+    value: "low",
+    label: "Low",
+    color: "border-emerald-300 text-emerald-700 bg-emerald-50",
+    active: "bg-emerald-600 text-white border-emerald-700 shadow-md",
+  },
+  {
+    value: "medium",
+    label: "Medium",
+    color: "border-amber-300 text-amber-700 bg-amber-50",
+    active: "bg-amber-500 text-white border-amber-600 shadow-md",
+  },
+  {
+    value: "high",
+    label: "High",
+    color: "border-rose-300 text-rose-700 bg-rose-50",
+    active: "bg-rose-600 text-white border-rose-700 shadow-md",
+  },
 ];
 const SOUNDSCAPES = [
   { value: "rain", label: "Rain", icon: Volume2 },
@@ -89,6 +112,163 @@ function parseTimeToMinutes(timeLabel) {
   return hours * 60 + minutes;
 }
 
+const AcademicEligibilityCard = ({ isDark }) => {
+  const defaultCgpa = 7.2;
+  const requiredCgpa = 6.0;
+  const defaultAttendance = 82;
+
+  const [enteredCgpa, setEnteredCgpa] = useState("");
+  const [cgpa, setCgpa] = useState(defaultCgpa);
+  const [attendance] = useState(defaultAttendance);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleCheck = () => {
+    setErrorMsg("");
+
+    if (enteredCgpa === "") {
+      setCgpa(defaultCgpa);
+      return;
+    }
+
+    const value = parseFloat(enteredCgpa);
+
+    if (Number.isNaN(value) || value < 0 || value > 10) {
+      setErrorMsg("Enter a valid CGPA between 0 and 10");
+      return;
+    }
+
+    setCgpa(value);
+  };
+
+  const isEligible = cgpa >= requiredCgpa && attendance >= 75;
+
+  const cgpaPercent = Math.round((cgpa / 10) * 100);
+  const attendancePercent = Math.round(attendance);
+
+  return (
+    <motion.div
+      className={`${isDark
+          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+          : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+        } rounded-3xl p-6`}
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4 }}
+      whileHover={{ y: -4 }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-cyan-300" />
+              Academic Eligibility
+          </h3>
+
+          <p className="text-xs text-slate-400 mt-1">
+            Snapshot of placement eligibility
+          </p>
+        </div>
+
+        <span
+          className={`px-2.5 py-1 rounded-full text-[10px] font-medium border ${
+            isEligible
+              ? "bg-green-500/10 text-green-300 border-green-500/20"
+              : "bg-amber-500/10 text-amber-300 border-amber-500/20"
+          }`}
+        >
+          {isEligible ? "Placement Ready" : "Needs Work"}
+        </span>
+      </div>
+
+      {/* CGPA Stats */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <p className="text-xs text-slate-400">Current CGPA</p>
+
+          <div className="text-lg font-semibold text-white">
+            {cgpa}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs text-slate-400">Required CGPA</p>
+
+          <div className="text-lg font-semibold text-white">
+            {requiredCgpa}
+          </div>
+        </div>
+      </div>
+
+      {/* CGPA Progress */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-slate-400">
+            CGPA Progress
+          </p>
+
+          <span className="text-xs text-slate-400">
+            {cgpaPercent}%
+          </span>
+        </div>
+
+        <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-cyan-400 to-purple-400"
+            style={{ width: `${cgpaPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Attendance */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-slate-400">
+            Attendance
+          </p>
+
+          <span className="text-xs font-medium">
+            {attendancePercent}%
+          </span>
+        </div>
+
+        <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400"
+            style={{ width: `${attendancePercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* CGPA Input */}
+      <div className="space-y-2 mb-4">
+        <input
+          type="number"
+          step="0.1"
+          min="0"
+          max="10"
+          placeholder="Enter your CGPA"
+          value={enteredCgpa}
+          onChange={(e) => setEnteredCgpa(e.target.value)}
+          className="w-full rounded-xl bg-transparent border border-white/10 px-3 py-1.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+        />
+
+        <button
+          onClick={handleCheck}
+          className="w-full rounded-xl bg-cyan-500 hover:bg-cyan-400 transition-colors px-3 py-1.5 text-sm font-semibold text-slate-900"
+        >
+          Check Eligibility
+        </button>
+
+        {errorMsg && (
+          <p className="text-xs text-rose-300">
+            {errorMsg}
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+};
 export default function ProductivityPage() {
   const { user } = useAuth();
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -104,6 +284,8 @@ export default function ProductivityPage() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [calendarFilter, setCalendarFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [taskInput, setTaskInput] = useState("");
   const [taskPriority, setTaskPriority] = useState("medium");
   const [tasks, setTasks] = useState([]);
@@ -147,13 +329,12 @@ export default function ProductivityPage() {
 
       try {
         const token = await user.getIdToken();
-        await fetch("/api/productivity", {
+        await apiFetch("/api/productivity", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ tasks: currentTasks, agendaItems: currentAgenda }),
+          body: { tasks: currentTasks, agendaItems: currentAgenda },
         });
       } catch (_) {
         // Offline or API error — localStorage already has the data
@@ -192,18 +373,13 @@ export default function ProductivityPage() {
 
       try {
         const token = await user.getIdToken();
-        const res = await fetch("/api/productivity", {
+        const data = await apiFetch("/api/productivity", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.tasks?.length > 0) setTasks(data.tasks);
-          if (data.agendaItems && Object.keys(data.agendaItems).length > 0) {
-            setAgendaItems(data.agendaItems);
-          }
-        } else {
-          throw new Error("API returned non-ok");
+        if (data.tasks?.length > 0) setTasks(data.tasks);
+        if (data.agendaItems && Object.keys(data.agendaItems).length > 0) {
+          setAgendaItems(data.agendaItems);
         }
       } catch (_) {
         try {
@@ -218,9 +394,18 @@ export default function ProductivityPage() {
         setDataLoaded(true);
       }
     }
+    
+    // Set loading to false after component mounts
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 300);
 
-    loadData();
-  }, [user]);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!dataLoaded) return;
@@ -262,24 +447,20 @@ export default function ProductivityPage() {
       if (!user) return;
       try {
         const token = await user.getIdToken();
-        const res = await fetch("/api/productivity/session", {
+        const data = await apiFetch("/api/productivity/session", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
+          body: {
             duration,
             completedAt: new Date().toISOString(),
             type,
-          }),
+          },
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.xpAwarded > 0) {
-            toast.success(`+${data.xpAwarded} XP earned!`);
-          }
+        if (data.xpAwarded > 0) {
+          toast.success(`+${data.xpAwarded} XP earned!`);
         }
       } catch (_) {
         // Offline — session not recorded, but timer continues
@@ -333,6 +514,7 @@ export default function ProductivityPage() {
     const nextSeconds = MODES[nextMode].seconds;
     setIsRunning(false);
     setMode(nextMode);
+    setAmbientMode(nextMode);
     setSessionSeconds(nextSeconds);
     setManualMinutes(String(Math.round(nextSeconds / 60)));
     setTimeLeft(nextSeconds);
@@ -458,20 +640,53 @@ export default function ProductivityPage() {
     );
   }, [agendaForSelectedDate]);
 
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
-  const ambientGradient = isDark
-    ? ambientMode === "focus"
-      ? "from-[#0B1020] via-[#1E1B4B] to-[#312E81]"
-      : ambientMode === "short"
-        ? "from-[#052e2b] via-[#0f172a] to-[#134e4a]"
-        : "from-[#2E1065] via-[#1E1B4B] to-[#312E81]"
-    : ambientMode === "focus"
-      ? "from-[#F8FAFC] via-[#EEF2FF] to-[#E0E7FF]"
-      : ambientMode === "short"
-        ? "from-[#ECFDF5] via-[#F0FDFA] to-[#CCFBF1]"
-        : "from-[#FAF5FF] via-[#F3E8FF] to-[#EDE9FE]";
+  const darkAmbientStyles = {
+    focus: {
+      gradient: "from-[#020617] via-[#0F172A] to-[#164E63]",
+      glowPrimary: "bg-cyan-400/20",
+      glowSecondary: "bg-blue-500/15",
+      veilHue: 0,
+    },
+    short: {
+      gradient: "from-[#022C22] via-[#064E3B] to-[#0F766E]",
+      glowPrimary: "bg-emerald-400/25",
+      glowSecondary: "bg-teal-400/20",
+      veilHue: 95,
+    },
+    long: {
+      gradient: "from-[#2E1065] via-[#581C87] to-[#831843]",
+      glowPrimary: "bg-purple-400/25",
+      glowSecondary: "bg-fuchsia-400/20",
+      veilHue: 210,
+    },
+  };
+
+  const lightAmbientStyles = {
+    focus: {
+      gradient: "from-[#F8FAFC] via-[#EEF2FF] to-[#E0E7FF]",
+      glowPrimary: "bg-cyan-300/30",
+      glowSecondary: "bg-blue-300/25",
+    },
+    short: {
+      gradient: "from-[#ECFDF5] via-[#F0FDFA] to-[#CCFBF1]",
+      glowPrimary: "bg-emerald-300/35",
+      glowSecondary: "bg-teal-300/30",
+    },
+    long: {
+      gradient: "from-[#FAF5FF] via-[#F3E8FF] to-[#EDE9FE]",
+      glowPrimary: "bg-purple-300/35",
+      glowSecondary: "bg-fuchsia-300/25",
+    },
+  };
+
+  const ambientStyles = isDark
+    ? darkAmbientStyles[ambientMode] || darkAmbientStyles.focus
+    : lightAmbientStyles[ambientMode] || lightAmbientStyles.focus;
+
+  const ambientGradient = ambientStyles.gradient;
 
   const SoundscapeIcon =
     SOUNDSCAPES.find((item) => item.value === soundscape)?.icon || Volume2;
@@ -526,32 +741,98 @@ export default function ProductivityPage() {
     const startNoise = (ctx, type, gainNode) => {
       const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const data = buffer.getChannelData(0);
-      for (let i = 0; i < data.length; i += 1) {
-        data[i] = Math.random() * 2 - 1;
-      }
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
+      const stopCallbacks = [];
 
       const filter = ctx.createBiquadFilter();
+
       if (type === "rain") {
+        // Synthesize Pink Noise (Voss-McCartney method) for rain
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < data.length; i += 1) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+          b6 = white * 0.115926;
+          data[i] = pink * 0.12; // Normalize peak amplitude
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+
         filter.type = "lowpass";
-        filter.frequency.value = 1200;
+        filter.frequency.value = 1000;
+
+        source.connect(filter);
+        filter.connect(gainNode);
+        source.start();
+
+        stopCallbacks.push(() => {
+          source.stop();
+          source.disconnect();
+        });
       } else {
+        // Synthesize Brown Noise (Leaky Integrator walk) for wind
+        let lastOut = 0.0;
+        for (let i = 0; i < data.length; i += 1) {
+          const white = Math.random() * 2 - 1;
+          data[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = data[i];
+          data[i] *= 3.5; // Amplify back to audible range
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+
         filter.type = "bandpass";
-        filter.frequency.value = 500;
-        filter.Q.value = 0.6;
+        filter.frequency.value = 350;
+        filter.Q.value = 1.5;
+
+        // Dynamic wind gust simulator (LFO filter frequency sweeper)
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+
+        lfo.type = "sine";
+        lfo.frequency.value = 0.08; // Swings once every 12.5 seconds
+        lfoGain.gain.value = 150; // Sweeps frequency by +/- 150Hz
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+
+        source.connect(filter);
+        filter.connect(gainNode);
+        
+        source.start();
+        lfo.start();
+
+        stopCallbacks.push(() => {
+          source.stop();
+          lfo.stop();
+          source.disconnect();
+          lfo.disconnect();
+          lfoGain.disconnect();
+        });
       }
 
-      source.connect(filter);
-      filter.connect(gainNode);
-      source.start();
+      stopCallbacks.push(() => {
+        filter.disconnect();
+      });
 
       return {
         stop: () => {
-          source.stop();
-          source.disconnect();
-          filter.disconnect();
+          stopCallbacks.forEach((cb) => {
+            try {
+              cb();
+            } catch (err) {
+              console.warn("Error cleaning up audio nodes:", err);
+            }
+          });
         },
       };
     };
@@ -610,25 +891,33 @@ export default function ProductivityPage() {
     return () => cleanupSoundscape();
   }, [soundscapeOn, soundscape]);
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <div
       className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${isDark ? "text-white" : "text-slate-900"
-        } relative overflow-hidden transition-all duration-500`}
+      } relative overflow-x-hidden transition-all duration-500`}
     >
+      <Navbar />
+      
+      {loading ? (
+        <TimerSkeleton />
+      ) : (
+        <>
       <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
-        {isDark && <DarkVeil />}
+        {isDark && <DarkVeil hueShift={ambientStyles.veilHue} />}
       </div>
 
       <div className="absolute inset-0 pointer-events-none z-0">
-        <div className={`absolute -top-32 -right-32 w-72 h-72 rounded-full ${isDark ? "bg-cyan-500/10" : "bg-cyan-300/30"} blur-3xl`} />
-        <div className={`absolute bottom-0 left-0 w-72 h-72 rounded-full ${isDark ? "bg-cyan-500/10" : "bg-cyan-300/30"
-          } blur-3xl`} />
+        <div className={`absolute -top-32 -right-32 w-72 h-72 rounded-full ${ambientStyles.glowPrimary} blur-3xl transition-colors duration-500`} />
+        <div className={`absolute bottom-0 left-0 w-72 h-72 rounded-full ${ambientStyles.glowSecondary} blur-3xl transition-colors duration-500`} />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.04),transparent_55%)]" />
       </div>
 
       <div className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10 ">
         <div className="max-w-6xl mx-auto space-y-12">
-          <Navbar />
           <section className="text-center space-y-4">
             <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${isDark
                 ? "bg-white/10 border border-white/10 text-white"
@@ -651,336 +940,41 @@ export default function ProductivityPage() {
 
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <motion.div
-                className={`${isDark
-                  ? "bg-black/40 border  border-white/10 backdrop-blur-xl"
-                  : "bg-white/80 border border-slate-200 shadow-lg backdrop-blur-xl"
-                  } rounded-3xl p-6 md:p-8`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Pomodoro Timer</p>
-                    <h2 className="text-2xl font-semibold flex items-center gap-2">
-                      <Timer className="w-5 h-5 text-cyan-300" />
-                      {MODES[mode].label}
-                    </h2>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => switchMode("focus")}
-                      className={`px-4 py-2 rounded-full border text-sm transition ${mode === "focus"
-                          ? isDark
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
-                            : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                          : isDark
-                            ? "border-white/10 text-slate-300 hover:text-white"
-                            : "border-slate-300 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                      Focus
-                    </button>
-                    <button
-                      onClick={() => switchMode("short")}
-                      className={`px-4 py-2 rounded-full border text-sm transition ${mode === "focus"
-                          ? isDark
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
-                            : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                          : isDark
-                            ? "border-white/10 text-slate-300 hover:text-white"
-                            : "border-slate-300 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                      Short
-                    </button>
-                    <button
-                      className={`px-4 py-2 rounded-full border text-sm transition ${mode === "focus"
-                          ? isDark
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
-                            : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                          : isDark
-                            ? "border-white/10 text-slate-300 hover:text-white"
-                            : "border-slate-300 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                      Long
-                    </button>
-                  </div>
-                </div>
+              <TimerSection
+                mode={mode}
+                timeLeft={timeLeft}
+                sessionSeconds={sessionSeconds}
+                focusSessions={focusSessions}
+                focusMinutes={focusMinutes}
+                isRunning={isRunning}
+                recentCompleted={recentCompleted}
+                MODES={MODES}
+                switchMode={switchMode}
+                toggleTimer={toggleTimer}
+                resetTimer={resetTimer}
+                applyManualTime={applyManualTime}
+                manualMinutes={manualMinutes}
+                setManualMinutes={setManualMinutes}
+                isDark={isDark}
+              />
 
-                <div className="mt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-                  <div className="flex items-center gap-6">
-                    <div className="relative h-32 w-32">
-                      <div
-                        className="absolute inset-0 rounded-full border-4 border-slate-200/40 dark:border-white/10"
-                        aria-hidden="true"
-                      />
-                      <div
-                        className="absolute inset-0 rounded-full"
-                        style={{
-                          background: `conic-gradient(#38bdf8 ${(1 - timeLeft / sessionSeconds) * 360
-                            }deg, rgba(255,255,255,0.08) 0deg)`,
-                        }}
-                      />
-                      <div className="absolute inset-2 rounded-full bg-slate-100/90 dark:bg-slate-950/70 flex items-center justify-center">
-                        <span className={`text-3xl font-bold ${MODES[mode].accent}`}>
-                          {formatTime(timeLeft)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus sessions</p>
-                      <motion.div
-                        className="flex items-center gap-2 text-lg font-semibold"
-                        animate={recentCompleted ? { scale: [1, 1.12, 1] } : { scale: 1 }}
-                        transition={{ duration: 0.6 }}
-                      >
-                        <Flame className="w-5 h-5 text-orange-300" />
-                        {focusSessions} completed
-                      </motion.div>
-                      <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                        Focus minutes today: {focusMinutes} min
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={toggleTimer}
-                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500
-hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
-                    >
-                      {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                      {isRunning ? "Pause" : "Start"}
-                    </button>
-                    <button
-                      onClick={resetTimer}
-                      className={`px-5 py-3 rounded-2xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        } flex items-center gap-2`}
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      Reset
-                    </button>
-                    <form
-                      onSubmit={applyManualTime}
-                      className={`flex items-center gap-2 ${isDark
-                          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                          : "bg-white/80 border border-slate-200  shadow-xl backdrop-blur-xl"
-                        } rounded-2xl px-3 py-2`}
-                    >
-                      <label
-                        htmlFor="pomodoro-minutes"
-                        className="text-xs text-slate-700 dark:text-slate-300"
-                      >
-                        Minutes
-                      </label>
-                      <input
-                        id="pomodoro-minutes"
-                        type="number"
-                        min="1"
-                        max="180"
-                        value={manualMinutes}
-                        onChange={(event) => setManualMinutes(event.target.value)}
-                        className={`w-16 rounded-lg bg-transparent border border-white/10 px-2 py-1 text-sm ${isDark ? "text-white" : "text-slate-900"} focus:outline-none focus:ring-2 focus:ring-cyan-400/40`}
-                      />
-                      <button
-                        type="submit"
-                        className="px-3 py-1 rounded-xl bg-cyan-500/80 text-slate-900 text-xs font-semibold"
-                      >
-                        Set
-                      </button>
-                    </form>
-                  </div>
-                </div>
-                <div className={`mt-6 flex flex-wrap gap-3 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <FlameIcon className="w-4 h-4 text-orange-300" />
-                    Streak: {Math.max(1, focusSessions)} days
-                  </div>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <Clock className="w-4 h-4 text-cyan-300" />
-                    Next break in {Math.ceil(timeLeft / 60)} min
-                  </div>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    {ambientMode === "focus" ? (
-                      <Sun className="w-4 h-4 text-amber-300" />
-                    ) : (
-                      <Moon className="w-4 h-4 text-purple-300" />
-                    )}
-                    Ambient: {MODES[ambientMode]?.label || "Focus"}
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 md:p-8`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.05 }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-                  <div>
-                    <p className={`text-sm ${isDark ? "text-slate-200" : "text-slate-800"
-                      }`}
-                    >Calendar Pulse</p>
-                    <h2 className="text-2xl font-semibold flex items-center gap-2">
-                      <CalendarDays className="w-5 h-5 text-purple-300" />
-                      {monthLabel}
-                    </h2>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}>
-                      {selectedDateLabel} - {agendaSummaryForSelectedDate.total} items
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setMonthOffset((prev) => prev - 1)}
-                      className={`px-3 py-2 rounded-xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        }`}
-                    >
-                      Prev
-                    </button>
-                    <button
-                      onClick={() => setMonthOffset(0)}
-                      className={`px-3 py-2 rounded-xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        }`}
-                    >
-                      Today
-                    </button>
-                    <button
-                      onClick={() => setMonthOffset((prev) => prev + 1)}
-                      className={`px-3 py-2 rounded-xl ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        }`}
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mb-5">
-                  <button
-                    type="button"
-                    onClick={() => setCalendarFilter("all")}
-                    className={`px-3 py-1 rounded-full text-xs border transition ${calendarFilter === "all"
-                        ? "bg-white/10 border border-white/20 text-white"
-                        : " border border-white/10 text-slate-300"
-                      }`}
-                  >
-                    All
-                  </button>
-                  {TIME_BLOCKS.map((block) => (
-                    <button
-                      key={block.label}
-                      type="button"
-                      onClick={() => setCalendarFilter(block.label)}
-                      className={`px-3 py-1 rounded-full text-xs border transition ${calendarFilter === block.label
-                          ? "bg-white/10 border-white/20 text-white"
-                          : "border-white/10 text-slate-300"
-                        }`}
-                    >
-                      <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
-                      {block.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className={`grid grid-cols-7 gap-2 text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mb-3`}>
-                  {WEEK_DAYS.map((day) => (
-                    <div key={day} className="text-center">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-2">
-                  {calendar.cells.map((date, index) => {
-                    if (!date) {
-                      return <div key={`empty-${index}`} />;
-                    }
-                    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-                    const isToday = key === todayKey;
-                    const isSelected = key === selectedDateKey;
-                    const agendaListForDay = agendaItems[key] || [];
-                    const agendaCountForDay = agendaListForDay.length;
-                    const agendaCountsByLabel = agendaListForDay.reduce(
-                      (acc, item) => {
-                        acc[item.label] = (acc[item.label] || 0) + 1;
-                        return acc;
-                      },
-                      {}
-                    );
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setSelectedDateKey(key)}
-                        className={`h-16 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-sm transition hover:border-cyan-400/40 hover:${isDark ? "bg-cyan-500/10" : "bg-cyan-300/30"
-                          } focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${isToday
-                            ? isDark
-                              ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-100"
-                              : "bg-cyan-100 border-cyan-300 text-cyan-900"
-                            : isSelected
-                              ? isDark
-                                ? "bg-purple-500/20 border-purple-400/40 text-purple-100"
-                                : "bg-purple-100 border-purple-300 text-purple-900"
-                              : isDark
-                                ? "bg-white/5 text-slate-200"
-                                : "bg-white/80 text-slate-900 border border-slate-200"
-                          }`}
-                      >
-                        <span className="font-semibold">{date.getDate()}</span>
-                        <div className="mt-1 flex items-center gap-1">
-                          {agendaCountForDay ? (
-                            <span className={`text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                              {agendaCountForDay} items
-                            </span>
-                          ) : (
-                            <span className={`text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus</span>
-                          )}
-                          <div className="flex gap-1">
-                            {TIME_BLOCKS.filter((block) => {
-                              if (calendarFilter === "all") return true;
-                              return calendarFilter === block.label;
-                            })
-                              .filter((block) => agendaCountsByLabel[block.label])
-                              .map((block) => (
-                                <span
-                                  key={`${key}-${block.label}`}
-                                  className={`h-1.5 w-1.5 rounded-full ${block.color} opacity-70`}
-                                  aria-hidden="true"
-                                />
-                              ))}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
+              <CalendarSection
+                calendar={calendar}
+                monthLabel={monthLabel}
+                selectedDateLabel={selectedDateLabel}
+                selectedDateKey={selectedDateKey}
+                setSelectedDateKey={setSelectedDateKey}
+                agendaItems={agendaItems}
+                agendaSummaryForSelectedDate={agendaSummaryForSelectedDate}
+                monthOffset={monthOffset}
+                setMonthOffset={setMonthOffset}
+                calendarFilter={calendarFilter}
+                setCalendarFilter={setCalendarFilter}
+                TIME_BLOCKS={TIME_BLOCKS}
+                WEEK_DAYS={WEEK_DAYS}
+                todayKey={todayKey}
+                isDark={isDark}
+              />
 
               <motion.div
                 className={`${isDark
@@ -1067,133 +1061,26 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   )}
                 </div>
               </motion.div>
+              <div className="w-full overflow-hidden">
+                <ProductivityTrendsSection isDark={isDark} />
+              </div>
             </div>
 
             <div className="space-y-8">
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <ListTodo className="w-5 h-5 text-emerald-300" />
-                  <h3 className="text-xl font-semibold">Tasks</h3>
-                </div>
-                <form onSubmit={addTask} className="flex flex-col gap-3 mb-4">
-                  <input
-                    value={taskInput}
-                    onChange={(event) => setTaskInput(event.target.value)}
-                    placeholder="Add a new task"
-                    className={`flex-1 rounded-xl ${isDark
-                        ? "bg-white/10 border border-white/10 text-white"
-                        : "bg-slate-100 border border-slate-300 text-slate-900"
-                      } px-3 py-2 text-sm ${isDark ? "text-white" : "text-slate-900"} placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40`}
-                  />
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-wrap gap-2">
-                      {PRIORITIES.map((priority) => (
-                        <button
-                          key={priority.value}
-                          type="button"
-                          onClick={() => setTaskPriority(priority.value)}
-                          className={`px-3 py-1 rounded-full text-xs border transition ${priority.color} ${taskPriority === priority.value
-                              ? "bg-white/10"
-                              : "bg-transparent"
-                            }`}
-                        >
-                          {priority.label}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="submit"
-                      className="ml-auto px-3 py-2 rounded-xl bg-cyan-500/80 text-slate-900"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </form>
-                <div className="mb-4">
-                  <div className={`flex items-center justify-between text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                    <span>Completion</span>
-                    <span>{taskCompletion}%</span>
-                  </div>
-                  <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
-                      style={{ width: `${taskCompletion}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {tasks.map((task, index) => (
-                    <div
-                      key={task.id}
-                      className={`flex items-center justify-between gap-3 ${isDark
-                          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                          : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                        } rounded-2xl px-3 py-2`}
-                    >
-                      <div className="flex items-center gap-2 text-sm">
-                        <button
-                          onClick={() => toggleTask(task.id)}
-                          className={`flex items-center gap-2 ${task.done
-                              ? "text-slate-500 line-through"
-                              : isDark
-                                ? "text-slate-200"
-                                : "text-slate-800"
-                            }`}
-                        >
-                          <CheckCircle2
-                            className={`flex items-center gap-2 ${task.done
-                                ? "text-slate-500 line-through"
-                                : isDark
-                                  ? "text-slate-200"
-                                  : "text-slate-800"
-                              }`}
-                          />
-                          {task.text}
-                        </button>
-                        <span
-                          className={`ml-2 px-2 py-0.5 rounded-full border text-[10px] uppercase ${PRIORITIES.find((priority) => priority.value === task.priority)?.color ||
-                            "border-white/20 text-slate-300"
-                            }`}
-                        >
-                          {task.priority}
-                        </span>
-                      </div>
-                      <div className={`flex items-center gap-1 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                        <button
-                          onClick={() => moveTask(task.id, -1)}
-                          disabled={index === 0}
-                          className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
-                        >
-                          <ChevronUp className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => moveTask(task.id, 1)}
-                          disabled={index === tasks.length - 1}
-                          className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
-                        >
-                          <ChevronDown className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => removeTask(task.id)}
-                          className="p-1 rounded-lg hover:text-red-300"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
+              <TaskSection
+                tasks={tasks}
+                taskInput={taskInput}
+                taskPriority={taskPriority}
+                setTaskInput={setTaskInput}
+                setTaskPriority={setTaskPriority}
+                addTask={addTask}
+                toggleTask={toggleTask}
+                moveTask={moveTask}
+                removeTask={removeTask}
+                taskCompletion={taskCompletion}
+                PRIORITIES={PRIORITIES}
+                isDark={isDark}
+              />
 
               <motion.div
                 className={`${isDark
@@ -1349,107 +1236,22 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
                   ))}
                 </div>
               </motion.div>
-
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 `}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.25 }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <CalendarDays className="w-5 h-5 text-purple-300" />
-                  <div>
-                    <h3 className="text-xl font-semibold">Agenda</h3>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>{selectedDateLabel}</p>
-                  </div>
-                </div>
-                <form onSubmit={addAgendaItem} className="flex flex-col gap-3 mb-4">
-                  <input
-                    value={agendaInput}
-                    onChange={(event) => setAgendaInput(event.target.value)}
-                    placeholder="Add agenda item"
-                    className={`flex-1 rounded-xl ${isDark
-                        ? "bg-white/10 border border-white/10 text-white"
-                        : "bg-slate-100 border border-slate-300 text-slate-900"
-                      } px-3 py-2 text-sm ${isDark ? "text-white" : "text-slate-900"} placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400/40`}
-                  />
-                  <div className="flex flex-wrap items-center gap-2">
-                    {TIME_BLOCKS.map((block) => (
-                      <button
-                        key={block.label}
-                        type="button"
-                        onClick={() => setAgendaLabel(block.label)}
-                        className={`px-3 py-1 rounded-full text-xs border transition ${agendaLabel === block.label
-                            ? "border bg-white/10 border-white/20 text-white"
-                            : "border border-white/10 text-slate-300"
-                          }`}
-                      >
-                        <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
-                        {block.label}
-                      </button>
-                    ))}
-                    <button
-                      type="submit"
-                      className="ml-auto px-3 py-2 rounded-xl bg-purple-500/80 text-slate-900"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </form>
-                <div className="space-y-3">
-                  {agendaForSelectedDate.length === 0 ? (
-                    <div className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                      No agenda yet. Add a focus item for this day.
-                    </div>
-                  ) : (
-                    agendaForSelectedDate.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className={`flex items-center justify-between gap-3 ${isDark
-                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                          } rounded-2xl px-3 py-2`}
-                      >
-                        <div className={`text-sm ${isDark ? "text-slate-200" : "text-slate-800"
-                          }`}
-                        >
-                          <p className="font-medium">{item.text}</p>
-                          <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>{item.time}</p>
-                          <p className="text-xs text-purple-200">{item.label}</p>
-                        </div>
-                        <div className={`flex items-center gap-1 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                          <button
-                            onClick={() => moveAgendaItem(item.id, -1)}
-                            disabled={index === 0}
-                            className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
-                          >
-                            <ChevronUp className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => moveAgendaItem(item.id, 1)}
-                            disabled={index === agendaForSelectedDate.length - 1}
-                            className={`p-1 rounded-lg ${isDark ? "hover:text-white" : "hover:text-slate-900"} disabled:opacity-40`}
-                          >
-                            <ChevronDown className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => removeAgendaItem(item.id)}
-                            className="p-1 rounded-lg hover:text-red-300"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
-
+              <AgendaListSection
+                selectedDateLabel={selectedDateLabel}
+                agendaForSelectedDate={agendaForSelectedDate}
+                TIME_BLOCKS={TIME_BLOCKS}
+                agendaInput={agendaInput}
+                setAgendaInput={setAgendaInput}
+                agendaLabel={agendaLabel}
+                setAgendaLabel={setAgendaLabel}
+                addAgendaItem={addAgendaItem}
+                moveAgendaItem={moveAgendaItem}
+                removeAgendaItem={removeAgendaItem}
+                isDark={isDark}
+              />
+              <div className="mt-6">
+                <AcademicEligibilityCard isDark={isDark} />
+              </div>
               <motion.div
                 className={`${isDark
                     ? "bg-black/40 border border-white/10 backdrop-blur-xl"
@@ -1550,6 +1352,8 @@ hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-slate-900 font-semibold flex 
           </button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

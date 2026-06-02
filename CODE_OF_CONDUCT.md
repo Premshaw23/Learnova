@@ -33,3 +33,7 @@ This Code of Conduct applies to all community spaces, and it also applies when a
 ## Attribution
 
 This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org/), version 2.0.
+
+
+### Student Enrollment Throttler Guidelines
+- Double-clicks are blocked via throttleState hooks.

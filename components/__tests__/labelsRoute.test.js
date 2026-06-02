@@ -1,10 +1,11 @@
-import { GET, rateLimitMap } from "@/app/api/labels/route";
+import { GET } from "@/app/api/labels/route";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
+import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -14,13 +15,17 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
+  getUserProfile: vi.fn(),
+}));
+
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn(),
 }));
 
 describe("GET /api/labels - Security & Authentication Tests", () => {
@@ -29,29 +34,27 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
   let mockFind;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    if (rateLimitMap) {
-      rateLimitMap.clear();
-    }
+    checkRateLimit.mockResolvedValue({ allowed: true, remaining: 10 });
 
     verifyFirebaseToken.mockImplementation(async (token) => {
       if (!token || token === "invalid-token") return { valid: false, reason: "Invalid" };
-      return { valid: true, decodedToken: { uid: "mock-uid", email: "user@domain.com" } };
+      return { valid: true, decodedToken: { uid: "mock-uid", email: "user@domain.com", email_verified: true, role: "teacher" } };
     });
 
     getUserProfile.mockResolvedValue({ role: "teacher" });
 
-    mockToArray = jest.fn();
-    mockLimit = jest.fn().mockReturnValue({
+    mockToArray = vi.fn();
+    mockLimit = vi.fn().mockReturnValue({
       toArray: mockToArray,
     });
-    mockFind = jest.fn().mockReturnValue({
+    mockFind = vi.fn().mockReturnValue({
       limit: mockLimit,
     });
 
     connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         find: mockFind,
       }),
     });
@@ -62,7 +65,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     return {
       url,
       headers: {
-        get: jest.fn().mockImplementation((name) => {
+        get: vi.fn().mockImplementation((name) => {
           if (name.toLowerCase() === "authorization") {
             return authHeader;
           }
@@ -111,11 +114,11 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data).toEqual([
-      { name: "Alice", email: "alice@domain.com", sensitiveField: "secret", hasImage: true, faceDescriptor: [] },
-      { name: "Bob", email: "bob@domain.com", sensitiveField: "secret", hasImage: true, faceDescriptor: [] },
+      { name: "Alice", email: "alice@domain.com", sensitiveField: "secret", hasImage: true },
+      { name: "Bob", email: "bob@domain.com", sensitiveField: "secret", hasImage: true },
     ]);
     expect(connectDb).toHaveBeenCalled();
-    expect(mockFind).toHaveBeenCalledWith({}, { projection: { _id: 1, name: 1, email: 1, image: 1, faceDescriptor: 1 } });
+    expect(mockFind).toHaveBeenCalledWith({}, { projection: { _id: 1, name: 1, email: 1, image: 1 } });
     expect(mockLimit).toHaveBeenCalledWith(50);
   });
 
@@ -135,7 +138,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
           { email: { $regex: "alice", $options: "i" } },
         ],
       },
-      { projection: { _id: 1, name: 1, email: 1, image: 1, faceDescriptor: 1 } }
+      { projection: { _id: 1, name: 1, email: 1, image: 1 } }
     );
     expect(mockLimit).toHaveBeenCalledWith(50);
   });
@@ -157,12 +160,21 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
           { email: { $regex: "test\\.\\*\\+\\?", $options: "i" } },
         ],
       },
-      { projection: { _id: 1, name: 1, email: 1, image: 1, faceDescriptor: 1 } }
+      { projection: { _id: 1, name: 1, email: 1, image: 1 } }
     );
   });
 
   test("rate limits requests if more than MAX_ATTEMPTS (10) per IP are made (429)", async () => {
     mockToArray.mockResolvedValue([]);
+
+    let callsCount = 0;
+    checkRateLimit.mockImplementation(async () => {
+      callsCount++;
+      if (callsCount > 10) {
+        return { allowed: false, remaining: 0 };
+      }
+      return { allowed: true, remaining: 10 - callsCount };
+    });
 
     // Send 10 successful requests
     for (let i = 0; i < 10; i++) {
@@ -178,5 +190,34 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
 
     expect(response11.status).toBe(429);
     expect(body11.error).toContain("Too many attempts");
+  });
+
+  test("does not expose hasImage flag for student role to prevent enumeration", async () => {
+    const mockUsers = [
+      { name: "Alice", email: "alice@domain.com", image: "https://example.com/alice.jpg" },
+      { name: "Bob", email: "bob@domain.com", image: "https://example.com/bob.jpg" },
+    ];
+    mockToArray.mockResolvedValue(mockUsers);
+
+    getUserProfile.mockResolvedValue({ role: "student" });
+
+    // student token needs role claim too
+    verifyFirebaseToken.mockImplementation(async (token) => {
+      if (!token || token === "invalid-token") return { valid: false, reason: "Invalid" };
+      return { valid: true, decodedToken: { uid: "mock-uid", email: "user@domain.com", email_verified: true, role: "student" } };
+    });
+
+    const req = createMockRequest("valid-token");
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([
+      { name: "Alice", email: "alice@domain.com" },
+      { name: "Bob", email: "bob@domain.com" },
+    ]);
+    expect(body.data[0]).not.toHaveProperty("hasImage");
+    expect(body.data[1]).not.toHaveProperty("hasImage");
   });
 });

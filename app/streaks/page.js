@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Flame,
   Calendar,
@@ -13,31 +13,44 @@ import {
   Zap,
   TrendingUp,
   Award,
-  CheckCircle2,
   Info
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebaseConfig";
+import { doc, updateDoc } from "firebase/firestore";
+import { normalizeStreakCount } from "@/lib/streakUtils";
 
 export default function StreaksPage() {
   const [streak, setStreak] = useState(0);
   const [lastVisit, setLastVisit] = useState("");
   const [history, setHistory] = useState([]);
-  const [showNotification, setShowNotification] = useState(false);
-  const [notificationMsg, setNotificationMsg] = useState("");
+  const { user, userProfile } = useAuth();
 
-  // Load and initialize data from localStorage
+  // Load and initialize data from Firestore or localStorage
   const loadStreakData = () => {
     if (typeof window === "undefined") return;
 
     try {
-      const storedStreak = parseInt(localStorage.getItem("learnova_site_streak") || "0", 10);
-      const storedLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
+      let storedStreak = 0;
+      let storedLastVisit = "";
       let storedHistory = [];
-      
-      try {
-        const historyStr = localStorage.getItem("learnova_site_visit_history");
-        storedHistory = historyStr ? JSON.parse(historyStr) : [];
-      } catch (e) {
-        storedHistory = [];
+
+      if (userProfile) {
+        storedStreak = normalizeStreakCount(userProfile.siteStreak);
+        storedLastVisit = userProfile.siteLastVisit || "";
+        storedHistory = userProfile.siteVisitHistory || [];
+      } else {
+        storedStreak = normalizeStreakCount(
+          localStorage.getItem("learnova_site_streak"),
+        );
+        storedLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
+        try {
+          const historyStr = localStorage.getItem("learnova_site_visit_history");
+          storedHistory = historyStr ? JSON.parse(historyStr) : [];
+        } catch (e) {
+          storedHistory = [];
+        }
       }
 
       setStreak(storedStreak);
@@ -50,15 +63,11 @@ export default function StreaksPage() {
 
   useEffect(() => {
     loadStreakData();
-    document.title = "Consistency Streaks | Learnova";
-  }, []);
+  }, [userProfile]);
 
+ 
   const triggerToast = (msg) => {
-    setNotificationMsg(msg);
-    setShowNotification(true);
-    setTimeout(() => {
-      setShowNotification(false);
-    }, 3000);
+    toast.success(msg);
   };
 
   // Helper: Get array of the last 7 calendar days (including today)
@@ -85,7 +94,7 @@ export default function StreaksPage() {
   };
 
   // Simulator actions for user testing and demonstration
-  const handleSimulateConsecutive = () => {
+  const handleSimulateConsecutive = async () => {
     if (typeof window === "undefined") return;
 
     try {
@@ -122,14 +131,24 @@ export default function StreaksPage() {
       setStreak(newStreak);
       setLastVisit(todayDateStr);
       setHistory(newHistory);
+
+      if (user?.uid) {
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, {
+          siteStreak: newStreak,
+          siteLastVisit: todayDateStr,
+          siteVisitHistory: newHistory,
+        });
+      }
       
       triggerToast(`🔥 Streak incremented to ${newStreak} days!`);
     } catch (e) {
       console.error(e);
+      toast.error("Failed to increment streak. Please try again.");
     }
   };
 
-  const handleSimulateFullWeek = () => {
+  const handleSimulateFullWeek = async () => {
     if (typeof window === "undefined") return;
 
     try {
@@ -156,13 +175,23 @@ export default function StreaksPage() {
       setLastVisit(todayDateStr);
       setHistory(historyList);
 
+      if (user?.uid) {
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, {
+          siteStreak: 7,
+          siteLastVisit: todayDateStr,
+          siteVisitHistory: historyList,
+        });
+      }
+
       triggerToast("🎯 Simulated a full 7-day streak history!");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to simulate full week. Please try again.");
     }
   };
 
-  const handleResetStreak = () => {
+  const handleResetStreak = async () => {
     if (typeof window === "undefined") return;
 
     try {
@@ -179,9 +208,19 @@ export default function StreaksPage() {
       setLastVisit(todayDateStr);
       setHistory([todayDateStr]);
 
+      if (user?.uid) {
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, {
+          siteStreak: 1,
+          siteLastVisit: todayDateStr,
+          siteVisitHistory: [todayDateStr],
+        });
+      }
+
       triggerToast("🔄 Streak reset to 1 day.");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to reset streak. Please try again.");
     }
   };
 
@@ -441,20 +480,6 @@ export default function StreaksPage() {
         </div>
       </div>
 
-      {/* Global Toast Notification System */}
-      <AnimatePresence>
-        {showNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-2 bg-slate-900 border border-purple-500/30 px-6 py-3 rounded-full shadow-2xl shadow-purple-950/50"
-          >
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            <span className="text-sm font-medium text-slate-200">{notificationMsg}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

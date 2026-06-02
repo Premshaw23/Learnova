@@ -6,6 +6,9 @@ on:
   push:
     branches: [main, master]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,15 +25,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: npm
 
       - name: 📚 Install dependencies
         run: npm ci
 
+      - name: 🧪 Run unit tests
+        run: npm test
+
+      - name: 🔧 Fix Tailwind CSS native binding
+        run: |
+          OXIDE_VER=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
+          npm install --no-save "@tailwindcss/oxide-linux-x64-gnu@${OXIDE_VER}"
+
+      - name: ⚡ Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
       - name: 🔨 Build project
         run: npm run build
         env:
-          # Set dummy env vars for build (non-sensitive)
           NEXT_PUBLIC_FIREBASE_API_KEY: dummy
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: dummy.firebaseapp.com
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: dummy

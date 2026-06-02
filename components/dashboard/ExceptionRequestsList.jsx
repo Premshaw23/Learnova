@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { FileText, RefreshCw, AlertCircle, MessageSquare, Check, X } from "lucide-react";
 import SkeletonCard from "@/components/ui/SkeletonCard";
 
@@ -12,6 +12,103 @@ export const ExceptionRequestsList = ({
   allRequests,
   handleExceptionRequest
 }) => {
+  const modalContainerRef = useRef(null);
+
+  const triggerElementRef = useRef(null);
+
+  // Close modal on Escape key press
+  useEffect(() => {
+    if (!showAllRequestsModal) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setShowAllRequestsModal(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showAllRequestsModal, setShowAllRequestsModal]);
+
+  // Trap focus inside modal and restore focus on close
+  useEffect(() => {
+    if (showAllRequestsModal) {
+      // Save trigger element for focus restoration on close
+      if (!triggerElementRef.current) {
+        triggerElementRef.current = document.activeElement;
+      }
+
+      // Shift focus inside modal initially after content is painted
+      const focusTimer = setTimeout(() => {
+        if (modalContainerRef.current) {
+          const focusableElements = modalContainerRef.current.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusableElements.length > 0) {
+            focusableElements[0].focus();
+          }
+        }
+      }, 50);
+
+      const handleTabTrap = (e) => {
+        if (e.key !== "Tab") return;
+        if (!modalContainerRef.current) return;
+
+        const focusableElements = modalContainerRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          // Tab
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      };
+
+      window.addEventListener("keydown", handleTabTrap);
+      return () => {
+        window.removeEventListener("keydown", handleTabTrap);
+        clearTimeout(focusTimer);
+      };
+    } else {
+      // Restore focus on close
+      const target = triggerElementRef.current;
+      const restoreFocus = () => {
+        let activeTarget = target;
+        if (!activeTarget || activeTarget === document.body || !document.body.contains(activeTarget)) {
+          const buttons = Array.from(document.querySelectorAll("button"));
+          activeTarget = buttons.find((btn) => btn.textContent.includes("View Exception Requests")) ||
+                         buttons.find((btn) => btn.textContent.includes("View All"));
+        }
+        if (activeTarget && typeof activeTarget.focus === "function") {
+          activeTarget.focus();
+        }
+      };
+
+      // Run synchronously for standard browser flows
+      restoreFocus();
+      // Run asynchronously as backup to bypass JSDOM unmount focus resets after React batching settles
+      const restoreTimer = setTimeout(restoreFocus, 50);
+
+      triggerElementRef.current = null;
+      return () => clearTimeout(restoreTimer);
+    }
+  }, [showAllRequestsModal]);
+
   return (
     <>
       <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 ms:p-6 p-4">
@@ -161,8 +258,18 @@ export const ExceptionRequestsList = ({
       </div>
       {/* All Requests Modal */}
       {showAllRequestsModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-white/20 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowAllRequestsModal(false);
+            }
+          }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div 
+            ref={modalContainerRef}
+            className="bg-gray-900 border border-white/20 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+          >
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-2xl font-bold text-white mb-1">

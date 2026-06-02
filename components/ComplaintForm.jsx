@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 export default function ComplaintForm({
   onClose,
   onSubmitComplaint,
 }) {
+
+  const { user } = useAuthContext();
+
   const [form, setForm] = useState({
     student: "",
     roll: "",
@@ -20,7 +24,10 @@ export default function ComplaintForm({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    onSubmitComplaint(form);
+    onSubmitComplaint({
+  ...form,
+  email: user?.email || "",
+});
 
     setForm({
       student: "",
@@ -66,6 +73,8 @@ export default function ComplaintForm({
 
           <input
             required
+            id="student-name"
+            maxLength={100}
             placeholder="Student Name"
             value={form.student}
             onChange={(e) =>
@@ -76,6 +85,8 @@ export default function ComplaintForm({
 
           <input
             required
+            id="roll-number"
+            maxLength={20}
             placeholder="Roll Number"
             value={form.roll}
             onChange={(e) =>
@@ -86,6 +97,8 @@ export default function ComplaintForm({
 
           <input
             required
+            id="department"
+            maxLength={80}
             placeholder="Department"
             value={form.department}
             onChange={(e) =>
@@ -109,6 +122,8 @@ export default function ComplaintForm({
 
           <input
             required
+            id="complaint-title"
+            maxLength={150}
             placeholder="Complaint Title"
             value={form.title}
             onChange={(e) =>
@@ -132,6 +147,8 @@ export default function ComplaintForm({
           <textarea
             rows={6}
             required
+            id="description"
+            maxLength={1000}
             placeholder="Describe your issue..."
             value={form.description}
             onChange={(e) =>
@@ -139,6 +156,23 @@ export default function ComplaintForm({
             }
             className="md:col-span-2 px-4 py-3 rounded-2xl border border-border bg-background outline-none resize-none"
           />
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2">
+              Logged in Email
+            </label>
+
+            <input
+              type="email"
+              value={user?.email || ""}
+              readOnly
+              className="w-full px-4 py-3 rounded-2xl border border-border bg-muted cursor-not-allowed outline-none"
+            />
+
+            <p className="text-xs text-muted-foreground mt-2">
+              Complaint will be submitted using your authenticated account.
+            </p>
+          </div>
 
           <button
             type="submit"

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import SmartNoticeBoard from "@/components/noticeBoard";
+import SmartNoticeBoard from "@/components/NoticeBoard";
 
 const Notice = () => {
   const { user, loading: authLoading } = useAuth();

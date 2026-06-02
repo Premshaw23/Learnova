@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import { X, Keyboard } from "lucide-react";
 
 const shortcuts = [
@@ -7,11 +8,13 @@ const shortcuts = [
     keys: ["Ctrl", "K"],
     mac: ["⌘", "K"],
     description: "open search",
+    action: () => window.dispatchEvent(new CustomEvent("learnova:open-search")),
   },
   {
     keys: ["Ctrl", "/"],
     mac: ["⌘", "/"],
     description: "show keyboard shortcuts",
+    action: "toggle-modal", // Handled directly inside the key listener
   },
   {
     keys: ["Esc"],
@@ -22,46 +25,98 @@ const shortcuts = [
     keys: ["Ctrl", "T"],
     mac: ["⌘", "T"],
     description: "toggle dark/light theme",
+    action: () => window.dispatchEvent(new CustomEvent("learnova:toggle-theme")),
   },
   {
     keys: ["Ctrl", "H"],
     mac: ["⌘", "H"],
     description: "go to home/dashboard",
+    action: () => window.location.href = "/",
   },
   {
     keys: ["Ctrl", "L"],
     mac: ["⌘", "L"],
     description: "go to leaderboard",
+    action: () => window.location.href = "/leaderboard",
   },
   {
     keys: ["Ctrl", "N"],
     mac: ["⌘", "N"],
     description: "open notifications",
+    action: () => window.dispatchEvent(new CustomEvent("learnova:open-notifications")),
   },
 ];
 
-export default function ShortcutsModal({ isOpen, onClose }) {
+export default function ShortcutsModal() {
+  const [isOpen, setIsOpen] = useState(false);
   const closeBtnRef = useRef(null);
 
+  const onClose = () => setIsOpen(false);
+  const onOpen = () => setIsOpen(true);
+
+  // Determine OS
+  const isMac =
+    typeof navigator !== "undefined" && /Mac/i.test(navigator.platform);
+
+  // 1. Automatically listen to Footer click triggers
+  useEffect(() => {
+    const handleOpenTrigger = () => setIsOpen(true);
+    window.addEventListener("learnova:open-shortcuts", handleOpenTrigger);
+    return () => window.removeEventListener("learnova:open-shortcuts", handleOpenTrigger);
+  }, []);
+
+  // 2. Focus close button when opened
   useEffect(() => {
     if (isOpen && closeBtnRef.current) {
       closeBtnRef.current.focus();
     }
   }, [isOpen]);
+
+  // 3. Global Key Listener Engine (Executes actions + handles Escape/Tab)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
+      // Ignore global shortcut triggers if the user is writing text inside input fields
+      const targetTag = e.target.tagName;
+      if (targetTag === "INPUT" || targetTag === "TEXTAREA" || e.target.isContentEditable) {
+        return;
+      }
+
+      const isModifier = isMac ? e.metaKey : e.ctrlKey;
+      const keyUpper = e.key.toUpperCase();
+
+      // Modal escape close routing
+      if (e.key === "Escape" && isOpen) {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+
+      // Accessibility focus trap management
       if (e.key === "Tab" && isOpen) {
         e.preventDefault();
         closeBtnRef.current?.focus();
+        return;
+      }
+
+      // Match system actions
+      if (isModifier) {
+        if (e.key === "/") {
+          e.preventDefault();
+          isOpen ? onClose() : onOpen();
+          return;
+        }
+
+        const match = shortcuts.find((s) => s.keys[1] === keyUpper || s.keys[1] === e.key);
+        if (match && typeof match.action === "function") {
+          e.preventDefault();
+          match.action();
+        }
       }
     };
-    if (isOpen) document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
 
-  const isMac =
-    typeof navigator !== "undefined" && /Mac/i.test(navigator.platform);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isMac]);
 
   return (
     <div
@@ -81,8 +136,8 @@ export default function ShortcutsModal({ isOpen, onClose }) {
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Keyboard className="h-5 w-5 text-accent" />
-            <h2 className="text-white font-semibold text-lg">
+            <Keyboard className="h-5 w-5 text-purple-400" />
+            <h2 className="text-white font-semibold text-lg capitalize">
               keyboard shortcuts
             </h2>
           </div>
@@ -102,14 +157,14 @@ export default function ShortcutsModal({ isOpen, onClose }) {
               key={shortcut.description}
               className="flex items-center justify-between py-3 border-b border-white/5 last:border-0"
             >
-              <span className="text-white/70 text-sm">
+              <span className="text-white/70 text-sm capitalize">
                 {shortcut.description}
               </span>
               <div className="flex items-center gap-1">
                 {(isMac ? shortcut.mac : shortcut.keys).map((key, i) => (
                   <kbd
                     key={i}
-                    className="px-2 py-1 bg-white/10 text-white text-xs rounded-md font-mono border border-white/20"
+                    className="px-2 py-1 bg-white/10 text-white text-xs rounded-md font-mono border border-white/20 shadow-sm"
                   >
                     {key}
                   </kbd>

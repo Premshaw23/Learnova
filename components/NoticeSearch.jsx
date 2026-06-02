@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Search, XCircle, Sparkles, TrendingUp, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,6 +16,21 @@ const NoticeSearch = ({
   const [localSearch, setLocalSearch] = useState(value || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, []);
 
   // Filter suggestions based on search input
   const filteredSuggestions = useMemo(() => {
@@ -76,7 +91,7 @@ const NoticeSearch = ({
   };
 
   return (
-    <div className="sticky top-20 z-40 rounded-[2rem] border border-slate-800 bg-slate-950/95 px-5 py-4 shadow-2xl shadow-slate-950/20 backdrop-blur-xl transition-all duration-300 md:px-6">
+    <div ref={containerRef} className="sticky top-20 z-40 rounded-[2rem] border border-slate-800 bg-slate-950/95 px-5 py-4 shadow-2xl shadow-slate-950/20 backdrop-blur-xl transition-all duration-300 md:px-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex-1 min-w-0">
           <label htmlFor="notice-search" className="sr-only">
