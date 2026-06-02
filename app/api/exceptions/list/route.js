@@ -67,6 +67,10 @@ export const GET = withErrorHandler(async (request) => {
     // Role-based filtering
     if (profile.role === "student") {
       query.studentEmail = decodedToken.email;
+    } else if (profile.role === "teacher" || profile.role === "admin") {
+      if (profile.instituteId) {
+        query.instituteId = profile.instituteId;
+      }
     }
 
     // Search filter

@@ -17,7 +17,7 @@ const ALLOWED_SORT_FIELDS = new Set([
 ]);
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, ["admin", "teacher"]);
+  const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher"]);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`exceptions_all_${ip}_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {
@@ -58,6 +58,12 @@ export const GET = withErrorHandler(async (request) => {
 
     // Search query
     let query = {};
+
+    if (profile.role === "teacher" || profile.role === "admin") {
+      if (profile.instituteId) {
+        query.instituteId = profile.instituteId;
+      }
+    }
 
     if (search) {
       query.$or = [
