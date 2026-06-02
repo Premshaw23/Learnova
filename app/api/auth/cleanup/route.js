@@ -1,5 +1,5 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
@@ -21,18 +21,8 @@ export const POST = withErrorHandler(async (request) => {
   // 1. Authenticate request via Firebase token first to prevent unauthenticated/arbitrary deletion
   const decodedToken = await requireAuth(request);
 
-  // 2. Parse request body securely with maxBytes limitation (1KB) to prevent DoS
-  const body = await parseJSON(request, 1024);
-  const { uid } = body;
-
-  if (!uid || typeof uid !== "string") {
-    return jsonError("Invalid or missing UID parameter", 400);
-  }
-
-  // 3. Ensure the authenticated user can only delete/cleanup their own account!
-  if (decodedToken.uid !== uid) {
-    return jsonError("Forbidden: Cannot clean up other users' accounts", 403);
-  }
+  // 2. Derive uid from the authenticated token (never from client body)
+  const uid = decodedToken.uid;
 
   try {
     initializeFirebase();
