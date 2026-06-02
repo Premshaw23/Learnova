@@ -26,6 +26,9 @@ vi.mock('@/lib/firebase-admin', () => ({
 vi.mock('firebase-admin/firestore', () => ({
   getFirestore: vi.fn(),
   FieldValue: { serverTimestamp: vi.fn(() => 'mock-timestamp') },
+  Timestamp: {
+    fromDate: vi.fn(() => ({ _seconds: 1234567890, _nanoseconds: 0 })),
+  },
 }));
 
 vi.mock('@/lib/gamification-service', () => ({
