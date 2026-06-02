@@ -104,7 +104,17 @@ const handleFieldChange = (field) => (value) => {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (!isLogin && password !== confirmPassword) {
+    const submitData = isLogin
+      ? formData
+      : {
+          ...formData,
+          password: password.trim(),
+          confirmPassword: confirmPassword.trim(),
+        };
+    const submitPassword = submitData.password;
+    const submitConfirmPassword = submitData.confirmPassword;
+
+    if (!isLogin && submitPassword !== submitConfirmPassword) {
       setErrors((prev) => ({
         ...prev,
         confirmPassword: "Passwords do not match",
@@ -113,7 +123,7 @@ const handleFieldChange = (field) => (value) => {
     }
 
     // Pass the local state object cleanly to the parent's submit function
-    onSubmit(formData); 
+    onSubmit(submitData); 
   };
 
   const selectedRoleConfig = selectedRole ? ROLE_CONFIG[selectedRole] : null;
