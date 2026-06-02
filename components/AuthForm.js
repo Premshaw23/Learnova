@@ -220,6 +220,8 @@ const handleFieldChange = (field) => (value) => {
             onChange={handleFieldChange("password")}
             onBlur={handleFieldBlur("password")}
             error={errors.password}
+            aria-invalid={errors.password ? "true" : "false"}
+            aria-describedby={errors.password ? "password-error" : undefined}
             placeholder="Enter your password"
             icon={Lock}
             isVisible={showPassword}
