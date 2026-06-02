@@ -2,6 +2,7 @@ import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAdmin } from "@/lib/rbac";
 import { AppError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
@@ -24,6 +25,11 @@ export const dynamic = "force-dynamic";
  */
 export const POST = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireAdmin(request);
+
+  const rateLimitResult = await checkRateLimit(`admin_reconcile_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many requests. Please slow down.", 429);
+  }
 
   const { uid } = await request.json();
   if (!uid || typeof uid !== "string") {
@@ -151,7 +157,12 @@ export const POST = withErrorHandler(async (request) => {
  * Used by admins to monitor cross-database transaction health.
  */
 export const GET = withErrorHandler(async (request) => {
-  await requireAdmin(request);
+  const { payload: decodedToken } = await requireAdmin(request);
+
+  const rateLimitResult = await checkRateLimit(`admin_reconcile_get_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many requests. Please slow down.", 429);
+  }
 
   const staleOps = await findStaleOperations(300000); // 5 minutes threshold
 
