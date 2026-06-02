@@ -18,7 +18,13 @@ import {
   Check,
   Download,
   Sparkles,
+  Copy,
+  CalendarPlus,
+  Link as LinkIcon
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { apiFetch } from "@/lib/apiClient";
+
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -77,6 +83,7 @@ const byDayMap = {
 };
 
 export default function Timetable({ role = "student" }) {
+  const { user } = useAuth();
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
   const [selectedDay, setSelectedDay] = useState(
     days.includes(today) ? today : "Monday"
@@ -88,6 +95,9 @@ export default function Timetable({ role = "student" }) {
   const [mounted, setMounted] = useState(false);
   const [timetableData, setTimetableData] = useState(mockTimetable);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [calendarToken, setCalendarToken] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [modalMode, setModalMode] = useState("add"); // "add" | "edit"
   const [editingIndex, setEditingIndex] = useState(null);
   const [originalDay, setOriginalDay] = useState("");
@@ -101,6 +111,35 @@ export default function Timetable({ role = "student" }) {
     startTime: "09:00",
     endTime: "10:30",
   });
+
+  // Fetch timetable from backend if authenticated
+  useEffect(() => {
+    const fetchBackendTimetable = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await apiFetch("/api/timetable/sync", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data?.timetableData) {
+            setTimetableData(data.data.timetableData);
+            localStorage.setItem("learnova_custom_timetable", JSON.stringify(data.data.timetableData));
+          }
+          if (data.data?.calendarToken) {
+            setCalendarToken(data.data.calendarToken);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch timetable from backend:", err);
+      }
+    };
+    
+    if (user && mounted) {
+      fetchBackendTimetable();
+    }
+  }, [user, mounted]);
 
   // Client-side Hydration Safe loading of timetableData
   useEffect(() => {
@@ -123,9 +162,35 @@ export default function Timetable({ role = "student" }) {
     }
   }, []);
 
-  const saveTimetable = (newData) => {
+  const saveTimetable = async (newData) => {
     setTimetableData(newData);
     localStorage.setItem("learnova_custom_timetable", JSON.stringify(newData));
+    
+    // Sync to backend if authenticated
+    if (user) {
+      setIsSyncing(true);
+      try {
+        const token = await user.getIdToken();
+        const res = await apiFetch("/api/timetable/sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ timetableData: newData })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data?.calendarToken) {
+            setCalendarToken(data.data.calendarToken);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to sync timetable:", err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
   };
 
   // Timetable push reminder scheduler
@@ -469,6 +534,17 @@ export default function Timetable({ role = "student" }) {
           </div>
         </div>
         <div className="flex items-center flex-wrap gap-2">
+          {user && (
+            <button
+              onClick={() => setIsSyncModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-purple-300 hover:bg-purple-500/20 hover:text-white hover:border-purple-500/40 transition-all duration-200 cursor-pointer shadow-sm"
+              title="Sync with Google Calendar / Apple Calendar"
+            >
+              <CalendarPlus className="w-3.5 h-3.5" />
+              <span>Sync Calendar</span>
+            </button>
+          )}
+
           {/* Export to ICS button */}
           <button
             onClick={handleExportCalendar}
@@ -776,6 +852,96 @@ export default function Timetable({ role = "student" }) {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Calendar Sync Modal */}
+      <AnimatePresence>
+        {isSyncModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSyncModalOpen(false)}
+              className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl backdrop-blur-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <CalendarPlus className="w-5 h-5 text-purple-400" />
+                  Sync with External Calendar
+                </h3>
+                <button
+                  onClick={() => setIsSyncModalOpen(false)}
+                  className="rounded-lg p-1.5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-sm text-white/70">
+                  Subscribe to your Learnova timetable in your favorite calendar app (Google Calendar, Apple Calendar, Outlook). Your calendar will automatically update when you make changes here.
+                </p>
+
+                {calendarToken ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                        Calendar Feed URL
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          readOnly
+                          value={`${window.location.origin}/api/timetable/ical/${calendarToken}/feed.ics`}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/api/timetable/ical/${calendarToken}/feed.ics`);
+                            toast.success("Feed URL copied to clipboard!");
+                          }}
+                          className="px-4 py-2.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 hover:text-white transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                        >
+                          <Copy className="w-4 h-4" />
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                      <a
+                        href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(`${window.location.origin}/api/timetable/ical/${calendarToken}/feed.ics`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm text-white transition-colors cursor-pointer"
+                      >
+                        <CalendarPlus className="w-4 h-4" />
+                        Google Calendar
+                      </a>
+                      <a
+                        href={`webcal://${window.location.host}/api/timetable/ical/${calendarToken}/feed.ics`}
+                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm text-white transition-colors cursor-pointer"
+                      >
+                        <CalendarPlus className="w-4 h-4" />
+                        Apple Calendar
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-white/50 mb-4">Please add a class to your timetable first to generate a sync link.</p>
+                  </div>
+                )}
+              </div>
             </motion.div>
           </div>
         )}
