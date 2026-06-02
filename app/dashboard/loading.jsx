@@ -10,7 +10,8 @@ import SkeletonCard from "@/components/SkeletonCard";
  */
 export default function DashboardLoading() {
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6 space-y-8 pt-24 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 text-white p-6 space-y-8 pt-24 relative overflow-hidden" role="status" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading dashboard content...</span>
       {/* Background glow orbs */}
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/10 via-slate-950 to-slate-950 -z-10 pointer-events-none" />
 
