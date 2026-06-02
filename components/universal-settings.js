@@ -648,12 +648,12 @@ export default function UniversalSettings() {
           {/* Sidebar Navigation */}
           <div className="lg:col-span-1">
             <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-4 sticky top-24">
-              <nav className="space-y-2">
+              <nav className="space-y-2" aria-label="Settings sections">
                 {sections.map((section) => (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${activeSection === section.id
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${activeSection === section.id
                         ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
                         : "text-white/70 hover:text-white hover:bg-white/10"
                       }`}
