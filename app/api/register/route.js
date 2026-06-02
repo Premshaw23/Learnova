@@ -376,10 +376,6 @@ export const POST =
                 firebaseUid: decodedToken.uid,
               };
 
-              if (faceDescriptor) {
-                user.faceDescriptor = faceDescriptor;
-              }
-
               const result =
                 await users.insertOne(
                   user
@@ -396,6 +392,33 @@ export const POST =
               if (ctx._insertedUser?._id) {
                 try {
                   await users.deleteOne({ _id: ctx._insertedUser._id });
+                } catch {}
+              }
+            },
+          },
+          {
+            name: "write_face_descriptor",
+            execute: async (ctx) => {
+              if (faceDescriptor) {
+                const faceDescriptors = db.collection("face_descriptors");
+                await faceDescriptors.updateOne(
+                  { firebaseUid: decodedToken.uid },
+                  {
+                    $set: {
+                      firebaseUid: decodedToken.uid,
+                      faceDescriptor,
+                      updatedAt: new Date(),
+                    },
+                  },
+                  { upsert: true }
+                );
+              }
+            },
+            compensate: async (ctx) => {
+              if (faceDescriptor) {
+                try {
+                  const faceDescriptors = db.collection("face_descriptors");
+                  await faceDescriptors.deleteOne({ firebaseUid: decodedToken.uid });
                 } catch {}
               }
             },
