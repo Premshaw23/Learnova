@@ -6,6 +6,7 @@ import {
 } from "@/lib/error-handler";
 import { callGroq } from "@/lib/ai/groq";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { ... } from "@/lib/ai/groq";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

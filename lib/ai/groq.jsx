@@ -27,8 +27,8 @@ const GROQ_SYSTEM_PROMPT = "You are Nova, the friendly AI assistant for Learnova
 const GROQ_MODEL = "llama-3.1-8b-instant";
 
 const groqBodySchema = z.object({
-  message: z.string().optional(),
-  userMessage: z.string().optional(),
+  message: z.string().max(2000, "Message too long (max 2000 characters)").optional(),
+  userMessage: z.string().max(2000, "Message too long (max 2000 characters)").optional(),
   messages: z.array(z.object({
     role: z.string(),
     content: z.string(),
@@ -65,53 +65,43 @@ const groqBodySchema = z.object({
     });
     return;
   }
-
-  if (data.trimmedMessage.length > 10000) {
+  if (data.trimmedMessage.length > 2000) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Message too long (max 2000 characters)",
     });
+    return z.NEVER;
   }
 });
 
 export function validateGroqBody(body) {
+  const rawMsg = body?.message ?? body?.userMessage ?? "";
+  if (typeof rawMsg === "string" && rawMsg.trim().length > 2000) {
+    throw new ValidationError("Message too long (max 2000 characters)");
+  }
   const validation = groqBodySchema.safeParse(body);
   if (!validation.success) {
     const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
     throw new ValidationError(firstError);
   }
-
   return validation.data;
 }
 
 export function buildGroqRequest(trimmedMessage, messages = []) {
   const systemContent = GROQ_SYSTEM_PROMPT;
-  const conversationHistory = messages.filter(
-    (m) => m.role !== "system"
-  );
-
+  const conversationHistory = messages.filter((m) => m.role !== "system");
   const MAX_TOKENS = 8192;
   const RESPONSE_TOKENS = 400;
-
-  // Use buildSecureMessages to include prompt injection defense
   const secureMessages = buildSecureMessages(trimmedMessage, systemContent, conversationHistory);
-
   const SYSTEM_TOKENS = Math.ceil(secureMessages[0].content.length / 4);
   const availableTokens = MAX_TOKENS - RESPONSE_TOKENS - SYSTEM_TOKENS;
   const maxInputChars = availableTokens * 4;
-
   const resultMessages = [...secureMessages];
-
-  let totalChars = resultMessages.reduce(
-    (sum, m) => sum + m.content.length,
-    0
-  );
-
+  let totalChars = resultMessages.reduce((sum, m) => sum + m.content.length, 0);
   while (totalChars > maxInputChars && resultMessages.length > 2) {
     const removed = resultMessages.splice(1, 1)[0];
     totalChars -= removed.content.length;
   }
-
   return {
     model: GROQ_MODEL,
     messages: resultMessages,
@@ -125,14 +115,12 @@ export function extractGroqContent(data) {
   if (typeof content !== "string") {
     return null;
   }
-
   return content.trim() ? content : null;
 }
 
 export async function callGroq(trimmedMessage, messages = [], userId = "anonymous") {
   const redis = getCacheClient();
   const cacheKey = buildCacheKey(userId, trimmedMessage, messages);
-
   if (redis) {
     try {
       const cached = await redis.get(cacheKey);
@@ -140,17 +128,14 @@ export async function callGroq(trimmedMessage, messages = [], userId = "anonymou
         return cached;
       }
     } catch {
-      // cache miss — continue to call API
+      // cache miss
     }
   }
-
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     throw new AppError("Groq API key is not configured", 500);
   }
-
   const timeoutMs = parseInt(process.env.GROQ_TIMEOUT || "30000", 10);
-
   const response = await fetchWithTimeout(
     GROQ_API_URL,
     {
@@ -163,26 +148,22 @@ export async function callGroq(trimmedMessage, messages = [], userId = "anonymou
     },
     timeoutMs
   );
-
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
     const upstreamMessage = errorData?.error?.message || "Groq API request failed";
     throw new AppError(upstreamMessage, response.status);
   }
-
   const data = await response.json().catch(() => null);
   const content = extractGroqContent(data);
   if (!content) {
     throw new AppError("AI generated an empty response", 502);
   }
-
   if (redis) {
     try {
       await redis.set(cacheKey, content, { ex: CACHE_TTL_SECONDS });
     } catch {
-      // non-blocking: cache write failure is acceptable
+      // non-blocking
     }
   }
-
   return content;
 }

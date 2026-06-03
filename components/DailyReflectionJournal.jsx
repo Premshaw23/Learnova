@@ -82,7 +82,7 @@ export default function DailyReflectionJournal() {
             </label>
 
             <label className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-slate-950/90 p-4 text-sm text-slate-200">
-              <span className="font-semibold text-white">One thing you’re proud of</span>
+              <span className="font-semibold text-white">One thing you're proud of</span>
               <textarea
                 value={proudOf}
                 onChange={({ target }) => setProudOf(target.value)}
