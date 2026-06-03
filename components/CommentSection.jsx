@@ -15,7 +15,7 @@ const CommentSection = ({ noticeId }) => {
 
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
-  const storageKey = getCommentStorageKey(noticeId);
+  var storageKey = getCommentStorageKey(noticeId);
 
 
   useEffect(() => {

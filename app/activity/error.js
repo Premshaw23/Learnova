@@ -3,6 +3,8 @@
 import React, { useEffect } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
+import { logger } from "@/lib/logger";
+
 /**
  * Localized Error Boundary for Activity segment
  * Prevents errors inside app/activity routes from crashing the root layout.
@@ -10,7 +12,7 @@ import { AlertCircle, RefreshCw } from "lucide-react";
  */
 export default function ActivityError({ error, reset }) {
   useEffect(() => {
-    console.error("Captured Activity Segment Error:", error);
+    logger.error("Captured Activity Segment Error:", { error: error?.message || error });
   }, [error]);
 
   return (

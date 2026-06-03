@@ -44,6 +44,7 @@ export default function AIProductivityInsights({
     }
   } catch (error) {
     console.error(error);
+    toast.error("Failed to generate insights. Please try again.");
   } finally {
     setLoading(false);
   }

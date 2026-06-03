@@ -2,6 +2,7 @@ import Papa from 'papaparse';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+// AFTER (fixed)
 export const exportToCSV = (data, filename) => {
   const csv = Papa.unparse(data);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -14,6 +15,7 @@ export const exportToCSV = (data, filename) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url); // Release the Blob URL from memory immediately
   }
 };
 

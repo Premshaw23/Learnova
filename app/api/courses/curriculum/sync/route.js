@@ -24,6 +24,51 @@ export async function POST(request) {
       );
     }
 
+    // Validate each module entry. Accepting arbitrary objects without schema
+    // validation allows malformed data (null IDs, non-string titles, lesson
+    // arrays that are actually objects) to be persisted, causing downstream
+    // errors when the curriculum is rendered or processed.
+    const invalidModules = modules.filter(
+      (mod, idx) =>
+        mod === null ||
+        typeof mod !== "object" ||
+        typeof mod.title !== "string" ||
+        mod.title.trim() === "" ||
+        (mod.lessons !== undefined && !Array.isArray(mod.lessons))
+    );
+
+    if (invalidModules.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Each module must be an object with a non-empty title string and an optional lessons array",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate each lesson within every module.
+    for (let modIdx = 0; modIdx < modules.length; modIdx++) {
+      const lessons = modules[modIdx].lessons || [];
+      const invalidLessons = lessons.filter(
+        (les) =>
+          les === null ||
+          typeof les !== "object" ||
+          typeof les.title !== "string" ||
+          les.title.trim() === ""
+      );
+      if (invalidLessons.length > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Module at index ${modIdx} contains lessons with missing or invalid title fields`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     let isDbPersisted = false;
 
     if (process.env.MONGODB_URI) {
@@ -46,11 +91,11 @@ export async function POST(request) {
       // Structure the modules list to enforce position sequences
       const structuredModules = modules.map((mod, modIdx) => ({
         id: mod.id,
-        title: mod.title,
+        title: mod.title.trim(),
         order: modIdx,
         lessons: (mod.lessons || []).map((les, lesIdx) => ({
           id: les.id,
-          title: les.title,
+          title: les.title.trim(),
           duration: les.duration || "15 mins",
           type: les.type || "video",
           completed: les.completed || false,

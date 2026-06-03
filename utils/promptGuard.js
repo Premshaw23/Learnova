@@ -6,8 +6,6 @@
 const INJECTION_PATTERNS = [
   /ignore\s+(all\s+)?(previous|above)\s+(instructions|rules|prompts|directives|guidelines)/i,
   /you\s+are\s+(now|no\s+longer)\s+/i,
-  /system\s*:\s*/i,
-  /\[?system\]?/i,
   /<\|.*?\|>/,
   /(?:^|\n)\s*(?:system|developer|assistant)\s*:/i,
   /repeat\s+(the\s+)?(system\s+)?(prompt|instructions|rules|directives)/i,

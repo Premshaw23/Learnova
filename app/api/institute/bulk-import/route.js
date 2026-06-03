@@ -188,7 +188,20 @@ export async function POST(req) {
     }
 
     if (mongoBulkOps.length > 0) {
-      await mongoUsers.bulkWrite(mongoBulkOps, { ordered: false });
+      try {
+        await mongoUsers.bulkWrite(mongoBulkOps, { ordered: false });
+      } catch (mongoError) {
+        // Rollback: delete Firebase Auth users created in this request
+        if (createdAuthUids.length > 0) {
+          try {
+            await admin.auth().deleteUsers(createdAuthUids);
+            console.warn(`Rolled back ${createdAuthUids.length} Firebase Auth users after MongoDB write failure`);
+          } catch (rollbackError) {
+            console.error(`Failed to rollback Firebase Auth users:`, rollbackError);
+          }
+        }
+        throw mongoError;
+      }
     }
 
     successfulImports = validStudents.length - failedImports.filter((f) =>

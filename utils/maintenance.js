@@ -16,7 +16,7 @@ export function isMaintenanceModeActive(request) {
     const bypassCookie = request.cookies?.get?.("learnova_maintenance_bypass")?.value;
     const bypassHeader = request.headers?.get?.("x-learnova-maintenance-bypass");
     
-    const secretBypassKey = process.env.MAINTENANCE_BYPASS_KEY || "bypass_maintenance_2026";
+    const secretBypassKey = process.env.MAINTENANCE_BYPASS_KEY;
     if (bypassCookie === secretBypassKey || bypassHeader === secretBypassKey) {
       return false;
     }

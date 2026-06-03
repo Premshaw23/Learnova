@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
-
+import { BrainCircuit } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -253,6 +253,7 @@ export function Navbar() {
     { href: "/activity", label: "Activities", icon: Activity },
     { href: "/complaints", label: "Complaints", icon: MessageSquareWarning },
     { href: "/contact", label: "Contact", icon: Mail },
+    {href:"/StudyAI",label:"Study",icon:BrainCircuit}
   ];
 
   const userMenuItems = [
