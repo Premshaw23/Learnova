@@ -58,6 +58,20 @@ export const POST = withErrorHandler(async (request) => {
   const callerProfile = decodedToken.uid !== targetUid ? await getUserProfile(decodedToken.uid) : userProfile;
   const instituteId = userProfile?.instituteId || callerProfile?.instituteId || null;
 
+  // Institute boundary validation: teachers/admins can only submit attendance
+  // for students within their own institute
+  if (decodedToken.uid !== targetUid && isTeacherOrAdmin) {
+    if (!userProfile) {
+      return jsonError("Target user not found", 404);
+    }
+    if (userProfile.instituteId !== callerProfile?.instituteId) {
+      return jsonError("Forbidden: Cannot submit attendance for users outside your institute", 403);
+    }
+    if (userProfile.role !== "student") {
+      return jsonError("Forbidden: Attendance can only be submitted for students", 403);
+    }
+  }
+
   // Use authoritative, verified data from profile to prevent client-supplied parameter spoofing
   const resolvedName = userProfile?.fullName || (decodedToken.uid === targetUid ? (decodedToken.name || decodedToken.displayName) : null) || studentName || "Unknown User";
   const resolvedEmail = userProfile?.email || (decodedToken.uid === targetUid ? decodedToken.email : null) || email || "unknown@learnova.edu";
@@ -99,10 +113,7 @@ export const POST = withErrorHandler(async (request) => {
       },
       {
         name: "write_mongodb_attendance",
-        execute: async (ctx) => {
-          if (ctx._alreadyRecorded) {
-            return;
-          }
+        execute: async () => {
           const mongoDB = await connectDb();
           await mongoDB.collection("attendance").updateOne(
             { userId, date: normalizedDate },
@@ -129,11 +140,7 @@ export const POST = withErrorHandler(async (request) => {
       },
       {
         name: "award_xp",
-        execute: async (ctx) => {
-          if (ctx._alreadyRecorded) {
-            // Don't award XP if attendance was already recorded
-            return;
-          }
+        execute: async () => {
           await awardXp(userId, "attendance_marked", {
             attendanceHour: new Date().getHours(),
           });

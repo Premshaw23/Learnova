@@ -93,6 +93,53 @@ export const POST = withErrorHandler(async (request) => {
       }
     }
 
+    // Reconcile attendance records: ensure Firestore records exist in MongoDB
+    try {
+      const firestoreAttendance = await db
+        .collection("attendance_records")
+        .where("userId", "==", uid)
+        .get();
+
+      const mongoAttendance = await mongoDB
+        .collection("attendance")
+        .find({ userId: uid })
+        .project({ date: 1, _id: 0 })
+        .toArray();
+
+      const mongoDates = new Set(mongoAttendance.map((r) => r.date));
+
+      let reconciledCount = 0;
+      for (const doc of firestoreAttendance.docs) {
+        const data = doc.data();
+        if (data.date && !mongoDates.has(data.date)) {
+          await mongoDB.collection("attendance").updateOne(
+            { userId: uid, date: data.date },
+            {
+              $set: {
+                userId: uid,
+                studentName: data.studentName || "",
+                email: data.email || "",
+                instituteId: data.instituteId || null,
+                timestamp: data.timestamp?.toDate() || new Date(),
+                date: data.date,
+                status: data.status || "present",
+                confidenceScore: data.confidenceScore || 0,
+                offlineSynced: data.offlineSynced || false,
+              },
+            },
+            { upsert: true },
+          );
+          reconciledCount++;
+        }
+      }
+
+      if (reconciledCount > 0) {
+        actions.push(`attendance_records_reconciled: ${reconciledCount}`);
+      }
+    } catch (err) {
+      logger.error(`[reconcile] Failed to reconcile attendance records for user ${uid}:`, { error: err.message });
+    }
+
     // Also cleanup stale pending operations as a side-effect
     await cleanupOldOperations();
 

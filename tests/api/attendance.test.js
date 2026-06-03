@@ -278,6 +278,7 @@ describe('Attendance Record API Route — POST /api/attendance/record', () => {
         return {
           fullName: 'Jane Doe',
           email: 'jane@learnova.edu',
+          role: 'student',
           instituteId: 'inst-1',
         };
       }

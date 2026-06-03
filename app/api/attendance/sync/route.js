@@ -93,8 +93,18 @@ async function handleSync(request) {
     );
   }
 
+  if (!userProfile?.instituteId) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "User profile missing institute affiliation. Cannot sync attendance.",
+      },
+      { status: 403 },
+    );
+  }
+
   const serverIdentity = resolveAttendanceIdentity(decodedToken, userProfile);
-  const instituteId = userProfile?.instituteId || null;
+  const instituteId = userProfile.instituteId;
   
   const successfulIds = [];
   const rejectedIds = [];

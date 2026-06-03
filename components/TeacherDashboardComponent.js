@@ -142,26 +142,38 @@ const TeacherDashboard = () => {
     setTimeout(() => {
       if (!isMounted()) return;
       try {
-        const exportData = studentAttendanceData.map(s => ({
-          Date: new Date().toLocaleDateString(),
-          'Student Name': s.name,
-          'Roll No': s.rollNo,
-          Status: s.status,
-        }));
-        
-        const filename = `attendance_report_${selectedClass || 'all'}_${new Date().toISOString().split('T')[0]}`;
-        
-        if (format === 'csv') {
-          exportToCSV(exportData, filename);
-        } else {
-          exportAttendancePDF(exportData, {
-            className: selectedClass || 'All Classes',
-            teacherName: teacher.name || 'N/A',
-            dateRange: 'Today',
-            instituteName: userProfile?.instituteName || 'Learnova Institute',
-            logoUrl: userProfile?.logoUrl || null,
-          });
-        }
+        const exportData = studentAttendanceData.map((student) => ({
+  Date: student.date || new Date().toLocaleDateString(),
+  StudentName: student.name,
+  RollNo: student.rollNo,
+  Status: student.status,
+  Time: student.time || "-",
+  Confidence: student.confidence || "-",
+}));
+
+const attendanceSummary = {
+  totalStudents: attendanceStats.totalStudents,
+  presentToday: attendanceStats.presentToday,
+  absentToday: attendanceStats.absentToday,
+  lateToday: attendanceStats.lateToday,
+};
+
+const filename = `attendance_report_${selectedClass || 'all'}_${new Date()
+  .toISOString()
+  .split('T')[0]}`;
+
+if (format === 'csv') {
+  exportToCSV(exportData, filename);
+} else {
+  exportAttendancePDF(exportData, {
+    className: selectedClass || 'All Classes',
+    teacherName: teacher?.name || 'N/A',
+    dateRange: 'Today',
+    instituteName: userProfile?.instituteName || 'Learnova Institute',
+    logoUrl: userProfile?.logoUrl || null,
+    summary: attendanceSummary,
+  });
+}
         toast.success(`Successfully exported as ${format.toUpperCase()}`);
       } catch (error) {
         console.error("Export failed:", error);

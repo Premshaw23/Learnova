@@ -29,7 +29,6 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { parseUserIntent } from "@/services/ai-agent/intentparser.js";
 import { apiFetch } from "@/lib/apiClient";
 
-
 // ---------------------------------------------------------------------------
 // Constants — centralized
 // ---------------------------------------------------------------------------
@@ -37,7 +36,7 @@ const CONTACT_INFO = {
   email: "support@learnova.edu",
   phone: "+1 (555) 019-2834",
   demo: "https://learnova.edu/demo",
-  website: "https://learnova.edu"
+  website: "https://learnova.edu",
 };
 
 // ---------------------------------------------------------------------------
@@ -170,23 +169,28 @@ function highlightCode(code, language) {
   if (!code) return "";
   const lang = (language || "").toLowerCase();
 
-  const jsKeywords = /\b(const|let|var|function|return|import|export|class|if|else|for|while|try|catch|finally|true|false|null|undefined|new|this|typeof|instanceof|async|await|default|extends|from)\b/g;
-  const pyKeywords = /\b(def|class|return|if|elif|else|for|while|try|except|finally|import|from|as|in|is|not|and|or|True|False|None|lambda|pass|break|continue|with|assert)\b/g;
-  const cppKeywords = /\b(int|float|double|char|bool|void|class|struct|public|private|protected|template|typename|return|if|else|for|while|do|switch|case|default|break|continue|new|delete|namespace|using|std|cout|cin|endl)\b/g;
-  const bashKeywords = /\b(echo|exit|cd|ls|mkdir|rm|cp|mv|sudo|apt|git|if|then|else|fi|for|in|do|done|while|case|esac|function)\b/g;
+  const jsKeywords =
+    /\b(const|let|var|function|return|import|export|class|if|else|for|while|try|catch|finally|true|false|null|undefined|new|this|typeof|instanceof|async|await|default|extends|from)\b/g;
+  const pyKeywords =
+    /\b(def|class|return|if|elif|else|for|while|try|except|finally|import|from|as|in|is|not|and|or|True|False|None|lambda|pass|break|continue|with|assert)\b/g;
+  const cppKeywords =
+    /\b(int|float|double|char|bool|void|class|struct|public|private|protected|template|typename|return|if|else|for|while|do|switch|case|default|break|continue|new|delete|namespace|using|std|cout|cin|endl)\b/g;
+  const bashKeywords =
+    /\b(echo|exit|cd|ls|mkdir|rm|cp|mv|sudo|apt|git|if|then|else|fi|for|in|do|done|while|case|esac|function)\b/g;
 
   let keywordRegex = jsKeywords;
   if (lang === "python" || lang === "py") keywordRegex = pyKeywords;
-  else if (lang === "cpp" || lang === "c++" || lang === "c") keywordRegex = cppKeywords;
+  else if (lang === "cpp" || lang === "c++" || lang === "c")
+    keywordRegex = cppKeywords;
   else if (lang === "bash" || lang === "sh") keywordRegex = bashKeywords;
   else if (lang === "json") keywordRegex = /\b(true|false|null)\b/g;
 
   const tokenRegex = new RegExp(
     `(\\/\\/.*|#.*|\\/\\*[\\s\\S]*?\\*\\/)|` +
-    `("(?:[^"\\\\\\n]|\\\\.)*"|'(?:[^'\\\\\\n]|\\\\.)*'|\`(?:[^\`\\\\\\n]|\\\\.)*\`)|` +
-    `(\\b\\d+(?:\\.\\d+)?\\b)|` +
-    `(${keywordRegex.source})|` +
-    `(\\b[a-zA-Z_]\\w*(?=\\())`,
+      `("(?:[^"\\\\\\n]|\\\\.)*"|'(?:[^'\\\\\\n]|\\\\.)*'|\`(?:[^\`\\\\\\n]|\\\\.)*\`)|` +
+      `(\\b\\d+(?:\\.\\d+)?\\b)|` +
+      `(${keywordRegex.source})|` +
+      `(\\b[a-zA-Z_]\\w*(?=\\())`,
     "g"
   );
 
@@ -204,15 +208,35 @@ function highlightCode(code, language) {
 
     const matchedText = match[0];
     if (match[1]) {
-      elements.push(<span key={match.index} className="text-gray-500 italic">{matchedText}</span>);
+      elements.push(
+        <span key={match.index} className="text-gray-500 italic">
+          {matchedText}
+        </span>
+      );
     } else if (match[2]) {
-      elements.push(<span key={match.index} className="text-emerald-400">{matchedText}</span>);
+      elements.push(
+        <span key={match.index} className="text-emerald-400">
+          {matchedText}
+        </span>
+      );
     } else if (match[3]) {
-      elements.push(<span key={match.index} className="text-amber-400">{matchedText}</span>);
+      elements.push(
+        <span key={match.index} className="text-amber-400">
+          {matchedText}
+        </span>
+      );
     } else if (match[4]) {
-      elements.push(<span key={match.index} className="text-pink-400 font-semibold">{matchedText}</span>);
+      elements.push(
+        <span key={match.index} className="text-pink-400 font-semibold">
+          {matchedText}
+        </span>
+      );
     } else if (match[5]) {
-      elements.push(<span key={match.index} className="text-sky-400">{matchedText}</span>);
+      elements.push(
+        <span key={match.index} className="text-sky-400">
+          {matchedText}
+        </span>
+      );
     } else {
       elements.push(matchedText);
     }
@@ -258,50 +282,98 @@ const CodeBlock = ({ language, code }) => {
 // ---------------------------------------------------------------------------
 // Bot response logic
 // ---------------------------------------------------------------------------
-async function generateBotResponse(userMessage, currentCategory, idToken, updatedMessages = []) {
+async function generateBotResponse(
+  userMessage,
+  currentCategory,
+  idToken,
+  updatedMessages = []
+) {
   const lower = userMessage.toLowerCase();
 
-  if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
+  if (
+    lower.includes("hello") ||
+    lower.includes("hi") ||
+    lower.includes("hey")
+  ) {
     return "Hello! Welcome to Learnova — your Smart Student Engagement Ecosystem! I'm Nova, and I'm here to help:\n\n🎯 **Attendance Automation** — GPS + Time + Optional QR validation\n📚 **Smart Activities** — Turn idle hours into learning hours\n🔒 **Advanced Security** — Multi-factor authentication & encryption\n📊 **Analytics Dashboard** — Real-time insights for all stakeholders\n\nWhat would you like to explore first?";
   }
-  if (lower.includes("attendance") || lower.includes("marking") || lower.includes("present")) {
+  if (
+    lower.includes("attendance") ||
+    lower.includes("marking") ||
+    lower.includes("present")
+  ) {
     return `📋 **Learnova Attendance System**\n\n**Key Features:**\n${learnovaKnowledge.attendance.features.map((f) => `• ${f}`).join("\n")}\n\n**Benefits:**\n• ${learnovaKnowledge.attendance.benefits}\n• Works offline with auto-sync\n• Exception handling with teacher approval\n• Real-time transparency for parents\n\n**Flow:** Phone Verified → GPS + Time Check → Optional QR Scan → Offline Storage → Server Sync → Final Status\n\nWant to know more about any specific aspect?`;
   }
-  if (lower.includes("security") || lower.includes("privacy") || lower.includes("safe") || lower.includes("protection")) {
+  if (
+    lower.includes("security") ||
+    lower.includes("privacy") ||
+    lower.includes("safe") ||
+    lower.includes("protection")
+  ) {
     return `🔒 **Security & Privacy Features**\n\n**Advanced Security:**\n${learnovaKnowledge.security.features.map((f) => `• ${f}`).join("\n")}\n\n**Privacy Protection:**\n• ${learnovaKnowledge.security.privacy}\n• Anonymous analytics options\n• Right to data deletion\n• Secure data export/import\n\n**Compliance:** GDPR, FERPA, SOC 2, ISO 27001\n\nNeed details about any specific security measure?`;
   }
-  if (lower.includes("activity") || lower.includes("quiz") || lower.includes("game") || lower.includes("learning")) {
+  if (
+    lower.includes("activity") ||
+    lower.includes("quiz") ||
+    lower.includes("game") ||
+    lower.includes("learning")
+  ) {
     return `🎮 **Smart Activity Hub**\n\n**Activity Types:**\n${learnovaKnowledge.activities.types.map((t) => `• ${t}`).join("\n")}\n\n**AI Personalization:**\n• Career goal mapping\n• Skill-based recommendations\n• Adaptive difficulty levels\n• Progress-based suggestions\n\n**Gamification:**\n• Badges and achievement systems\n• Class-wide leaderboards\n• Streak maintenance\n• Peer challenges\n\n**Impact:** ${learnovaKnowledge.activities.impact}\n\nInterested in trying our demo activities?`;
   }
-  if (lower.includes("dashboard") || lower.includes("analytics") || lower.includes("report") || lower.includes("insight")) {
+  if (
+    lower.includes("dashboard") ||
+    lower.includes("analytics") ||
+    lower.includes("report") ||
+    lower.includes("insight")
+  ) {
     return `📊 **Analytics & Dashboards**\n\n**Available Dashboards:**\n${learnovaKnowledge.analytics.dashboards.map((d) => `• ${d}`).join("\n")}\n\n**Key Metrics:**\n• Attendance patterns and trends\n• Activity engagement rates\n• Learning progress tracking\n• Time utilization analysis\n• Performance predictions\n\n**Export Options:** CSV, PDF, Excel formats | Scheduled automated reports | Custom report builder\n\nWhich dashboard would you like to learn more about?`;
   }
-  if (lower.includes("technical") || lower.includes("technology") || lower.includes("stack") || lower.includes("api")) {
+  if (
+    lower.includes("technical") ||
+    lower.includes("technology") ||
+    lower.includes("stack") ||
+    lower.includes("api")
+  ) {
     return `⚙️ **Technical Specifications**\n\n**Frontend:** ${learnovaKnowledge.technology.frontend}\n**Backend:** ${learnovaKnowledge.technology.backend}\n**AI Engine:** ${learnovaKnowledge.technology.ai}\n**Security:** ${learnovaKnowledge.technology.security}\n**Deployment:** ${learnovaKnowledge.technology.deployment}\n\n**Key Features:** PWA | Offline-first | Cross-platform | Real-time sync | Scalable microservices | RESTful + GraphQL APIs\n\nNeed more details about any specific component?`;
   }
-  if (lower.includes("price") || lower.includes("cost") || lower.includes("plan") || lower.includes("subscription")) {
+  if (
+    lower.includes("price") ||
+    lower.includes("cost") ||
+    lower.includes("plan") ||
+    lower.includes("subscription")
+  ) {
     return `💰 **Learnova Pricing Plans**\n\n🆓 **Free Tier (Trial)**\n• Up to 50 students | Basic attendance | Limited activities | Standard support\n\n🏫 **Institution Plan**\n• Unlimited students | Full feature access | Advanced analytics | Priority support | Custom integrations | Training included\n\n🏢 **Enterprise**\n• Multi-campus support | White-label options | Dedicated support | Custom development | SLA guarantees\n\nContact our team for personalized pricing!`;
   }
-  if (lower.includes("setup") || lower.includes("implement") || lower.includes("install") || lower.includes("start")) {
+  if (
+    lower.includes("setup") ||
+    lower.includes("implement") ||
+    lower.includes("install") ||
+    lower.includes("start")
+  ) {
     return `🚀 **Getting Started with Learnova**\n\n1️⃣ **Institution Registration** — Provide basic details\n2️⃣ **System Configuration** — Customize settings\n3️⃣ **User Import** — Bulk upload student/teacher data\n4️⃣ **Training Sessions** — Staff onboarding workshops\n5️⃣ **Pilot Testing** — Start with selected classes\n6️⃣ **Full Deployment** — Institution-wide rollout\n\n**Implementation Support:** Dedicated onboarding manager | 24/7 support during transition | Data migration assistance\n\n**Timeline:** Typically 2–4 weeks from signup to full deployment\n\nReady to schedule a demo?`;
   }
-  if (lower.includes("support") || lower.includes("help") || lower.includes("contact") || lower.includes("demo")) {
+  if (
+    lower.includes("support") ||
+    lower.includes("help") ||
+    lower.includes("contact") ||
+    lower.includes("demo")
+  ) {
     return `🛟 **Support & Contact**\n\n📧 **Email:** ${CONTACT_INFO.email}\n📞 **Phone:** ${CONTACT_INFO.phone}\n🌐 **Website:** ${CONTACT_INFO.website}\n🎯 **Live Demo:** ${CONTACT_INFO.demo}\n\n**Response Times:**\n• General inquiries: Within 4 hours\n• Technical issues: Within 2 hours\n• Urgent/Critical: Within 30 minutes\n\nHow can I connect you with the right channel?`;
   }
 
   try {
     const headers = { "Content-Type": "application/json" };
     if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
-    
+
     const payload = await apiFetch("/api/groq", {
       method: "POST",
       headers,
-      body: JSON.stringify({ 
-        messages: updatedMessages.map(msg => ({
+      body: JSON.stringify({
+        messages: updatedMessages.map((msg) => ({
           role: msg.isBot ? "assistant" : "user",
-          content: msg.text
-        })), 
-        category: currentCategory 
+          content: msg.text,
+        })),
+        category: currentCategory,
       }),
     });
 
@@ -325,7 +397,7 @@ async function saveConversation(userText, botText, idToken) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${idToken}`,
+        Authorization: `Bearer ${idToken}`,
       },
       body: JSON.stringify({ userMessage: userText, botMessage: botText }),
     });
@@ -353,18 +425,41 @@ const markdownComponents = {
         code={String(children).replace(/\n$/, "")}
       />
     ) : (
-      <code className="bg-zinc-800 text-purple-300 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+      <code
+        className="bg-zinc-800 text-purple-300 px-1.5 py-0.5 rounded text-xs font-mono"
+        {...props}
+      >
         {children}
       </code>
     );
   },
-  p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap break-words">{children}</p>,
-  ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
-  ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+  p: ({ children }) => (
+    <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap break-words">
+      {children}
+    </p>
+  ),
+  ul: ({ children }) => (
+    <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>
+  ),
   li: ({ children }) => <li className="mb-0.5">{children}</li>,
-  h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-1 text-purple-400">{children}</h1>,
-  h2: ({ children }) => <h2 className="text-sm font-bold mt-2.5 mb-1 text-purple-400">{children}</h2>,
-  h3: ({ children }) => <h3 className="text-xs font-bold mt-2 mb-0.5 text-purple-400">{children}</h3>,
+  h1: ({ children }) => (
+    <h1 className="text-base font-bold mt-3 mb-1 text-purple-400">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="text-sm font-bold mt-2.5 mb-1 text-purple-400">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="text-xs font-bold mt-2 mb-0.5 text-purple-400">
+      {children}
+    </h3>
+  ),
   a: ({ href, children }) => {
     const isInternal = href && href.startsWith("/");
     return (
@@ -387,15 +482,19 @@ const markdownComponents = {
 export default function LearnovaChatbot() {
   const { user, userProfile } = useAuthContext();
   const { theme, resolvedTheme, setTheme } = useTheme();
-  
+
   const isDarkMode = resolvedTheme === "dark" || theme === "dark";
 
   const getContextWelcomeMessage = useCallback(() => {
-    if (!user) return "Hello! I'm Nova, your AI assistant for Learnova. How can I assist you today?";
-    const nameSegment = user.displayName || user.email?.split('@')[0] || "there";
+    if (!user)
+      return "Hello! I'm Nova, your AI assistant for Learnova. How can I assist you today?";
+    const nameSegment =
+      user.displayName || user.email?.split("@")[0] || "there";
     const role = user.role?.toLowerCase() || "";
-    if (role === "teacher" || role === "instructor") return `Hello Creator! Ready to manage your classes or check attendance logs today?`;
-    if (role === "student") return `Hi ${nameSegment}, need help finding your assignments or checking your attendance?`;
+    if (role === "teacher" || role === "instructor")
+      return `Hello Creator! Ready to manage your classes or check attendance logs today?`;
+    if (role === "student")
+      return `Hi ${nameSegment}, need help finding your assignments or checking your attendance?`;
     return `Hello ${nameSegment}! Welcome to Learnova. How can I help you today?`;
   }, [user]);
 
@@ -440,7 +539,7 @@ export default function LearnovaChatbot() {
               text: getContextWelcomeMessage(),
               isBot: true,
               timestamp: new Date(),
-            }
+            },
           ]);
         }
         return;
@@ -484,7 +583,7 @@ export default function LearnovaChatbot() {
                 text: getContextWelcomeMessage(),
                 isBot: true,
                 timestamp: new Date(),
-              }
+              },
             ]);
           }
         } else {
@@ -494,7 +593,7 @@ export default function LearnovaChatbot() {
               text: getContextWelcomeMessage(),
               isBot: true,
               timestamp: new Date(),
-            }
+            },
           ]);
         }
       } catch (error) {
@@ -506,7 +605,7 @@ export default function LearnovaChatbot() {
               text: getContextWelcomeMessage(),
               isBot: true,
               timestamp: new Date(),
-            }
+            },
           ]);
         }
       } finally {
@@ -532,7 +631,9 @@ export default function LearnovaChatbot() {
   const handleScroll = () => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 40;
+    const isAtBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      40;
     userHasScrolledUp.current = !isAtBottom;
   };
 
@@ -540,13 +641,13 @@ export default function LearnovaChatbot() {
     if (!isOpen || isMinimized) return;
     if (userHasScrolledUp.current) return;
 
-    const container = messagesContainerRef.current;
-    if (container) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: "smooth"
-      });
-    }
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   }, [messages, isOpen, isMinimized, isLoading]);
 
   const handleInputChange = (e) => {
@@ -565,7 +666,7 @@ export default function LearnovaChatbot() {
         text: getContextWelcomeMessage(),
         isBot: true,
         timestamp: new Date(),
-      }
+      },
     ]);
     setCurrentCategory("general");
     userHasScrolledUp.current = false;
@@ -573,8 +674,16 @@ export default function LearnovaChatbot() {
 
   const handleSendMessage = useCallback(
     async (messageText) => {
-      const text = (typeof messageText === "string" ? messageText : inputMessage).trim();
-      if (!text || text.length > 1000 || isLoading || requestInFlightRef.current) return;
+      const text = (
+        typeof messageText === "string" ? messageText : inputMessage
+      ).trim();
+      if (
+        !text ||
+        text.length > 1000 ||
+        isLoading ||
+        requestInFlightRef.current
+      )
+        return;
 
       requestInFlightRef.current = true;
 
@@ -598,19 +707,29 @@ export default function LearnovaChatbot() {
           botText = "[**Please sign in**](/auth) to use the AI chatbot.";
         } else {
           // 🛠️ STEP 2 INTERCEPT: Check text signature against local action handlers first!
-          const actionResponse = await parseUserIntent(text, { instituteId: userProfile?.instituteId });
+          const actionResponse = await parseUserIntent(text, {
+            instituteId: userProfile?.instituteId,
+          });
           const parsedResult = JSON.parse(actionResponse);
 
-          if (parsedResult.status === 'success') {
+          if (parsedResult.status === "success") {
             // Found a registry tool trigger match. Format the raw output nicely for render view
             botText = `🤖 **Action Handler Initiated Successfully**\n\n\`\`\`json\n${JSON.stringify(parsedResult, null, 2)}\n\`\`\``;
           } else {
             // No local action regex matched. Fall through safely to normal processing pipeline
             const idToken = await user.getIdToken();
-            botText = await generateBotResponse(text, currentCategory, idToken, [...messages, userMsg]);
+            botText = await generateBotResponse(
+              text,
+              currentCategory,
+              idToken,
+              [...messages, userMsg]
+            );
           }
           idToken = await user.getIdToken();
-          botText = await generateBotResponse(text, currentCategory, idToken, [...messages, userMsg]);
+          botText = await generateBotResponse(text, currentCategory, idToken, [
+            ...messages,
+            userMsg,
+          ]);
         }
       } catch {
         botText = `I apologize for the technical difficulty. Our team is here to help:\n\n📧 **Email:** ${CONTACT_INFO.email}\n📞 **Phone:** ${CONTACT_INFO.phone}\n🎯 **Live Demo:** ${CONTACT_INFO.demo}`;
@@ -666,20 +785,26 @@ export default function LearnovaChatbot() {
     input: isDarkMode
       ? "bg-white/[0.03] border-white/10 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
       : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-450 focus:ring-2 focus:ring-purple-400 focus:border-transparent",
-    catBtn: isDarkMode ? "hover:bg-white/[0.05] text-gray-300" : "hover:bg-gray-100 text-gray-600",
+    catBtn: isDarkMode
+      ? "hover:bg-white/[0.05] text-gray-300"
+      : "hover:bg-gray-100 text-gray-600",
     catBtnActive: isDarkMode
       ? "bg-purple-800/60 text-purple-200 border border-purple-500/30"
       : "bg-purple-100 text-purple-700 border border-purple-200",
     suggestion: isDarkMode
       ? "bg-purple-950/40 text-purple-300 hover:bg-purple-900/40 border border-purple-800/40 shadow-sm"
       : "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 shadow-sm",
-    loading: isDarkMode ? "bg-white/[0.04] border border-white/5" : "bg-gray-50 border border-black/5",
+    loading: isDarkMode
+      ? "bg-white/[0.04] border border-white/5"
+      : "bg-gray-50 border border-black/5",
     dot: isDarkMode ? "text-gray-400" : "text-gray-500",
   };
 
   if (!isOpen) {
     return (
-      <div className={`fixed z-50 transition-all duration-300 right-4 md:right-6 ${isScrolling ? 'bottom-16 opacity-40 scale-90 md:bottom-6 md:opacity-100 md:scale-100' : 'bottom-24 md:bottom-6 opacity-100 scale-100'}`}>
+      <div
+        className={`fixed z-50 transition-all duration-300 right-4 md:right-6 ${isScrolling ? "bottom-16 opacity-40 scale-90 md:bottom-6 md:opacity-100 md:scale-100" : "bottom-24 md:bottom-6 opacity-100 scale-100"}`}
+      >
         <button
           onClick={() => setIsOpen(true)}
           className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300 group"
@@ -700,11 +825,15 @@ export default function LearnovaChatbot() {
   return (
     <div
       className={`fixed z-50 flex flex-col ${themeTokens.bg} shadow-2xl transition-all duration-300 border ${themeTokens.border} ${
-        isMinimized ? "bottom-24 md:bottom-6 right-4 md:right-6 w-72 h-16 overflow-hidden rounded-xl" : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
+        isMinimized
+          ? "bottom-24 md:bottom-6 right-4 md:right-6 w-72 h-16 overflow-hidden rounded-xl"
+          : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
       }`}
     >
       {/* Header */}
-      <div className={`${themeTokens.header} text-white p-4 rounded-t-xl flex items-center justify-between shrink-0`}>
+      <div
+        className={`${themeTokens.header} text-white p-4 rounded-t-xl flex items-center justify-between shrink-0`}
+      >
         <div className="flex items-center space-x-3">
           <div className="relative">
             <Bot className="text-yellow-300" size={22} />
@@ -719,16 +848,36 @@ export default function LearnovaChatbot() {
         </div>
 
         <div className="flex items-center space-x-1">
-          <button onClick={clearChat} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Clear chat" aria-label="Clear chat">
+          <button
+            onClick={clearChat}
+            className="hover:bg-white/20 p-2 rounded-lg transition-colors"
+            title="Clear chat"
+            aria-label="Clear chat"
+          >
             <RefreshCw size={16} />
           </button>
-          <button onClick={() => setTheme(isDarkMode ? "light" : "dark")} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title="Toggle theme" aria-label="Toggle theme">
+          <button
+            onClick={() => setTheme(isDarkMode ? "light" : "dark")}
+            className="hover:bg-white/20 p-2 rounded-lg transition-colors"
+            title="Toggle theme"
+            aria-label="Toggle theme"
+          >
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button onClick={() => setIsMinimized(!isMinimized)} className="hover:bg-white/20 p-2 rounded-lg transition-colors" title={isMinimized ? "Expand" : "Minimize"} aria-label={isMinimized ? "Expand chat" : "Minimize chat"}>
+          <button
+            onClick={() => setIsMinimized(!isMinimized)}
+            className="hover:bg-white/20 p-2 rounded-lg transition-colors"
+            title={isMinimized ? "Expand" : "Minimize"}
+            aria-label={isMinimized ? "Expand chat" : "Minimize chat"}
+          >
             {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
           </button>
-          <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-2 sm:p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Close" aria-label="Close chat">
+          <button
+            onClick={() => setIsOpen(false)}
+            className="hover:bg-white/20 p-2 sm:p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            title="Close"
+            aria-label="Close chat"
+          >
             <X size={20} className="sm:w-4 sm:h-4" />
           </button>
         </div>
@@ -746,7 +895,9 @@ export default function LearnovaChatbot() {
                     key={cat.id}
                     onClick={() => setCurrentCategory(cat.id)}
                     className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${
-                      currentCategory === cat.id ? themeTokens.catBtnActive : themeTokens.catBtn
+                      currentCategory === cat.id
+                        ? themeTokens.catBtnActive
+                        : themeTokens.catBtn
                     }`}
                   >
                     <IconComponent size={14} />
@@ -771,25 +922,38 @@ export default function LearnovaChatbot() {
             ) : (
               <>
                 {messages.map((msg) => (
-                  <div key={msg.id} className={`flex items-start space-x-2.5 ${msg.isBot ? "" : "flex-row-reverse space-x-reverse"}`}>
-                    <div className={`p-2 rounded-xl shrink-0 ${msg.isBot ? themeTokens.botAvatar : themeTokens.userAvatar}`}>
+                  <div
+                    key={msg.id}
+                    className={`flex items-start space-x-2.5 ${msg.isBot ? "" : "flex-row-reverse space-x-reverse"}`}
+                  >
+                    <div
+                      className={`p-2 rounded-xl shrink-0 ${msg.isBot ? themeTokens.botAvatar : themeTokens.userAvatar}`}
+                    >
                       {msg.isBot ? <Bot size={16} /> : <User size={16} />}
                     </div>
-                    <div className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm transition-all duration-200 ${msg.isBot ? themeTokens.botMsg : themeTokens.userMsg}`}>
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm transition-all duration-200 ${msg.isBot ? themeTokens.botMsg : themeTokens.userMsg}`}
+                    >
                       {msg.isBot ? (
-                        <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                        <ReactMarkdown components={markdownComponents}>
+                          {msg.text}
+                        </ReactMarkdown>
                       ) : (
-                        <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.text}</p>
+                        <p className="whitespace-pre-wrap break-words leading-relaxed">
+                          {msg.text}
+                        </p>
                       )}
                     </div>
                   </div>
-                </div>
-              </div>
+                ))}
+              </>
             )}
           </div>
 
           {/* Suggested Questions Area */}
-          <div className={`p-3 border-t ${themeTokens.border} shrink-0 space-y-2`}>
+          <div
+            className={`p-3 border-t ${themeTokens.border} shrink-0 space-y-2`}
+          >
             <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto scrollbar-none">
               {suggestedQuestions[currentCategory]?.map((q, idx) => (
                 <button
@@ -820,46 +984,64 @@ export default function LearnovaChatbot() {
                 onClick={() => handleSendMessage()}
                 disabled={!inputMessage.trim() || isLoading}
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-2.5 rounded-xl hover:opacity-95 active:scale-95 disabled:opacity-40 disabled:scale-100 transition-all cursor-pointer shadow-md shrink-0"
-                ))}
+              >
+                <Send size={16} />
+              </button>
 
-                {isLoading && (
-                  <div className="flex items-start space-x-2.5">
-                    <div className={`p-2 rounded-xl shrink-0 ${themeTokens.botAvatar}`}>
-                      <Bot size={16} />
-                    </div>
-                    <div className={`rounded-2xl px-4 py-2.5 text-sm shadow-sm ${themeTokens.loading}`}>
-                      <div className="flex space-x-1 items-center h-4 select-none">
-                        <div className={`w-1.5 h-1.5 rounded-full animate-bounce delay-100 ${themeTokens.dot}`} style={{ backgroundColor: 'currentColor' }} />
-                        <div className={`w-1.5 h-1.5 rounded-full animate-bounce delay-200 ${themeTokens.dot}`} style={{ backgroundColor: 'currentColor' }} />
-                        <div className={`w-1.5 h-1.5 rounded-full animate-bounce delay-300 ${themeTokens.dot}`} style={{ backgroundColor: 'currentColor' }} />
-                      </div>
+              {isLoading && (
+                <div className="flex items-start space-x-2.5">
+                  <div
+                    className={`p-2 rounded-xl shrink-0 ${themeTokens.botAvatar}`}
+                  >
+                    <Bot size={16} />
+                  </div>
+                  <div
+                    className={`rounded-2xl px-4 py-2.5 text-sm shadow-sm ${themeTokens.loading}`}
+                  >
+                    <div className="flex space-x-1 items-center h-4 select-none">
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full animate-bounce delay-100 ${themeTokens.dot}`}
+                        style={{ backgroundColor: "currentColor" }}
+                      />
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full animate-bounce delay-200 ${themeTokens.dot}`}
+                        style={{ backgroundColor: "currentColor" }}
+                      />
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full animate-bounce delay-300 ${themeTokens.dot}`}
+                        style={{ backgroundColor: "currentColor" }}
+                      />
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Suggested Questions Pillar Context Chips */}
-                {suggestedQuestions[currentCategory] && messages.length <= 1 && (
-                  <div className="pt-2 space-y-2">
-                    <p className="text-[11px] font-semibold tracking-wider uppercase opacity-60 px-1">Suggested Questions</p>
-                    <div className="flex flex-col gap-2">
-                      {suggestedQuestions[currentCategory].map((q, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleSendMessage(q)}
-                          className={`text-left px-3 py-2 rounded-xl text-xs transition-all duration-200 cursor-pointer ${themeTokens.suggestion}`}
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
+              {/* Suggested Questions Pillar Context Chips */}
+              {suggestedQuestions[currentCategory] && messages.length <= 1 && (
+                <div className="pt-2 space-y-2">
+                  <p className="text-[11px] font-semibold tracking-wider uppercase opacity-60 px-1">
+                    Suggested Questions
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {suggestedQuestions[currentCategory].map((q, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSendMessage(q)}
+                        className={`text-left px-3 py-2 rounded-xl text-xs transition-all duration-200 cursor-pointer ${themeTokens.suggestion}`}
+                      >
+                        {q}
+                      </button>
+                    ))}
                   </div>
-                )}
-              </>
-            )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Form Input Submission Layout Control */}
-          <div className={`p-3 border-t ${themeTokens.border} shrink-0 bg-transparent`}>
+          <div
+            className={`p-3 border-t ${themeTokens.border} shrink-0 bg-transparent`}
+          >
             <div className="flex items-end space-x-2 relative">
               <textarea
                 ref={textareaRef}
@@ -869,7 +1051,11 @@ export default function LearnovaChatbot() {
                 onKeyDown={handleKeyDown}
                 maxLength={1000}
                 aria-label="Type your message to Nova"
-                placeholder={isHistoryLoading ? "Loading chat history..." : "Ask Nova a question..."}
+                placeholder={
+                  isHistoryLoading
+                    ? "Loading chat history..."
+                    : "Ask Nova a question..."
+                }
                 disabled={isHistoryLoading || isLoading}
                 className={`flex-1 resize-none overflow-y-auto py-2.5 pl-4 pr-10 rounded-xl text-sm focus:outline-none transition-all duration-150 border max-h-32 ${themeTokens.input}`}
               />

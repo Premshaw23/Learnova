@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
+import toast from "react-hot-toast";
 export default function TimetablePage() {
   const [goal, setGoal] = useState("");
   const [hours, setHours] = useState("");
@@ -22,7 +22,7 @@ export default function TimetablePage() {
     
   const generatePlan = () => {
   if (!goal || !hours || !topics) {
-    alert("Please fill all fields");
+    toast.error("Please fill all fields");
     return;
   }
 

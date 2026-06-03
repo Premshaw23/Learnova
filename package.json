@@ -21,6 +21,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
+    "format:check": "npx prettier@3.8.3 --check . || exit $(( $? > 1 ? $? : 0 ))",
     "postinstall": "patch-package"
   },
   "dependencies": {
