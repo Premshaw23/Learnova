@@ -36,17 +36,17 @@ function getRedis() {
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
 
+// NOTE: Login/signup flow is handled client-side by the Firebase Auth SDK
+// which communicates directly with Google's identity platform. Adding paths
+// here only rate-limits the Next.js server-side routes — the actual
+// Firebase authentication requests bypass this middleware entirely.
+// Only list paths that have corresponding route handlers in app/api/.
 const AUTH_RATE_LIMITED_PATHS = [
-  "/api/auth/login",
-  "/api/signup",
-  "/api/auth/signup",
-  "/api/auth/logout",
-  "/api/auth/forgot-password",
   "/api/auth/reset-password",
-  "/api/auth/verify-email",
-  "/api/auth/verify-otp",
-  "/api/auth/verify-email",
-  "/api/auth/logout",
+  "/api/auth/set-role",
+  "/api/auth/session",
+  "/api/auth/me",
+  "/api/auth/cleanup",
 ];
 
 const PUBLIC_API_PATHS = [
