@@ -44,6 +44,7 @@ describe("AttendanceValidation Core States", () => {
     mockApiFetch.mockImplementation(() => new Promise(() => {}));
 
     render(
+
       <AttendanceValidation
         onValidationSuccess={vi.fn()}
       />
@@ -59,11 +60,10 @@ describe("AttendanceValidation Core States", () => {
   });
 
   test("renders error state when settings request fails", async () => {
-    mockApiFetch.mockRejectedValueOnce(
-      new Error("Settings fetch failed")
-    );
+    mockApiFetch.mockRejectedValue(new Error("Settings fetch failed"));
 
     render(
+
       <AttendanceValidation
         onValidationSuccess={vi.fn()}
       />
@@ -89,7 +89,7 @@ describe("AttendanceValidation Core States", () => {
   test("opens exception request modal", async () => {
     const user = userEvent.setup();
 
-    mockApiFetch.mockResolvedValueOnce({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         timeWindow: {
@@ -105,15 +105,14 @@ describe("AttendanceValidation Core States", () => {
     });
 
     render(
+
       <AttendanceValidation
         onValidationSuccess={vi.fn()}
       />
     );
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/secure attendance/i)
-      ).toBeInTheDocument();
+    await screen.findByRole("heading", {
+      name: /secure attendance/i,
     });
 
     await user.click(
@@ -136,7 +135,7 @@ describe("AttendanceValidation Core States", () => {
   test("closes exception modal when cancel is clicked", async () => {
     const user = userEvent.setup();
 
-    mockApiFetch.mockResolvedValueOnce({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         timeWindow: {
@@ -152,15 +151,14 @@ describe("AttendanceValidation Core States", () => {
     });
 
     render(
+
       <AttendanceValidation
         onValidationSuccess={vi.fn()}
       />
     );
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/secure attendance/i)
-      ).toBeInTheDocument();
+    await screen.findByRole("heading", {
+      name: /secure attendance/i,
     });
 
     await user.click(
@@ -183,7 +181,7 @@ describe("AttendanceValidation Core States", () => {
   test("disables submit button when required fields are empty", async () => {
     const user = userEvent.setup();
 
-    mockApiFetch.mockResolvedValueOnce({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         timeWindow: {
@@ -199,15 +197,14 @@ describe("AttendanceValidation Core States", () => {
     });
 
     render(
+
       <AttendanceValidation
         onValidationSuccess={vi.fn()}
       />
     );
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/secure attendance/i)
-      ).toBeInTheDocument();
+    await screen.findByRole("heading", {
+      name: /secure attendance/i,
     });
 
     await user.click(
