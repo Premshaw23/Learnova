@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MessageSquare, Send, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,6 +16,7 @@ const CommentSection = ({ noticeId }) => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const storageKey = getCommentStorageKey(noticeId);
+  const textareaRef = useRef(null);
 
 
   useEffect(() => {
@@ -162,6 +163,8 @@ const CommentSection = ({ noticeId }) => {
       {/* Interactive Input form box */}
       <form onSubmit={handleSubmitComment} className="relative flex items-center gap-2">
         <input
+          ref={textareaRef}
+          onKeyDown={handleKeyDown}
           type="text"
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
