@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { collection, query, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, orderBy, limit, getDocs, doc, getDoc, documentId, where } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
@@ -91,18 +91,24 @@ export default function LeaderboardsPage() {
         const q = query(collection(db, "userStats"), orderBy("totalXp", "desc"), limit(50));
         const snapshot = await getDocs(q);
         
-        const fetchedData = await Promise.all(snapshot.docs.map(async (docSnap, index) => {
+        // Batch-fetch user profiles (Firestore `in` supports max 10 per query)
+        const userIds = snapshot.docs.map(doc => doc.id);
+        const userMap = new Map();
+        for (let i = 0; i < userIds.length; i += 10) {
+          const chunk = userIds.slice(i, i + 10);
+          try {
+            const userQuery = query(collection(db, "users"), where(documentId(), "in", chunk));
+            const userSnapshots = await getDocs(userQuery);
+            userSnapshots.forEach(doc => userMap.set(doc.id, doc.data()));
+          } catch (e) {
+            console.warn("Could not fetch user batch", e);
+          }
+        }
+
+        const fetchedData = snapshot.docs.map((docSnap, index) => {
           const stats = docSnap.data();
           const userId = docSnap.id;
-          
-          let userData = {};
-          try {
-            const userRef = doc(db, "users", userId);
-            const userSnap = await getDoc(userRef);
-            if (userSnap.exists()) userData = userSnap.data();
-          } catch (e) {
-            console.warn("Could not fetch user details for", userId);
-          }
+          const userData = userMap.get(userId) || {};
           
           return {
             id: userId,
@@ -115,7 +121,7 @@ export default function LeaderboardsPage() {
             badges: stats.badges || (stats.unlockedBadges ? stats.unlockedBadges.length : 0),
             isCurrentUser: user?.uid === userId
           };
-        }));
+        });
         
         if (fetchedData.length > 0) {
           setLeaderboardData(fetchedData);
