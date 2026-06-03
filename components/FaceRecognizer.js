@@ -241,8 +241,23 @@ export default function FaceRecognizer({ authUser }) {
         videoRef.current.load();
       }
 
-      if (faceapi.tf?.disposeVariables) {
-        faceapi.tf.disposeVariables();
+      // Attempt to dispose face-api / TensorFlow variables if library is available.
+      // Use dynamic import to avoid referencing `faceapi` from outer scope which
+      // can throw a ReferenceError during cleanup.
+      if (typeof window !== "undefined") {
+        import("face-api.js")
+          .then((faceapi) => {
+            try {
+              if (faceapi?.tf?.disposeVariables) {
+                faceapi.tf.disposeVariables();
+              }
+            } catch (e) {
+              console.warn("Failed to dispose face-api tensors:", e);
+            }
+          })
+          .catch(() => {
+            // library not loaded or not available — nothing to dispose
+          });
       }
     };
   }, [labelsLoading, error, labels, facingMode]);
