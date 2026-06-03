@@ -22,7 +22,7 @@ import {
   BarChart3,
   Quote,
   Star,
-
+  Brain,
 } from "lucide-react";
 
 // --- Mock Data & Constants ---
