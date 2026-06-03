@@ -37,21 +37,24 @@ export const GET = withErrorHandler(async (request) => {
       }
     : {};
 
+  // Restrict students to institute-scoped results
+  if (profile.role === "student" && profile.instituteId) {
+    query.instituteId = profile.instituteId;
+  }
+
   // Database — faceDescriptor is excluded from the projection.
   // Biometric embeddings are sensitive personal data and must not be
   // returned to arbitrary authenticated callers.
   const db = await connectDb();
   const users = db.collection("users");
 
+  const projection = { _id: 1, name: 1, image: 1 };
+  if (profile.role !== "student") {
+    projection.email = 1;
+  }
+
   const allUsers = await users
-    .find(query, {
-      projection: {
-        _id: 1,
-        name: 1,
-        email: 1,
-        image: 1,
-      },
-    })
+    .find(query, { projection })
     .limit(50)
     .toArray();
 
