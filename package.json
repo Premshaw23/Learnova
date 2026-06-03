@@ -109,5 +109,8 @@
     "workbox-build": "7.4.1",
     "vite": "6.2.0",
     "@swc/helpers": "0.5.23"
+  },
+  "optionalDependencies": {
+    "@swc/core-darwin-arm64": "*"
   }
 }
