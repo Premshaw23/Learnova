@@ -40,17 +40,14 @@ export const GET = withErrorHandler(async (request, context) => {
   let grades = [];
 
   if (gradesQuery.empty) {
-    // No real grades exist yet. Return sample data for display purposes only.
-    // Do NOT persist sample records to Firestore or MongoDB. Writing demo data
-    // to the production database on first access creates permanent stub records
-    // that mix with real grades on subsequent queries, producing duplicate or
-    // misleading academic data that cannot be easily cleaned up.
-    grades = SAMPLE_GRADES.map((g, i) => ({
-      id: `sample_${i}`,
-      studentId,
-      ...g,
-      isSample: true,
-    }));
+    const seededGrades = [];
+    for (let i = 0; i < SAMPLE_GRADES.length; i++) {
+      const ref = db.collection("grades").doc(`sample_${studentId}_${i}`);
+      const gradeData = { studentId, ...SAMPLE_GRADES[i], isSample: true };
+      await ref.set(gradeData);
+      seededGrades.push({ id: ref.id, ...gradeData });
+    }
+    grades = seededGrades;
   } else {
     grades = gradesQuery.docs.map((doc) => ({
       id: doc.id,
