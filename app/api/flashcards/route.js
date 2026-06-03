@@ -10,7 +10,7 @@ const createSchema = z.object({
   back: z.string().min(1),
   origin: z.string().optional(),
   courseId: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).max(50).optional(),
 });
 
 export const GET = withErrorHandler(async (request) => {

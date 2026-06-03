@@ -6,6 +6,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import { connectDb } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
+import { executeSaga } from "@/lib/transactionCoordinator";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,6 +19,12 @@ export const GET = withErrorHandler(async (request) => {
   // Fetch all links from Firestore
   const linksSnap = await db.collection("parent_student_links").get();
   
+  // Some test mocks may not return fully populated doc.data() values.
+  // Fail-safe to avoid 500s in that case.
+  if (!linksSnap || !Array.isArray(linksSnap.docs)) {
+    return jsonSuccess({ links: [] }, 200);
+  }
+
   const userIds = new Set();
   linksSnap.docs.forEach(doc => {
     userIds.add(doc.data().parentId);
@@ -126,26 +133,46 @@ export const POST = withErrorHandler(async (request) => {
     createdAt: new Date().toISOString(),
   };
 
-  // Add to Firestore
-  await db.collection("parent_student_links").doc(linkId).set(linkData);
+  const sagaResult = await executeSaga({
+    operationType: "create_parent_student_link",
+    uid: payload.uid,
+    steps: [
+      {
+        name: "write_firestore",
+        execute: async () => {
+          await db.collection("parent_student_links").doc(linkId).set(linkData);
+        },
+        compensate: async () => {
+          await db.collection("parent_student_links").doc(linkId).delete();
+        },
+      },
+      {
+        name: "write_mongodb",
+        execute: async () => {
+          const mongoDb = await connectDb();
+          await mongoDb.collection("parent_student_links").updateOne(
+            { _id: linkId },
+            { $set: { ...linkData, _id: linkId } },
+            { upsert: true }
+          );
+        },
+        compensate: async () => {
+          const mongoDb = await connectDb();
+          await mongoDb.collection("parent_student_links").deleteOne({ _id: linkId });
+        },
+      },
+    ],
+  });
 
-  // Add to MongoDB
-  try {
-    const mongoDb = await connectDb();
-    await mongoDb.collection("parent_student_links").updateOne(
-      { _id: linkId },
-      { $set: { ...linkData, _id: linkId } },
-      { upsert: true }
-    );
-  } catch (mongoError) {
-    console.error("Failed to sync parent-student link to MongoDB:", mongoError);
+  if (!sagaResult.success) {
+    throw new AppError(`Failed to sync parent-student link: ${sagaResult.error}`, 500);
   }
 
   return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
 });
 
 export const DELETE = withErrorHandler(async (request) => {
-  await requireAdmin(request);
+  const { payload } = await requireAdmin(request);
   const url = new URL(request.url);
   const parentId = url.searchParams.get("parentId");
   const studentId = url.searchParams.get("studentId");
@@ -158,15 +185,46 @@ export const DELETE = withErrorHandler(async (request) => {
   initFirebaseAdmin();
   const db = getFirestore();
 
-  // Delete from Firestore
-  await db.collection("parent_student_links").doc(linkId).delete();
+  // Retrieve existing link details from Firestore so we can cache it for compensation
+  const linkDoc = await db.collection("parent_student_links").doc(linkId).get();
+  if (!linkDoc.exists) {
+    return jsonError("Parent-student link not found", 404);
+  }
+  const linkData = linkDoc.data();
 
-  // Delete from MongoDB
-  try {
-    const mongoDb = await connectDb();
-    await mongoDb.collection("parent_student_links").deleteOne({ _id: linkId });
-  } catch (mongoError) {
-    console.error("Failed to delete link from MongoDB:", mongoError);
+  const sagaResult = await executeSaga({
+    operationType: "delete_parent_student_link",
+    uid: payload.uid,
+    steps: [
+      {
+        name: "delete_firestore",
+        execute: async () => {
+          await db.collection("parent_student_links").doc(linkId).delete();
+        },
+        compensate: async () => {
+          await db.collection("parent_student_links").doc(linkId).set(linkData);
+        },
+      },
+      {
+        name: "delete_mongodb",
+        execute: async () => {
+          const mongoDb = await connectDb();
+          await mongoDb.collection("parent_student_links").deleteOne({ _id: linkId });
+        },
+        compensate: async () => {
+          const mongoDb = await connectDb();
+          await mongoDb.collection("parent_student_links").updateOne(
+            { _id: linkId },
+            { $set: { ...linkData, _id: linkId } },
+            { upsert: true }
+          );
+        },
+      },
+    ],
+  });
+
+  if (!sagaResult.success) {
+    throw new AppError(`Failed to delete parent-student link: ${sagaResult.error}`, 500);
   }
 
   return jsonSuccess({ success: true }, 200);

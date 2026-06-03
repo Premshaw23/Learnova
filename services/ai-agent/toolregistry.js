@@ -9,19 +9,20 @@ export const ToolRegistry = [
   {
     name: 'fetch_low_attendance_students',
     description: 'Retrieves a list of students whose attendance has fallen below a specific threshold percentage.',
-    execute: async function ({ threshold }) {
+    execute: async function ({ threshold, instituteId }) {
       try {
-        // CONNECT: Establish connection to your MongoDB utility layer
         const db = await connectDb();
-        
-        // Ensure the inbound threshold is treated as a comparable number (Defaulting to 75)
         const targetThreshold = parseFloat(threshold) || 75;
 
-        // QUERY: Fetch records where the attendance field is mathematically below the threshold
+        const query = {
+          attendanceRate: { $lt: targetThreshold },
+        };
+        if (instituteId) {
+          query.instituteId = instituteId;
+        }
+
         const lowAttendanceStudents = await db.collection("student_metrics")
-          .find({ 
-            attendanceRate: { $lt: targetThreshold } 
-          })
+          .find(query)
           .project({
             userId: 1,
             name: 1,

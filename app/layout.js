@@ -38,7 +38,7 @@ import AllProviders from "./providers/AllProviders";
 import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 
 // 🎯 FIX: Explicitly loading overlays
-import CommandPaletteWrapper from "@/components/CommandPalette";
+import CommandPaletteWrapper from "@/components/CommandPaletteWrapper";
 import ShortcutsModal from "@/components/ShortcutsModal";
 
 
@@ -371,10 +371,6 @@ export default function RootLayout({ children }) {
 
             <CommandPaletteWrapper />
             
-            {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
-            <ShortcutsModal />
-            <CommandPalette />
-
             {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
             <ShortcutsModal />
           </Suspense>
