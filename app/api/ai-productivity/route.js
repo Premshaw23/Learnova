@@ -1,12 +1,25 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 import { callGroq } from "@/lib/ai/groq";
+import { requireAuth } from "@/lib/rbac";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const MAX_PAYLOAD_BYTES = 1024 * 10;
+
 export const POST = withErrorHandler(async (request) => {
-  const analytics = await parseJSON(request);
+  const decodedToken = await requireAuth(request);
+
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`ai_productivity_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    return jsonError("Too many requests. Please try again later.", 429);
+  }
+
+  const analytics = await parseJSON(request, MAX_PAYLOAD_BYTES);
 
   const {
     totalFocusMinutes = 0,
