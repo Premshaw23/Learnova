@@ -162,6 +162,7 @@ export const useAuth = () => {
   const refreshManagerRef = useRef(null);
   const unsubscribeSnapshotRef = useRef(null);
   const isMounted = useIsMounted();
+  const mountedRef = useRef(true);
 
   const handleSessionExpired = useCallback(() => {
     if (!isMounted()) return;
@@ -176,6 +177,8 @@ export const useAuth = () => {
     }
 
     const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
+      if (!mountedRef.current) return;
+
       // Clean up previous snapshot listener and token refresh if active
       if (unsubscribeSnapshotRef.current) {
         unsubscribeSnapshotRef.current();
@@ -202,17 +205,20 @@ export const useAuth = () => {
           const userDocRef = doc(db, "users", firebaseUser.uid);
           unsubscribeSnapshotRef.current = onSnapshot(userDocRef, async (userDoc) => {
             try {
+              if (!mountedRef.current) return;
               if (userDoc.exists()) {
                 const profileData = userDoc.data();
                 if (isMounted()) setUserProfile(profileData);
 
                 // Sync auth token cookie
                 const token = await firebaseUser.getIdToken();
+                if (!mountedRef.current) return;
                 await syncAuthTokenCookie(token);
 
                 // Read role from JWT custom claims (authoritative source)
                 // instead of Firestore to prevent role mismatch during async claim propagation
                 const idTokenResult = await firebaseUser.getIdTokenResult();
+                if (!mountedRef.current) return;
                 const claimsRole = idTokenResult.claims?.role;
                 if (claimsRole) {
                   setCookie("userRole", claimsRole, 7);
@@ -242,10 +248,12 @@ export const useAuth = () => {
 
           // Clear auth cookies
           await clearAuthSessionCookie();
+          if (!mountedRef.current) return;
           deleteCookie("authToken");
           deleteCookie("userRole");
 
           await clearAuthSensitiveCaches();
+          if (!mountedRef.current) return;
           if (isMounted()) setLoading(false);
         }
 
@@ -257,6 +265,7 @@ export const useAuth = () => {
           setUserProfile(null);
         }
         await clearAuthSessionCookie();
+        if (!mountedRef.current) return;
         deleteCookie("authToken");
         deleteCookie("userRole");
         if (isMounted()) setLoading(false);
@@ -264,6 +273,7 @@ export const useAuth = () => {
     });
 
     return () => {
+      mountedRef.current = false;
       unsubscribeAuth();
       if (unsubscribeSnapshotRef.current) {
         unsubscribeSnapshotRef.current();
