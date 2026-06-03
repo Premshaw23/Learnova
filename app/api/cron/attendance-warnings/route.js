@@ -40,57 +40,69 @@ export async function GET(request) {
     for (const settings of allSettings) {
       const threshold = settings.institute.lowAttendanceThreshold || 75;
 
-      // Fetch all students from MongoDB
-      const students = await db.collection('users').find({ role: 'student' }).toArray();
+      // Fetch students from MongoDB in batches of 500 to avoid OOM
+      const BATCH_SIZE = 500;
+      let skip = 0;
+      let hasMore = true;
 
-      for (const student of students) {
-        const studentUid = student.firebaseUid;
-        if (!studentUid) continue;
+      while (hasMore) {
+        const studentBatch = await db.collection('users')
+          .find({ role: 'student' })
+          .skip(skip)
+          .limit(BATCH_SIZE)
+          .toArray();
+        hasMore = studentBatch.length === BATCH_SIZE;
+        skip += BATCH_SIZE;
 
-        // Check recent warning logs to prevent spam
-        const recentLog = await db.collection('warning_logs').findOne({
-          userId: studentUid,
-          createdAt: { $gte: cooldownDate }
-        });
+        for (const student of studentBatch) {
+          const studentUid = student.firebaseUid;
+          if (!studentUid) continue;
 
-        if (recentLog) {
-          continue;
-        }
-
-        // Fetch attendance records from Firestore attendance_records collection
-        const attendanceSnapshot = await firestore
-          .collection('attendance_records')
-          .where('userId', '==', studentUid)
-          .get();
-
-        const studentAttendance = attendanceSnapshot.docs.map(doc => doc.data());
-
-        const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
-
-        if (evaluation.isBelowThreshold) {
-          notificationsToInsert.push({
+          // Check recent warning logs to prevent spam
+          const recentLog = await db.collection('warning_logs').findOne({
             userId: studentUid,
-            title: 'Low Attendance Warning',
-            message: `Your current attendance is ${evaluation.percentage}%, which is below the required ${threshold}%. Please improve your attendance.`,
-            type: 'warning',
-            read: false,
-            createdAt: now,
+            createdAt: { $gte: cooldownDate }
           });
 
-          warningLogsToInsert.push({
-            userId: studentUid,
-            percentage: evaluation.percentage,
-            threshold,
-            createdAt: now,
-          });
+          if (recentLog) {
+            continue;
+          }
 
-          if (student.email) {
-            emailsToSend.push({
-              to_email: student.email,
-              to_name: student.fullName || student.name || 'Student',
-              attendance_percentage: evaluation.percentage,
-              threshold,
+          // Fetch attendance records from Firestore attendance_records collection
+          const attendanceSnapshot = await firestore
+            .collection('attendance_records')
+            .where('userId', '==', studentUid)
+            .get();
+
+          const studentAttendance = attendanceSnapshot.docs.map(doc => doc.data());
+
+          const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
+
+          if (evaluation.isBelowThreshold) {
+            notificationsToInsert.push({
+              userId: studentUid,
+              title: 'Low Attendance Warning',
+              message: `Your current attendance is ${evaluation.percentage}%, which is below the required ${threshold}%. Please improve your attendance.`,
+              type: 'warning',
+              read: false,
+              createdAt: now,
             });
+
+            warningLogsToInsert.push({
+              userId: studentUid,
+              percentage: evaluation.percentage,
+              threshold,
+              createdAt: now,
+            });
+
+            if (student.email) {
+              emailsToSend.push({
+                to_email: student.email,
+                to_name: student.fullName || student.name || 'Student',
+                attendance_percentage: evaluation.percentage,
+                threshold,
+              });
+            }
           }
         }
       }
