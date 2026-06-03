@@ -34,7 +34,10 @@ const syncAuthTokenCookie = async (token) => {
     },
     credentials: "same-origin",
   }).catch((error) => {
-    console.warn("[useAuth] Failed to sync auth session cookie:", error?.message);
+    console.warn(
+      "[useAuth] Failed to sync auth session cookie:",
+      error?.message
+    );
   });
 };
 
@@ -57,7 +60,10 @@ const clearAuthSessionCookie = async () => {
     },
     credentials: "same-origin",
   }).catch((error) => {
-    console.warn("[useAuth] Failed to clear auth session cookie:", error?.message);
+    console.warn(
+      "[useAuth] Failed to clear auth session cookie:",
+      error?.message
+    );
   });
 };
 
@@ -110,7 +116,9 @@ function createTokenRefreshManager(firebaseUser, onSessionExpired) {
       consecutiveFailures++;
 
       if (consecutiveFailures >= MAX_REFRESH_RETRIES) {
-        console.error("[useAuth] Token refresh failed after max retries. Session may be expired.");
+        console.error(
+          "[useAuth] Token refresh failed after max retries. Session may be expired."
+        );
         if (onSessionExpired) {
           onSessionExpired();
         }
@@ -195,45 +203,52 @@ export const useAuth = () => {
           }
 
           // Create a new token refresh manager with exponential backoff retry
-          refreshManagerRef.current = createTokenRefreshManager(firebaseUser, handleSessionExpired);
+          refreshManagerRef.current = createTokenRefreshManager(
+            firebaseUser,
+            handleSessionExpired
+          );
           refreshManagerRef.current.start();
 
           // Listen to the user profile document in real-time for profile data
           const userDocRef = doc(db, "users", firebaseUser.uid);
-          unsubscribeSnapshotRef.current = onSnapshot(userDocRef, async (userDoc) => {
-            try {
-              if (userDoc.exists()) {
-                const profileData = userDoc.data();
-                if (isMounted()) setUserProfile(profileData);
+          unsubscribeSnapshotRef.current = onSnapshot(
+            userDocRef,
+            async (userDoc) => {
+              try {
+                if (userDoc.exists()) {
+                  const profileData = userDoc.data();
+                  if (isMounted()) setUserProfile(profileData);
 
-                // Sync auth token cookie
-                const token = await firebaseUser.getIdToken();
-                await syncAuthTokenCookie(token);
+                  // Sync auth token cookie
+                  const token = await firebaseUser.getIdToken();
+                  await syncAuthTokenCookie(token);
 
-                // Read role from JWT custom claims (authoritative source)
-                // instead of Firestore to prevent role mismatch during async claim propagation
-                const idTokenResult = await firebaseUser.getIdTokenResult();
-                const claimsRole = idTokenResult.claims?.role;
-                if (claimsRole) {
-                  setCookie("userRole", claimsRole, 7);
+                  // Read role from JWT custom claims (authoritative source)
+                  // instead of Firestore to prevent role mismatch during async claim propagation
+                  const idTokenResult = await firebaseUser.getIdTokenResult();
+                  const claimsRole = idTokenResult.claims?.role;
+                  if (claimsRole) {
+                    setCookie("userRole", claimsRole, 7);
+                  }
+                } else {
+                  if (isMounted()) setUserProfile(null);
+                  await clearAuthSessionCookie();
+                  deleteCookie("authToken");
+                  deleteCookie("userRole");
                 }
-              } else {
-                if (isMounted()) setUserProfile(null);
-                await clearAuthSessionCookie();
-                deleteCookie("authToken");
-                deleteCookie("userRole");
+                if (isMounted()) setLoading(false);
+              } catch (snapErr) {
+                console.error("Error in profile snapshot listener:", snapErr);
+                if (isMounted()) {
+                  setError(snapErr.message);
+                  setLoading(false);
+                }
               }
+            },
+            (snapError) => {
               if (isMounted()) setLoading(false);
-            } catch (snapErr) {
-              console.error("Error in profile snapshot listener:", snapErr);
-              if (isMounted()) {
-                setError(snapErr.message);
-                setLoading(false);
-              }
             }
-          }, (snapError) => {
-            if (isMounted()) setLoading(false);
-          });
+          );
         } else {
           if (isMounted()) {
             setUser(null);
