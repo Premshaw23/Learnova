@@ -79,6 +79,9 @@ const StudentDashboard = () => {
   const [showComplaint, setShowComplaint] =
     useState(false);
 
+    const [goal, setGoal] = useState("");
+const [level, setLevel] = useState("Beginner");
+const [roadmap, setRoadmap] = useState([]);
   useEffect(() => {
     const fetchGamification = async () => {
       try {
@@ -268,6 +271,35 @@ const StudentDashboard = () => {
         return "text-gray-400 bg-gray-500/10 border-gray-500/30";
     }
   };
+const generateRoadmap = () => {
+  const ROADMAPS = {
+    "Web Development": {
+      Beginner: ["HTML", "CSS", "JavaScript", "React", "Node.js"],
+    },
+    "Data Science": {
+      Beginner: [
+        "Python",
+        "NumPy",
+        "Pandas",
+        "Data Visualization",
+        "Machine Learning",
+      ],
+    },
+    "Artificial Intelligence": {
+      Beginner: [
+        "Python",
+        "Math Basics",
+        "Machine Learning",
+        "Deep Learning",
+        "LLMs",
+      ],
+    },
+  };
+
+  if (!goal) return;
+
+  setRoadmap(ROADMAPS[goal]?.[level] || []);
+};
 
   const getUserInitials = () => {
     if (!user?.displayName && !user?.email) {
@@ -387,6 +419,54 @@ const StudentDashboard = () => {
           </div>
         </div>
       </div>
+      <div className="mt-6 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+  <h2 className="text-xl font-bold text-white mb-4">
+    AI Learning Roadmap Generator
+  </h2>
+
+  <div className="flex flex-wrap gap-4 mb-4">
+    <select
+      value={goal}
+      onChange={(e) => setGoal(e.target.value)}
+      className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20"
+    >
+      <option value="">Select Goal</option>
+      <option value="Web Development">Web Development</option>
+      <option value="Data Science">Data Science</option>
+      <option value="Artificial Intelligence">Artificial Intelligence</option>
+    </select>
+
+    <select
+      value={level}
+      onChange={(e) => setLevel(e.target.value)}
+      className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20"
+    >
+      <option value="Beginner">Beginner</option>
+      <option value="Intermediate">Intermediate</option>
+      <option value="Advanced">Advanced</option>
+    </select>
+
+    <button
+      onClick={generateRoadmap}
+      className="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white"
+    >
+      Generate Roadmap
+    </button>
+  </div>
+
+  {roadmap.length > 0 && (
+    <div className="space-y-2">
+      {roadmap.map((item, index) => (
+        <div
+          key={index}
+          className="p-3 rounded-lg bg-white/5 border border-white/10 text-white"
+        >
+          Phase {index + 1}: {item}
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
       {/* MAIN CONTENT CONTINUES */}
 
