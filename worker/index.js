@@ -4,6 +4,9 @@ let csrfTokenCache = null; // { token: string, fetchedAt: number }
 let csrfTokenPromise = null;
 const CSRF_TOKEN_TTL_MS = 6 * 24 * 60 * 60 * 1000; // 6 days (1 day before cookie expiry)
 
+const MAX_RETRIES = 5;
+const INITIAL_DELAY = 1000; // 1 second
+
 function isUnsafeMethod(method) {
   return ["POST", "PUT", "PATCH", "DELETE"].includes((method || "GET").toUpperCase());
 }
@@ -76,13 +79,49 @@ async function handleSync() {
   const clients = await self.clients.matchAll();
   clients.forEach(c => c.postMessage({ type: "SYNC_PENDING_ACTIONS_START" }));
   
-  const result = await processSyncQueue(swFetchWithCsrf);
-  
+  let attempt = 0;
+  let delay = INITIAL_DELAY;
+  let result = null;
+  let lastError = null;
+
+  while (attempt < MAX_RETRIES) {
+    try {
+      result = await processSyncQueue(swFetchWithCsrf);
+      
+      // If result has failed items (e.g., 500 API errors), retry the batch
+      if (result && result.failCount > 0) {
+        throw new Error(`Sync queue processing failed items count: ${result.failCount}`);
+      }
+      
+      // Successful sync execution path
+      clients.forEach(c => c.postMessage({ 
+        type: "SYNC_PENDING_ACTIONS_COMPLETE", 
+        successCount: result.successCount, 
+        failCount: 0 
+      }));
+      return;
+    } catch (error) {
+      attempt++;
+      lastError = error;
+      
+      if (attempt >= MAX_RETRIES) {
+        break; // Out of retry attempts
+      }
+      
+      // Wait for the double exponential delay time spacing before attempting again
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+
+  // Handle ultimate failure execution state after retries run dry
   clients.forEach(c => c.postMessage({ 
-    type: "SYNC_PENDING_ACTIONS_COMPLETE", 
-    successCount: result.successCount, 
-    failCount: result.failCount 
+    type: "SYNC_PENDING_ACTIONS_FAILED_PERMANENTLY", 
+    message: "Background synchronization failed permanently after retry limits. Please refresh or retry manually.",
+    failCount: result ? result.failCount : 1
   }));
+  
+  throw lastError || new Error("Sync execution failed permanently.");
 }
 
 const CACHE_NAME = "learnova-api-cache-v1";

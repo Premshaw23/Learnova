@@ -8,20 +8,77 @@ export default function TimetablePage() {
   const [level, setLevel] = useState("Beginner");
   const [topics, setTopics] = useState("");
   const [generated, setGenerated] = useState(false);
+  const [milestones, setMilestones] = useState([false, false, false, false]);
+  const [progress, setProgress] = useState(0);
+
+  const [roadmap, setRoadmap] = useState([]);
+  const [roadmapMessage, setRoadmapMessage] = useState("");
 
   const topicList = topics
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
 
+    
   const generatePlan = () => {
-    if (!goal || !hours || !topics) {
-      alert("Please fill all fields");
-      return;
-    }
-    setGenerated(true);
-  };
+  if (!goal || !hours || !topics) {
+    alert("Please fill all fields");
+    return;
+  }
 
+  let generatedRoadmap = [];
+
+  if (level === "Beginner") {
+    generatedRoadmap = [
+      "Foundation & Basics",
+      "Core Concepts",
+      "Practice Problems",
+      "Projects & Interview Prep",
+    ];
+  } else if (level === "Intermediate") {
+    generatedRoadmap = [
+      "Advanced Concepts",
+      "Problem Solving",
+      "Real Projects",
+      "Interview Preparation",
+    ];
+  } else {
+    generatedRoadmap = [
+      "System Design",
+      "Advanced Projects",
+      "Open Source Contributions",
+      "Career Preparation",
+    ];
+  }
+
+  setRoadmap(generatedRoadmap);
+  if (level === "Beginner") {
+  setRoadmapMessage(
+    "Start with fundamentals and build strong problem-solving skills."
+  );
+} else if (level === "Intermediate") {
+  setRoadmapMessage(
+    "Focus on advanced concepts, projects, and interview preparation."
+  );
+} else {
+  setRoadmapMessage(
+    "Master system design, open source contributions, and career readiness."
+  );
+}
+  setGenerated(true);
+  setProgress(0);
+  setMilestones([false, false, false, false]);
+};
+
+const toggleMilestone = (index) => {
+  const updated = [...milestones];
+  updated[index] = !updated[index];
+
+  setMilestones(updated);
+
+  const completed = updated.filter(Boolean).length;
+  setProgress(completed * 25);
+};
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4">
       <div className="max-w-5xl mx-auto">
@@ -116,34 +173,53 @@ export default function TimetablePage() {
         🚀 AI Learning Roadmap
       </h2>
 
-      <div className="grid md:grid-cols-4 gap-3 text-sm">
-        <div className="border rounded-lg p-3">
-          <h3 className="font-semibold">Phase 1</h3>
-          <p>Foundation & Basics</p>
-          <p className="text-muted-foreground">Week 1-2</p>
-        </div>
-
-        <div className="border rounded-lg p-3">
-          <h3 className="font-semibold">Phase 2</h3>
-          <p>Core Concepts</p>
-          <p className="text-muted-foreground">Week 3-6</p>
-        </div>
-
-        <div className="border rounded-lg p-3">
-          <h3 className="font-semibold">Phase 3</h3>
-          <p>Projects & Practice</p>
-          <p className="text-muted-foreground">Week 7-10</p>
-        </div>
-
-        <div className="border rounded-lg p-3">
-          <h3 className="font-semibold">Phase 4</h3>
-          <p>Interview / Exam Prep</p>
-          <p className="text-muted-foreground">Week 11-12</p>
-        </div>
-      </div>
+    <div className="grid md:grid-cols-4 gap-3 text-sm">
+      {roadmap.map((item, index) => (
+        <div key={index} className="border rounded-lg p-3">
+          <h3 className="font-semibold">Phase {index + 1}</h3>
+          <p>{item}</p>
+          </div>
+      ))}
     </div>
 
-    <div className="grid lg:grid-cols-2 gap-4 mb-4">
+    </div>
+
+    {/* end of roadmap section */}
+
+<div className="border rounded-xl p-4 mb-4">
+  <h2 className="font-bold text-lg mb-3">
+    📈 Progress Tracking
+  </h2>
+
+  <div className="w-full bg-gray-700 rounded-full h-3 mb-3">
+    <div
+      className="bg-green-500 h-3 rounded-full transition-all"
+      style={{ width: `${progress}%` }}
+    />
+  </div>
+
+  <p className="text-sm mb-3">
+    Progress: {progress}%
+  </p>
+
+  <div className="space-y-2">
+    {roadmap.map((item, index) => (
+      <label
+        key={index}
+        className="flex items-center gap-2 text-sm"
+      >
+        <input
+          type="checkbox"
+          checked={milestones[index]}
+          onChange={() => toggleMilestone(index)}
+        />
+        {item}
+      </label>
+    ))}
+  </div>
+</div>
+
+
       {/* Daily Timetable */}
       <div className="border rounded-xl p-4">
         <h2 className="font-bold text-lg mb-3">
@@ -173,7 +249,7 @@ export default function TimetablePage() {
           <li>✓ Revise weak concepts</li>
         </ul>
       </div>
-    </div>
+    
 
     <div className="grid lg:grid-cols-3 gap-4">
       {/* Priorities */}
@@ -217,7 +293,34 @@ export default function TimetablePage() {
         </ul>
       </div>
     </div>
+<div className="mt-5 border rounded-xl p-4">
+  <h3 className="font-semibold mb-3">
+    🔍 Skill Gap Analysis
+  </h3>
 
+  <ul className="text-sm space-y-2">
+    {level === "Beginner" && (
+      <>
+        <li>• Build strong fundamentals in selected topics</li>
+        <li>• Focus on understanding core concepts before projects</li>
+      </>
+    )}
+
+    {level === "Intermediate" && (
+      <>
+        <li>• Strengthen problem-solving and practical implementation</li>
+        <li>• Increase project-based learning</li>
+      </>
+    )}
+
+    {level === "Advanced" && (
+      <>
+        <li>• Focus on optimization and advanced concepts</li>
+        <li>• Practice real-world challenges and mock assessments</li>
+      </>
+    )}
+  </ul>
+</div>
     {/* Summary */}
     <div className="mt-5 border rounded-xl p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
       <h3 className="font-semibold mb-2">
@@ -231,7 +334,28 @@ export default function TimetablePage() {
         <strong>{topics}</strong>. Estimated preparation timeline:
         <strong> 10-14 weeks</strong>.
       </p>
+      <p className="text-sm mt-2">
+  {roadmapMessage}
+      </p>
     </div>
+    <div className="mt-4 border rounded-xl p-4">
+  <h3 className="font-semibold mb-2">
+    🎯 Next Recommendation
+  </h3>
+
+  {progress < 50 && (
+    <p>Complete foundation topics before moving to advanced concepts.</p>
+  )}
+
+  {progress >= 50 && progress < 100 && (
+    <p>You are ready to start solving advanced interview-level problems.</p>
+  )}
+
+  {progress === 100 && (
+    <p>Roadmap completed! Generate a new roadmap for the next level.</p>
+  )}
+</div>
+
   </>
 )}
       </div>

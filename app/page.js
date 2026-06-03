@@ -20,7 +20,6 @@ import {
   Calendar,
   UserCheck,
   BarChart3,
-
   Quote,
   Star,
 
@@ -81,7 +80,7 @@ const FEATURES = [
   },
 
   {
-  icon: Brain,
+  icon: Zap,
   title: "AI Study Planner",
   description:
     "Generate personalized daily study plans, weekly goals, revision schedules, and topic prioritization based on your goals and available study time.",

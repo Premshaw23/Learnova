@@ -4,7 +4,7 @@
  * Clean, dependency-free pattern matcher.
  * Safely parsed by both Client and Server environments.
  */
-export function matchUserIntent(prompt) {
+export function matchUserIntent(prompt, context = {}) {
   if (!prompt || typeof prompt !== "string") {
     return { matched: false };
   }
@@ -15,10 +15,14 @@ export function matchUserIntent(prompt) {
   if (lower.includes("attendance") && (lower.includes("under") || lower.includes("below") || lower.includes("less"))) {
     const numberMatch = prompt.match(/\b\d+/);
     const parsedThreshold = numberMatch ? parseInt(numberMatch[0], 10) : 75;
+    const args = { threshold: parsedThreshold };
+    if (context.instituteId) {
+      args.instituteId = context.instituteId;
+    }
     return {
       matched: true,
       tool: "fetch_low_attendance_students",
-      args: { threshold: parsedThreshold }
+      args
     };
   }
 
@@ -53,8 +57,8 @@ export function matchUserIntent(prompt) {
   return { matched: false };
 }
 
-export async function parseUserIntent(prompt) {
-  const match = matchUserIntent(prompt);
+export async function parseUserIntent(prompt, context = {}) {
+  const match = matchUserIntent(prompt, context);
   if (!match.matched) {
     return JSON.stringify({ status: 'error', error: 'Could not parse user intent' });
   }

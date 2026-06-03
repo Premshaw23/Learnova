@@ -428,7 +428,7 @@ const markdownComponents = {
 // Main component
 // ---------------------------------------------------------------------------
 export default function LearnovaChatbot() {
-  const { user } = useAuthContext();
+  const { user, userProfile } = useAuthContext();
   const { theme, resolvedTheme, setTheme } = useTheme();
   
   const isDarkMode = resolvedTheme === "dark" || theme === "dark";
@@ -598,7 +598,7 @@ export default function LearnovaChatbot() {
         // Isolate parser from unauthorized invocation failures
         if (user) {
           try {
-            actionResponse = await parseUserIntent(text);
+            actionResponse = await parseUserIntent(text, { instituteId: userProfile?.instituteId });
           } catch (e) {
             console.error("Local intent parser dropped:", e);
           }

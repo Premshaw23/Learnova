@@ -373,7 +373,7 @@ export default function RootLayout({ children }) {
             
             {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
             <ShortcutsModal />
-            <CommandPalette />
+            <CommandPaletteWrapper />
 
             {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
             <ShortcutsModal />
