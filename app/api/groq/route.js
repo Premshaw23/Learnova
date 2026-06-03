@@ -10,10 +10,10 @@ const GROQ_API_URL =
 
 import { checkRateLimit } from "@/lib/rateLimit";
 
-const groqSchema = z.object({
-  message: z.string().optional(),
-  userMessage: z.string().optional(),
-}).refine(
+const quizSchema = z.object({
+  content: z.string().min(50),
+});
+.refine(
   (data) => {
     const message = data.message || data.userMessage;
     return message && message.trim().length > 0;
