@@ -24,6 +24,7 @@ import NextTopLoader from "nextjs-toploader";
 import RouteAnnouncer from "@/components/RouteAnnouncer";
 
 import ErrorBoundary from "@/components/ErrorBoundary";
+import CommandPalette from "@/components/CommandPalette";
 
 // ─── Command palette (wrapper owns isOpen state via useCommandPalette hook) ──
 // Conflict resolved: use CommandPaletteWrapper, NOT CommandPalette directly.

@@ -84,7 +84,7 @@ function NavLink({ href, label, isActive }) {
     <Link
       href={href}
       aria-current={isActive ? "page" : undefined}
-      className="relative text-sm font-semibold tracking-wide px-4 py-2 rounded-xl group after:content-[''] after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[3px] after:rounded-full after:bg-gradient-to-r after:from-blue-500 after:via-cyan-400 after:to-violet-500 after:shadow-sm after:shadow-blue-500/30 after:pointer-events-none after:will-change-transform after:origin-left after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.4,0,0.2,1)] after:scale-x-0 group-hover:after:scale-x-100"
+      className="relative text-sm font-semibold tracking-wide px-2 xl:px-4 py-2 rounded-xl group after:content-[''] after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[3px] after:rounded-full after:bg-gradient-to-r after:from-blue-500 after:via-cyan-400 after:to-violet-500 after:shadow-sm after:shadow-blue-500/30 after:pointer-events-none after:will-change-transform after:origin-left after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.4,0,0.2,1)] after:scale-x-0 group-hover:after:scale-x-100"
     >
       {isActive && (
         <motion.span
@@ -114,7 +114,7 @@ export function Navbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false);  const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
     useNotifications();
@@ -123,6 +123,7 @@ export function Navbar() {
 
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
+  const moreRef = useRef(null);
   const pathname = usePathname();
   const { theme, setTheme, resolvedTheme } = useTheme();
 
@@ -146,6 +147,9 @@ export function Navbar() {
     }
     if (notifRef.current && !notifRef.current.contains(e.target)) {
       setIsNotificationOpen(false);
+    }
+    if (moreRef.current && !moreRef.current.contains(e.target)) {
+      setIsMoreOpen(false);
     }
   }, []);
 
@@ -179,14 +183,11 @@ export function Navbar() {
   useEffect(() => {
     const handleResize = () => {
       // If the window is resized larger than mobile layouts, close the mobile menu
-      if (window.innerWidth >= 640) {
+      if (window.innerWidth >= 1024) {
         setIsMenuOpen(false);
       }
     };
-
     window.addEventListener("resize", handleResize);
-
-    // ✅ Explicit arrow function hook return to safely purge registration on unmount
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
@@ -250,6 +251,9 @@ export function Navbar() {
     { href: "/about", label: "About", icon: BookOpen },
     { href: "/wellness", label: "Wellness", icon: HeartPulse },
     { href: "/productivity", label: "Focus", icon: Sparkles },
+  ];
+
+  const dropdownNavigationItems = [
     { href: "/activity", label: "Activities", icon: Activity },
     { href: "/complaints", label: "Complaints", icon: MessageSquareWarning },
     { href: "/contact", label: "Contact", icon: Mail },
@@ -340,7 +344,7 @@ export function Navbar() {
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16 gap-4">
+          <div className="flex justify-between items-center h-16 w-full gap-4">
             {/* Logo */}
             <Link
               href="/"
@@ -368,7 +372,8 @@ export function Navbar() {
             </Link>
 
             {/* Center Nav Capsule */}
-            <div className="hidden sm:flex items-center bg-zinc-100/60 dark:bg-white/5 border border-zinc-200/50 dark:border-white/8 rounded-2xl p-1 gap-0.5">
+            <div className="hidden lg:flex items-center bg-zinc-100/60 dark:bg-white/5 border border-zinc-200/50 dark:border-white/8 rounded-2xl p-1 gap-0.5">
+              {/* Render the primary 4 links */}
               {navigationItems.map((item) => (
                 <NavLink
                   key={item.href}
@@ -377,10 +382,44 @@ export function Navbar() {
                   isActive={isRouteActive(item.href)}
                 />
               ))}
+
+              {/* Interactive More Dropdown Button */}
+              <div className="relative" ref={moreRef}>
+                <button
+                  onClick={() => setIsMoreOpen(!isMoreOpen)}
+                  className="flex items-center gap-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300 px-3 py-2 rounded-xl hover:bg-zinc-200/60 dark:hover:bg-white/5 transition-colors"
+                >
+                  More <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isMoreOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                <AnimatePresence>
+                  {isMoreOpen && (
+                    <motion.div
+                      variants={dropdownVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      className="absolute left-0 mt-2 w-48 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-xl shadow-xl py-1.5 z-[100]"
+                    >
+                      {dropdownNavigationItems.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setIsMoreOpen(false)}
+                          className={`flex items-center gap-2 px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors ${isRouteActive(item.href) ? "text-blue-600 dark:text-blue-400 font-semibold" : ""}`}
+                        >
+                          <item.icon className="h-4 w-4 text-zinc-400" />
+                          {item.label}
+                        </Link>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* Right Controls */}
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-3 shrink-0">
               {/* Search Button */}
               <motion.button
                 whileHover={{ scale: 1.03 }}
@@ -629,7 +668,7 @@ export function Navbar() {
                   <motion.div
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.97 }}
-                    className="relative group"
+                    className="hidden xl:block relative group"
                   >
                     <span className="absolute inset-0 rounded-xl bg-blue-500 opacity-0 group-hover:opacity-20 blur-lg transition-opacity duration-300" />
                     <Button
@@ -650,7 +689,7 @@ export function Navbar() {
             </div>
 
             {/* Mobile Menu Toggle */}
-            <div className="sm:hidden">
+            <div className="lg:hidden">
               <motion.button
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
