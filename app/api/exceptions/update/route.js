@@ -82,7 +82,8 @@ export const PUT = withErrorHandler(async (request) => {
         const studentProfile = await getUserProfileByEmail(exception.studentEmail);
         if (studentProfile) {
           const studentSubjects = studentProfile.subjects || studentProfile.classes || [];
-          const hasOverlap = studentSubjects.some((subject) => teacherSubjects.includes(subject));
+          const teacherSubjectsSet = new Set(teacherSubjects);
+          const hasOverlap = studentSubjects.some((subject) => teacherSubjectsSet.has(subject));
           if (hasOverlap) {
             isAuthorized = true;
           }
