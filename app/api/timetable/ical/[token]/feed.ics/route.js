@@ -2,6 +2,10 @@ import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
+// Force dynamic so calendar clients always get a fresh .ics feed,
+// not a stale CDN-cached copy from a previous timetable version.
+export const dynamic = "force-dynamic";
+
 const byDayMap = {
   Sunday: "SU",
   Monday: "MO",
@@ -19,16 +23,16 @@ const getNextWeekdayDate = (dayName, timeStr) => {
   const targetDay = weekdays[dayName];
   const now = new Date();
   const currentDay = now.getDay();
-  
+
   let daysToAdd = targetDay - currentDay;
   if (daysToAdd < 0) daysToAdd += 7;
-  
+
   const targetDate = new Date();
   targetDate.setDate(now.getDate() + daysToAdd);
-  
+
   const [hours, minutes] = timeStr.split(":").map(Number);
   targetDate.setHours(hours || 9, minutes || 0, 0, 0);
-  
+
   return targetDate;
 };
 
@@ -53,10 +57,17 @@ const formatDateToICSUTC = (date) => {
   return `${yyyy}${mm}${dd}T${hh}${min}${ss}Z`;
 };
 
-export async function GET(request, { params }) {
-  const { token } = params;
+// UUID v4 regex — prevents probing Firestore with arbitrary strings.
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  if (!token) {
+export async function GET(request, { params }) {
+  // FIX: In Next.js 15, route params is a Promise and must be awaited.
+  // Without this await, `token` is always undefined, causing every request
+  // to fall into the `if (!token)` guard and return 404.
+  const { token } = await params;
+
+  if (!token || !UUID_REGEX.test(token)) {
     return new NextResponse("Not Found", { status: 404 });
   }
 

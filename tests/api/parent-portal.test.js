@@ -62,12 +62,26 @@ vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn(() => ({ allowed: true })),
 }));
 
+// 7. Mock transactionCoordinator
+vi.mock("@/lib/transactionCoordinator", () => ({
+  executeSaga: vi.fn(async ({ steps }) => {
+    const context = {};
+    for (const step of steps) {
+      await step.execute(context);
+    }
+    return { success: true, context };
+  }),
+  findExistingOperation: vi.fn().mockResolvedValue(null),
+  markIdempotent: vi.fn(),
+}));
+
 // Import authenticators/parsers so we can mock their outputs per-test
 import { authenticateRequest, parseJSON } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { connectDb } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { executeSaga } from "@/lib/transactionCoordinator";
 
 // Import route handlers
 import { GET as adminGetLink, POST as adminPostLink, DELETE as adminDeleteLink } from "@/app/api/admin/parent-student-link/route";
@@ -218,6 +232,14 @@ describe("Parent Portal Feature Tests", () => {
           }),
         };
       }),
+      getAll: vi.fn(async (...refs) => {
+        const results = [];
+        for (const ref of refs) {
+          const snapshot = await ref.get();
+          results.push(snapshot);
+        }
+        return results;
+      }),
     });
 
     const mockMongoCollection = {
@@ -350,6 +372,34 @@ describe("Parent Portal Feature Tests", () => {
 
       const response = await adminDeleteLink(request);
       await assertApiError(response, 400, "Missing parentId or studentId parameters");
+    });
+
+    it("POST /api/admin/parent-student-link: should return 500 if the saga coordinator fails to sync the link", async () => {
+      parseJSON.mockResolvedValue({
+        parentEmail: "parent1@learnova.edu",
+        studentEmail: "student2@learnova.edu",
+      });
+      executeSaga.mockResolvedValueOnce({
+        success: false,
+        error: "MongoDB database connection timed out",
+      });
+
+      const response = await adminPostLink(makeRequest());
+      await assertApiError(response, 500, "Failed to sync parent-student link: MongoDB database connection timed out");
+    });
+
+    it("DELETE /api/admin/parent-student-link: should return 500 if the saga coordinator fails to delete the link", async () => {
+      executeSaga.mockResolvedValueOnce({
+        success: false,
+        error: "Failed to connect to MongoDB instance",
+      });
+
+      const request = makeRequest({
+        url: "http://localhost/api/admin/parent-student-link?parentId=parent-1&studentId=student-1"
+      });
+
+      const response = await adminDeleteLink(request);
+      await assertApiError(response, 500, "Failed to delete parent-student link: Failed to connect to MongoDB instance");
     });
   });
 

@@ -31,6 +31,9 @@ jobs:
       - name: 📚 Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: 🎨 Run Prettier Code Formatting Check
+        run: npm run format:check
+
       - name: 🧪 Run unit tests
         run: npm test
 

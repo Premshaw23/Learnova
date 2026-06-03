@@ -42,7 +42,44 @@ const CommentSection = ({ noticeId }) => {
       setComments(defaultComments);
       localStorage.setItem(storageKey, JSON.stringify(defaultComments));
     }
-  }, [storageKey]);
+  }, [noticeId]);
+  const insertMarkdown = (syntax) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const replacement = syntax + selectedText + syntax;
+
+    // Construct the new string
+    const updatedValue = text.substring(0, start) + replacement + text.substring(end);
+    setNewComment(updatedValue);
+
+    // Refocus and place the cursor seamlessly back inside or after the syntax
+    setTimeout(() => {
+      textarea.focus();
+      const offset = syntax.length;
+      textarea.setSelectionRange(start + offset, end + offset);
+    }, 0);
+  };
+
+  // Keyboard shortcut listener
+  const handleKeyDown = (event) => {
+    const isModifierPressed = event.ctrlKey || event.metaKey;
+
+    if (isModifierPressed) {
+      if (event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        insertMarkdown("**"); // Bold format
+      } else if (event.key.toLowerCase() === "i") {
+        event.preventDefault();
+        insertMarkdown("*");  // Italic format
+      }
+    }
+  };
 
   // 3. Handle comment submission without needing a live backend database connection
   const handleSubmitComment = (e) => {

@@ -1,4 +1,4 @@
-import { auth, db, isMockAuthMode, MOCK_USER } from "@/lib/firebaseConfig";
+import { auth, db } from "@/lib/firebaseConfig";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -18,7 +18,6 @@ import { ROLE_CONFIG } from "@/constants/userRoles";
 
 const FIREBASE_CONFIG_ERROR =
   "Firebase is not configured. Please add your Firebase environment variables to .env.local and restart the development server.";
-
 
 
 const syncCustomClaims = async ({ user, role, fullName }) => {

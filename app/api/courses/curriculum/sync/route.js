@@ -26,57 +26,53 @@ export async function POST(request) {
 
     let isDbPersisted = false;
 
-    try {
-      if (process.env.MONGODB_URI) {
-        const db = await connectDb();
+    if (process.env.MONGODB_URI) {
+      const db = await connectDb();
 
-        // Ownership check: only the original creator or an admin can modify a curriculum
-        if (profile?.role !== "admin") {
-          const existing = await db.collection("course_curriculums").findOne(
-            { courseId },
-            { projection: { ownerId: 1 } }
-          );
-          if (existing && existing.ownerId !== payload.uid) {
-            return NextResponse.json(
-              { success: false, error: "Forbidden: You do not own this course curriculum" },
-              { status: 403 }
-            );
-          }
-        }
-
-        // Structure the modules list to enforce position sequences
-        const structuredModules = modules.map((mod, modIdx) => ({
-          id: mod.id,
-          title: mod.title,
-          order: modIdx,
-          lessons: (mod.lessons || []).map((les, lesIdx) => ({
-            id: les.id,
-            title: les.title,
-            duration: les.duration || "15 mins",
-            type: les.type || "video",
-            completed: les.completed || false,
-            order: lesIdx
-          }))
-        }));
-
-        await db.collection("course_curriculums").updateOne(
+      // Ownership check: only the original creator or an admin can modify a curriculum
+      if (profile?.role !== "admin") {
+        const existing = await db.collection("course_curriculums").findOne(
           { courseId },
-          {
-            $set: {
-              modules: structuredModules,
-              updatedAt: new Date(),
-            },
-            $setOnInsert: {
-              ownerId: payload.uid,
-              createdAt: new Date(),
-            },
-          },
-          { upsert: true }
+          { projection: { ownerId: 1 } }
         );
-        isDbPersisted = true;
+        if (existing && existing.ownerId !== payload.uid) {
+          return NextResponse.json(
+            { success: false, error: "Forbidden: You do not own this course curriculum" },
+            { status: 403 }
+          );
+        }
       }
-    } catch (dbError) {
-      console.warn("MongoDB sync failed, relying on frontend optimistic caching:", dbError.message);
+
+      // Structure the modules list to enforce position sequences
+      const structuredModules = modules.map((mod, modIdx) => ({
+        id: mod.id,
+        title: mod.title,
+        order: modIdx,
+        lessons: (mod.lessons || []).map((les, lesIdx) => ({
+          id: les.id,
+          title: les.title,
+          duration: les.duration || "15 mins",
+          type: les.type || "video",
+          completed: les.completed || false,
+          order: lesIdx
+        }))
+      }));
+
+      await db.collection("course_curriculums").updateOne(
+        { courseId },
+        {
+          $set: {
+            modules: structuredModules,
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            ownerId: payload.uid,
+            createdAt: new Date(),
+          },
+        },
+        { upsert: true }
+      );
+      isDbPersisted = true;
     }
 
     return NextResponse.json({
@@ -89,7 +85,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("POST Curriculum Sync API Error:", error);
     return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
+      { success: false, error: error.message || "Internal Server Error" },
       { status: 500 }
     );
   }
