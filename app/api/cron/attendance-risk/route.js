@@ -1,6 +1,7 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { authorizeCronRequest } from "@/lib/cronAuth";
 import { connectDb } from "@/lib/mongodb";
+import { ensureIndexes } from "@/lib/db-indexes";
 
 /**
  * GET /api/cron/attendance-risk
@@ -22,6 +23,7 @@ export const GET = async (request) => {
 
   try {
     const db = await connectDb();
+    await ensureIndexes();
 
     const now = new Date();
     const fourWeeksAgo = new Date(now);

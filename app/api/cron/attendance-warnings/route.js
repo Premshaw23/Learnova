@@ -5,6 +5,7 @@ import { getUserProfile } from '@/lib/firebase-admin';
 import { initializeFirebase } from '@/lib/firebase-admin';
 import admin from 'firebase-admin';
 import { evaluateStudentAttendance } from '@/lib/attendanceUtils';
+import { ensureIndexes } from '@/lib/db-indexes';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,7 @@ export async function GET(request) {
     }
 
     const db = await connectDb();
+    await ensureIndexes();
     initializeFirebase();
     const firestore = admin.firestore();
 
