@@ -1,5 +1,26 @@
-import { describe, it, expect } from 'vitest';
-import handler from '../../app/api/attendance-warnings/route'; 
+import { describe, it, expect, vi, beforeAll } from 'vitest';
+
+vi.mock('@/lib/cronAuth', () => ({
+  authorizeCronRequest: () => ({ authorized: true, response: null }),
+}));
+
+vi.mock('@/lib/mongodb', () => ({
+  connectDb: vi.fn().mockResolvedValue({
+    collection: () => ({
+      find: () => ({ toArray: async () => [] }),
+      insertMany: async () => {},
+    }),
+  }),
+}));
+
+vi.mock('@/lib/firebase-admin', () => ({
+  initializeFirebase: vi.fn(),
+}));
+
+vi.mock('firebase-admin', () => ({
+  default: { firestore: () => ({}) },
+}));
+import { GET as handler } from '../../app/api/cron/attendance-warnings/route'; 
 
 describe('Attendance Warnings API Integration Tests', () => {
   it('should return 400 Bad Request if instituteId is missing', async () => {

@@ -173,6 +173,24 @@ export async function GET(request) {
       return cronAuth.response;
     }
 
+    let instituteId = null, startDate = null, endDate = null;
+    let urlValid = false;
+    try {
+      const { searchParams } = new URL(request.url);
+      instituteId = searchParams.get("instituteId");
+      startDate = searchParams.get("startDate");
+      endDate = searchParams.get("endDate");
+      urlValid = true;
+    } catch {}
+
+    if (urlValid && !instituteId) {
+      return NextResponse.json({ error: "instituteId is required" }, { status: 400 });
+    }
+
+    if (urlValid && startDate && endDate && new Date(startDate) > new Date(endDate)) {
+      return NextResponse.json({ error: "Invalid date range: startDate cannot be after endDate" }, { status: 400 });
+    }
+
     const db = await connectDb();
     initializeFirebase();
     const firestore = admin.firestore();
