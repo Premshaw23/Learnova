@@ -81,8 +81,12 @@
     "xss": "^1.0.15",
     "zod": "^4.4.3"
   },
-  "devDependencies": {
+  "optionalDependencies": {
     "@swc/core-darwin-arm64": "^1.15.40",
+    "@swc/core-linux-x64-gnu": "^1.15.40",
+    "@swc/core-win32-x64-msvc": "^1.15.40"
+  },
+  "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
