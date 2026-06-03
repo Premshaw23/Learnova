@@ -510,8 +510,25 @@ export async function middleware(request) {
     }
   }
 
-  // ── 9. Attach CSP and standard Security headers ──
+  // ── 9. Attach CORS and Security headers ──
   const response = NextResponse.next({ request: { headers: requestHeaders } });
+
+  const origin = request.headers.get("origin") || "";
+  const allowedOrigins = process.env.NODE_ENV === "development"
+    ? ["http://localhost:3000", "http://localhost:3001"]
+    : ["https://learnova-web.vercel.app"];
+
+  if (origin && allowedOrigins.some((o) => origin.startsWith(o))) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-learnova-maintenance-bypass");
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+  }
+
+  // Handle preflight
+  if (request.method === "OPTIONS" && origin) {
+    return new Response(null, { status: 204, headers: response.headers });
+  }
 
   if (isPage) {
     response.headers.set("Content-Security-Policy", buildPageCsp());
