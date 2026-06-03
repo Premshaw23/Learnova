@@ -19,9 +19,7 @@ export default function ScrollProgress() {
       const totalHeight = scrollHeight - clientHeight;
 
       const percentage =
-        totalHeight > 0
-          ? (window.scrollY / totalHeight) * 100
-          : 0;
+        totalHeight > 0 ? (window.scrollY / totalHeight) * 100 : 0;
 
       if (progressRef.current) {
         progressRef.current.style.width = `${Math.min(

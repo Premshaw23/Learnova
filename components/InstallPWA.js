@@ -85,15 +85,17 @@ export default function InstallPWA() {
 
   return (
     <div
-       className={`fixed bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0 z-50 w-[92%] sm:w-auto transition-all duration-500 ease-out transform ${        isVisible
+      className={`fixed bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0 z-50 w-[92%] sm:w-auto transition-all duration-500 ease-out transform ${
+        isVisible
           ? "opacity-100 scale-100 translate-y-0"
           : "opacity-0 scale-95 translate-y-8 pointer-events-none"
       }`}
     >
-<div className="relative w-full max-w-[340px] sm:max-w-[360px] mx-auto bg-slate-900/90 backdrop-blur-xl border border-purple-500/20 rounded-2xl shadow-2xl p-5 sm:p-6 overflow-hidden transition-all duration-300 hover:border-purple-500/40 hover:shadow-purple-500/10">        {/* Ambient Background Glows */}
+      <div className="relative w-full max-w-[340px] sm:max-w-[360px] mx-auto bg-slate-900/90 backdrop-blur-xl border border-purple-500/20 rounded-2xl shadow-2xl p-5 sm:p-6 overflow-hidden transition-all duration-300 hover:border-purple-500/40 hover:shadow-purple-500/10">
+        {" "}
+        {/* Ambient Background Glows */}
         <div className="absolute -top-12 -left-12 h-24 w-24 rounded-full bg-purple-500/10 blur-2xl pointer-events-none" />
         <div className="absolute -bottom-12 -right-12 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
-
         {/* Close Button */}
         <button
           onClick={handleDismiss}
@@ -102,7 +104,6 @@ export default function InstallPWA() {
         >
           <X className="w-4 h-4" />
         </button>
-
         <div className="flex items-start gap-4 relative z-10">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-purple-500/10 ring-1 ring-purple-500/30 flex-shrink-0">
             <Download className="h-5 w-5 text-purple-400" />
@@ -118,7 +119,6 @@ export default function InstallPWA() {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-2.5 mt-4">
-            
               <button
                 onClick={handleInstall}
                 className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold text-xs hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 cursor-pointer shadow-lg shadow-purple-600/20"
@@ -134,7 +134,6 @@ export default function InstallPWA() {
             </div>
           </div>
         </div>
-
         {/* Benefits Section */}
         <div className="mt-4 pt-4 border-t border-white/5 relative z-10">
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-slate-400 text-[11px] font-medium">

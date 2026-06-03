@@ -3,7 +3,13 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { GraduationCap, ArrowLeft, Home, Sparkles, BookOpen } from "lucide-react";
+import {
+  GraduationCap,
+  ArrowLeft,
+  Home,
+  Sparkles,
+  BookOpen,
+} from "lucide-react";
 
 const PARTICLES = [
   { id: 1, left: "15%", top: "25%", size: 6, delay: "0s", duration: "10s" },
@@ -23,7 +29,6 @@ export default function NotFound() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex items-center justify-center transition-colors duration-500">
-      
       {/* Background Decorative Glow and Particles */}
       <div className="absolute inset-0 pointer-events-none -z-10 select-none">
         {/* Colorful Glow Orbs */}
@@ -51,7 +56,6 @@ export default function NotFound() {
 
       {/* Main Content Card Container */}
       <div className="max-w-2xl w-full text-center px-6 py-12 relative z-10 space-y-8 animate-fadeIn">
-        
         {/* Educational Graphic Icon with Radial Glow */}
         <div className="relative w-28 h-28 mx-auto flex items-center justify-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl dark:shadow-indigo-500/5">
           <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-3xl opacity-10 animate-pulse" />
@@ -71,14 +75,17 @@ export default function NotFound() {
             Oops! Looks like this page got lost in the library.
           </h2>
           <p className="max-w-md mx-auto text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">
-            The resource you are looking for has been moved, archived, or does not exist in our system directory.
+            The resource you are looking for has been moved, archived, or does
+            not exist in our system directory.
           </p>
         </div>
 
         {/* Current Path Indicator Tag — only rendered client-side to avoid SSR/hydration mismatch */}
         {mounted && pathname && (
           <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400 backdrop-blur-md shadow-inner select-all">
-            <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400">Broken Path:</span>
+            <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400">
+              Broken Path:
+            </span>
             <code className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
               {pathname}
             </code>

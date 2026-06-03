@@ -19,7 +19,10 @@ export const GET = withErrorHandler(async (request, context) => {
   const linkId = `${parentId}_${studentId}`;
   const linkDoc = await db.collection("parent_student_links").doc(linkId).get();
   if (!linkDoc.exists) {
-    return jsonError("Access Denied: You are not authorized to view this student's records.", 403);
+    return jsonError(
+      "Access Denied: You are not authorized to view this student's records.",
+      403
+    );
   }
 
   // 2. Query student attendance records
@@ -53,16 +56,24 @@ export const GET = withErrorHandler(async (request, context) => {
   // Sort records by date descending
   records.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  return jsonSuccess({
-    stats: {
-      total: presentCount + lateCount + absentCount,
-      present: presentCount,
-      late: lateCount,
-      absent: absentCount,
-      attendancePercentage: (presentCount + lateCount + absentCount) > 0
-        ? Math.round(((presentCount + lateCount) / (presentCount + lateCount + absentCount)) * 100)
-        : 0,
+  return jsonSuccess(
+    {
+      stats: {
+        total: presentCount + lateCount + absentCount,
+        present: presentCount,
+        late: lateCount,
+        absent: absentCount,
+        attendancePercentage:
+          presentCount + lateCount + absentCount > 0
+            ? Math.round(
+                ((presentCount + lateCount) /
+                  (presentCount + lateCount + absentCount)) *
+                  100
+              )
+            : 0,
+      },
+      records,
     },
-    records,
-  }, 200);
+    200
+  );
 });

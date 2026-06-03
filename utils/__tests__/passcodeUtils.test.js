@@ -14,7 +14,7 @@ describe("hashPasscode", () => {
     const result = hashPasscode("123456");
     expect(result).toContain(":");
     const [salt, hash] = result.split(":");
-    expect(salt).toHaveLength(32);  // 16 bytes → 32 hex chars
+    expect(salt).toHaveLength(32); // 16 bytes → 32 hex chars
     expect(hash).toHaveLength(128); // 64 bytes → 128 hex chars
   });
 

@@ -17,7 +17,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       success: true,
-      ...result
+      ...result,
     });
   } catch (error) {
     console.error("API Course Fetch Error:", error);

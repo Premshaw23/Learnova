@@ -59,9 +59,7 @@ export default function BadgeGallery({ unlockedBadges = [] }) {
               </p>
 
               {!isUnlocked && (
-                <span className="text-[10px] text-gray-500 mt-1">
-                  Locked
-                </span>
+                <span className="text-[10px] text-gray-500 mt-1">Locked</span>
               )}
             </motion.div>
           );

@@ -1,5 +1,12 @@
 import { motion } from "framer-motion";
-import { ListTodo, Plus, CheckCircle2, ChevronUp, ChevronDown, X } from "lucide-react";
+import {
+  ListTodo,
+  Plus,
+  CheckCircle2,
+  ChevronUp,
+  ChevronDown,
+  X,
+} from "lucide-react";
 
 export function TaskSection({
   tasks,
@@ -13,7 +20,7 @@ export function TaskSection({
   removeTask,
   taskCompletion,
   PRIORITIES,
-  isDark
+  isDark,
 }) {
   return (
     <motion.div
@@ -39,9 +46,10 @@ export function TaskSection({
           onChange={(event) => setTaskInput(event.target.value)}
           placeholder="Add a new task..."
           className={`flex-1 rounded-xl px-4 py-2.5 text-sm border
-            ${isDark
-              ? "bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-              : "bg-white/50 border-slate-200 text-slate-900 placeholder:text-slate-400"
+            ${
+              isDark
+                ? "bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                : "bg-white/50 border-slate-200 text-slate-900 placeholder:text-slate-400"
             }
             focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-transparent
             transition-all duration-200`}
@@ -73,7 +81,9 @@ export function TaskSection({
       </form>
 
       <div className="mb-6">
-        <div className={`flex items-center justify-between text-xs mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+        <div
+          className={`flex items-center justify-between text-xs mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}
+        >
           <span>Progress</span>
           <span className="font-medium">{taskCompletion}%</span>
         </div>
@@ -87,7 +97,9 @@ export function TaskSection({
 
       <div className="space-y-2.5">
         {tasks.length === 0 && (
-          <p className={`text-sm text-center py-8 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+          <p
+            className={`text-sm text-center py-8 ${isDark ? "text-slate-500" : "text-slate-400"}`}
+          >
             No tasks yet. Add one above.
           </p>
         )}
@@ -95,20 +107,18 @@ export function TaskSection({
           <div
             key={task.id}
             className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 border transition-all duration-200
-              ${task.done
-                ? isDark
-                  ? "bg-white/5 border-white/5 opacity-60"
-                  : "bg-slate-50 border-slate-100 opacity-60"
-                : isDark
-                  ? "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
-                  : "bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300"
+              ${
+                task.done
+                  ? isDark
+                    ? "bg-white/5 border-white/5 opacity-60"
+                    : "bg-slate-50 border-slate-100 opacity-60"
+                  : isDark
+                    ? "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+                    : "bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300"
               }`}
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <button
-                onClick={() => toggleTask(task.id)}
-                className="shrink-0"
-              >
+              <button onClick={() => toggleTask(task.id)} className="shrink-0">
                 <CheckCircle2
                   className={`w-5 h-5 transition-all duration-200 ${
                     task.done
@@ -137,7 +147,9 @@ export function TaskSection({
                 {task.priority}
               </span>
             </div>
-            <div className={`flex items-center gap-0.5 shrink-0 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+            <div
+              className={`flex items-center gap-0.5 shrink-0 ${isDark ? "text-slate-500" : "text-slate-400"}`}
+            >
               <button
                 onClick={() => moveTask(task.id, -1)}
                 disabled={index === 0}

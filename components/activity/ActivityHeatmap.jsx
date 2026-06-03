@@ -154,7 +154,8 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
             Contribution cadence
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            Track your real activity by day with GitHub-style intensity levels and hover details.
+            Track your real activity by day with GitHub-style intensity levels
+            and hover details.
           </p>
         </div>
 
@@ -196,9 +197,12 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
           ) : !records || records.length === 0 ? (
             <div className="min-h-[220px] flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-700/60 bg-slate-950/60 p-8 text-center">
               <Activity className="h-10 w-10 text-slate-400" />
-              <p className="text-lg font-semibold text-white">No activity yet</p>
+              <p className="text-lg font-semibold text-white">
+                No activity yet
+              </p>
               <p className="text-sm text-slate-400 max-w-sm">
-                Your profile will start showing a heatmap once daily activity data is available.
+                Your profile will start showing a heatmap once daily activity
+                data is available.
               </p>
             </div>
           ) : (
@@ -231,7 +235,8 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
       <div className="mt-5 rounded-3xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-400">
         <p className="font-medium text-white">What you see</p>
         <p className="mt-2 text-slate-300">
-          Each day tile represents one calendar date. Lighter greens mean fewer contributions, while deeper greens show more activity.
+          Each day tile represents one calendar date. Lighter greens mean fewer
+          contributions, while deeper greens show more activity.
         </p>
       </div>
 

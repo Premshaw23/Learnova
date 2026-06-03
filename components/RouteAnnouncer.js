@@ -9,7 +9,9 @@ export default function RouteAnnouncer() {
 
   useEffect(() => {
     if (pathname) {
-      setAnnouncement(`Navigated to ${pathname === "/" ? "Home" : pathname.replace(/\//g, " ").trim()}`);
+      setAnnouncement(
+        `Navigated to ${pathname === "/" ? "Home" : pathname.replace(/\//g, " ").trim()}`
+      );
     }
   }, [pathname]);
 

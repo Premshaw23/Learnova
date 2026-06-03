@@ -152,7 +152,10 @@ describe("POST /api/notifications/seed - Security and Validation Tests", () => {
     // parseJSON calls request.text() then JSON.parse — return invalid JSON string
     const req = {
       headers: {
-        get: (name) => (name.toLowerCase() === "authorization" ? "Bearer valid-admin-token" : null),
+        get: (name) =>
+          name.toLowerCase() === "authorization"
+            ? "Bearer valid-admin-token"
+            : null,
       },
       json: vi.fn().mockRejectedValue(new Error("Parse error")),
       text: vi.fn().mockResolvedValue("{invalid-json:::"),

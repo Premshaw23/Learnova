@@ -41,14 +41,19 @@ export default function NoticeDetailPage({ params: paramsPromise }) {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          
+
           // Verify user has role authorization (targetAudience check)
           const targetAudience = data.targetAudience || [];
           const userRole = userProfile?.role || "student";
           const isAdmin = userRole === "admin";
           const isAuthor = data.authorId === user?.uid;
 
-          if (!isAdmin && !isAuthor && targetAudience.length > 0 && !targetAudience.includes(userRole)) {
+          if (
+            !isAdmin &&
+            !isAuthor &&
+            targetAudience.length > 0 &&
+            !targetAudience.includes(userRole)
+          ) {
             setError("You do not have permission to view this notice.");
             setNoticeLoading(false);
             return;

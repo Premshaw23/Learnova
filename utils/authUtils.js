@@ -118,7 +118,7 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
   } catch (tokenError) {
     console.error(
       "[createUserProfile] Failed to refresh auth token after role assignment:",
-      tokenError?.message || tokenError,
+      tokenError?.message || tokenError
     );
     throw new Error(
       "Failed to update authentication token after signup. Please try again."
@@ -142,7 +142,8 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
  * @returns {Object} Validation result containing status and error messages.
  */
 export const validateForm = (formData, isLogin) => {
-  const { selectedRole, email, password, fullName, instituteName, inviteCode } = formData;
+  const { selectedRole, email, password, fullName, instituteName, inviteCode } =
+    formData;
   const errors = {};
 
   // Role is always required
@@ -171,18 +172,18 @@ export const validateForm = (formData, isLogin) => {
     if (selectedRole === USER_ROLES.INSTITUTE) {
       const instituteNameValidation = validateRequired(
         instituteName,
-        "Institute name",
+        "Institute name"
       );
       if (instituteNameValidation !== true) {
         errors.instituteName = instituteNameValidation;
       }
     }
 
-    if (selectedRole === USER_ROLES.TEACHER || selectedRole === USER_ROLES.INSTITUTE) {
-      const inviteCodeValidation = validateRequired(
-        inviteCode,
-        "Invite code"
-      );
+    if (
+      selectedRole === USER_ROLES.TEACHER ||
+      selectedRole === USER_ROLES.INSTITUTE
+    ) {
+      const inviteCodeValidation = validateRequired(inviteCode, "Invite code");
       if (inviteCodeValidation !== true) {
         errors.inviteCode = inviteCodeValidation;
       }

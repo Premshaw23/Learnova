@@ -13,10 +13,15 @@ vi.mock("@/lib/error-handler", () => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
+          const payload =
+            error.originalMessage !== undefined
+              ? error.originalMessage
+              : error.message;
           return {
             status: error.statusCode ?? 500,
-            json: async () => ({ error: payload || error.message || "Internal server error" }),
+            json: async () => ({
+              error: payload || error.message || "Internal server error",
+            }),
           };
         }
       };
@@ -57,7 +62,6 @@ vi.mock("@/lib/mongodb", () => {
     connectDb: vi.fn().mockResolvedValue(mockDb),
   };
 });
-
 
 vi.mock("firebase-admin/firestore", () => ({
   getFirestore: vi.fn(),
@@ -148,7 +152,7 @@ describe("attendance record route", () => {
         offlineSynced: false,
         timestamp: FieldValue.serverTimestamp.mock.results[0].value,
       }),
-      { merge: true },
+      { merge: true }
     );
   });
 
@@ -215,7 +219,11 @@ describe("attendance record route", () => {
     });
 
     const response = await POST(createMockRequest());
-    await assertApiError(response, 403, "Forbidden: Cannot submit attendance for another user");
+    await assertApiError(
+      response,
+      403,
+      "Forbidden: Cannot submit attendance for another user"
+    );
   });
 
   test("rejects request with 400 Bad Request if confidence score is invalid or below threshold", async () => {
@@ -225,22 +233,32 @@ describe("attendance record route", () => {
     // Scenario 1: below 60
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: 59,
     });
     let response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(
+      response,
+      400,
+      "Bad Request: Invalid or spoofed confidence score"
+    );
 
-    // Scenario 2: above 100
+    // Scenario 2: above 100 — caught by schema validation
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: 101,
     });
     response = await POST(createMockRequest());
     await assertApiError(response, 400, "Validation failed");
 
-    // Scenario 3: NaN
+    // Scenario 3: NaN — caught by schema validation
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: "not-a-number",
     });
     response = await POST(createMockRequest());
@@ -253,7 +271,11 @@ describe("attendance record route", () => {
     checkRateLimit.mockResolvedValue({ allowed: false });
 
     const response = await POST(createMockRequest());
-    await assertApiError(response, 429, "Too many attempts. Please try again later.");
+    await assertApiError(
+      response,
+      429,
+      "Too many attempts. Please try again later."
+    );
   });
 
   test("simulates concurrent double-click requests and guarantees single write via OCC retry simulation", async () => {
@@ -321,7 +343,10 @@ describe("attendance record route", () => {
     const resJson1 = await response1.json();
     const resJson2 = await response2.json();
 
-    const results = [resJson1.data.alreadyRecorded, resJson2.data.alreadyRecorded].sort();
+    const results = [
+      resJson1.data.alreadyRecorded,
+      resJson2.data.alreadyRecorded,
+    ].sort();
     expect(results).toEqual([false, true]);
 
     expect(dbStore.size).toBe(1);

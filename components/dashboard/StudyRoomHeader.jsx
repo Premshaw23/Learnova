@@ -6,7 +6,10 @@ import Image from "next/image";
  * StudyRoomHeader Component
  * Demonstrates the integration of the CopyInviteButton inside the header of a real-time collaborative study room.
  */
-const StudyRoomHeader = ({ roomName = "Advanced AI Agents & Algorithms Study Room", activeUsersCount = 5 }) => {
+const StudyRoomHeader = ({
+  roomName = "Advanced AI Agents & Algorithms Study Room",
+  activeUsersCount = 5,
+}) => {
   return (
     <header className="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 transition-colors duration-300">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

@@ -10,7 +10,9 @@ const FALLBACK =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231e293b'/%3E%3Ccircle cx='50' cy='38' r='18' fill='%23475569'/%3E%3Cellipse cx='50' cy='84' rx='28' ry='20' fill='%23475569'/%3E%3C/svg%3E";
 
 function ContributorCard({ username, name, admin }) {
-  const [imgSrc, setImgSrc] = useState(`https://github.com/${username}.png?size=160`);
+  const [imgSrc, setImgSrc] = useState(
+    `https://github.com/${username}.png?size=160`
+  );
 
   return (
     <a
@@ -73,7 +75,6 @@ export default function ContributorsPage() {
 
         <div className="px-4 pt-28 pb-20">
           <div className="mx-auto max-w-5xl">
-
             <div className="mb-12 text-center">
               <h1 className="text-4xl font-bold text-white">Contributors</h1>
               <p className="mt-2 text-slate-400">
@@ -103,7 +104,6 @@ export default function ContributorsPage() {
                 contribute on GitHub
               </a>
             </p>
-
           </div>
         </div>
       </div>

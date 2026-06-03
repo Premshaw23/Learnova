@@ -365,7 +365,8 @@ Prevent form submission and EmailJS call if validation fails.
     labels: ["good first issue", "enhancement", "validation"],
   },
   {
-    title: "UI: Make the Role Selection screen accessible with keyboard navigation",
+    title:
+      "UI: Make the Role Selection screen accessible with keyboard navigation",
     body: `## 📝 Task Description
 
 The \`RoleSelection\` component (\`components/RoleSelection.js\`) uses clickable cards for role selection, but these may not be fully keyboard-navigable. Users who rely on keyboard navigation (Tab / Enter / Space) should be able to select a role without a mouse.
@@ -423,7 +424,9 @@ async function createIssue(issue) {
   }
 }
 
-console.log(`🚀 Creating ${ISSUES.length} good-first issues on ${OWNER}/${REPO}...\n`);
+console.log(
+  `🚀 Creating ${ISSUES.length} good-first issues on ${OWNER}/${REPO}...\n`
+);
 
 for (const issue of ISSUES) {
   await createIssue(issue);

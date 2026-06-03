@@ -30,9 +30,15 @@ export async function GET(request) {
     return NextResponse.json({ success: true, data: conversations });
   } catch (error) {
     if (error instanceof AppError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
     }
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
 
@@ -45,7 +51,10 @@ export async function POST(request) {
     const { userMessage, botMessage } = body;
 
     if (!userMessage || !botMessage) {
-      return NextResponse.json({ error: "Validation Error: Missing messages." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Validation Error: Missing messages." },
+        { status: 400 }
+      );
     }
 
     const db = await connectDb();
@@ -58,11 +67,20 @@ export async function POST(request) {
 
     const result = await db.collection("conversations").insertOne(conversation);
 
-    return NextResponse.json({ success: true, data: { _id: result.insertedId, ...conversation } });
+    return NextResponse.json({
+      success: true,
+      data: { _id: result.insertedId, ...conversation },
+    });
   } catch (error) {
     if (error instanceof AppError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
     }
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

@@ -1,7 +1,11 @@
 import { vi } from "vitest";
 import { POST } from "@/app/api/notices/route";
 import { GET, publishNoticeToRedis } from "@/app/api/notices/stream/route";
-import { getAdminDb, getUserProfile, verifyFirebaseToken } from "@/lib/firebase-admin";
+import {
+  getAdminDb,
+  getUserProfile,
+  verifyFirebaseToken,
+} from "@/lib/firebase-admin";
 import { connectDb, connectDbForSSE } from "../../lib/mongodb";
 
 // Mock NextResponse
@@ -127,7 +131,11 @@ describe("Notice Board Isolation & Security Tests", () => {
     process.env = originalEnv;
   });
 
-  const createMockRequest = (headers, bodyData, url = "http://localhost/api/notices") => {
+  const createMockRequest = (
+    headers,
+    bodyData,
+    url = "http://localhost/api/notices"
+  ) => {
     return {
       url,
       headers: {
@@ -145,7 +153,13 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("automatically appends publisher instituteId to notice and syncs to MongoDB", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: { uid: "publisher-123", email: "teacher@domain.com", name: "Teacher Jane", email_verified: true, role: "teacher" },
+        decodedToken: {
+          uid: "publisher-123",
+          email: "teacher@domain.com",
+          name: "Teacher Jane",
+          email_verified: true,
+          role: "teacher",
+        },
       });
       getUserProfile.mockResolvedValue({
         role: "teacher",
@@ -162,7 +176,10 @@ describe("Notice Board Isolation & Security Tests", () => {
         targetAudience: ["student"],
       };
 
-      const req = createMockRequest({ authorization: "Bearer valid-token" }, payload);
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        payload
+      );
       const response = await POST(req);
       const body = await response.json();
 
@@ -193,7 +210,12 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("rejects standard students from creating notices", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: { uid: "student-123", email: "student@domain.com", email_verified: true, role: "student" },
+        decodedToken: {
+          uid: "student-123",
+          email: "student@domain.com",
+          email_verified: true,
+          role: "student",
+        },
       });
       getUserProfile.mockResolvedValue({
         role: "student",
@@ -208,7 +230,10 @@ describe("Notice Board Isolation & Security Tests", () => {
         targetAudience: ["student"],
       };
 
-      const req = createMockRequest({ authorization: "Bearer valid-token" }, payload);
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        payload
+      );
       const response = await POST(req);
       const body = await response.json();
 
@@ -223,7 +248,11 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("filters initial MongoDB query by user instituteId", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: { uid: "student-123", email: "student@domain.com", email_verified: true },
+        decodedToken: {
+          uid: "student-123",
+          email: "student@domain.com",
+          email_verified: true,
+        },
       });
       getUserProfile.mockResolvedValue({
         role: "student",
@@ -231,11 +260,20 @@ describe("Notice Board Isolation & Security Tests", () => {
       });
 
       const mockNotices = [
-        { _id: "notice-1", title: "Notice B1", instituteId: "institute_B", targetAudience: ["student"] },
+        {
+          _id: "notice-1",
+          title: "Notice B1",
+          instituteId: "institute_B",
+          targetAudience: ["student"],
+        },
       ];
       mockMongoFindToArray.mockResolvedValue(mockNotices);
 
-      const req = createMockRequest({ authorization: "Bearer valid-token" }, {}, "http://localhost/api/notices/stream");
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        {},
+        "http://localhost/api/notices/stream"
+      );
       await GET(req);
 
       expect(capturedStart).toBeDefined();
@@ -288,7 +326,13 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("POST publishes notice to Redis after MongoDB sync", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: { uid: "publisher-123", email: "teacher@domain.com", name: "Teacher Jane", email_verified: true, role: "teacher" },
+        decodedToken: {
+          uid: "publisher-123",
+          email: "teacher@domain.com",
+          name: "Teacher Jane",
+          email_verified: true,
+          role: "teacher",
+        },
       });
       getUserProfile.mockResolvedValue({
         role: "teacher",
@@ -305,7 +349,10 @@ describe("Notice Board Isolation & Security Tests", () => {
         targetAudience: ["student"],
       };
 
-      const req = createMockRequest({ authorization: "Bearer valid-token" }, payload);
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        payload
+      );
       const response = await POST(req);
       const body = await response.json();
 

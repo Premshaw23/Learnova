@@ -11,32 +11,32 @@ export const AttendancePasscodeModal = ({
   const modalRef = useRef(null);
 
   useEffect(() => {
-  if (!showPasscodeModal) return;
+    if (!showPasscodeModal) return;
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Escape") {
-      setShowPasscodeModal(false);
-    }
-  };
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setShowPasscodeModal(false);
+      }
+    };
 
-  document.addEventListener("keydown", handleKeyDown);
-  document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
 
-  return () => {
-    document.removeEventListener("keydown", handleKeyDown);
-    document.body.style.overflow = "unset";
-  };
-}, [showPasscodeModal, setShowPasscodeModal]);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+    };
+  }, [showPasscodeModal, setShowPasscodeModal]);
   if (!showPasscodeModal) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
-      ref={modalRef}
-      tabIndex={-1}
-      role="dialog"
-      aria-modal="true"
-      className="bg-gray-900 border border-white/20 rounded-2xl p-8 max-w-md w-full outline-none"
+        ref={modalRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        className="bg-gray-900 border border-white/20 rounded-2xl p-8 max-w-md w-full outline-none"
       >
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -45,9 +45,7 @@ export const AttendancePasscodeModal = ({
           <h3 className="text-2xl font-bold text-white mb-2">
             Attendance Passcode Generated
           </h3>
-          <p className="text-gray-400">
-            Share this code with your students
-          </p>
+          <p className="text-gray-400">Share this code with your students</p>
         </div>
 
         <div className="bg-black/40 rounded-xl p-6 mb-6 text-center border border-white/10">

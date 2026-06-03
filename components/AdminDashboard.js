@@ -38,11 +38,14 @@ import SkeletonCard from "@/components/ui/SkeletonCard";
 
 // CRITICAL FIX: Imported missing useAuth hook to prevent ReferenceError crash
 import { useAuth } from "@/hooks/useAuth";
-import { getPendingActions as getOutboxRecords, removePendingAction as removeFromOutbox, clearPendingActions as clearOutbox } from "@/db/offlineStore";
+import {
+  getPendingActions as getOutboxRecords,
+  removePendingAction as removeFromOutbox,
+  clearPendingActions as clearOutbox,
+} from "@/db/offlineStore";
 import { triggerOfflineSync } from "@/utils/offlineRequestHandler";
 import { apiFetch } from "@/lib/apiClient";
 import { useIsMounted } from "@/hooks/useIsMounted";
-
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -119,7 +122,8 @@ const SuperAdminDashboard = () => {
         {
           time: new Date().toLocaleTimeString(),
           type: "info",
-          message: "Network connection restored. Preparing automatic sync replay.",
+          message:
+            "Network connection restored. Preparing automatic sync replay.",
         },
         ...prev,
       ]);
@@ -132,7 +136,8 @@ const SuperAdminDashboard = () => {
         {
           time: new Date().toLocaleTimeString(),
           type: "warning",
-          message: "Network connection lost. Offline mode active. Outbox will cache sync actions.",
+          message:
+            "Network connection lost. Offline mode active. Outbox will cache sync actions.",
         },
         ...prev,
       ]);
@@ -176,8 +181,14 @@ const SuperAdminDashboard = () => {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      window.removeEventListener("attendance-sync-complete", handleSyncComplete);
-      window.removeEventListener("attendance-sync-rejected", handleSyncRejected);
+      window.removeEventListener(
+        "attendance-sync-complete",
+        handleSyncComplete
+      );
+      window.removeEventListener(
+        "attendance-sync-rejected",
+        handleSyncRejected
+      );
       clearInterval(interval);
     };
   }, []);
@@ -294,13 +305,21 @@ const SuperAdminDashboard = () => {
   };
 
   const handleDeleteLink = async (parentId, studentId) => {
-    if (!window.confirm("Are you sure you want to remove this parent-student relationship?")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to remove this parent-student relationship?"
+      )
+    )
+      return;
     try {
       const token = await user.getIdToken();
-      const res = await apiFetch(`/api/admin/parent-student-link?parentId=${parentId}&studentId=${studentId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(
+        `/api/admin/parent-student-link?parentId=${parentId}&studentId=${studentId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       if (res.ok) {
         toast.success("Relationship removed successfully");
         fetchLinks();
@@ -332,16 +351,24 @@ const SuperAdminDashboard = () => {
             Parent-Student Account Linking Manager
           </h2>
           <p className="text-sm text-gray-400">
-            Establish and manage relationships between Parent roles and Student accounts.
+            Establish and manage relationships between Parent roles and Student
+            accounts.
           </p>
         </div>
 
         {/* Link creation form */}
         <div className="bg-gray-800/40 border border-white/10 rounded-2xl p-6 shadow-xl space-y-4">
-          <h3 className="text-lg font-semibold text-white">Link New Accounts</h3>
-          <form onSubmit={handleCreateLink} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <h3 className="text-lg font-semibold text-white">
+            Link New Accounts
+          </h3>
+          <form
+            onSubmit={handleCreateLink}
+            className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"
+          >
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Parent Email</label>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Parent Email
+              </label>
               <input
                 type="email"
                 required
@@ -352,7 +379,9 @@ const SuperAdminDashboard = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Student Email</label>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Student Email
+              </label>
               <input
                 type="email"
                 required
@@ -401,8 +430,13 @@ const SuperAdminDashboard = () => {
           ) : filteredLinks.length === 0 ? (
             <div className="py-12 text-center border border-dashed border-gray-700 rounded-xl space-y-2">
               <Users className="w-10 h-10 text-gray-500 mx-auto" />
-              <p className="font-medium text-gray-300">No linked accounts found</p>
-              <p className="text-xs text-gray-500">Links will show up here after linking parent and student accounts.</p>
+              <p className="font-medium text-gray-300">
+                No linked accounts found
+              </p>
+              <p className="text-xs text-gray-500">
+                Links will show up here after linking parent and student
+                accounts.
+              </p>
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl border border-gray-700/50">
@@ -420,17 +454,32 @@ const SuperAdminDashboard = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-700/50 text-gray-300">
                     {filteredLinks.map((link) => (
-                      <tr key={link.id} className="hover:bg-gray-800/30 transition-colors">
-                        <td className="px-4 py-4 font-semibold text-white">{link.parentName}</td>
-                        <td className="px-4 py-4 font-mono text-xs">{link.parentEmail}</td>
-                        <td className="px-4 py-4 font-semibold text-white">{link.studentName}</td>
-                        <td className="px-4 py-4 font-mono text-xs">{link.studentEmail}</td>
+                      <tr
+                        key={link.id}
+                        className="hover:bg-gray-800/30 transition-colors"
+                      >
+                        <td className="px-4 py-4 font-semibold text-white">
+                          {link.parentName}
+                        </td>
+                        <td className="px-4 py-4 font-mono text-xs">
+                          {link.parentEmail}
+                        </td>
+                        <td className="px-4 py-4 font-semibold text-white">
+                          {link.studentName}
+                        </td>
+                        <td className="px-4 py-4 font-mono text-xs">
+                          {link.studentEmail}
+                        </td>
                         <td className="px-4 py-4 text-xs">
-                          {link.createdAt ? new Date(link.createdAt).toLocaleString() : "N/A"}
+                          {link.createdAt
+                            ? new Date(link.createdAt).toLocaleString()
+                            : "N/A"}
                         </td>
                         <td className="px-4 py-4 text-center">
                           <button
-                            onClick={() => handleDeleteLink(link.parentId, link.studentId)}
+                            onClick={() =>
+                              handleDeleteLink(link.parentId, link.studentId)
+                            }
                             className="text-red-400 hover:text-red-300 p-1.5 hover:bg-red-500/10 rounded-lg transition-all"
                             aria-label="Delete relationship link"
                           >
@@ -678,8 +727,8 @@ const SuperAdminDashboard = () => {
                     alert.severity === "high"
                       ? "bg-red-500"
                       : alert.severity === "medium"
-                      ? "bg-yellow-500"
-                      : "bg-blue-500"
+                        ? "bg-yellow-500"
+                        : "bg-blue-500"
                   }`}
                 ></div>
                 <span className="text-sm text-gray-300">{alert.message}</span>
@@ -812,8 +861,8 @@ const SuperAdminDashboard = () => {
                           institute.healthScore > 90
                             ? "bg-green-500"
                             : institute.healthScore > 70
-                            ? "bg-yellow-500"
-                            : "bg-red-500"
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
                         }`}
                       ></div>
                       <span className="text-sm text-white">
@@ -828,19 +877,31 @@ const SuperAdminDashboard = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      <button aria-label="Institute Settings" className="text-blue-400 hover:text-blue-300 transition-colors">
+                      <button
+                        aria-label="Institute Settings"
+                        className="text-blue-400 hover:text-blue-300 transition-colors"
+                      >
                         <Settings className="w-4 h-4" />
                       </button>
                       {institute.status === "active" ? (
-                        <button aria-label="Lock Institute" className="text-yellow-400 hover:text-yellow-300 transition-colors">
+                        <button
+                          aria-label="Lock Institute"
+                          className="text-yellow-400 hover:text-yellow-300 transition-colors"
+                        >
                           <Lock className="w-4 h-4" />
                         </button>
                       ) : (
-                        <button aria-label="Unlock Institute" className="text-green-400 hover:text-green-300 transition-colors">
+                        <button
+                          aria-label="Unlock Institute"
+                          className="text-green-400 hover:text-green-300 transition-colors"
+                        >
                           <Unlock className="w-4 h-4" />
                         </button>
                       )}
-                      <button aria-label="Ban Institute" className="text-red-400 hover:text-red-300 transition-colors">
+                      <button
+                        aria-label="Ban Institute"
+                        className="text-red-400 hover:text-red-300 transition-colors"
+                      >
                         <Ban className="w-4 h-4" />
                       </button>
                     </div>
@@ -1167,7 +1228,12 @@ const SuperAdminDashboard = () => {
   };
 
   const handleClearOutbox = async () => {
-    if (!window.confirm("Are you sure you want to clear the entire offline sync queue? This will delete all pending offline actions permanently.")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to clear the entire offline sync queue? This will delete all pending offline actions permanently."
+      )
+    )
+      return;
     await clearOutbox();
     setSyncHistory((prev) => [
       {
@@ -1195,7 +1261,11 @@ const SuperAdminDashboard = () => {
   };
 
   const renderSyncInspector = () => {
-    const queueHealthScore = outboxRecords.some((r) => Date.now() - r.queuedAt > 24 * 60 * 60 * 1000) ? 75 : 100;
+    const queueHealthScore = outboxRecords.some(
+      (r) => Date.now() - r.queuedAt > 24 * 60 * 60 * 1000
+    )
+      ? 75
+      : 100;
 
     return (
       <div className="space-y-6">
@@ -1207,7 +1277,8 @@ const SuperAdminDashboard = () => {
               Offline Sync Replay Reconciliation Inspector
             </h2>
             <p className="text-sm text-gray-400">
-              Prune, replay, and monitor the client-side IndexedDB outbox queue in real-time.
+              Prune, replay, and monitor the client-side IndexedDB outbox queue
+              in real-time.
             </p>
           </div>
           <div className="flex gap-3">
@@ -1233,12 +1304,18 @@ const SuperAdminDashboard = () => {
           <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-5 shadow-xl">
             <div className="flex items-center justify-between mb-2">
               <Database className="w-6 h-6 text-blue-400" />
-              <span className={`inline-flex px-2 py-0.5 text-xs rounded-full font-medium ${onlineStatus ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"}`}>
+              <span
+                className={`inline-flex px-2 py-0.5 text-xs rounded-full font-medium ${onlineStatus ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"}`}
+              >
                 {onlineStatus ? "Online" : "Offline"}
               </span>
             </div>
-            <h3 className="text-2xl font-bold text-blue-400">{outboxRecords.length}</h3>
-            <p className="text-sm text-gray-300 mt-1">Total Queued Operations</p>
+            <h3 className="text-2xl font-bold text-blue-400">
+              {outboxRecords.length}
+            </h3>
+            <p className="text-sm text-gray-300 mt-1">
+              Total Queued Operations
+            </p>
           </div>
 
           <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-xl border border-green-500/20 rounded-2xl p-5 shadow-xl">
@@ -1246,7 +1323,9 @@ const SuperAdminDashboard = () => {
               <CheckCircle2 className="w-6 h-6 text-green-400" />
               <span className="text-xs text-gray-400">This Session</span>
             </div>
-            <h3 className="text-2xl font-bold text-green-400">{sessionSyncedCount}</h3>
+            <h3 className="text-2xl font-bold text-green-400">
+              {sessionSyncedCount}
+            </h3>
             <p className="text-sm text-gray-300 mt-1">Successfully Synced</p>
           </div>
 
@@ -1255,7 +1334,9 @@ const SuperAdminDashboard = () => {
               <AlertTriangle className="w-6 h-6 text-red-400" />
               <span className="text-xs text-gray-400">Rejected Replays</span>
             </div>
-            <h3 className="text-2xl font-bold text-red-400">{sessionRejectedCount}</h3>
+            <h3 className="text-2xl font-bold text-red-400">
+              {sessionRejectedCount}
+            </h3>
             <p className="text-sm text-gray-300 mt-1">Rejected Replays</p>
           </div>
 
@@ -1264,7 +1345,9 @@ const SuperAdminDashboard = () => {
               <Activity className="w-6 h-6 text-purple-400" />
               <span className="text-xs text-gray-400">Queue Health</span>
             </div>
-            <h3 className={`text-2xl font-bold ${queueHealthScore === 100 ? "text-purple-400" : "text-yellow-400"}`}>
+            <h3
+              className={`text-2xl font-bold ${queueHealthScore === 100 ? "text-purple-400" : "text-yellow-400"}`}
+            >
               {queueHealthScore}%
             </h3>
             <p className="text-sm text-gray-300 mt-1">Stale Record Health</p>
@@ -1283,8 +1366,13 @@ const SuperAdminDashboard = () => {
             {outboxRecords.length === 0 ? (
               <div className="py-12 text-center border border-dashed border-gray-700 rounded-xl space-y-2">
                 <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto" />
-                <p className="font-medium text-gray-300 font-display">Outbox Queue Clean</p>
-                <p className="text-xs text-gray-500">No cached actions or pending synchronizations detected in IndexedDB.</p>
+                <p className="font-medium text-gray-300 font-display">
+                  Outbox Queue Clean
+                </p>
+                <p className="text-xs text-gray-500">
+                  No cached actions or pending synchronizations detected in
+                  IndexedDB.
+                </p>
               </div>
             ) : (
               <div className="overflow-hidden rounded-xl border border-gray-700/50">
@@ -1293,7 +1381,9 @@ const SuperAdminDashboard = () => {
                     <thead className="bg-gray-800/50 text-gray-400 text-xs font-medium uppercase tracking-wider">
                       <tr className="border-b border-gray-700/50">
                         <th className="px-4 py-3 text-left">ID</th>
-                        <th className="px-4 py-3 text-left">Record / Identity</th>
+                        <th className="px-4 py-3 text-left">
+                          Record / Identity
+                        </th>
                         <th className="px-4 py-3 text-left">Confidence</th>
                         <th className="px-4 py-3 text-left">Queued At</th>
                         <th className="px-4 py-3 text-left">Status</th>
@@ -1302,27 +1392,43 @@ const SuperAdminDashboard = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-700/50">
                       {outboxRecords.map((record) => {
-                        const isStale = Date.now() - record.queuedAt > 24 * 60 * 60 * 1000;
+                        const isStale =
+                          Date.now() - record.queuedAt > 24 * 60 * 60 * 1000;
                         return (
-                          <tr key={record.id} className="hover:bg-gray-800/30 transition-colors">
-                            <td className="px-4 py-4 text-xs font-mono text-gray-400 font-bold">#{record.id}</td>
-                            <td className="px-4 py-4">
-                              <div className="font-medium text-white">{record.studentName || "Self Submit"}</div>
-                              <div className="text-xs text-gray-400 font-mono">UID: {record.userId.slice(0, 8)}...</div>
+                          <tr
+                            key={record.id}
+                            className="hover:bg-gray-800/30 transition-colors"
+                          >
+                            <td className="px-4 py-4 text-xs font-mono text-gray-400 font-bold">
+                              #{record.id}
                             </td>
-                            <td className="px-4 py-4 font-mono text-gray-300">{(record.confidenceScore * 100).toFixed(0)}%</td>
+                            <td className="px-4 py-4">
+                              <div className="font-medium text-white">
+                                {record.studentName || "Self Submit"}
+                              </div>
+                              <div className="text-xs text-gray-400 font-mono">
+                                UID: {record.userId.slice(0, 8)}...
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 font-mono text-gray-300">
+                              {(record.confidenceScore * 100).toFixed(0)}%
+                            </td>
                             <td className="px-4 py-4 text-xs text-gray-400">
                               {new Date(record.queuedAt).toLocaleString()}
                             </td>
                             <td className="px-4 py-4">
-                              <span className={`inline-flex px-2 py-0.5 text-xs rounded-full border ${isStale ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "bg-blue-500/20 text-blue-400 border-blue-500/30"}`}>
+                              <span
+                                className={`inline-flex px-2 py-0.5 text-xs rounded-full border ${isStale ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "bg-blue-500/20 text-blue-400 border-blue-500/30"}`}
+                              >
                                 {isStale ? "Stale (>24h)" : "Pending"}
                               </span>
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex items-center justify-center gap-2">
                                 <button
-                                  onClick={() => setSelectedRecordPayload(record)}
+                                  onClick={() =>
+                                    setSelectedRecordPayload(record)
+                                  }
                                   className="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600/40 text-gray-300 px-2 py-1 rounded transition-colors"
                                 >
                                   View Payload
@@ -1356,7 +1462,8 @@ const SuperAdminDashboard = () => {
             <div className="h-[300px] overflow-y-auto pr-2 space-y-3 font-mono text-xs scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
               {syncHistory.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-gray-500 text-center text-[11px] py-12">
-                  No real-time synchronization events recorded yet. Ready and listening to connection changes.
+                  No real-time synchronization events recorded yet. Ready and
+                  listening to connection changes.
                 </div>
               ) : (
                 syncHistory.map((log, index) => (
@@ -1366,10 +1473,10 @@ const SuperAdminDashboard = () => {
                       log.type === "success"
                         ? "bg-green-500/10 border-green-500/20 text-green-400"
                         : log.type === "error"
-                        ? "bg-red-500/10 border-red-500/20 text-red-400"
-                        : log.type === "warning"
-                        ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
-                        : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                          ? "bg-red-500/10 border-red-500/20 text-red-400"
+                          : log.type === "warning"
+                            ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
+                            : "bg-blue-500/10 border-blue-500/20 text-blue-400"
                     }`}
                   >
                     <div className="flex justify-between font-bold text-[10px] opacity-75 mb-0.5">
@@ -1483,7 +1590,14 @@ const SuperAdminDashboard = () => {
 
       {/* Tabs Navigation */}
       <div className="flex items-center gap-4 border-b border-white/10 pb-2">
-        {["overview", "institutes", "monitoring", "security", "sync reconciliation", "parent student linking"].map((tab) => (
+        {[
+          "overview",
+          "institutes",
+          "monitoring",
+          "security",
+          "sync reconciliation",
+          "parent student linking",
+        ].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1506,7 +1620,8 @@ const SuperAdminDashboard = () => {
           {activeTab === "monitoring" && renderSystemMonitoring()}
           {activeTab === "security" && renderSecurityCenter()}
           {activeTab === "sync reconciliation" && renderSyncInspector()}
-          {activeTab === "parent student linking" && renderParentStudentLinking()}
+          {activeTab === "parent student linking" &&
+            renderParentStudentLinking()}
         </div>
       </div>
     </div>

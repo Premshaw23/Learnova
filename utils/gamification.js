@@ -37,7 +37,11 @@ export const BADGES = {
 
 export const calculateUnlockedBadges = (studentData) => {
   const unlocked = [];
-  const { currentStreak = 0, currentLevel = 1, attendanceHistory = [] } = studentData;
+  const {
+    currentStreak = 0,
+    currentLevel = 1,
+    attendanceHistory = [],
+  } = studentData;
 
   // Perfect Week logic
   if (currentStreak >= 5) {

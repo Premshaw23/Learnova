@@ -43,39 +43,42 @@ const exceptionCreateSchema = z.object({
 export const POST = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireStudent(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`exceptions_create_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `exceptions_create_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
   const body = await parseJSON(request, 1024 * 10);
-  
+
   const validation = exceptionCreateSchema.safeParse(body);
   if (!validation.success) {
-    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+    const firstError =
+      validation.error.issues?.[0]?.message || "Invalid request payload";
     throw new ValidationError(firstError);
   }
-  
+
   const { reason, details, date } = validation.data;
 
-    const db = await connectDb();
+  const db = await connectDb();
 
-    const exceptionData = {
-      reason,
-      details,
-      date,
-      studentEmail: decodedToken.email,
-      status: "pending",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  const exceptionData = {
+    reason,
+    details,
+    date,
+    studentEmail: decodedToken.email,
+    status: "pending",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
-    const result = await db.collection("exceptions").insertOne(exceptionData);
+  const result = await db.collection("exceptions").insertOne(exceptionData);
 
-    return jsonSuccess(
-      {
-        id: result.insertedId,
-        message: "Exception request created successfully",
-      },
-      201,
-    );
+  return jsonSuccess(
+    {
+      id: result.insertedId,
+      message: "Exception request created successfully",
+    },
+    201
+  );
 });

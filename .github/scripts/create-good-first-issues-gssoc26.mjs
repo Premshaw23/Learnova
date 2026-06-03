@@ -632,7 +632,9 @@ async function createIssue(issue) {
   }
 }
 
-console.log(`🚀 Creating ${ISSUES.length} good-first issues on ${OWNER}/${REPO}...\n`);
+console.log(
+  `🚀 Creating ${ISSUES.length} good-first issues on ${OWNER}/${REPO}...\n`
+);
 
 for (const issue of ISSUES) {
   await createIssue(issue);

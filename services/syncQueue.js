@@ -1,4 +1,8 @@
-import { getPendingActions, updateActionStatus, removePendingAction } from "../db/offlineStore";
+import {
+  getPendingActions,
+  updateActionStatus,
+  removePendingAction,
+} from "../db/offlineStore";
 
 const MAX_RETRIES = 4;
 
@@ -16,7 +20,7 @@ export async function processSyncQueue(fetchFn = fetch) {
       // In the Service Worker context, we need to add the CSRF token back.
       // The old worker used withCsrfHeaders. We can fetch it or assume it's handled by fetchFn wrapper.
       // For simplicity, we just pass the raw request out.
-      
+
       const response = await fetchFn(action.endpoint, {
         method: action.method,
         headers: action.headers || {
@@ -29,7 +33,11 @@ export async function processSyncQueue(fetchFn = fetch) {
       if (response.ok) {
         await removePendingAction(action.id);
         successCount++;
-      } else if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+      } else if (
+        response.status >= 400 &&
+        response.status < 500 &&
+        response.status !== 429
+      ) {
         // Client errors or conflicts shouldn't be retried indefinitely
         await updateActionStatus(action.id, "failed", action.retryCount);
         failCount++;
@@ -42,7 +50,10 @@ export async function processSyncQueue(fetchFn = fetch) {
         await updateActionStatus(action.id, "failed", action.retryCount);
       } else {
         await updateActionStatus(action.id, "pending", action.retryCount + 1);
-        if (error.message.includes("Failed to fetch") || error.name === "TypeError") {
+        if (
+          error.message.includes("Failed to fetch") ||
+          error.name === "TypeError"
+        ) {
           break; // Stop queue processing on network failure
         }
       }

@@ -33,13 +33,6 @@ const FEATURES = [
 ];
 
 export default function RoleSelection({ onRoleSelect }) {
-  const handleKeyDown = (e, role) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onRoleSelect(role);
-    }
-  };
-
   return (
     <div className="relative mx-auto max-w-5xl px-4 py-10 text-center">
       {/* Ambient blobs */}
@@ -58,20 +51,22 @@ export default function RoleSelection({ onRoleSelect }) {
           Choose Your Role
         </h1>
         <p className="mx-auto mt-3 max-w-lg text-base text-muted-foreground">
-          Select your portal to unlock your personalised Learnova dashboard and features.
+          Select your portal to unlock your personalised Learnova dashboard and
+          features.
         </p>
       </div>
 
       {/* Role cards */}
       <div className="relative z-10 mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Object.entries(ROLE_CONFIG).map(([role, config]) => {
-          const glow = ROLE_GLOW[role] ?? "hover:border-indigo-500/40 hover:shadow-indigo-500/8";
+          const glow =
+            ROLE_GLOW[role] ??
+            "hover:border-indigo-500/40 hover:shadow-indigo-500/8";
           return (
             <button
               key={role}
               type="button"
               onClick={() => onRoleSelect(role)}
-              onKeyDown={(e) => handleKeyDown(e, role)}
               aria-label={`Select ${config.title} role`}
               className={`group relative flex flex-col items-center rounded-2xl border border-border bg-card p-6 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${glow}`}
             >
@@ -92,7 +87,8 @@ export default function RoleSelection({ onRoleSelect }) {
 
               {/* CTA pill — appears on hover */}
               <div
-                className={`mt-5 w-full rounded-xl bg-gradient-to-r ${config.color} py-2 text-sm font-semibold text-white opacity-0 transition-all duration-300 group-hover:opacity-100`}
+                aria-hidden="true"
+                className={`mt-5 w-full rounded-xl bg-gradient-to-r ${config.color} py-2 text-sm font-semibold text-white opacity-0 transition-all duration-300 group-hover:opacity-100 group-focus-visible:opacity-100`}
               >
                 Select Role
               </div>
@@ -109,8 +105,12 @@ export default function RoleSelection({ onRoleSelect }) {
             className="rounded-2xl border border-border bg-card p-5 text-left transition-all duration-200 hover:border-border/80 hover:shadow-sm"
           >
             <Icon className={`mb-3 h-8 w-8 ${iconClass}`} />
-            <h4 className="mb-1 text-sm font-bold text-card-foreground">{title}</h4>
-            <p className="text-xs leading-relaxed text-muted-foreground">{desc}</p>
+            <h4 className="mb-1 text-sm font-bold text-card-foreground">
+              {title}
+            </h4>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {desc}
+            </p>
           </div>
         ))}
       </div>

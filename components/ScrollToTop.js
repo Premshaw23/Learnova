@@ -15,7 +15,9 @@ export default function ScrollToTop() {
     if (hash) {
       const id = hash.slice(1);
       requestAnimationFrame(() => {
-        document.getElementById(id)?.scrollIntoView({ behavior: "auto", block: "start" });
+        document
+          .getElementById(id)
+          ?.scrollIntoView({ behavior: "auto", block: "start" });
       });
       return;
     }

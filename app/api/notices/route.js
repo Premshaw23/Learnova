@@ -12,17 +12,25 @@ import { validateRequest } from "@/lib/validations/validateRequest";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-
 async function publishNotice(request) {
   const allowedRoles = ["teacher", "admin", "staff"];
-  const { payload: decodedToken, profile } = await requireRole(request, allowedRoles);
+  const { payload: decodedToken, profile } = await requireRole(
+    request,
+    allowedRoles
+  );
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`publish_notice_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `publish_notice_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  const validationResult = await validateRequest(request, createNoticeSchema, 1024 * 50);
+  const validationResult = await validateRequest(
+    request,
+    createNoticeSchema,
+    1024 * 50
+  );
   if (!validationResult.success) {
     return validationResult.response;
   }
@@ -42,9 +50,7 @@ async function publishNotice(request) {
     updatedAt: new Date(),
   };
 
-  const result = await adminDb
-    .collection("notices")
-    .add(newNotice);
+  const result = await adminDb.collection("notices").add(newNotice);
 
   const noticeWithId = { ...newNotice, _id: result.id, id: result.id };
 

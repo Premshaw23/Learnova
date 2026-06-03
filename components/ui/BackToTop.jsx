@@ -40,10 +40,11 @@ export default function BackToTop() {
       onClick={scrollToTop}
       type="button"
       aria-label="Back to top"
-      className={`fixed bottom-24 right-7 z-[9999] p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-slate-100 hover:text-white shadow-2xl hover:shadow-indigo-500/20 active:scale-95 transition-all duration-500 ease-out backdrop-blur-md cursor-pointer hover:border-indigo-500/50 hover:bg-slate-800/90 ${isVisible
-        ? "opacity-100 scale-100 pointer-events-auto translate-y-0"
-        : "opacity-0 scale-75 pointer-events-none translate-y-4"
-        }`}
+      className={`fixed bottom-24 right-7 z-[9999] p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-slate-100 hover:text-white shadow-2xl hover:shadow-indigo-500/20 active:scale-95 transition-all duration-500 ease-out backdrop-blur-md cursor-pointer hover:border-indigo-500/50 hover:bg-slate-800/90 ${
+        isVisible
+          ? "opacity-100 scale-100 pointer-events-auto translate-y-0"
+          : "opacity-0 scale-75 pointer-events-none translate-y-4"
+      }`}
     >
       <ChevronUp className="w-5 h-5 transition-transform duration-300 group-hover:-translate-y-0.5" />
     </button>

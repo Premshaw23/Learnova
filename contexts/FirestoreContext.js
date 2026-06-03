@@ -57,7 +57,11 @@ function usePooledCollection(key, buildQuery, enabled = true) {
     const q = buildQuery();
     if (!q) {
       if (!db) {
-        setError(new Error("Firestore is not initialized. Check your Firebase configuration."));
+        setError(
+          new Error(
+            "Firestore is not initialized. Check your Firebase configuration."
+          )
+        );
       }
       setLoading(false);
       return;
@@ -80,7 +84,7 @@ function usePooledCollection(key, buildQuery, enabled = true) {
     );
 
     return unsub;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled]);
 
   return { data, loading, error };

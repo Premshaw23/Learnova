@@ -11,7 +11,7 @@ import Link from "next/link";
 
 /**
  * Reusable Breadcrumb navigation component.
- * 
+ *
  * @param {Object} props
  * @param {Path[]} props.paths - An array of path objects representing the hierarchy
  */

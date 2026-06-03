@@ -6,11 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 const fieldBaseClasses =
   "w-full py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground";
 
-const FieldShell = ({
-  label,
-  error,
-  children,
-}) => (
+const FieldShell = ({ label, error, children }) => (
   <div>
     <label className="block text-sm font-medium text-foreground mb-2">
       {label}
@@ -92,7 +88,11 @@ export const PasswordInputField = ({
         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
         aria-label={isVisible ? "Hide password" : "Show password"}
       >
-        {isVisible ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+        {isVisible ? (
+          <Eye className="w-5 h-5" />
+        ) : (
+          <EyeOff className="w-5 h-5" />
+        )}
       </button>
     </div>
 
@@ -103,13 +103,17 @@ export const PasswordInputField = ({
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Password strength
             </p>
-            <p className={`text-sm font-medium ${strength?.textClass || "text-muted-foreground"}`}>
+            <p
+              className={`text-sm font-medium ${strength?.textClass || "text-muted-foreground"}`}
+            >
               {strength?.label || "Weak"}
             </p>
           </div>
 
           <div className="h-2 w-24 rounded-full bg-border overflow-hidden">
-            <div className={`h-full ${strength?.barClass || "bg-red-500"} ${strength?.widthClass || "w-0"}`} />
+            <div
+              className={`h-full ${strength?.barClass || "bg-red-500"} ${strength?.widthClass || "w-0"}`}
+            />
           </div>
         </div>
 
@@ -126,7 +130,13 @@ export const PasswordInputField = ({
           <li className={requirements.hasNumber ? "text-emerald-400" : ""}>
             {requirements.hasNumber ? "✓" : "•"} One number
           </li>
-          <li className={requirements.hasSpecial ? "text-emerald-400 sm:col-span-2" : "sm:col-span-2"}>
+          <li
+            className={
+              requirements.hasSpecial
+                ? "text-emerald-400 sm:col-span-2"
+                : "sm:col-span-2"
+            }
+          >
             {requirements.hasSpecial ? "✓" : "•"} One special character
           </li>
         </ul>
@@ -156,7 +166,9 @@ export const SelectedRoleBadge = ({ config, onClick }) => {
         onClick={onClick}
         className="inline-flex items-center gap-3 p-4 bg-card backdrop-blur-sm rounded-xl border border-border hover:border-indigo-500/50 transition-all duration-200"
       >
-        <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${config.color} p-2`}>
+        <div
+          className={`w-10 h-10 rounded-full bg-gradient-to-r ${config.color} p-2`}
+        >
           <IconComponent className="w-6 h-6 text-white" />
         </div>
 

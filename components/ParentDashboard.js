@@ -98,43 +98,46 @@ const ParentDashboard = () => {
   }, [fetchDashboardData]);
 
   // Fetch details for selected child
-  const fetchChildDetails = useCallback(async (childId) => {
-    if (!user || !childId) return;
-    setDetailLoading(true);
-    try {
-      const token = await user.getIdToken();
+  const fetchChildDetails = useCallback(
+    async (childId) => {
+      if (!user || !childId) return;
+      setDetailLoading(true);
+      try {
+        const token = await user.getIdToken();
 
-      const [attRes, gradesRes, noticesRes] = await Promise.all([
-        apiFetch(`/api/parent/student/${childId}/attendance`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        apiFetch(`/api/parent/student/${childId}/grades`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        apiFetch(`/api/parent/student/${childId}/notices`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
+        const [attRes, gradesRes, noticesRes] = await Promise.all([
+          apiFetch(`/api/parent/student/${childId}/attendance`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          apiFetch(`/api/parent/student/${childId}/grades`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          apiFetch(`/api/parent/student/${childId}/notices`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
 
-      if (attRes.ok) {
-        const data = await attRes.json();
-        setAttendance(data);
+        if (attRes.ok) {
+          const data = await attRes.json();
+          setAttendance(data);
+        }
+        if (gradesRes.ok) {
+          const data = await gradesRes.json();
+          setGrades(data.grades || []);
+        }
+        if (noticesRes.ok) {
+          const data = await noticesRes.json();
+          setNotices(data.notices || []);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Error loading child records");
+      } finally {
+        setDetailLoading(false);
       }
-      if (gradesRes.ok) {
-        const data = await gradesRes.json();
-        setGrades(data.grades || []);
-      }
-      if (noticesRes.ok) {
-        const data = await noticesRes.json();
-        setNotices(data.notices || []);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error loading child records");
-    } finally {
-      setDetailLoading(false);
-    }
-  }, [user]);
+    },
+    [user]
+  );
 
   useEffect(() => {
     if (selectedChild) {
@@ -163,12 +166,12 @@ const ParentDashboard = () => {
 
   const attendanceChartData = useMemo(() => {
     if (!attendance?.records || attendance.records.length === 0) return [];
-    
+
     // Group records by date key, calculate cumulative rate trend
     const sorted = [...attendance.records].reverse();
     let totalDays = 0;
     let presentOrLate = 0;
-    
+
     return sorted.slice(-15).map((record) => {
       totalDays++;
       if (record.status === "present" || record.status === "late") {
@@ -176,7 +179,10 @@ const ParentDashboard = () => {
       }
       const rate = Math.round((presentOrLate / totalDays) * 100);
       return {
-        date: new Date(record.date).toLocaleDateString([], { month: "short", day: "numeric" }),
+        date: new Date(record.date).toLocaleDateString([], {
+          month: "short",
+          day: "numeric",
+        }),
         "Attendance Rate (%)": rate,
       };
     });
@@ -212,10 +218,13 @@ const ParentDashboard = () => {
           <div className="w-20 h-20 bg-pink-500/10 border border-pink-500/20 rounded-full flex items-center justify-center mx-auto text-pink-400">
             <Users className="w-10 h-10" />
           </div>
-          <h2 className="text-3xl font-bold font-display">No Linked Students Found</h2>
+          <h2 className="text-3xl font-bold font-display">
+            No Linked Students Found
+          </h2>
           <p className="text-slate-400 max-w-md mx-auto">
-            Your parent account is registered but hasn't been linked to any student accounts yet. 
-            Please contact the administrator or school coordinator to link your child.
+            Your parent account is registered but hasn't been linked to any
+            student accounts yet. Please contact the administrator or school
+            coordinator to link your child.
           </p>
           <div className="pt-4">
             <button
@@ -232,8 +241,10 @@ const ParentDashboard = () => {
   }
 
   const getAttendanceRateColor = (rate) => {
-    if (rate >= 85) return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
-    if (rate >= threshold) return "text-yellow-400 border-yellow-500/30 bg-yellow-500/10";
+    if (rate >= 85)
+      return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
+    if (rate >= threshold)
+      return "text-yellow-400 border-yellow-500/30 bg-yellow-500/10";
     return "text-red-400 border-red-500/30 bg-red-500/10";
   };
 
@@ -252,7 +263,9 @@ const ParentDashboard = () => {
               <h1 className="text-2xl font-bold tracking-tight text-white">
                 Parent Center: {parentName}
               </h1>
-              <p className="text-xs text-slate-400 mt-0.5">Monitoring linked child profiles</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Monitoring linked child profiles
+              </p>
             </div>
           </div>
 
@@ -295,12 +308,16 @@ const ParentDashboard = () => {
               Configure Warning Threshold
             </h3>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Set the minimum required attendance percentage for your child. A warning alert will be shown whenever attendance falls below this level.
+              Set the minimum required attendance percentage for your child. A
+              warning alert will be shown whenever attendance falls below this
+              level.
             </p>
             <div className="space-y-2">
               <div className="flex justify-between font-mono text-sm">
                 <span>Threshold Rate:</span>
-                <span className="font-bold text-pink-400">{tempThreshold}%</span>
+                <span className="font-bold text-pink-400">
+                  {tempThreshold}%
+                </span>
               </div>
               <input
                 type="range"
@@ -338,10 +355,16 @@ const ParentDashboard = () => {
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="text-red-400 font-bold text-sm">Low Attendance Warning</h4>
+              <h4 className="text-red-400 font-bold text-sm">
+                Low Attendance Warning
+              </h4>
               <p className="text-xs text-slate-300 mt-1">
                 {selectedChild.name}'s attendance has dropped to{" "}
-                <span className="font-bold text-red-300">{childAttendancePercentage}%</span>, which is below the configured threshold of {threshold}%. Please review check-ins.
+                <span className="font-bold text-red-300">
+                  {childAttendancePercentage}%
+                </span>
+                , which is below the configured threshold of {threshold}%.
+                Please review check-ins.
               </p>
             </div>
           </div>
@@ -387,7 +410,9 @@ const ParentDashboard = () => {
                     </div>
                     <div>
                       <p className="text-xs text-slate-400">Attendance Rate</p>
-                      <h3 className={`text-xl font-bold mt-1 inline-block px-2 py-0.5 rounded-lg border ${getAttendanceRateColor(childAttendancePercentage)}`}>
+                      <h3
+                        className={`text-xl font-bold mt-1 inline-block px-2 py-0.5 rounded-lg border ${getAttendanceRateColor(childAttendancePercentage)}`}
+                      >
                         {selectedChild.attendanceRate}
                       </h3>
                     </div>
@@ -398,9 +423,13 @@ const ParentDashboard = () => {
                       <Award className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Academic Standing</p>
+                      <p className="text-xs text-slate-400">
+                        Academic Standing
+                      </p>
                       <h3 className="text-xl font-bold mt-1 text-purple-400">
-                        {selectedChild.gpa === "N/A" ? "N/A" : `${selectedChild.gpa}%`}
+                        {selectedChild.gpa === "N/A"
+                          ? "N/A"
+                          : `${selectedChild.gpa}%`}
                       </h3>
                     </div>
                   </div>
@@ -446,16 +475,53 @@ const ParentDashboard = () => {
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={attendanceChartData}>
                             <defs>
-                              <linearGradient id="colorAtt" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                              <linearGradient
+                                id="colorAtt"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#3b82f6"
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#3b82f6"
+                                  stopOpacity={0}
+                                />
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
-                            <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} />
-                            <YAxis stroke="#94a3b8" fontSize={10} domain={[0, 100]} />
-                            <Tooltip contentStyle={{ backgroundColor: "#0f172a", border: "1px solid rgba(255,255,255,0.15)" }} />
-                            <Area type="monotone" dataKey="Attendance Rate (%)" stroke="#3b82f6" fillOpacity={1} fill="url(#colorAtt)" strokeWidth={2} />
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#ffffff08"
+                            />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#94a3b8"
+                              fontSize={10}
+                            />
+                            <YAxis
+                              stroke="#94a3b8"
+                              fontSize={10}
+                              domain={[0, 100]}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "#0f172a",
+                                border: "1px solid rgba(255,255,255,0.15)",
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="Attendance Rate (%)"
+                              stroke="#3b82f6"
+                              fillOpacity={1}
+                              fill="url(#colorAtt)"
+                              strokeWidth={2}
+                            />
                           </AreaChart>
                         </ResponsiveContainer>
                       )}
@@ -476,11 +542,32 @@ const ParentDashboard = () => {
                       ) : (
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={gradesChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
-                            <XAxis dataKey="subject" stroke="#94a3b8" fontSize={10} />
-                            <YAxis stroke="#94a3b8" fontSize={10} domain={[0, 100]} />
-                            <Tooltip contentStyle={{ backgroundColor: "#0f172a", border: "1px solid rgba(255,255,255,0.15)" }} />
-                            <Bar dataKey="Score (%)" fill="#a855f7" radius={[6, 6, 0, 0]} barSize={25} />
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#ffffff08"
+                            />
+                            <XAxis
+                              dataKey="subject"
+                              stroke="#94a3b8"
+                              fontSize={10}
+                            />
+                            <YAxis
+                              stroke="#94a3b8"
+                              fontSize={10}
+                              domain={[0, 100]}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "#0f172a",
+                                border: "1px solid rgba(255,255,255,0.15)",
+                              }}
+                            />
+                            <Bar
+                              dataKey="Score (%)"
+                              fill="#a855f7"
+                              radius={[6, 6, 0, 0]}
+                              barSize={25}
+                            />
                           </BarChart>
                         </ResponsiveContainer>
                       )}
@@ -516,12 +603,20 @@ const ParentDashboard = () => {
                           className="pt-3 first:pt-0 flex justify-between items-start cursor-pointer hover:bg-white/[0.02] p-2 rounded-lg transition"
                         >
                           <div>
-                            <h4 className="font-semibold text-white text-sm">{notice.title}</h4>
-                            <p className="text-xs text-slate-400 line-clamp-1 mt-1">{notice.content}</p>
+                            <h4 className="font-semibold text-white text-sm">
+                              {notice.title}
+                            </h4>
+                            <p className="text-xs text-slate-400 line-clamp-1 mt-1">
+                              {notice.content}
+                            </p>
                           </div>
-                          <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-bold border ${
-                            notice.priority === "high" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-slate-800 text-slate-400 border-slate-700"
-                          }`}>
+                          <span
+                            className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-bold border ${
+                              notice.priority === "high"
+                                ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                : "bg-slate-800 text-slate-400 border-slate-700"
+                            }`}
+                          >
                             {notice.priority}
                           </span>
                         </div>
@@ -537,14 +632,16 @@ const ParentDashboard = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-6 shadow-xl lg:col-span-1 space-y-6">
                   <h3 className="text-lg font-bold">Attendance Statistics</h3>
-                  
+
                   <div className="space-y-4">
                     <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-xl border border-white/5">
                       <span className="text-sm text-slate-300 flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                         Present Days
                       </span>
-                      <span className="font-mono font-bold text-emerald-400">{attendance?.stats?.present ?? 0}</span>
+                      <span className="font-mono font-bold text-emerald-400">
+                        {attendance?.stats?.present ?? 0}
+                      </span>
                     </div>
 
                     <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-xl border border-white/5">
@@ -552,7 +649,9 @@ const ParentDashboard = () => {
                         <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
                         Late Days
                       </span>
-                      <span className="font-mono font-bold text-yellow-400">{attendance?.stats?.late ?? 0}</span>
+                      <span className="font-mono font-bold text-yellow-400">
+                        {attendance?.stats?.late ?? 0}
+                      </span>
                     </div>
 
                     <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-xl border border-white/5">
@@ -560,13 +659,19 @@ const ParentDashboard = () => {
                         <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
                         Absent Days
                       </span>
-                      <span className="font-mono font-bold text-red-400">{attendance?.stats?.absent ?? 0}</span>
+                      <span className="font-mono font-bold text-red-400">
+                        {attendance?.stats?.absent ?? 0}
+                      </span>
                     </div>
                   </div>
 
                   <div className="pt-4 border-t border-white/5 text-center">
-                    <span className="text-xs text-slate-400 uppercase tracking-widest block mb-2">Overall Rate</span>
-                    <span className="text-3xl font-black text-white">{childAttendancePercentage}%</span>
+                    <span className="text-xs text-slate-400 uppercase tracking-widest block mb-2">
+                      Overall Rate
+                    </span>
+                    <span className="text-3xl font-black text-white">
+                      {childAttendancePercentage}%
+                    </span>
                   </div>
                 </div>
 
@@ -580,19 +685,35 @@ const ParentDashboard = () => {
                   ) : (
                     <div className="max-h-[400px] overflow-y-auto pr-2 divide-y divide-white/5 space-y-3">
                       {attendance.records.map((record) => (
-                        <div key={record.id} className="pt-3 first:pt-0 flex justify-between items-center">
+                        <div
+                          key={record.id}
+                          className="pt-3 first:pt-0 flex justify-between items-center"
+                        >
                           <div>
-                            <p className="font-semibold text-sm">{record.date}</p>
+                            <p className="font-semibold text-sm">
+                              {record.date}
+                            </p>
                             <p className="text-xs text-slate-500 font-mono mt-0.5">
-                              Check: {record.timestamp ? new Date(record.timestamp).toLocaleTimeString() : "--"} (confidence: {Math.round(record.confidenceScore * 100)}%)
+                              Check:{" "}
+                              {record.timestamp
+                                ? new Date(
+                                    record.timestamp
+                                  ).toLocaleTimeString()
+                                : "--"}{" "}
+                              (confidence:{" "}
+                              {Math.round(record.confidenceScore * 100)}%)
                             </p>
                           </div>
 
-                          <span className={`text-[10px] uppercase font-bold px-3 py-1 rounded-full border ${
-                            record.status === "present" ? "text-green-400 bg-green-500/10 border-green-500/20" :
-                            record.status === "late" ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" :
-                            "text-red-400 bg-red-500/10 border-red-500/20"
-                          }`}>
+                          <span
+                            className={`text-[10px] uppercase font-bold px-3 py-1 rounded-full border ${
+                              record.status === "present"
+                                ? "text-green-400 bg-green-500/10 border-green-500/20"
+                                : record.status === "late"
+                                  ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
+                                  : "text-red-400 bg-red-500/10 border-red-500/20"
+                            }`}
+                          >
                             {record.status}
                           </span>
                         </div>
@@ -627,18 +748,25 @@ const ParentDashboard = () => {
                       <tbody className="divide-y divide-white/5 text-slate-300">
                         {grades.map((g) => (
                           <tr key={g.id} className="hover:bg-white/[0.01]">
-                            <td className="px-6 py-4 font-semibold text-white">{g.subject}</td>
+                            <td className="px-6 py-4 font-semibold text-white">
+                              {g.subject}
+                            </td>
                             <td className="px-6 py-4 font-mono font-bold">
-                              {g.score} / {g.maxScore} ({Math.round((g.score / g.maxScore) * 100)}%)
+                              {g.score} / {g.maxScore} (
+                              {Math.round((g.score / g.maxScore) * 100)}%)
                             </td>
                             <td className="px-6 py-4">
                               <span className="inline-block px-2.5 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-black">
                                 {g.grade}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-xs text-slate-400">{g.term}</td>
                             <td className="px-6 py-4 text-xs text-slate-400">
-                              {g.date ? new Date(g.date).toLocaleDateString() : "N/A"}
+                              {g.term}
+                            </td>
+                            <td className="px-6 py-4 text-xs text-slate-400">
+                              {g.date
+                                ? new Date(g.date).toLocaleDateString()
+                                : "N/A"}
                             </td>
                           </tr>
                         ))}
@@ -653,7 +781,9 @@ const ParentDashboard = () => {
             {activeTab === "notices" && (
               <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <h3 className="text-lg font-bold">Campus Announcement Board</h3>
+                  <h3 className="text-lg font-bold">
+                    Campus Announcement Board
+                  </h3>
                   <div className="relative w-full sm:w-64">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Search className="h-4 w-4 text-slate-500" />
@@ -682,20 +812,34 @@ const ParentDashboard = () => {
                       >
                         <div>
                           <div className="flex justify-between items-start gap-2">
-                            <span className="text-[10px] uppercase font-bold text-pink-400">{n.category}</span>
-                            <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-bold border ${
-                              n.priority === "high" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-slate-800 text-slate-400 border-slate-700"
-                            }`}>
+                            <span className="text-[10px] uppercase font-bold text-pink-400">
+                              {n.category}
+                            </span>
+                            <span
+                              className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-bold border ${
+                                n.priority === "high"
+                                  ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                  : "bg-slate-800 text-slate-400 border-slate-700"
+                              }`}
+                            >
                               {n.priority}
                             </span>
                           </div>
-                          <h4 className="font-bold text-white text-base mt-2">{n.title}</h4>
-                          <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">{n.content}</p>
+                          <h4 className="font-bold text-white text-base mt-2">
+                            {n.title}
+                          </h4>
+                          <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                            {n.content}
+                          </p>
                         </div>
 
                         <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500 mt-2">
                           <span>By {n.author}</span>
-                          <span>{n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""}</span>
+                          <span>
+                            {n.createdAt
+                              ? new Date(n.createdAt).toLocaleDateString()
+                              : ""}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -716,7 +860,9 @@ const ParentDashboard = () => {
                 <span className="text-xs uppercase font-bold text-pink-400 tracking-wider">
                   {selectedNotice.category} Notice
                 </span>
-                <h3 className="font-bold text-white text-lg mt-0.5">{selectedNotice.title}</h3>
+                <h3 className="font-bold text-white text-lg mt-0.5">
+                  {selectedNotice.title}
+                </h3>
               </div>
               <button
                 onClick={() => setSelectedNotice(null)}
@@ -733,10 +879,25 @@ const ParentDashboard = () => {
             </div>
             <div className="px-6 py-4 bg-slate-800/30 border-t border-white/10 flex justify-between items-center text-xs text-slate-500">
               <div className="flex gap-4">
-                <span>Author: <strong className="text-slate-300">{selectedNotice.author}</strong></span>
-                <span>Role: <strong className="text-slate-300">{selectedNotice.authorRole}</strong></span>
+                <span>
+                  Author:{" "}
+                  <strong className="text-slate-300">
+                    {selectedNotice.author}
+                  </strong>
+                </span>
+                <span>
+                  Role:{" "}
+                  <strong className="text-slate-300">
+                    {selectedNotice.authorRole}
+                  </strong>
+                </span>
               </div>
-              <span>Published: {selectedNotice.createdAt ? new Date(selectedNotice.createdAt).toLocaleString() : ""}</span>
+              <span>
+                Published:{" "}
+                {selectedNotice.createdAt
+                  ? new Date(selectedNotice.createdAt).toLocaleString()
+                  : ""}
+              </span>
             </div>
           </div>
         </div>

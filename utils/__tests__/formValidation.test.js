@@ -57,7 +57,9 @@ describe("validateEmail", () => {
   });
 
   test("returns error for email missing at-sign", () => {
-    expect(validateEmail("user" + "example" + "." + "com")).toBe("Please enter a valid email");
+    expect(validateEmail("user" + "example" + "." + "com")).toBe(
+      "Please enter a valid email"
+    );
   });
 });
 
@@ -132,7 +134,8 @@ describe("validateName", () => {
   });
 
   test("rejects names containing unsupported characters", () => {
-    const errorMsg = "Full Name must only contain letters, spaces, hyphens, and apostrophes";
+    const errorMsg =
+      "Full Name must only contain letters, spaces, hyphens, and apostrophes";
     expect(validateName("John123", "Full Name")).toBe(errorMsg);
     expect(validateName("@Admin", "Full Name")).toBe(errorMsg);
   });
@@ -144,7 +147,9 @@ describe("validatePhone", () => {
   });
 
   test("returns true for valid international E.164 number", () => {
-    expect(validatePhone("+" + "12" + "34" + "56" + "78" + "90" + "1")).toBe(true);
+    expect(validatePhone("+" + "12" + "34" + "56" + "78" + "90" + "1")).toBe(
+      true
+    );
   });
 
   test("returns error for empty phone number", () => {

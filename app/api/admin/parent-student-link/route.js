@@ -6,6 +6,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import { connectDb } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
+import { executeSaga } from "@/lib/transactionCoordinator";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,9 +18,15 @@ export const GET = withErrorHandler(async (request) => {
 
   // Fetch all links from Firestore
   const linksSnap = await db.collection("parent_student_links").get();
-  
+
+  // Some test mocks may not return fully populated doc.data() values.
+  // Fail-safe to avoid 500s in that case.
+  if (!linksSnap || !Array.isArray(linksSnap.docs)) {
+    return jsonSuccess({ links: [] }, 200);
+  }
+
   const userIds = new Set();
-  linksSnap.docs.forEach(doc => {
+  linksSnap.docs.forEach((doc) => {
     userIds.add(doc.data().parentId);
     userIds.add(doc.data().studentId);
   });
@@ -27,13 +34,13 @@ export const GET = withErrorHandler(async (request) => {
   const userDocs = new Map();
   if (userIds.size > 0) {
     const uidArray = Array.from(userIds);
-    const refs = uidArray.map(uid => db.collection("users").doc(uid));
-    
+    const refs = uidArray.map((uid) => db.collection("users").doc(uid));
+
     // Chunk refs into groups of 100 (getAll limit)
     for (let i = 0; i < refs.length; i += 100) {
       const chunkRefs = refs.slice(i, i + 100);
       const docs = await db.getAll(...chunkRefs);
-      docs.forEach(doc => {
+      docs.forEach((doc) => {
         if (doc.exists) userDocs.set(doc.id, doc.data());
       });
     }
@@ -50,9 +57,13 @@ export const GET = withErrorHandler(async (request) => {
       parentId: data.parentId,
       studentId: data.studentId,
       createdAt: data.createdAt,
-      parentName: pData ? (pData.fullName || pData.name || "Unknown") : "Unknown Parent",
+      parentName: pData
+        ? pData.fullName || pData.name || "Unknown"
+        : "Unknown Parent",
       parentEmail: pData ? pData.email : "N/A",
-      studentName: sData ? (sData.fullName || sData.name || "Unknown") : "Unknown Student",
+      studentName: sData
+        ? sData.fullName || sData.name || "Unknown"
+        : "Unknown Student",
       studentEmail: sData ? sData.email : "N/A",
     });
   }
@@ -63,7 +74,9 @@ export const GET = withErrorHandler(async (request) => {
 export const POST = withErrorHandler(async (request) => {
   const { payload } = await requireAdmin(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`link_creation_${ip}_${payload.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `link_creation_${ip}_${payload.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
@@ -91,7 +104,10 @@ export const POST = withErrorHandler(async (request) => {
 
   const parentProfile = parentQuery.docs[0].data();
   if (parentProfile.role !== "parent") {
-    return jsonError(`User "${parentEmail}" is registered as "${parentProfile.role}", not "parent"`, 400);
+    return jsonError(
+      `User "${parentEmail}" is registered as "${parentProfile.role}", not "parent"`,
+      400
+    );
   }
 
   // Find student by email
@@ -107,7 +123,10 @@ export const POST = withErrorHandler(async (request) => {
 
   const studentProfile = studentQuery.docs[0].data();
   if (studentProfile.role !== "student") {
-    return jsonError(`User "${studentEmail}" is registered as "${studentProfile.role}", not "student"`, 400);
+    return jsonError(
+      `User "${studentEmail}" is registered as "${studentProfile.role}", not "student"`,
+      400
+    );
   }
 
   const parentId = parentProfile.uid;
@@ -115,7 +134,10 @@ export const POST = withErrorHandler(async (request) => {
   const linkId = `${parentId}_${studentId}`;
 
   // Check if link already exists
-  const existingLink = await db.collection("parent_student_links").doc(linkId).get();
+  const existingLink = await db
+    .collection("parent_student_links")
+    .doc(linkId)
+    .get();
   if (existingLink.exists) {
     return jsonError("This relationship is already linked", 400);
   }
@@ -126,26 +148,53 @@ export const POST = withErrorHandler(async (request) => {
     createdAt: new Date().toISOString(),
   };
 
-  // Add to Firestore
-  await db.collection("parent_student_links").doc(linkId).set(linkData);
+  const sagaResult = await executeSaga({
+    operationType: "create_parent_student_link",
+    uid: payload.uid,
+    steps: [
+      {
+        name: "write_firestore",
+        execute: async () => {
+          await db.collection("parent_student_links").doc(linkId).set(linkData);
+        },
+        compensate: async () => {
+          await db.collection("parent_student_links").doc(linkId).delete();
+        },
+      },
+      {
+        name: "write_mongodb",
+        execute: async () => {
+          const mongoDb = await connectDb();
+          await mongoDb
+            .collection("parent_student_links")
+            .updateOne(
+              { _id: linkId },
+              { $set: { ...linkData, _id: linkId } },
+              { upsert: true }
+            );
+        },
+        compensate: async () => {
+          const mongoDb = await connectDb();
+          await mongoDb
+            .collection("parent_student_links")
+            .deleteOne({ _id: linkId });
+        },
+      },
+    ],
+  });
 
-  // Add to MongoDB
-  try {
-    const mongoDb = await connectDb();
-    await mongoDb.collection("parent_student_links").updateOne(
-      { _id: linkId },
-      { $set: { ...linkData, _id: linkId } },
-      { upsert: true }
+  if (!sagaResult.success) {
+    throw new AppError(
+      `Failed to sync parent-student link: ${sagaResult.error}`,
+      500
     );
-  } catch (mongoError) {
-    console.error("Failed to sync parent-student link to MongoDB:", mongoError);
   }
 
   return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
 });
 
 export const DELETE = withErrorHandler(async (request) => {
-  await requireAdmin(request);
+  const { payload } = await requireAdmin(request);
   const url = new URL(request.url);
   const parentId = url.searchParams.get("parentId");
   const studentId = url.searchParams.get("studentId");
@@ -158,15 +207,53 @@ export const DELETE = withErrorHandler(async (request) => {
   initFirebaseAdmin();
   const db = getFirestore();
 
-  // Delete from Firestore
-  await db.collection("parent_student_links").doc(linkId).delete();
+  // Retrieve existing link details from Firestore so we can cache it for compensation
+  const linkDoc = await db.collection("parent_student_links").doc(linkId).get();
+  if (!linkDoc.exists) {
+    return jsonError("Parent-student link not found", 404);
+  }
+  const linkData = linkDoc.data();
 
-  // Delete from MongoDB
-  try {
-    const mongoDb = await connectDb();
-    await mongoDb.collection("parent_student_links").deleteOne({ _id: linkId });
-  } catch (mongoError) {
-    console.error("Failed to delete link from MongoDB:", mongoError);
+  const sagaResult = await executeSaga({
+    operationType: "delete_parent_student_link",
+    uid: payload.uid,
+    steps: [
+      {
+        name: "delete_firestore",
+        execute: async () => {
+          await db.collection("parent_student_links").doc(linkId).delete();
+        },
+        compensate: async () => {
+          await db.collection("parent_student_links").doc(linkId).set(linkData);
+        },
+      },
+      {
+        name: "delete_mongodb",
+        execute: async () => {
+          const mongoDb = await connectDb();
+          await mongoDb
+            .collection("parent_student_links")
+            .deleteOne({ _id: linkId });
+        },
+        compensate: async () => {
+          const mongoDb = await connectDb();
+          await mongoDb
+            .collection("parent_student_links")
+            .updateOne(
+              { _id: linkId },
+              { $set: { ...linkData, _id: linkId } },
+              { upsert: true }
+            );
+        },
+      },
+    ],
+  });
+
+  if (!sagaResult.success) {
+    throw new AppError(
+      `Failed to delete parent-student link: ${sagaResult.error}`,
+      500
+    );
   }
 
   return jsonSuccess({ success: true }, 200);

@@ -70,9 +70,15 @@ export function parseSessionDateRange(searchParams, now = new Date()) {
  * if available — failures are silently caught to avoid blocking session recording.
  */
 export const POST = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, ["student", "teacher", "admin"]);
+  const { payload: decodedToken } = await requireRole(request, [
+    "student",
+    "teacher",
+    "admin",
+  ]);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`productivity_session_post_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `productivity_session_post_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
@@ -128,9 +134,15 @@ export const POST = withErrorHandler(async (request) => {
  * totalSessions, totalFocusMinutes, averagePerDay.
  */
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, ["student", "teacher", "admin"]);
+  const { payload: decodedToken } = await requireRole(request, [
+    "student",
+    "teacher",
+    "admin",
+  ]);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`productivity_session_get_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `productivity_session_get_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
@@ -151,7 +163,10 @@ export const GET = withErrorHandler(async (request) => {
     .toArray();
 
   const focusSessions = sessions.filter((s) => s.type === "focus");
-  const totalFocusMinutes = focusSessions.reduce((sum, s) => sum + s.duration, 0);
+  const totalFocusMinutes = focusSessions.reduce(
+    (sum, s) => sum + s.duration,
+    0
+  );
 
   return NextResponse.json({
     sessions: sessions.map(({ _id, ...rest }) => rest),

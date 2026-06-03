@@ -11,7 +11,10 @@ import {
 import { auth, db } from "@/lib/firebaseConfig";
 
 import { recalculateAttendanceRate } from "./statsService";
-import { handleOfflineRequest, triggerOfflineSync } from "@/utils/offlineRequestHandler";
+import {
+  handleOfflineRequest,
+  triggerOfflineSync,
+} from "@/utils/offlineRequestHandler";
 import { getTodayKeyLocal } from "@/lib/dateUtils";
 
 function getTodayKey() {
@@ -78,11 +81,7 @@ export async function recordAttendance({
 
   const todayKey = getTodayKey();
 
-  const docRef = doc(
-    db,
-    "attendance_records",
-    `${userId}_${todayKey}`
-  );
+  const docRef = doc(db, "attendance_records", `${userId}_${todayKey}`);
 
   // OFFLINE MODE
   if (typeof window !== "undefined" && !navigator.onLine) {
@@ -97,7 +96,7 @@ export async function recordAttendance({
         confidenceScore: confidenceScore ?? 0,
         date: todayKey,
       }),
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
 
     return {
@@ -126,7 +125,7 @@ export async function recordAttendance({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       userId,
@@ -138,14 +137,13 @@ export async function recordAttendance({
   });
 
   if (!response.ok) {
-    let errorMessage =
-      "Failed to record attendance securely on the server.";
+    let errorMessage = "Failed to record attendance securely on the server.";
 
     try {
       const errorData = await response.json();
       errorMessage = getApiErrorMessage(errorData, errorMessage);
     } catch {
-    // Ignore invalid JSON responses
+      // Ignore invalid JSON responses
     }
 
     throw new Error(errorMessage);
@@ -154,7 +152,9 @@ export async function recordAttendance({
   const data = unwrapApiData(await response.json());
   const isAlreadyRecorded = !!(data && data.alreadyRecorded);
 
-  const newRate = isAlreadyRecorded ? null : await recalculateAttendanceRate(userId);
+  const newRate = isAlreadyRecorded
+    ? null
+    : await recalculateAttendanceRate(userId);
 
   return {
     alreadyRecorded: isAlreadyRecorded,

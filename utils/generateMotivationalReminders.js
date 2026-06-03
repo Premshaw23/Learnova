@@ -121,7 +121,8 @@ export const generateMotivationalReminders = ({
       id: "class-nudge",
       tone: "neutral",
       title: "🔔 No upcoming classes yet",
-      description: "Plan your next learning session and keep the momentum going even between classes.",
+      description:
+        "Plan your next learning session and keep the momentum going even between classes.",
       metric: "Free time to prepare",
     });
   }
@@ -159,7 +160,8 @@ export const generateMotivationalReminders = ({
       id: "default",
       tone: "positive",
       title: "🏆 Keep up the great work",
-      description: "Your dashboard looks healthy. Continue the good habits and stay consistent.",
+      description:
+        "Your dashboard looks healthy. Continue the good habits and stay consistent.",
       metric: "All systems go",
     });
   }
