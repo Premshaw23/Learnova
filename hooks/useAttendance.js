@@ -59,6 +59,8 @@ export const useAttendance = ({ role, user }) => {
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [attendanceRequests, setAttendanceRequests] = useState([]);
+  const [hasMoreRequests, setHasMoreRequests] = useState(true);
+  const [loadingRequests, setLoadingRequests] = useState(false);
 
   // --- student fetchers ---
   const fetchStudentActivity = useCallback(async () => {
@@ -160,8 +162,10 @@ export const useAttendance = ({ role, user }) => {
       if (data.dashboardData) setDashboardData(data.dashboardData);
       if (data.classes) setClasses(data.classes);
       if (data.teachers) setTeachers(data.teachers);
-      if (data.attendanceRequests)
+      if (data.attendanceRequests) {
         setAttendanceRequests(data.attendanceRequests);
+        setHasMoreRequests(data.attendanceRequests.length >= 20);
+      }
     } catch (err) {
       if (mounted) {
         setError(
@@ -173,6 +177,36 @@ export const useAttendance = ({ role, user }) => {
       if (mounted) setLoading(false);
     }
   }, [user]);
+
+  const loadMoreRequests = useCallback(async () => {
+    if (!user || loadingRequests || !hasMoreRequests) return;
+    
+    setLoadingRequests(true);
+    try {
+      const token = await user.getIdToken();
+      const lastRequest = attendanceRequests[attendanceRequests.length - 1];
+      const cursor = lastRequest?.id || "";
+      
+      const res = await apiFetch(`/api/institute/attendance-requests?cursor=${cursor}&limit=20`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const data = unwrapApiPayload(res);
+      if (data && data.requests) {
+        setAttendanceRequests(prev => {
+          // Avoid duplicates if rapid calls happen
+          const existingIds = new Set(prev.map(r => r.id));
+          const newRequests = data.requests.filter(r => !existingIds.has(r.id));
+          return [...prev, ...newRequests];
+        });
+        setHasMoreRequests(data.requests.length >= 20);
+      }
+    } catch (err) {
+      console.error("Failed to load more requests", err);
+    } finally {
+      setLoadingRequests(false);
+    }
+  }, [user, attendanceRequests, loadingRequests, hasMoreRequests]);
 
   // --- effects ---
   useEffect(() => {
@@ -319,6 +353,9 @@ export const useAttendance = ({ role, user }) => {
     teachers,
     attendanceRequests,
     setAttendanceRequests,
+    loadMoreRequests,
+    hasMoreRequests,
+    loadingRequests,
     // shared
     loading,
     error,

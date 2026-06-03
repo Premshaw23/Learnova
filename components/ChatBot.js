@@ -385,7 +385,7 @@ const markdownComponents = {
 // Main component
 // ---------------------------------------------------------------------------
 export default function LearnovaChatbot() {
-  const { user } = useAuthContext();
+  const { user, userProfile } = useAuthContext();
   const { theme, resolvedTheme, setTheme } = useTheme();
   
   const isDarkMode = resolvedTheme === "dark" || theme === "dark";
@@ -598,7 +598,7 @@ export default function LearnovaChatbot() {
           botText = "[**Please sign in**](/auth) to use the AI chatbot.";
         } else {
           // 🛠️ STEP 2 INTERCEPT: Check text signature against local action handlers first!
-          const actionResponse = await parseUserIntent(text);
+          const actionResponse = await parseUserIntent(text, { instituteId: userProfile?.instituteId });
           const parsedResult = JSON.parse(actionResponse);
 
           if (parsedResult.status === 'success') {

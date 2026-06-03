@@ -139,7 +139,7 @@ export default function AIProductivityInsights({
       {/* Results */}
 
       {insights && !loading && (
-        <div className="grid md:grid-cols-3 gap-4">
+  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Strength */}
 
           <div
@@ -208,6 +208,93 @@ export default function AIProductivityInsights({
               {insights.recommendation}
             </p>
           </div>
+          {/* Productivity Score */}
+
+<div
+  className={`rounded-2xl p-4 ${
+    isDark
+      ? "bg-black/30 border border-white/10"
+      : "bg-slate-50 border border-slate-200"
+  }`}
+>
+  <div className="flex items-center gap-2 mb-3">
+    <Brain className="w-5 h-5 text-purple-400" />
+    <h4 className="font-semibold">Productivity Score</h4>
+  </div>
+
+  <p className="text-3xl font-bold text-purple-400">
+    {insights.productivityScore ?? "--"}
+  </p>
+</div>
+
+{/* Weekly Goal */}
+
+<div
+  className={`rounded-2xl p-4 ${
+    isDark
+      ? "bg-black/30 border border-white/10"
+      : "bg-slate-50 border border-slate-200"
+  }`}
+>
+  <div className="flex items-center gap-2 mb-3">
+    <Target className="w-5 h-5 text-green-400" />
+    <h4 className="font-semibold">Weekly Goal</h4>
+  </div>
+
+  <p
+    className={`text-sm ${
+      isDark ? "text-slate-300" : "text-slate-600"
+    }`}
+  >
+    {insights.weeklyGoal}
+  </p>
+</div>
+
+{/* Focus Pattern */}
+
+<div
+  className={`rounded-2xl p-4 ${
+    isDark
+      ? "bg-black/30 border border-white/10"
+      : "bg-slate-50 border border-slate-200"
+  }`}
+>
+  <div className="flex items-center gap-2 mb-3">
+    <TrendingUp className="w-5 h-5 text-cyan-400" />
+    <h4 className="font-semibold">Focus Pattern</h4>
+  </div>
+
+  <p
+    className={`text-sm ${
+      isDark ? "text-slate-300" : "text-slate-600"
+    }`}
+  >
+    {insights.focusPattern}
+  </p>
+</div>
+
+{/* Next Action */}
+
+<div
+  className={`rounded-2xl p-4 ${
+    isDark
+      ? "bg-black/30 border border-white/10"
+      : "bg-slate-50 border border-slate-200"
+  }`}
+>
+  <div className="flex items-center gap-2 mb-3">
+    <Sparkles className="w-5 h-5 text-yellow-400" />
+    <h4 className="font-semibold">Next Action</h4>
+  </div>
+
+  <p
+    className={`text-sm ${
+      isDark ? "text-slate-300" : "text-slate-600"
+    }`}
+  >
+    {insights.nextAction}
+  </p>
+</div>
         </div>
       )}
     </motion.div>

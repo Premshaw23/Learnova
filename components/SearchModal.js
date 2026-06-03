@@ -2,36 +2,10 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Search, 
-  Home, 
-  Activity, 
-  Mail, 
-  LayoutDashboard, 
-  User, 
-  Settings, 
-  UserCheck, 
-  Bell, 
-  LogIn, 
-  ArrowRight,
-  X
-} from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
-
-const getIcon = (label) => {
-  switch (label) {
-    case "Home": return Home;
-    case "Activities": return Activity;
-    case "Contact": return Mail;
-    case "Dashboard": return LayoutDashboard;
-    case "Profile": return User;
-    case "Settings": return Settings;
-    case "Mark Attendance": return UserCheck;
-    case "Notice Board": return Bell;
-    case "Login / Signup": return LogIn;
-    default: return ArrowRight;
-  }
-};
+import RecentActivityWidget from "@/components/ui/RecentActivityWidget";
+import { getSearchModalItems } from "@/lib/navigation";
 
 export default function SearchModal({ isOpen, onClose }) {
   const router = useRouter();
@@ -66,38 +40,12 @@ export default function SearchModal({ isOpen, onClose }) {
     setRecentSearches(savedSearches);
   }, []);
 
-  const getDashboardLink = () => {
-    if (!userProfile?.role) return "/profile";
-    switch (userProfile.role) {
-      case "student": return "/student/dashboard";
-      case "teacher": return "/teacher/dashboard";
-      case "institute": return "/institute/dashboard";
-      case "admin": return "/admin/dashboard";
-      default: return "/profile";
-    }
-  };
-
   const items = useMemo(() => {
-    const list = [
-      { label: "Home", href: "/", category: "Navigation" },
-      { label: "Activities", href: "/activity", category: "Navigation" },
-      { label: "Contact", href: "/contact", category: "Navigation" },
-    ];
-
-    if (isAuthenticated) {
-      list.push(
-        { label: "Dashboard", href: getDashboardLink(), category: "Account" },
-        { label: "Profile", href: "/profile", category: "Account" },
-        { label: "Settings", href: "/settings", category: "Account" },
-        { label: "Mark Attendance", href: "/attendance", category: "Quick Actions" },
-        { label: "Notice Board", href: "/notices", category: "Quick Actions" }
-      );
-    } else {
-      list.push({ label: "Login / Signup", href: "/auth", category: "Account" });
-    }
-
-    return list;
-  }, [isAuthenticated, userProfile]);
+    return getSearchModalItems({
+      isAuthenticated,
+      role: userProfile?.role,
+    });
+  }, [isAuthenticated, userProfile?.role]);
 
   const normalizedQuery = debouncedQuery.trim().toLowerCase();
   const filteredItems = useMemo(() => {
@@ -259,6 +207,12 @@ export default function SearchModal({ isOpen, onClose }) {
             </div>
         )}
 
+        {!query.trim() && (
+          <div className="px-3 py-3 border-b border-white/10">
+            <RecentActivityWidget maxItems={5} storageType="pages" />
+          </div>
+        )}
+
         {/* ==================== CATEGORY FILTER PILLS ==================== */}
         <div className="flex flex-wrap items-center gap-1.5 px-4 py-2 bg-slate-950/20 border-b border-white/5">
           {categoriesList.map((cat) => (
@@ -295,7 +249,7 @@ export default function SearchModal({ isOpen, onClose }) {
             </div>
           ) : (
             filteredItems.map((item, index) => {
-              const Icon = getIcon(item.label);
+              const Icon = item.icon;
               const isSelected = index === selectedIndex;
               return (
                 <div
