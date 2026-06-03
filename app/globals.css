@@ -56,8 +56,8 @@
 
 /* Font display strategy */
 @font-face {
-  font-family: 'YourCustomFont';
-  src: url('/fonts/your-font.woff2') format('woff2');
+  font-family: "YourCustomFont";
+  src: url("/fonts/your-font.woff2") format("woff2");
   font-display: swap;
   /* This helps with font loading */
 }

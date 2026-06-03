@@ -1,5 +1,9 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { authenticateRequest, parseJSON, withErrorHandler } from "@/lib/error-handler";
+import {
+  authenticateRequest,
+  parseJSON,
+  withErrorHandler,
+} from "@/lib/error-handler";
 import { callGroq } from "@/lib/ai/groq";
 import { checkRateLimit } from "@/lib/rateLimit";
 

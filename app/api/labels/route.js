@@ -21,7 +21,11 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   // Authentication and Role Verification
-  const { profile } = await requireRole(request, ["admin", "teacher", "student"]);
+  const { profile } = await requireRole(request, [
+    "admin",
+    "teacher",
+    "student",
+  ]);
 
   // Search query — escape metacharacters to prevent ReDoS
   const { searchParams } = new URL(request.url);

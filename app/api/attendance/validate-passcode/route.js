@@ -26,7 +26,9 @@ export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`passcode_${ip}_${decodedToken?.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `passcode_${ip}_${decodedToken?.uid}`
+  );
 
   if (!rateLimitResult.allowed) {
     return NextResponse.json(
@@ -39,16 +41,17 @@ export const POST = withErrorHandler(async (request) => {
   initializeFirebase();
 
   const body = await parseJSON(request, 1024);
-  
+
   const validation = passcodeSchema.safeParse(body);
   if (!validation.success) {
-    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+    const firstError =
+      validation.error.issues?.[0]?.message || "Invalid request payload";
     return NextResponse.json(
       { valid: false, error: firstError },
       { status: 400 }
     );
   }
-  
+
   const { passcode } = validation.data;
 
   const { getUserProfile } = await import("@/lib/firebase-admin");
@@ -105,7 +108,11 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   return NextResponse.json(
-    { valid: false, error: "Invalid passcode. Please contact your teacher for the correct code." },
+    {
+      valid: false,
+      error:
+        "Invalid passcode. Please contact your teacher for the correct code.",
+    },
     { status: 401 }
   );
 });

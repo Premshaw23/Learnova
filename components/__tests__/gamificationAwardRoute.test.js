@@ -56,7 +56,12 @@ describe("POST /api/student/gamification/award - Security and RBAC Tests", () =>
   test("rejects student role with 403 Forbidden", async () => {
     verifyFirebaseToken.mockResolvedValue({
       valid: true,
-      decodedToken: { uid: "user-student-123", email: "student@domain.com", email_verified: true, role: "student" },
+      decodedToken: {
+        uid: "user-student-123",
+        email: "student@domain.com",
+        email_verified: true,
+        role: "student",
+      },
     });
     getUserProfile.mockResolvedValue({ role: "student" });
 
@@ -76,7 +81,12 @@ describe("POST /api/student/gamification/award - Security and RBAC Tests", () =>
   test("rejects admin role with 403 Forbidden because manual awards are disabled", async () => {
     verifyFirebaseToken.mockResolvedValue({
       valid: true,
-      decodedToken: { uid: "user-admin-123", email: "admin@domain.com", email_verified: true, role: "admin" },
+      decodedToken: {
+        uid: "user-admin-123",
+        email: "admin@domain.com",
+        email_verified: true,
+        role: "admin",
+      },
     });
     getUserProfile.mockResolvedValue({ role: "admin" });
 

@@ -42,18 +42,14 @@ export function getTotalFocusMinutes(sessions = []) {
  * Returns total completed focus sessions
  */
 export function getCompletedFocusSessions(sessions = []) {
-  return sessions.filter(
-    (session) => session.type === "focus"
-  ).length;
+  return sessions.filter((session) => session.type === "focus").length;
 }
 
 /**
  * Calculates average focus session duration
  */
 export function getAverageSessionDuration(sessions = []) {
-  const focusSessions = sessions.filter(
-    (session) => session.type === "focus"
-  );
+  const focusSessions = sessions.filter((session) => session.type === "focus");
 
   if (focusSessions.length === 0) return 0;
 
@@ -62,9 +58,7 @@ export function getAverageSessionDuration(sessions = []) {
     0
   );
 
-  return Math.round(
-    totalDuration / focusSessions.length
-  );
+  return Math.round(totalDuration / focusSessions.length);
 }
 
 /**
@@ -81,21 +75,14 @@ export function getConsistencyScore(sessions = []) {
 
     const sessionDate = new Date(session.completedAt);
 
-    const diffDays = Math.floor(
-      (today - sessionDate) /
-      (1000 * 60 * 60 * 24)
-    );
+    const diffDays = Math.floor((today - sessionDate) / (1000 * 60 * 60 * 24));
 
     if (diffDays >= 0 && diffDays < 7) {
-      last7Days.add(
-        sessionDate.toISOString().split("T")[0]
-      );
+      last7Days.add(sessionDate.toISOString().split("T")[0]);
     }
   });
 
-  return Math.round(
-    (last7Days.size / 7) * 100
-  );
+  return Math.round((last7Days.size / 7) * 100);
 }
 
 /**
@@ -105,10 +92,8 @@ export function getFocusStreak(sessions = []) {
   const focusDates = new Set(
     sessions
       .filter((session) => session.type === "focus")
-      .map((session) =>
-        new Date(session.completedAt)
-          .toISOString()
-          .split("T")[0]
+      .map(
+        (session) => new Date(session.completedAt).toISOString().split("T")[0]
       )
   );
 
@@ -119,16 +104,12 @@ export function getFocusStreak(sessions = []) {
   const currentDate = new Date();
 
   while (true) {
-    const dateKey = currentDate
-      .toISOString()
-      .split("T")[0];
+    const dateKey = currentDate.toISOString().split("T")[0];
 
     if (focusDates.has(dateKey)) {
       streak++;
 
-      currentDate.setDate(
-        currentDate.getDate() - 1
-      );
+      currentDate.setDate(currentDate.getDate() - 1);
     } else {
       break;
     }
@@ -182,60 +163,45 @@ export function getPeakFocusHours(sessions = []) {
  * comparing first half vs second half of sessions
  */
 export function getProductivityImprovement(sessions = []) {
-  const focusSessions = sessions.filter(
-    (session) => session.type === "focus"
-  );
+  const focusSessions = sessions.filter((session) => session.type === "focus");
 
   if (focusSessions.length < 4) return 0;
 
-  const midpoint = Math.floor(
-    focusSessions.length / 2
-  );
+  const midpoint = Math.floor(focusSessions.length / 2);
 
   const firstHalf = focusSessions.slice(0, midpoint);
   const secondHalf = focusSessions.slice(midpoint);
 
   const firstAvg =
-    firstHalf.reduce(
-      (sum, session) => sum + session.duration,
-      0
-    ) / firstHalf.length;
+    firstHalf.reduce((sum, session) => sum + session.duration, 0) /
+    firstHalf.length;
 
   const secondAvg =
-    secondHalf.reduce(
-      (sum, session) => sum + session.duration,
-      0
-    ) / secondHalf.length;
+    secondHalf.reduce((sum, session) => sum + session.duration, 0) /
+    secondHalf.length;
 
   if (firstAvg === 0) return 0;
 
-  return Math.round(
-    ((secondAvg - firstAvg) / firstAvg) * 100
-  );
+  return Math.round(((secondAvg - firstAvg) / firstAvg) * 100);
 }
 
 /**
  * Returns daily average focus minutes
  */
 export function getDailyAverage(sessions = []) {
-  const totalFocusMinutes =
-    getTotalFocusMinutes(sessions);
+  const totalFocusMinutes = getTotalFocusMinutes(sessions);
 
   const uniqueDays = new Set(
     sessions
       .filter((session) => session.type === "focus")
-      .map((session) =>
-        new Date(session.completedAt)
-          .toISOString()
-          .split("T")[0]
+      .map(
+        (session) => new Date(session.completedAt).toISOString().split("T")[0]
       )
   );
 
   if (uniqueDays.size === 0) return 0;
 
-  return Math.round(
-    totalFocusMinutes / uniqueDays.size
-  );
+  return Math.round(totalFocusMinutes / uniqueDays.size);
 }
 
 /**
@@ -243,31 +209,22 @@ export function getDailyAverage(sessions = []) {
  */
 export function getAnalyticsSummary(sessions = []) {
   return {
-    totalFocusMinutes:
-      getTotalFocusMinutes(sessions),
+    totalFocusMinutes: getTotalFocusMinutes(sessions),
 
-    completedFocusSessions:
-      getCompletedFocusSessions(sessions),
+    completedFocusSessions: getCompletedFocusSessions(sessions),
 
-    averageSessionDuration:
-      getAverageSessionDuration(sessions),
+    averageSessionDuration: getAverageSessionDuration(sessions),
 
-    consistencyScore:
-      getConsistencyScore(sessions),
+    consistencyScore: getConsistencyScore(sessions),
 
-    focusStreak:
-      getFocusStreak(sessions),
+    focusStreak: getFocusStreak(sessions),
 
-    peakFocusHours:
-      getPeakFocusHours(sessions),
+    peakFocusHours: getPeakFocusHours(sessions),
 
-    productivityImprovement:
-      getProductivityImprovement(sessions),
+    productivityImprovement: getProductivityImprovement(sessions),
 
-    dailyAverage:
-      getDailyAverage(sessions),
+    dailyAverage: getDailyAverage(sessions),
 
-    weeklyFocusData:
-      getWeeklyFocusData(sessions),
+    weeklyFocusData: getWeeklyFocusData(sessions),
   };
 }

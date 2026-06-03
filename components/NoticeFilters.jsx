@@ -1,6 +1,13 @@
 "use client";
 
-import { CalendarDays, Filter, Tag, Clock, ChevronDown, Sparkles } from "lucide-react";
+import {
+  CalendarDays,
+  Filter,
+  Tag,
+  Clock,
+  ChevronDown,
+  Sparkles,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 const DATE_OPTIONS = [
@@ -23,8 +30,14 @@ const PRIORITY_OPTIONS = [
 ];
 
 // Animated button component for consistency
-const FilterButton = ({ isSelected, children, onClick, variant = "default" }) => {
-  const baseClasses = "rounded-2xl px-3 py-2 text-sm transition active:scale-95";
+const FilterButton = ({
+  isSelected,
+  children,
+  onClick,
+  variant = "default",
+}) => {
+  const baseClasses =
+    "rounded-2xl px-3 py-2 text-sm transition active:scale-95";
   const selectedClasses = isSelected
     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
     : "bg-slate-800 text-slate-300 hover:bg-slate-700";
@@ -89,7 +102,8 @@ const NoticeFilters = ({
             <span>Smart filters</span>
           </div>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            Narrow results by category, priority, tags, date range, and read status.
+            Narrow results by category, priority, tags, date range, and read
+            status.
           </p>
         </motion.div>
 
@@ -127,7 +141,8 @@ const NoticeFilters = ({
               <Tag className="h-3.5 w-3.5" />
               {selectedCategory === "all"
                 ? "All"
-                : categories.find((item) => item.id === selectedCategory)?.label}
+                : categories.find((item) => item.id === selectedCategory)
+                    ?.label}
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -205,7 +220,9 @@ const NoticeFilters = ({
         >
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
             <Tag className="h-4 w-4" />
-            <span>Tags {selectedTags.length > 0 && `(${selectedTags.length})`}</span>
+            <span>
+              Tags {selectedTags.length > 0 && `(${selectedTags.length})`}
+            </span>
           </div>
           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
             {availableTags.length > 0 ? (
@@ -243,7 +260,11 @@ const NoticeFilters = ({
               className="w-full appearance-none rounded-3xl border border-slate-800 bg-slate-950/90 px-4 py-3 pr-10 text-sm text-white outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20"
             >
               {SORT_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id} className="bg-slate-950 text-white">
+                <option
+                  key={option.id}
+                  value={option.id}
+                  className="bg-slate-950 text-white"
+                >
                   {option.label}
                 </option>
               ))}
@@ -257,4 +278,3 @@ const NoticeFilters = ({
 };
 
 export default NoticeFilters;
-

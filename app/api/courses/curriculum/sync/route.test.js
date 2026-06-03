@@ -82,7 +82,9 @@ describe("POST /api/courses/curriculum/sync", () => {
 
     const db = await connectDb();
     db.collection().findOne.mockResolvedValue(null);
-    db.collection().updateOne.mockRejectedValue(new Error("Database connection timeout"));
+    db.collection().updateOne.mockRejectedValue(
+      new Error("Database connection timeout")
+    );
 
     const req = createMockRequest({
       courseId: "course-101",
@@ -158,6 +160,8 @@ describe("POST /api/courses/curriculum/sync", () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.persisted).toBe(false);
-    expect(body.message).toContain("cached successfully (Demo fallback mode active)");
+    expect(body.message).toContain(
+      "cached successfully (Demo fallback mode active)"
+    );
   });
 });

@@ -494,7 +494,11 @@ export function Navbar() {
                                 <div
                                   key={n.id}
                                   onClick={() => markAsRead(n.id)}
-                                  className={`p-3 cursor-pointer hover:bg-zinc-50 dark:hover:bg-white/4 transition-colors ${!n.read ? "bg-blue-50/30 dark:bg-blue-900/10" : ""}`}
+                                  className={`p-3 cursor-pointer hover:bg-zinc-50 dark:hover:bg-white/4 transition-colors ${
+                                    !n.read
+                                      ? "bg-blue-50/30 dark:bg-blue-900/10"
+                                      : ""
+                                  }`}
                                 >
                                   <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">
                                     {n.message}
@@ -787,7 +791,9 @@ export function Navbar() {
                         }`}
                       >
                         <item.icon
-                          className={`h-4 w-4 ${isActive ? "text-blue-500" : "text-zinc-400"}`}
+                          className={`h-4 w-4 ${
+                            isActive ? "text-blue-500" : "text-zinc-400"
+                          }`}
                         />
                         {item.label}
                         {isActive && (

@@ -19,7 +19,6 @@ import { ROLE_CONFIG } from "@/constants/userRoles";
 const FIREBASE_CONFIG_ERROR =
   "Firebase is not configured. Please add your Firebase environment variables to .env.local and restart the development server.";
 
-
 const syncCustomClaims = async ({ user, role, fullName }) => {
   try {
     const token = await user.getIdToken();
@@ -40,7 +39,7 @@ const syncCustomClaims = async ({ user, role, fullName }) => {
       await user.getIdToken(true).catch(() => {});
     } else {
       const errorData = await response.json().catch(() => ({}));
-      if (errorData?.error?.includes('already registered')) {
+      if (errorData?.error?.includes("already registered")) {
         await user.getIdToken(true).catch(() => {});
       }
     }
@@ -65,7 +64,7 @@ export const loginWithEmail = async (email, password, selectedRole) => {
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email.trim(),
-      password,
+      password
     );
     const user = userCredential.user;
 
@@ -106,9 +105,13 @@ export const loginWithEmail = async (email, password, selectedRole) => {
     }
 
     // Update last login
-    await setDoc(doc(db, "users", user.uid), {
-      lastLogin: new Date(),
-    }, { merge: true });
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        lastLogin: new Date(),
+      },
+      { merge: true }
+    );
 
     return { success: true, userData: { role: userRole } };
   } catch (err) {
@@ -136,7 +139,7 @@ export const signupWithEmail = async (
   email,
   password,
   selectedRole,
-  additionalData,
+  additionalData
 ) => {
   try {
     if (!auth || !db) {
@@ -151,7 +154,7 @@ export const signupWithEmail = async (
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email.trim(),
-      password,
+      password
     );
     const user = userCredential.user;
 
@@ -166,8 +169,10 @@ export const signupWithEmail = async (
     } catch (profileError) {
       // Clean up the orphaned user account using server-side Admin SDK
       // Client-side deleteUser() fails with auth/requires-recent-login if credential is stale
-      console.error(`[signup] Profile creation failed for user ${user.uid}, initiating cleanup`);
-      
+      console.error(
+        `[signup] Profile creation failed for user ${user.uid}, initiating cleanup`
+      );
+
       try {
         await fetch("/api/auth/cleanup", {
           method: "POST",
@@ -175,9 +180,12 @@ export const signupWithEmail = async (
           body: JSON.stringify({ uid: user.uid }),
         });
       } catch (cleanupErr) {
-        console.error(`[signup] Cleanup failed for orphaned account ${user.uid}:`, cleanupErr.message);
+        console.error(
+          `[signup] Cleanup failed for orphaned account ${user.uid}:`,
+          cleanupErr.message
+        );
       }
-      
+
       await deleteDoc(doc(db, "users", user.uid)).catch(() => {});
       await deleteDoc(doc(db, "userStats", user.uid)).catch(() => {});
       throw profileError;
@@ -203,12 +211,18 @@ export const signupWithEmail = async (
  * @returns {Promise<Object>} Authentication result and user data.
  */
 
-export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => {
+export const loginWithGoogle = async (
+  selectedRole,
+  isLogin,
+  additionalData
+) => {
   try {
     // INTERCEPT FOR MOCK AUTH MODE
     if (isMockAuthMode) {
-      console.log(`[Mock Auth] Simulating Google Sign-In as: ${selectedRole || "student"}`);
-      
+      console.log(
+        `[Mock Auth] Simulating Google Sign-In as: ${selectedRole || "student"}`
+      );
+
       // Simulate a small network delay for realistic UI loading states/spinners
       await new Promise((resolve) => setTimeout(resolve, 600));
 
@@ -220,12 +234,12 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
         lastLogin: new Date(),
       };
 
-      return { 
-        success: true, 
-        userData: simulatedUserData 
+      return {
+        success: true,
+        userData: simulatedUserData,
       };
     }
-    
+
     if (!auth || !db) {
       return { success: false, error: FIREBASE_CONFIG_ERROR };
     }
@@ -233,7 +247,7 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
-    
+
     // For returning users, read role from custom claims (authoritative source)
     let userRole = null;
 
@@ -273,14 +287,16 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
       if (userDoc.exists()) {
         userRole = userDoc.data().role;
       } else {
-        const nameToUse = 
-          user.displayName?.trim() || 
-          additionalData.fullName?.trim() || 
-          user.email?.split("@")[0] || 
+        const nameToUse =
+          user.displayName?.trim() ||
+          additionalData.fullName?.trim() ||
+          user.email?.split("@")[0] ||
           "Learnova Member";
 
         if (!nameToUse) {
-          console.error(`[google-signup] No name provided for user ${user.uid}, initiating cleanup`);
+          console.error(
+            `[google-signup] No name provided for user ${user.uid}, initiating cleanup`
+          );
           try {
             await fetch("/api/auth/cleanup", {
               method: "POST",
@@ -288,7 +304,10 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
               body: JSON.stringify({ uid: user.uid }),
             });
           } catch (cleanupErr) {
-            console.error(`[google-signup] Cleanup failed for orphaned account ${user.uid}:`, cleanupErr.message);
+            console.error(
+              `[google-signup] Cleanup failed for orphaned account ${user.uid}:`,
+              cleanupErr.message
+            );
           }
 
           await signOut(auth);
@@ -299,11 +318,17 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
         }
 
         try {
-          await createUserProfile(user, selectedRole, {...additionalData, fullName: nameToUse });
+          await createUserProfile(user, selectedRole, {
+            ...additionalData,
+            fullName: nameToUse,
+          });
           await user.getIdToken(true);
           return { success: true, userData: { role: selectedRole } };
         } catch (profileError) {
-          console.error(`[google-signup] Profile creation failed for user ${user.uid}, initiating cleanup`, profileError.message);
+          console.error(
+            `[google-signup] Profile creation failed for user ${user.uid}, initiating cleanup`,
+            profileError.message
+          );
           try {
             await fetch("/api/auth/cleanup", {
               method: "POST",
@@ -311,7 +336,10 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
               body: JSON.stringify({ uid: user.uid }),
             });
           } catch (cleanupErr) {
-            console.error(`[google-signup] Cleanup failed for orphaned account ${user.uid}:`, cleanupErr.message);
+            console.error(
+              `[google-signup] Cleanup failed for orphaned account ${user.uid}:`,
+              cleanupErr.message
+            );
           }
           throw profileError;
         }
@@ -319,9 +347,13 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
     }
 
     // Update last login for existing users
-    await setDoc(doc(db, "users", user.uid), {
-      lastLogin: new Date(),
-    }, { merge: true });
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        lastLogin: new Date(),
+      },
+      { merge: true }
+    );
 
     return { success: true, userData: { role: userRole || selectedRole } };
   } catch (err) {
@@ -336,7 +368,6 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
     };
   }
 };
-      
 
 /**
  * Triggers a password reset email via the secure backend API route.
@@ -357,7 +388,10 @@ export const resetPassword = async (email) => {
     if (!response.ok) {
       return {
         success: false,
-        error: data.error || getErrorMessage(data.error) || "Failed to send reset email. Please try again.",
+        error:
+          data.error ||
+          getErrorMessage(data.error) ||
+          "Failed to send reset email. Please try again.",
       };
     }
 
@@ -366,7 +400,8 @@ export const resetPassword = async (email) => {
     console.error("Reset password fetch error:", err);
     return {
       success: false,
-      error: "An unexpected error occurred while communicating with the server.",
+      error:
+        "An unexpected error occurred while communicating with the server.",
     };
   }
 };

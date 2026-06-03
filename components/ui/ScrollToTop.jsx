@@ -110,4 +110,4 @@ const ScrollToTop = () => {
 };
 
 export default ScrollToTop;
-EOF
+EOF;

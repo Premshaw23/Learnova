@@ -78,14 +78,13 @@ import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
 import { apiFetch } from "@/lib/apiClient";
 
-
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
-  { ssr: false, loading: () => <ChartSkeleton variant="chart" /> },
+  { ssr: false, loading: () => <ChartSkeleton variant="chart" /> }
 );
 const EngagementChart = dynamic(
   () => import("@/components/charts/EngagementChart"),
-  { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> },
+  { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> }
 );
 
 const TeacherDashboard = () => {
@@ -99,7 +98,10 @@ const TeacherDashboard = () => {
   const { user, userProfile } = useAuth();
   const isMounted = useIsMounted();
 
-  const { attendanceStats, studentAttendanceData } = useAttendance({ role: "teacher", user });
+  const { attendanceStats, studentAttendanceData } = useAttendance({
+    role: "teacher",
+    user,
+  });
   const { curriculum } = useCurriculum({ role: "teacher", user });
 
   const [todayClasses, setTodayClasses] = useState([]);
@@ -116,10 +118,8 @@ const TeacherDashboard = () => {
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState(null);
   const pendingRequests = useMemo(() => {
-  return attendanceRequests.filter(
-    (req) => req.status === "pending"
-  );
-}, [attendanceRequests]);
+    return attendanceRequests.filter((req) => req.status === "pending");
+  }, [attendanceRequests]);
 
   // Dynamic teacher data
   const [teacher, setTeacher] = useState({
@@ -142,23 +142,25 @@ const TeacherDashboard = () => {
     setTimeout(() => {
       if (!isMounted()) return;
       try {
-        const exportData = studentAttendanceData.map(s => ({
+        const exportData = studentAttendanceData.map((s) => ({
           Date: new Date().toLocaleDateString(),
-          'Student Name': s.name,
-          'Roll No': s.rollNo,
+          "Student Name": s.name,
+          "Roll No": s.rollNo,
           Status: s.status,
         }));
-        
-        const filename = `attendance_report_${selectedClass || 'all'}_${new Date().toISOString().split('T')[0]}`;
-        
-        if (format === 'csv') {
+
+        const filename = `attendance_report_${selectedClass || "all"}_${
+          new Date().toISOString().split("T")[0]
+        }`;
+
+        if (format === "csv") {
           exportToCSV(exportData, filename);
         } else {
           exportAttendancePDF(exportData, {
-            className: selectedClass || 'All Classes',
-            teacherName: teacher.name || 'N/A',
-            dateRange: 'Today',
-            instituteName: userProfile?.instituteName || 'Learnova Institute',
+            className: selectedClass || "All Classes",
+            teacherName: teacher.name || "N/A",
+            dateRange: "Today",
+            instituteName: userProfile?.instituteName || "Learnova Institute",
             logoUrl: userProfile?.logoUrl || null,
           });
         }
@@ -176,7 +178,11 @@ const TeacherDashboard = () => {
   useEffect(() => {
     if (userProfile) {
       setTeacher({
-        name: userProfile.displayName || userProfile.name || userProfile.firstName + " " + userProfile.lastName || "Teacher",
+        name:
+          userProfile.displayName ||
+          userProfile.name ||
+          userProfile.firstName + " " + userProfile.lastName ||
+          "Teacher",
         id: userProfile.uid || user?.uid || "TCH001",
         email: userProfile.email || user?.email || "",
         department: userProfile.department || "General",
@@ -201,39 +207,110 @@ const TeacherDashboard = () => {
         }
       } catch (error) {
         console.error("Error fetching schedule, falling back to mock:", error);
-        toast.error("Could not load your schedule. Showing sample data instead.");
+        toast.error(
+          "Could not load your schedule. Showing sample data instead."
+        );
       }
-      
+
       // Fallback Mock Schedule
       if (isMounted()) {
         setWeeklySchedule({
           Monday: [
-            { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
-            { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
-            { time: "14:00-15:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+            {
+              time: "09:00-10:30",
+              subject: "Data Structures",
+              room: "Lab-1",
+              students: 45,
+              semester: "4th",
+              section: "A",
+            },
+            {
+              time: "11:00-12:30",
+              subject: "Web Development",
+              room: "Lab-3",
+              students: 42,
+              semester: "6th",
+              section: "B",
+            },
+            {
+              time: "14:00-15:30",
+              subject: "Database Systems",
+              room: "Lab-2",
+              students: 38,
+              semester: "5th",
+              section: "A",
+            },
           ],
           Tuesday: [
-            { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
-            { time: "11:00-12:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+            {
+              time: "09:00-10:30",
+              subject: "Data Structures",
+              room: "Lab-1",
+              students: 45,
+              semester: "4th",
+              section: "A",
+            },
+            {
+              time: "11:00-12:30",
+              subject: "Database Systems",
+              room: "Lab-2",
+              students: 38,
+              semester: "5th",
+              section: "A",
+            },
           ],
           Wednesday: [
-            { time: "09:00-10:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
-            { time: "14:00-15:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+            {
+              time: "09:00-10:30",
+              subject: "Web Development",
+              room: "Lab-3",
+              students: 42,
+              semester: "6th",
+              section: "B",
+            },
+            {
+              time: "14:00-15:30",
+              subject: "Data Structures",
+              room: "Lab-1",
+              students: 45,
+              semester: "4th",
+              section: "A",
+            },
           ],
           Thursday: [
-            { time: "09:00-10:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
-            { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+            {
+              time: "09:00-10:30",
+              subject: "Database Systems",
+              room: "Lab-2",
+              students: 38,
+              semester: "5th",
+              section: "A",
+            },
+            {
+              time: "11:00-12:30",
+              subject: "Web Development",
+              room: "Lab-3",
+              students: 42,
+              semester: "6th",
+              section: "B",
+            },
           ],
           Friday: [
-            { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+            {
+              time: "09:00-10:30",
+              subject: "Data Structures",
+              room: "Lab-1",
+              students: 45,
+              semester: "4th",
+              section: "A",
+            },
           ],
         });
       }
     };
-    
+
     fetchSchedule();
   }, [user, userProfile]);
-
 
   const fetchAllRequests = async () => {
     if (!user) return;
@@ -374,8 +451,8 @@ const TeacherDashboard = () => {
                   reviewedAt: new Date().toISOString(),
                   reviewedBy: user.displayName || user.email,
                 }
-              : req,
-          ),
+              : req
+          )
         );
       }
     } catch (error) {
@@ -410,12 +487,9 @@ const TeacherDashboard = () => {
     const day = now.getDay();
 
     const isWeekday = day >= 1 && day <= 5;
-    const isAttendanceTime =
-      hour === 9 && minute <= 10;
+    const isAttendanceTime = hour === 9 && minute <= 10;
 
-    setAttendanceWindow(
-      isWeekday && isAttendanceTime
-    );
+    setAttendanceWindow(isWeekday && isAttendanceTime);
 
     const dayNames = [
       "Sunday",
@@ -429,9 +503,7 @@ const TeacherDashboard = () => {
 
     const today = dayNames[day];
 
-    setTodayClasses(
-      weeklySchedule[today] || []
-    );
+    setTodayClasses(weeklySchedule[today] || []);
   }, [weeklySchedule]);
 
   const generatePasscode = async () => {
@@ -515,38 +587,38 @@ const TeacherDashboard = () => {
       return;
     }
 
-  const headers = ["Student ID", "Student Name", "Date", "Attendance Status"];
-  const todayDate = new Date().toISOString().slice(0, 10);
+    const headers = ["Student ID", "Student Name", "Date", "Attendance Status"];
+    const todayDate = new Date().toISOString().slice(0, 10);
 
-  const csvRows = studentAttendanceData.map((student) => {
-    const studentId = student.rollNo || student.id || "N/A";
-    const studentName = student.name || "Unknown";
-    const status = student.status || "absent";
-    
-    return [
-      `"${studentId}"`,
-      `"${studentName.replace(/"/g, '""')}"`, 
-      `"${todayDate}"`,
-      `"${status.toUpperCase()}"`
-    ].join(",");
-  });
+    const csvRows = studentAttendanceData.map((student) => {
+      const studentId = student.rollNo || student.id || "N/A";
+      const studentName = student.name || "Unknown";
+      const status = student.status || "absent";
 
-  const csvContent = [headers.join(","), ...csvRows].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const fileName = `attendance_report_${todayDate}.csv`;
+      return [
+        `"${studentId}"`,
+        `"${studentName.replace(/"/g, '""')}"`,
+        `"${todayDate}"`,
+        `"${status.toUpperCase()}"`,
+      ].join(",");
+    });
 
-  const link = document.createElement("a");
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", fileName);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Exported data successfully to ${fileName}`);
-  }
-};
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const fileName = `attendance_report_${todayDate}.csv`;
+
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", fileName);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`Exported data successfully to ${fileName}`);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -596,7 +668,9 @@ const TeacherDashboard = () => {
             </div>
             {passcodeExpiresAt && (
               <div className="text-right">
-                <div className="text-sm text-muted-foreground dark:text-gray-400">Expires at</div>
+                <div className="text-sm text-muted-foreground dark:text-gray-400">
+                  Expires at
+                </div>
                 <div className="text-foreground dark:text-white font-semibold">
                   {new Date(passcodeExpiresAt).toLocaleTimeString()}
                 </div>
@@ -616,7 +690,11 @@ const TeacherDashboard = () => {
                 ) : (
                   <Zap className="w-5 h-5" />
                 )}
-                <span>{passcodeLoading ? "Generating..." : "Generate Attendance Passcode"}</span>
+                <span>
+                  {passcodeLoading
+                    ? "Generating..."
+                    : "Generate Attendance Passcode"}
+                </span>
                 {!passcodeLoading && <Sparkles className="w-5 h-5" />}
               </span>
             </button>
@@ -633,7 +711,8 @@ const TeacherDashboard = () => {
                     </div>
                     {passcodeExpiresAt && (
                       <div className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
-                        Expires: {new Date(passcodeExpiresAt).toLocaleTimeString()}
+                        Expires:{" "}
+                        {new Date(passcodeExpiresAt).toLocaleTimeString()}
                       </div>
                     )}
                   </div>
@@ -660,7 +739,9 @@ const TeacherDashboard = () => {
                 ) : (
                   <XCircle className="w-4 h-4" />
                 )}
-                <span>{passcodeLoading ? "Closing..." : "Close Attendance Window"}</span>
+                <span>
+                  {passcodeLoading ? "Closing..." : "Close Attendance Window"}
+                </span>
               </button>
             </div>
           )}
@@ -676,7 +757,10 @@ const TeacherDashboard = () => {
               <h2 className="text-2xl font-bold text-foreground dark:text-white">
                 Today's Attendance Overview
               </h2>
-              <button aria-label="Refresh attendance" className="text-accent hover:text-accent/80 transition-colors">
+              <button
+                aria-label="Refresh attendance"
+                className="text-accent hover:text-accent/80 transition-colors"
+              >
                 <RefreshCw className="w-5 h-5" />
               </button>
             </div>
@@ -745,7 +829,7 @@ const TeacherDashboard = () => {
                     <div className="text-right">
                       <div
                         className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                          student.status,
+                          student.status
                         )}`}
                       >
                         {student.status.toUpperCase()}
@@ -782,7 +866,9 @@ const TeacherDashboard = () => {
           <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
             <div className="flex items-center space-x-2 mb-6">
               <Calendar className="w-6 h-6 text-accent" />
-              <h2 className="text-xl font-bold text-foreground dark:text-white">Today's Classes</h2>
+              <h2 className="text-xl font-bold text-foreground dark:text-white">
+                Today's Classes
+              </h2>
             </div>
 
             {todayClasses.length > 0 ? (
@@ -796,7 +882,9 @@ const TeacherDashboard = () => {
                       <div className="text-foreground dark:text-white font-medium">
                         {cls.subject}
                       </div>
-                      <div className="text-sm text-muted-foreground dark:text-gray-400">{cls.time}</div>
+                      <div className="text-sm text-muted-foreground dark:text-gray-400">
+                        {cls.time}
+                      </div>
                     </div>
                     <div className="text-sm text-muted-foreground dark:text-gray-400 mb-2">
                       {cls.semester} - Section {cls.section}
@@ -819,14 +907,18 @@ const TeacherDashboard = () => {
             ) : (
               <div className="text-center py-8">
                 <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                <p className="text-muted-foreground dark:text-gray-400">No classes scheduled for today</p>
+                <p className="text-muted-foreground dark:text-gray-400">
+                  No classes scheduled for today
+                </p>
               </div>
             )}
           </div>
 
           {/* Quick Actions */}
           <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
-            <h2 className="text-xl font-bold text-foreground dark:text-white mb-6">Quick Actions</h2>
+            <h2 className="text-xl font-bold text-foreground dark:text-white mb-6">
+              Quick Actions
+            </h2>
 
             <div className="space-y-3">
               <ExportDropdown
@@ -837,8 +929,12 @@ const TeacherDashboard = () => {
                 <div className="flex items-center space-x-3 text-left">
                   <Download className="w-5 h-5 text-purple-400" />
                   <div>
-                    <div className="font-medium text-foreground dark:text-white">Export Reports</div>
-                    <div className="text-sm text-muted-foreground dark:text-gray-400">CSV/PDF formats</div>
+                    <div className="font-medium text-foreground dark:text-white">
+                      Export Reports
+                    </div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      CSV/PDF formats
+                    </div>
                   </div>
                 </div>
               </ExportDropdown>
@@ -867,7 +963,7 @@ const TeacherDashboard = () => {
                 </div>
               </button>
 
-              <button 
+              <button
                 onClick={handleExportCSV}
                 className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
               >
@@ -875,9 +971,11 @@ const TeacherDashboard = () => {
                   <Download className="w-5 h-5 text-purple-400" />
                   <div>
                     <div className="font-medium">Export Reports</div>
-                    <div className="text-sm text-muted-foreground dark:text-gray-400">CSV format (Instant Download)</div>
-                 </div>
-               </div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      CSV format (Instant Download)
+                    </div>
+                  </div>
+                </div>
               </button>
             </div>
           </div>
@@ -886,7 +984,9 @@ const TeacherDashboard = () => {
           <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
             <div className="flex items-center space-x-2 mb-6">
               <Shield className="w-6 h-6 text-green-400" />
-              <h2 className="text-xl font-bold text-foreground dark:text-white">System Status</h2>
+              <h2 className="text-xl font-bold text-foreground dark:text-white">
+                System Status
+              </h2>
             </div>
 
             <div className="space-y-3">
@@ -903,7 +1003,9 @@ const TeacherDashboard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-muted-foreground dark:text-gray-300 text-sm">GPS Geofencing</span>
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    GPS Geofencing
+                  </span>
                 </div>
                 <span className="text-green-400 text-sm">Active</span>
               </div>
@@ -911,7 +1013,9 @@ const TeacherDashboard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-muted-foreground dark:text-gray-300 text-sm">Time Window</span>
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    Time Window
+                  </span>
                 </div>
                 <span className="text-green-400 text-sm">Configured</span>
               </div>
@@ -919,7 +1023,9 @@ const TeacherDashboard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Activity className="w-4 h-4 text-blue-400" />
-                  <span className="text-muted-foreground dark:text-gray-300 text-sm">Live Monitoring</span>
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    Live Monitoring
+                  </span>
                 </div>
                 <span className="text-blue-400 text-sm">Running</span>
               </div>
@@ -945,7 +1051,9 @@ const TeacherDashboard = () => {
         <h2 className="text-3xl font-bold text-foreground dark:text-white mb-2">
           Analytics Dashboard
         </h2>
-        <p className="text-muted-foreground dark:text-gray-400">Detailed insights and trends</p>
+        <p className="text-muted-foreground dark:text-gray-400">
+          Detailed insights and trends
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -984,8 +1092,12 @@ const TeacherDashboard = () => {
   const renderSchedule = () => (
     <div className="space-y-8">
       <div className="text-center">
-        <h2 className="text-3xl font-bold text-foreground dark:text-white mb-2">Class Schedule</h2>
-        <p className="text-muted-foreground dark:text-gray-400">Weekly timetable and management</p>
+        <h2 className="text-3xl font-bold text-foreground dark:text-white mb-2">
+          Class Schedule
+        </h2>
+        <p className="text-muted-foreground dark:text-gray-400">
+          Weekly timetable and management
+        </p>
       </div>
 
       <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
@@ -1003,7 +1115,9 @@ const TeacherDashboard = () => {
                   <div className="text-sm font-medium text-foreground dark:text-white">
                     {cls.subject}
                   </div>
-                  <div className="text-xs text-muted-foreground dark:text-gray-400">{cls.time}</div>
+                  <div className="text-xs text-muted-foreground dark:text-gray-400">
+                    {cls.time}
+                  </div>
                   <div className="text-xs text-accent">{cls.room}</div>
                   <div className="text-xs text-blue-400">
                     {cls.students} students
@@ -1037,7 +1151,11 @@ const TeacherDashboard = () => {
                   {user?.photoURL ? (
                     <Image
                       src={user.photoURL}
-                      alt={`${user?.displayName || user?.email?.split("@")[0] || "Teacher"} profile photo`}
+                      alt={`${
+                        user?.displayName ||
+                        user?.email?.split("@")[0] ||
+                        "Teacher"
+                      } profile photo`}
                       width={48}
                       height={48}
                       className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
@@ -1064,7 +1182,9 @@ const TeacherDashboard = () => {
                       user?.email?.split("@")[0] ||
                       "Teacher"}
                   </h1>
-                  <div className="text-sm text-muted-foreground dark:text-gray-400">{user?.email}</div>
+                  <div className="text-sm text-muted-foreground dark:text-gray-400">
+                    {user?.email}
+                  </div>
                 </div>
               </div>
 
@@ -1111,7 +1231,9 @@ const TeacherDashboard = () => {
             {/* Bottom Action Bar */}
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
               <div className="flex md:flex-row space-y-1 flex-col items-center md:gap-3">
-                <span className="text-sm text-muted-foreground dark:text-gray-400">Quick Actions:</span>
+                <span className="text-sm text-muted-foreground dark:text-gray-400">
+                  Quick Actions:
+                </span>
                 {attendanceWindow && (
                   <button
                     onClick={generatePasscode}
@@ -1121,7 +1243,7 @@ const TeacherDashboard = () => {
                     Generate Passcode
                   </button>
                 )}
-                <button 
+                <button
                   onClick={handleExportCSV}
                   className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
                 >

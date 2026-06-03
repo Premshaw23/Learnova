@@ -16,8 +16,7 @@ export const GET = withErrorHandler(async (request) => {
   await requireAuth(request);
 
   const hasKey =
-    !!process.env.GROQ_API_KEY &&
-    process.env.GROQ_API_KEY.trim() !== "";
+    !!process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim() !== "";
   if (!hasKey) {
     throw new AppError("Groq API key is not configured", 500);
   }

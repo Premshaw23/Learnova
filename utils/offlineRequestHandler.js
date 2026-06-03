@@ -7,9 +7,13 @@ export async function handleOfflineRequest(endpoint, options = {}) {
     throw new Error("Network error"); // Let GET requests fail normally
   }
 
-  const actionType = endpoint.includes("/attendance") ? "attendance" : 
-                     endpoint.includes("/complaints") ? "complaint" : 
-                     endpoint.includes("/exceptions") ? "exception" : "general";
+  const actionType = endpoint.includes("/attendance")
+    ? "attendance"
+    : endpoint.includes("/complaints")
+      ? "complaint"
+      : endpoint.includes("/exceptions")
+        ? "exception"
+        : "general";
 
   await addPendingAction({
     type: actionType,
@@ -31,24 +35,36 @@ export async function handleOfflineRequest(endpoint, options = {}) {
 
   // Notify UI
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("learnova:offline-action-queued", {
-      detail: { type: actionType, endpoint }
-    }));
+    window.dispatchEvent(
+      new CustomEvent("learnova:offline-action-queued", {
+        detail: { type: actionType, endpoint },
+      })
+    );
   }
 
   // Return a mock successful response
-  return new Response(JSON.stringify({ 
-    success: true, 
-    queuedOffline: true,
-    message: "Action saved locally. It will be synchronized when you are back online." 
-  }), {
-    status: 202, // Accepted
-    headers: { "Content-Type": "application/json" }
-  });
+  return new Response(
+    JSON.stringify({
+      success: true,
+      queuedOffline: true,
+      message:
+        "Action saved locally. It will be synchronized when you are back online.",
+    }),
+    {
+      status: 202, // Accepted
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 }
 
 export function triggerOfflineSync() {
-  if (typeof navigator !== "undefined" && navigator.serviceWorker && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({ type: "TRIGGER_SYNC_PENDING_ACTIONS" });
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.serviceWorker &&
+    navigator.serviceWorker.controller
+  ) {
+    navigator.serviceWorker.controller.postMessage({
+      type: "TRIGGER_SYNC_PENDING_ACTIONS",
+    });
   }
 }

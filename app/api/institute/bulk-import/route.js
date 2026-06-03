@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
-import { initFirebaseAdmin, getAdminDb, getUserProfile } from "@/lib/firebase-admin";
+import {
+  initFirebaseAdmin,
+  getAdminDb,
+  getUserProfile,
+} from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { parseJSON } from "@/lib/error-handler";
-import { findExistingOperation, markIdempotent } from "@/lib/transactionCoordinator";
+import {
+  findExistingOperation,
+  markIdempotent,
+} from "@/lib/transactionCoordinator";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import crypto from "crypto";
@@ -16,13 +23,18 @@ const MAX_BULK_IMPORT_PAYLOAD_BYTES = 1024 * 1024;
 export async function POST(req) {
   try {
     // Authenticate and authorize — only institute or admin can bulk-import
-    const { payload: decodedToken } = await requireRole(req, ["institute", "admin"]);
+    const { payload: decodedToken } = await requireRole(req, [
+      "institute",
+      "admin",
+    ]);
 
     const profile = await getUserProfile(decodedToken.uid);
     const instituteId = profile?.instituteId || decodedToken.uid;
 
     const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
-    const rateLimitResult = await checkRateLimit(`bulk_import_${ip}_${decodedToken.uid}`);
+    const rateLimitResult = await checkRateLimit(
+      `bulk_import_${ip}_${decodedToken.uid}`
+    );
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: "Too many requests. Please try again later." },
@@ -52,7 +64,7 @@ export async function POST(req) {
     // Initialize Firebase Admin
     initFirebaseAdmin();
     const firestore = getAdminDb();
-    
+
     // Connect to MongoDB
     const mongoDb = await connectDb();
     const mongoUsers = mongoDb.collection("users");
@@ -71,7 +83,9 @@ export async function POST(req) {
     } catch {}
 
     // Batch phase 2: Create non-existing Firebase Auth users in bulk
-    const usersToCreate = students.filter((s) => !existingAuthUsers.includes(s.email));
+    const usersToCreate = students.filter(
+      (s) => !existingAuthUsers.includes(s.email)
+    );
     if (usersToCreate.length > 0) {
       const createResult = await admin.auth().createUsers(
         usersToCreate.map((s) => ({
@@ -83,14 +97,19 @@ export async function POST(req) {
       if (createResult.failed.length > 0) {
         for (const fail of createResult.failed) {
           failedImports.push({
-            email: fail.index !== undefined ? students[fail.index]?.email : "unknown",
-            rollNo: fail.index !== undefined ? students[fail.index]?.rollNo : "unknown",
+            email:
+              fail.index !== undefined
+                ? students[fail.index]?.email
+                : "unknown",
+            rollNo:
+              fail.index !== undefined
+                ? students[fail.index]?.rollNo
+                : "unknown",
             reason: fail.error?.message || "Firebase Auth creation failed",
           });
         }
       }
     }
-
 
     // Build firebaseUid map: email → uid
     const emailToUid = new Map();
@@ -116,9 +135,11 @@ export async function POST(req) {
     }
 
     // Set Firebase custom claims for all created auth users
-    await Promise.all(createdAuthUids.map(uid =>
-      admin.auth().setCustomUserClaims(uid, { role: 'student', instituteId })
-    ));
+    await Promise.all(
+      createdAuthUids.map((uid) =>
+        admin.auth().setCustomUserClaims(uid, { role: "student", instituteId })
+      )
+    );
 
     // Batch phase 4: Bulk Firestore writes
     const BATCH_LIMIT = 500;
@@ -155,15 +176,23 @@ export async function POST(req) {
     // Batch phase 5: Bulk MongoDB writes with existence pre-check
     const emails = validStudents.map((s) => s.email);
     const rollNos = validStudents.map((s) => s.rollNo).filter(Boolean);
-    const existingMongo = await mongoUsers.find({
-      $or: [{ email: { $in: emails } }, { rollNo: { $in: rollNos } }],
-    }).project({ email: 1, rollNo: 1 }).toArray();
+    const existingMongo = await mongoUsers
+      .find({
+        $or: [{ email: { $in: emails } }, { rollNo: { $in: rollNos } }],
+      })
+      .project({ email: 1, rollNo: 1 })
+      .toArray();
     const existingMongoEmails = new Set(existingMongo.map((u) => u.email));
-    const existingMongoRollNos = new Set(existingMongo.map((u) => u.rollNo).filter(Boolean));
+    const existingMongoRollNos = new Set(
+      existingMongo.map((u) => u.rollNo).filter(Boolean)
+    );
 
     const mongoBulkOps = [];
     for (const student of validStudents) {
-      if (existingMongoEmails.has(student.email) || (student.rollNo && existingMongoRollNos.has(student.rollNo))) {
+      if (
+        existingMongoEmails.has(student.email) ||
+        (student.rollNo && existingMongoRollNos.has(student.rollNo))
+      ) {
         failedImports.push({
           email: student.email,
           rollNo: student.rollNo,
@@ -191,9 +220,11 @@ export async function POST(req) {
       await mongoUsers.bulkWrite(mongoBulkOps, { ordered: false });
     }
 
-    successfulImports = validStudents.length - failedImports.filter((f) =>
-      validStudents.some((s) => s.email === f.email)
-    ).length;
+    successfulImports =
+      validStudents.length -
+      failedImports.filter((f) =>
+        validStudents.some((s) => s.email === f.email)
+      ).length;
 
     const resultPayload = {
       success: true,
@@ -208,7 +239,6 @@ export async function POST(req) {
     }
 
     return NextResponse.json(resultPayload, { status: 200 });
-
   } catch (error) {
     if (error.statusCode) {
       return NextResponse.json(

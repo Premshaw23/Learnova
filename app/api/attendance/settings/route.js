@@ -60,7 +60,9 @@ export const GET = withErrorHandler(async (request) => {
 export const POST = withErrorHandler(async (request) => {
   const { profile } = await requireRole(request, ["teacher", "admin"]);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`attendance_settings_${ip}_${profile.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `attendance_settings_${ip}_${profile.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
@@ -107,7 +109,9 @@ export const POST = withErrorHandler(async (request) => {
 export const DELETE = withErrorHandler(async (request) => {
   const { profile } = await requireRole(request, ["teacher", "admin"]);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`attendance_settings_delete_${ip}_${profile.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `attendance_settings_delete_${ip}_${profile.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
@@ -117,14 +121,11 @@ export const DELETE = withErrorHandler(async (request) => {
   const settingsDocId = getSettingsDocId(profile);
 
   const db = admin.firestore();
-  await db
-    .collection("attendance_settings")
-    .doc(settingsDocId)
-    .update({
-      active: false,
-      passcode: admin.firestore.FieldValue.delete(),
-      closedAt: new Date().toISOString(),
-    });
+  await db.collection("attendance_settings").doc(settingsDocId).update({
+    active: false,
+    passcode: admin.firestore.FieldValue.delete(),
+    closedAt: new Date().toISOString(),
+  });
 
   return NextResponse.json({ success: true });
 });

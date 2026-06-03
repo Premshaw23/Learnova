@@ -19,7 +19,10 @@ export const GET = withErrorHandler(async (request, context) => {
   const linkId = `${parentId}_${studentId}`;
   const linkDoc = await db.collection("parent_student_links").doc(linkId).get();
   if (!linkDoc.exists) {
-    return jsonError("Access Denied: You are not authorized to view this student's records.", 403);
+    return jsonError(
+      "Access Denied: You are not authorized to view this student's records.",
+      403
+    );
   }
 
   // 2. Fetch student profile to get instituteId

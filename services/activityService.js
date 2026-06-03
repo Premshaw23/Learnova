@@ -57,7 +57,10 @@ export const getUserActivity = async (userId) => {
   const rawActivities = await getUserActivities(userId);
 
   const grouped = rawActivities.reduce((acc, item) => {
-    const timestamp = item.timestamp instanceof Date ? item.timestamp : new Date(item.timestamp);
+    const timestamp =
+      item.timestamp instanceof Date
+        ? item.timestamp
+        : new Date(item.timestamp);
     const dateKey = timestamp.toISOString().slice(0, 10);
 
     acc[dateKey] = (acc[dateKey] || 0) + 1;

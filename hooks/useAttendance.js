@@ -124,9 +124,7 @@ export const useAttendance = ({ role, user }) => {
       );
       const averageAttendance =
         totalStudents > 0
-          ? Math.round(
-              ((presentToday + lateToday) / totalStudents) * 1000
-            ) / 10
+          ? Math.round(((presentToday + lateToday) / totalStudents) * 1000) / 10
           : 0;
 
       setAttendanceStats({
@@ -168,9 +166,7 @@ export const useAttendance = ({ role, user }) => {
       }
     } catch (err) {
       if (mounted) {
-        setError(
-          "Network error. Please check your connection and try again."
-        );
+        setError("Network error. Please check your connection and try again.");
       }
       console.error(err);
     } finally {
@@ -180,23 +176,28 @@ export const useAttendance = ({ role, user }) => {
 
   const loadMoreRequests = useCallback(async () => {
     if (!user || loadingRequests || !hasMoreRequests) return;
-    
+
     setLoadingRequests(true);
     try {
       const token = await user.getIdToken();
       const lastRequest = attendanceRequests[attendanceRequests.length - 1];
       const cursor = lastRequest?.id || "";
-      
-      const res = await apiFetch(`/api/institute/attendance-requests?cursor=${cursor}&limit=20`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
+
+      const res = await apiFetch(
+        `/api/institute/attendance-requests?cursor=${cursor}&limit=20`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
       const data = unwrapApiPayload(res);
       if (data && data.requests) {
-        setAttendanceRequests(prev => {
+        setAttendanceRequests((prev) => {
           // Avoid duplicates if rapid calls happen
-          const existingIds = new Set(prev.map(r => r.id));
-          const newRequests = data.requests.filter(r => !existingIds.has(r.id));
+          const existingIds = new Set(prev.map((r) => r.id));
+          const newRequests = data.requests.filter(
+            (r) => !existingIds.has(r.id)
+          );
           return [...prev, ...newRequests];
         });
         setHasMoreRequests(data.requests.length >= 20);
@@ -238,7 +239,9 @@ export const useAttendance = ({ role, user }) => {
           name:
             doc.data().displayName ||
             doc.data().name ||
-            `${doc.data().firstName || ""} ${doc.data().lastName || ""}`.trim() ||
+            `${doc.data().firstName || ""} ${
+              doc.data().lastName || ""
+            }`.trim() ||
             "Unknown",
           rollNo: doc.data().rollNo || doc.data().studentId || "N/A",
           email: doc.data().email,
@@ -262,8 +265,7 @@ export const useAttendance = ({ role, user }) => {
 
           const mergedRoster = studentsList.map((student, index) => {
             const record =
-              attendanceMap.get(student.id) ||
-              attendanceMap.get(student.email);
+              attendanceMap.get(student.id) || attendanceMap.get(student.email);
             return {
               id: student.id || index,
               name: student.name,
@@ -294,11 +296,46 @@ export const useAttendance = ({ role, user }) => {
             setStudentAttendanceData(mergedRoster);
           } else {
             setStudentAttendanceData([
-              { id: 1, name: "Alex Johnson", rollNo: "CS21B1001", status: "present", time: "09:02", confidence: 98 },
-              { id: 2, name: "Emma Davis", rollNo: "CS21B1002", status: "present", time: "09:01", confidence: 95 },
-              { id: 3, name: "Michael Chen", rollNo: "CS21B1003", status: "late", time: "09:08", confidence: 92 },
-              { id: 4, name: "Sarah Wilson", rollNo: "CS21B1004", status: "absent", time: "--", confidence: 0 },
-              { id: 5, name: "David Kumar", rollNo: "CS21B1005", status: "present", time: "09:03", confidence: 97 },
+              {
+                id: 1,
+                name: "Alex Johnson",
+                rollNo: "CS21B1001",
+                status: "present",
+                time: "09:02",
+                confidence: 98,
+              },
+              {
+                id: 2,
+                name: "Emma Davis",
+                rollNo: "CS21B1002",
+                status: "present",
+                time: "09:01",
+                confidence: 95,
+              },
+              {
+                id: 3,
+                name: "Michael Chen",
+                rollNo: "CS21B1003",
+                status: "late",
+                time: "09:08",
+                confidence: 92,
+              },
+              {
+                id: 4,
+                name: "Sarah Wilson",
+                rollNo: "CS21B1004",
+                status: "absent",
+                time: "--",
+                confidence: 0,
+              },
+              {
+                id: 5,
+                name: "David Kumar",
+                rollNo: "CS21B1005",
+                status: "present",
+                time: "09:03",
+                confidence: 97,
+              },
             ]);
           }
         });

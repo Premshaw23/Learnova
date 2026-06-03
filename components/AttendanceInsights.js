@@ -86,12 +86,7 @@ const AttendanceInsights = ({ recentActivity }) => {
           value={`${consistency}%`}
           color="blue"
         />
-        <InsightCard
-          icon={Award}
-          label="Status"
-          value={badge}
-          color="purple"
-        />
+        <InsightCard icon={Award} label="Status" value={badge} color="purple" />
       </div>
     </div>
   );

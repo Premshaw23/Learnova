@@ -6,7 +6,7 @@ describe("useSafePolling hook", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
-    
+
     // Mock document.visibilityState to default to visible
     Object.defineProperty(document, "visibilityState", {
       value: "visible",
@@ -93,18 +93,21 @@ describe("useSafePolling hook", () => {
       firstResolve = resolve;
     });
 
-    const callback = vi.fn()
+    const callback = vi
+      .fn()
       .mockImplementationOnce(() => firstPromise) // first call is slow
       .mockImplementationOnce(() => Promise.resolve()); // second call is fast
 
-    const { rerender, unmount } = renderHook(() => useSafePolling(callback, 30000));
+    const { rerender, unmount } = renderHook(() =>
+      useSafePolling(callback, 30000)
+    );
 
     expect(callback).toHaveBeenCalledTimes(1);
 
     // Force a rerender/new poll trigger by calling it directly, simulating a dependency update or new poll
     // To mock a second request starting before the first resolves:
     // We can simulate starting another request manually or having dependency changes:
-    rerender(); 
+    rerender();
 
     // Let's verify that sequence tracking keeps them clean.
     // Our implementation updates lastRequestIdRef.current.

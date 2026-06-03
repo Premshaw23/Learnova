@@ -25,7 +25,6 @@ import {
 } from "@/lib/courses";
 import { useIsMounted } from "@/hooks/useIsMounted";
 
-
 const getDifficultyVariant = (difficulty) => {
   const diff = difficulty?.toLowerCase();
   if (diff === "beginner") return "success";
@@ -88,7 +87,9 @@ export default function CourseLibrary({
     } catch (error) {
       console.error("Failed to load more courses:", error);
       if (isMounted()) {
-        toast.error("Failed to load more courses. Please check your connection.");
+        toast.error(
+          "Failed to load more courses. Please check your connection."
+        );
       }
     } finally {
       if (isMounted()) setIsLoading(false);
@@ -103,7 +104,10 @@ export default function CourseLibrary({
         ? existingIds.filter((id) => id !== course.id)
         : [...existingIds, course.id];
 
-      const didPersist = safeLocalStorageSet(SAVED_COURSES_STORAGE_KEY, nextIds);
+      const didPersist = safeLocalStorageSet(
+        SAVED_COURSES_STORAGE_KEY,
+        nextIds
+      );
 
       if (!didPersist) {
         toast.error("Could not update saved courses on this device.");
@@ -155,8 +159,11 @@ export default function CourseLibrary({
           </span>
         </button>
         <div className="text-sm font-medium text-slate-400 bg-slate-900/40 border border-slate-800/80 px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm">
-          Showing <span className="text-indigo-400 font-bold">{visibleCourses.length}</span> of{" "}
-          <span className="text-white">{visibleTotal}</span>{" "}
+          Showing{" "}
+          <span className="text-indigo-400 font-bold">
+            {visibleCourses.length}
+          </span>{" "}
+          of <span className="text-white">{visibleTotal}</span>{" "}
           {showSavedOnly ? "saved courses" : "courses"}
         </div>
       </div>
@@ -181,7 +188,10 @@ export default function CourseLibrary({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.3) }}
+                    transition={{
+                      duration: 0.4,
+                      delay: Math.min(index * 0.05, 0.3),
+                    }}
                     className="group bg-white/5 border border-white/10 hover:border-indigo-500/40 rounded-2xl p-5 space-y-4 flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:hover:shadow-2xl relative overflow-hidden"
                   >
                     {/* Decorative glowing card accent */}

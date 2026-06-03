@@ -27,7 +27,7 @@ export function useOfflineSync() {
       refreshQueue();
       const { successCount, failCount } = event.detail;
       toast.dismiss("offline-syncing");
-      
+
       if (successCount > 0 && failCount === 0) {
         toast.success(`Synchronization completed`, { id: "sync-complete" });
       } else if (failCount > 0) {
@@ -38,13 +38,17 @@ export function useOfflineSync() {
 
     const handleSyncStart = () => {
       setSyncStatus("syncing");
-      toast.loading("Synchronizing pending actions...", { id: "offline-syncing" });
+      toast.loading("Synchronizing pending actions...", {
+        id: "offline-syncing",
+      });
     };
 
     const handleOnline = () => {
       if (!("SyncManager" in window)) {
         handleSyncStart();
-        navigator.serviceWorker.controller?.postMessage({ type: "TRIGGER_SYNC_PENDING_ACTIONS" });
+        navigator.serviceWorker.controller?.postMessage({
+          type: "TRIGGER_SYNC_PENDING_ACTIONS",
+        });
       }
     };
 
@@ -53,19 +57,30 @@ export function useOfflineSync() {
       if (event.data.type === "SYNC_PENDING_ACTIONS_START") {
         handleSyncStart();
       } else if (event.data.type === "SYNC_PENDING_ACTIONS_COMPLETE") {
-        window.dispatchEvent(new CustomEvent("learnova:sync-complete", {
-          detail: { successCount: event.data.successCount, failCount: event.data.failCount }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("learnova:sync-complete", {
+            detail: {
+              successCount: event.data.successCount,
+              failCount: event.data.failCount,
+            },
+          })
+        );
       }
     };
 
-    window.addEventListener("learnova:offline-action-queued", handleOfflineActionQueued);
+    window.addEventListener(
+      "learnova:offline-action-queued",
+      handleOfflineActionQueued
+    );
     window.addEventListener("learnova:sync-complete", handleSyncComplete);
     window.addEventListener("online", handleOnline);
     navigator.serviceWorker?.addEventListener("message", handleMessage);
 
     return () => {
-      window.removeEventListener("learnova:offline-action-queued", handleOfflineActionQueued);
+      window.removeEventListener(
+        "learnova:offline-action-queued",
+        handleOfflineActionQueued
+      );
       window.removeEventListener("learnova:sync-complete", handleSyncComplete);
       window.removeEventListener("online", handleOnline);
       navigator.serviceWorker?.removeEventListener("message", handleMessage);

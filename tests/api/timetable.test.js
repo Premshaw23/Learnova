@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Shared Firestore mock state — must be hoisted so vi.mock factories can see it
@@ -43,10 +43,16 @@ vi.mock("next/server", () => {
   class MockHeaders {
     constructor(init = {}) {
       this._map = new Map();
-      Object.entries(init).forEach(([k, v]) => this._map.set(k.toLowerCase(), v));
+      Object.entries(init).forEach(([k, v]) =>
+        this._map.set(k.toLowerCase(), v)
+      );
     }
-    get(name) { return this._map.get(name.toLowerCase()) ?? null; }
-    set(name, value) { this._map.set(name.toLowerCase(), value); }
+    get(name) {
+      return this._map.get(name.toLowerCase()) ?? null;
+    }
+    set(name, value) {
+      this._map.set(name.toLowerCase(), value);
+    }
   }
 
   return {
@@ -56,8 +62,12 @@ vi.mock("next/server", () => {
         this.status = init.status || 200;
         this.headers = new MockHeaders(init.headers || {});
       }
-      async text() { return this._body; }
-      async json() { return JSON.parse(this._body); }
+      async text() {
+        return this._body;
+      }
+      async json() {
+        return JSON.parse(this._body);
+      }
     },
   };
 });
@@ -111,7 +121,12 @@ describe("Timetable iCal Feed API", () => {
       calendarToken: VALID_UUID,
       timetableData: {
         Monday: [
-          { time: "09:00-10:30", subject: "Math", teacher: "Mr. Smith", room: "101" },
+          {
+            time: "09:00-10:30",
+            subject: "Math",
+            teacher: "Mr. Smith",
+            room: "101",
+          },
         ],
       },
     });
@@ -141,8 +156,17 @@ describe("Timetable iCal Feed API", () => {
     setMockData({
       calendarToken: VALID_UUID,
       timetableData: {
-        Monday: [{ time: "09:00-10:00", subject: "Maths", teacher: "T1", room: "A1" }],
-        Wednesday: [{ time: "11:00-12:00", subject: "Physics", teacher: "T2", room: "B2" }],
+        Monday: [
+          { time: "09:00-10:00", subject: "Maths", teacher: "T1", room: "A1" },
+        ],
+        Wednesday: [
+          {
+            time: "11:00-12:00",
+            subject: "Physics",
+            teacher: "T2",
+            room: "B2",
+          },
+        ],
       },
     });
 

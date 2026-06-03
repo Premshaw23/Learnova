@@ -21,7 +21,9 @@ export const dynamic = "force-dynamic";
 export const GET = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`auth_me_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `auth_me_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many requests. Please slow down.", 429);
   }

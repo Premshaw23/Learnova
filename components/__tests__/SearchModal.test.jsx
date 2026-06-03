@@ -41,7 +41,9 @@ describe("SearchModal Keyboard Events and Propagation", () => {
     render(<SearchModal isOpen={true} onClose={mockOnClose} />);
 
     await waitFor(() => {
-      expect(document.activeElement).toBe(screen.getByPlaceholderText("Search pages and actions..."));
+      expect(document.activeElement).toBe(
+        screen.getByPlaceholderText("Search pages and actions...")
+      );
     });
 
     await user.keyboard("{Escape}");

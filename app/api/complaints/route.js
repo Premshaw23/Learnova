@@ -8,13 +8,16 @@ import { validateRequest } from "@/lib/validations/validateRequest";
 
 export const dynamic = "force-dynamic";
 
-
 const MAX_COMPLAINT_PAYLOAD_BYTES = 1024 * 10;
 
 export const POST = withErrorHandler(async (req) => {
   const decodedToken = await requireAuth(req);
 
-  const validationResult = await validateRequest(req, createComplaintSchema, MAX_COMPLAINT_PAYLOAD_BYTES);
+  const validationResult = await validateRequest(
+    req,
+    createComplaintSchema,
+    MAX_COMPLAINT_PAYLOAD_BYTES
+  );
   if (!validationResult.success) {
     return validationResult.response;
   }

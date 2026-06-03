@@ -30,7 +30,9 @@ const EmptyNoticeState = ({ query, onResetFilters }) => (
     </button>
     <div className="inline-flex items-center gap-2 text-sm text-slate-500">
       <Sparkles className="h-4 w-4 text-indigo-300" />
-      <span>Search by title, description, tags, or category for faster results.</span>
+      <span>
+        Search by title, description, tags, or category for faster results.
+      </span>
     </div>
   </motion.div>
 );

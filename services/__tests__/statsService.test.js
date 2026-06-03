@@ -47,7 +47,10 @@ describe("statsService", () => {
     });
 
     it("should POST to /api/stats with initialize action", async () => {
-      fetch.mockResolvedValue({ ok: true, json: async () => ({ success: true, data: {} }) });
+      fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, data: {} }),
+      });
       await initializeUserStats("user123");
       expect(fetch).toHaveBeenCalledWith("/api/stats", {
         method: "POST",
@@ -57,7 +60,10 @@ describe("statsService", () => {
     });
 
     it("should throw on failure response", async () => {
-      fetch.mockResolvedValue({ ok: false, json: async () => ({ error: "Failed" }) });
+      fetch.mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Failed" }),
+      });
       await expect(initializeUserStats("user123")).rejects.toThrow("Failed");
     });
   });
@@ -69,21 +75,38 @@ describe("statsService", () => {
     });
 
     it("should POST to /api/stats with update action and field", async () => {
-      fetch.mockResolvedValue({ ok: true, json: async () => ({ success: true, data: {} }) });
+      fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, data: {} }),
+      });
       await updateUserStat("user123", "Study Hours", 2);
       expect(fetch).toHaveBeenCalledWith("/api/stats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "update", statField: "Study Hours", value: 2 }),
+        body: JSON.stringify({
+          action: "update",
+          statField: "Study Hours",
+          value: 2,
+        }),
       });
     });
 
     it("should default value to 1", async () => {
-      fetch.mockResolvedValue({ ok: true, json: async () => ({ success: true, data: {} }) });
+      fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, data: {} }),
+      });
       await updateUserStat("user123", "Courses Enrolled");
-      expect(fetch).toHaveBeenCalledWith("/api/stats", expect.objectContaining({
-        body: JSON.stringify({ action: "update", statField: "Courses Enrolled", value: 1 }),
-      }));
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/stats",
+        expect.objectContaining({
+          body: JSON.stringify({
+            action: "update",
+            statField: "Courses Enrolled",
+            value: 1,
+          }),
+        })
+      );
     });
   });
 
@@ -94,7 +117,10 @@ describe("statsService", () => {
     });
 
     it("should POST to /api/stats with recalculateAttendance action", async () => {
-      fetch.mockResolvedValue({ ok: true, json: async () => ({ success: true, data: { rate: 87 } }) });
+      fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, data: { rate: 87 } }),
+      });
       const rate = await recalculateAttendanceRate("user123");
       expect(fetch).toHaveBeenCalledWith("/api/stats", {
         method: "POST",
@@ -105,8 +131,13 @@ describe("statsService", () => {
     });
 
     it("should throw on failure response", async () => {
-      fetch.mockResolvedValue({ ok: false, json: async () => ({ error: "Query failed" }) });
-      await expect(recalculateAttendanceRate("user123")).rejects.toThrow("Query failed");
+      fetch.mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Query failed" }),
+      });
+      await expect(recalculateAttendanceRate("user123")).rejects.toThrow(
+        "Query failed"
+      );
     });
   });
 });

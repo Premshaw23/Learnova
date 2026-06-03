@@ -24,7 +24,8 @@ vi.mock("framer-motion", async () => {
         React.createElement("div", { ref, ...props }, children)
       ),
     },
-    AnimatePresence: ({ children }) => React.createElement(React.Fragment, null, children),
+    AnimatePresence: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
   };
 });
 
@@ -94,9 +95,9 @@ describe("CourseLibrary saved-course shortlist", () => {
       })
     );
 
-    expect(JSON.parse(window.localStorage.getItem(SAVED_COURSES_STORAGE_KEY))).toEqual([
-      "nextjs-mastery",
-    ]);
+    expect(
+      JSON.parse(window.localStorage.getItem(SAVED_COURSES_STORAGE_KEY))
+    ).toEqual(["nextjs-mastery"]);
     expect(toast.success).toHaveBeenCalledWith("Course saved for later");
     expect(
       screen.getByRole("button", {
@@ -143,12 +144,14 @@ describe("CourseLibrary saved-course shortlist", () => {
     renderCourseLibrary();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /show saved courses/i })).toHaveTextContent(
-        "1"
-      );
+      expect(
+        screen.getByRole("button", { name: /show saved courses/i })
+      ).toHaveTextContent("1");
     });
 
-    await user.click(screen.getByRole("button", { name: /show saved courses/i }));
+    await user.click(
+      screen.getByRole("button", { name: /show saved courses/i })
+    );
 
     expect(
       screen.getByText("Advanced Figma Prototyping & Micro-interactions")
@@ -156,6 +159,8 @@ describe("CourseLibrary saved-course shortlist", () => {
     expect(
       screen.queryByText("Advanced Next.js & React Architecture")
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /load more courses/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /load more courses/i })
+    ).not.toBeInTheDocument();
   });
 });

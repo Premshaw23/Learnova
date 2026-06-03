@@ -93,12 +93,15 @@ export function AmbientAudioProvider({ children }) {
     if (audioRef.current) audioRef.current.volume = v;
   }, []);
 
-  const play = useCallback((sound) => {
-    if (typeof sound === "string" && sound !== selectedSound) {
-      setSelectedSound(sound);
-    }
-    setIsPlaying(true);
-  }, [selectedSound]);
+  const play = useCallback(
+    (sound) => {
+      if (typeof sound === "string" && sound !== selectedSound) {
+        setSelectedSound(sound);
+      }
+      setIsPlaying(true);
+    },
+    [selectedSound]
+  );
 
   const pause = useCallback(() => {
     setIsPlaying(false);

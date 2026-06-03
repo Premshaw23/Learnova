@@ -40,7 +40,9 @@ describe("Middleware Rate Limiting", () => {
 
     it("identifies all auth routes correctly", () => {
       function isAuthRoute(pathname) {
-        return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
+        return AUTH_RATE_LIMITED_PATHS.some((path) =>
+          pathname.startsWith(path)
+        );
       }
 
       expect(isAuthRoute("/api/auth/login")).toBe(true);
@@ -58,7 +60,9 @@ describe("Middleware Rate Limiting", () => {
 
     it("does not match non-auth routes", () => {
       function isAuthRoute(pathname) {
-        return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
+        return AUTH_RATE_LIMITED_PATHS.some((path) =>
+          pathname.startsWith(path)
+        );
       }
 
       expect(isAuthRoute("/api/attendance/record")).toBe(false);
@@ -103,7 +107,10 @@ describe("Middleware Rate Limiting", () => {
         const entry = rateLimitMap.get(key);
 
         if (!entry || now > entry.resetTime) {
-          rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+          rateLimitMap.set(key, {
+            count: 1,
+            resetTime: now + RATE_LIMIT_WINDOW_MS,
+          });
           return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
         }
 
@@ -139,7 +146,10 @@ describe("Middleware Rate Limiting", () => {
         const entry = rateLimitMap.get(key);
 
         if (!entry || now > entry.resetTime) {
-          rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+          rateLimitMap.set(key, {
+            count: 1,
+            resetTime: now + RATE_LIMIT_WINDOW_MS,
+          });
           return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
         }
 
@@ -201,9 +211,7 @@ describe("Middleware JWT Verification", () => {
   });
 
   it("extracts token from cookie when no Authorization header", () => {
-    const cookies = new Map([
-      ["authToken", { value: "cookie-token-123" }],
-    ]);
+    const cookies = new Map([["authToken", { value: "cookie-token-123" }]]);
     const token = cookies.get("authToken")?.value || null;
     expect(token).toBe("cookie-token-123");
   });
@@ -211,27 +219,47 @@ describe("Middleware JWT Verification", () => {
   it("returns null when no token is available", () => {
     const authorization = null;
     const cookies = { get: () => undefined };
-    const token =
-      authorization?.startsWith("Bearer ")
-        ? authorization.split(" ")[1]
-        : cookies.get("authToken")?.value || null;
+    const token = authorization?.startsWith("Bearer ")
+      ? authorization.split(" ")[1]
+      : cookies.get("authToken")?.value || null;
     expect(token).toBeNull();
   });
 });
 
 describe("Middleware Role-Based Redirects", () => {
   const protectedDashboards = [
-    { prefix: "/student", apiPrefix: "/api/student", role: "student", defaultPath: "/student/dashboard" },
-    { prefix: "/teacher", apiPrefix: "/api/teacher", role: "teacher", defaultPath: "/teacher/dashboard" },
-    { prefix: "/admin", apiPrefix: "/api/admin", role: "admin", defaultPath: "/admin/dashboard" },
-    { prefix: "/institute", apiPrefix: "/api/institute", role: "institute", defaultPath: "/institute/dashboard" },
+    {
+      prefix: "/student",
+      apiPrefix: "/api/student",
+      role: "student",
+      defaultPath: "/student/dashboard",
+    },
+    {
+      prefix: "/teacher",
+      apiPrefix: "/api/teacher",
+      role: "teacher",
+      defaultPath: "/teacher/dashboard",
+    },
+    {
+      prefix: "/admin",
+      apiPrefix: "/api/admin",
+      role: "admin",
+      defaultPath: "/admin/dashboard",
+    },
+    {
+      prefix: "/institute",
+      apiPrefix: "/api/institute",
+      role: "institute",
+      defaultPath: "/institute/dashboard",
+    },
   ];
 
   it("matches dashboard routes correctly", () => {
     function matchDashboard(pathname) {
-      return protectedDashboards.find((dashboard) =>
-        pathname.startsWith(dashboard.prefix) ||
-        (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
+      return protectedDashboards.find(
+        (dashboard) =>
+          pathname.startsWith(dashboard.prefix) ||
+          (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
       );
     }
 
@@ -240,14 +268,17 @@ describe("Middleware Role-Based Redirects", () => {
     expect(matchDashboard("/teacher/dashboard")?.role).toBe("teacher");
     expect(matchDashboard("/api/admin/stats")?.role).toBe("admin");
     expect(matchDashboard("/institute/dashboard")?.role).toBe("institute");
-    expect(matchDashboard("/api/institute/bulk-import")?.role).toBe("institute");
+    expect(matchDashboard("/api/institute/bulk-import")?.role).toBe(
+      "institute"
+    );
   });
 
   it("does not match non-dashboard routes", () => {
     function matchDashboard(pathname) {
-      return protectedDashboards.find((dashboard) =>
-        pathname.startsWith(dashboard.prefix) ||
-        (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
+      return protectedDashboards.find(
+        (dashboard) =>
+          pathname.startsWith(dashboard.prefix) ||
+          (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
       );
     }
 
@@ -259,7 +290,9 @@ describe("Middleware Role-Based Redirects", () => {
 
   it("redirects to correct dashboard based on role", () => {
     function getRedirectTarget(userRole) {
-      const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
+      const correctDashboard = protectedDashboards.find(
+        (d) => d.role === userRole
+      );
       return correctDashboard ? correctDashboard.defaultPath : "/profile";
     }
 

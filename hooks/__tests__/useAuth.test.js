@@ -10,14 +10,16 @@ describe("clearAuthSensitiveCaches", () => {
     const deletedKeys = [];
 
     globalThis.caches = {
-      keys: vi.fn().mockResolvedValue([
-        "static-assets-v1",
-        "image-cache",
-        "google-fonts-cache",
-        "auth-session-cache",
-        "user-profile-cache",
-        "api-token-cache",
-      ]),
+      keys: vi
+        .fn()
+        .mockResolvedValue([
+          "static-assets-v1",
+          "image-cache",
+          "google-fonts-cache",
+          "auth-session-cache",
+          "user-profile-cache",
+          "api-token-cache",
+        ]),
       delete: vi.fn().mockImplementation(async (key) => {
         deletedKeys.push(key);
         return true;
@@ -27,7 +29,11 @@ describe("clearAuthSensitiveCaches", () => {
     await clearAuthSensitiveCaches();
 
     expect(globalThis.caches.keys).toHaveBeenCalled();
-    expect(deletedKeys).toEqual(["auth-session-cache", "user-profile-cache", "api-token-cache"]);
+    expect(deletedKeys).toEqual([
+      "auth-session-cache",
+      "user-profile-cache",
+      "api-token-cache",
+    ]);
     expect(globalThis.caches.delete).toHaveBeenCalledTimes(3);
   });
 

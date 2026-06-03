@@ -187,7 +187,8 @@ const ISSUES = [
     labels: ["good first issue", "enhancement", "validation"],
   },
   {
-    title: "UI: Make the Role Selection screen accessible with keyboard navigation",
+    title:
+      "UI: Make the Role Selection screen accessible with keyboard navigation",
     body: `Role selection cards in \`RoleSelection.js\` may not be keyboard-navigable, preventing access for users who rely on keyboards.
 
 **Relevant files:** \`components/RoleSelection.js\`
@@ -226,7 +227,9 @@ async function createIssue(issue) {
     return data;
   } else {
     console.error(
-      `❌ Failed to create "${issue.title}": ${data.message || JSON.stringify(data)}`
+      `❌ Failed to create "${issue.title}": ${
+        data.message || JSON.stringify(data)
+      }`
     );
     throw new Error(data.message);
   }

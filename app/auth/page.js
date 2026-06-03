@@ -70,9 +70,13 @@ function AuthPageContent() {
     setErrors({});
   };
 
-  const handleSubmit = async (formData) => { // <-- Accept formData directly here
+  const handleSubmit = async (formData) => {
+    // <-- Accept formData directly here
     const { email, password, fullName, instituteName, inviteCode } = formData; // Extract fields for the API call
-    const { isValid, errors: validationErrors } = validateForm(formData, isLogin);
+    const { isValid, errors: validationErrors } = validateForm(
+      formData,
+      isLogin
+    );
 
     if (!isValid) {
       setErrors(validationErrors);
@@ -103,14 +107,21 @@ function AuthPageContent() {
         setShowRoleSelection(true);
         router.push("/profile");
       } else if (result.success) {
-        toast.success(isLogin ? "Successfully logged in!" : "Account created successfully!");
+        toast.success(
+          isLogin ? "Successfully logged in!" : "Account created successfully!"
+        );
         setShowRoleSelection(true);
         redirectBasedOnRole(result.userData.role, router);
       } else {
-        setErrors({ submit: result.error || "Something went wrong. Please try again." });
+        setErrors({
+          submit: result.error || "Something went wrong. Please try again.",
+        });
       }
     } catch {
-      setErrors({ submit: "Authentication failed. Please verify your credentials and try again." });
+      setErrors({
+        submit:
+          "Authentication failed. Please verify your credentials and try again.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -127,15 +138,24 @@ function AuthPageContent() {
 
     try {
       // Pass safe fallbacks since local text state is handled inside AuthForm now
-      const result = await loginWithGoogle(selectedRole, isLogin, { fullName: "", instituteName: "" });
+      const result = await loginWithGoogle(selectedRole, isLogin, {
+        fullName: "",
+        instituteName: "",
+      });
       if (result.success) {
         toast.success("Successfully logged in with Google!");
         redirectBasedOnRole(result.userData.role, router);
       } else {
-        setErrors({ submit: result.error || "Google sign-in could not be completed. Please try again." });
+        setErrors({
+          submit:
+            result.error ||
+            "Google sign-in could not be completed. Please try again.",
+        });
       }
     } catch {
-      setErrors({ submit: "An unexpected error occurred during Google authentication." });
+      setErrors({
+        submit: "An unexpected error occurred during Google authentication.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -157,14 +177,19 @@ function AuthPageContent() {
     try {
       const result = await resetPassword(emailToReset);
       if (result.success) {
-        toast.success("Password reset email sent! Check your inbox and spam folder.");
+        toast.success(
+          "Password reset email sent! Check your inbox and spam folder."
+        );
         setShowForgotPassword(false);
         setForgotPasswordEmail("");
       } else {
         setErrors({ forgotEmail: result.error });
       }
     } catch {
-      setErrors({ forgotEmail: "Password reset failed. Please verify your email and try again." });
+      setErrors({
+        forgotEmail:
+          "Password reset failed. Please verify your email and try again.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -202,15 +227,15 @@ function AuthPageContent() {
               <ErrorBoundary>
                 <div className="mx-auto w-full max-w-md">
                   <AuthForm
-                  isLogin={isLogin}
-                  selectedRole={selectedRole}
-                  isLoading={isLoading}
-                  onSubmit={handleSubmit}
-                  onGoogleLogin={handleGoogleLogin}
-                  onRoleChange={handleRoleChange}
-                  onToggleLogin={handleToggleLogin}
-                  onForgotPassword={handleOpenForgotPassword}
-                />
+                    isLogin={isLogin}
+                    selectedRole={selectedRole}
+                    isLoading={isLoading}
+                    onSubmit={handleSubmit}
+                    onGoogleLogin={handleGoogleLogin}
+                    onRoleChange={handleRoleChange}
+                    onToggleLogin={handleToggleLogin}
+                    onForgotPassword={handleOpenForgotPassword}
+                  />
                 </div>
               </ErrorBoundary>
             </div>

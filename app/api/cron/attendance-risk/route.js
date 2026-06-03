@@ -87,7 +87,9 @@ export const GET = async (request) => {
                 {
                   $and: [
                     { $lt: ["$date", twoWeeksAgo.toISOString().slice(0, 10)] },
-                    { $gte: ["$date", fourWeeksAgo.toISOString().slice(0, 10)] },
+                    {
+                      $gte: ["$date", fourWeeksAgo.toISOString().slice(0, 10)],
+                    },
                     { $in: ["$status", ["present", "late"]] },
                   ],
                 },
@@ -102,7 +104,9 @@ export const GET = async (request) => {
                 {
                   $and: [
                     { $lt: ["$date", twoWeeksAgo.toISOString().slice(0, 10)] },
-                    { $gte: ["$date", fourWeeksAgo.toISOString().slice(0, 10)] },
+                    {
+                      $gte: ["$date", fourWeeksAgo.toISOString().slice(0, 10)],
+                    },
                   ],
                 },
                 1,
@@ -177,11 +181,16 @@ export const GET = async (request) => {
         };
       });
 
-      await db.collection("attendance_risk_scores").bulkWrite(riskBulkOps, { ordered: false });
+      await db
+        .collection("attendance_risk_scores")
+        .bulkWrite(riskBulkOps, { ordered: false });
 
       // Batch check and insert alerts for students below threshold
       const alertCandidates = records.filter((r) => {
-        const rate = r.totalDays === 0 ? 100 : Math.round((r.presentDays / r.totalDays) * 1000) / 10;
+        const rate =
+          r.totalDays === 0
+            ? 100
+            : Math.round((r.presentDays / r.totalDays) * 1000) / 10;
         return rate < 80 && r.email;
       });
 

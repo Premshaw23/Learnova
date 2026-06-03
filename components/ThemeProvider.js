@@ -21,7 +21,11 @@ export function ThemeProvider({ children }) {
   })();
 
   return (
-    <NextThemesProvider attribute="class" defaultTheme={initialTheme} enableSystem={true}>
+    <NextThemesProvider
+      attribute="class"
+      defaultTheme={initialTheme}
+      enableSystem={true}
+    >
       {children}
     </NextThemesProvider>
   );

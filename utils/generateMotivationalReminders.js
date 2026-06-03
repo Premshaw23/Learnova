@@ -62,7 +62,9 @@ export const generateMotivationalReminders = ({
       id: "missed-attendance",
       tone: alertTone,
       title: "📌 Missed attendance detected",
-      description: `There ${missedAttendance === 1 ? "is" : "are"} ${missedAttendance} ${
+      description: `There ${
+        missedAttendance === 1 ? "is" : "are"
+      } ${missedAttendance} ${
         missedAttendance === 1 ? "absence" : "absences"
       } in recent activity. Stay consistent this week.`,
       metric: `${missedAttendance} missed`,
@@ -86,7 +88,9 @@ export const generateMotivationalReminders = ({
       id: "activity-nudge",
       tone: "warning",
       title: "🚀 Participate in activities this week",
-      description: `Only ${recentActivityCount} recent activit${recentActivityCount === 1 ? "y" : "ies"} found. Add more sessions to stay active and engaged.`,
+      description: `Only ${recentActivityCount} recent activit${
+        recentActivityCount === 1 ? "y" : "ies"
+      } found. Add more sessions to stay active and engaged.`,
       metric: `${recentActivityCount} activities`,
     });
   }
@@ -108,9 +112,13 @@ export const generateMotivationalReminders = ({
       id: "pending-attention",
       tone: "neutral",
       title: "📢 Check newly added notices",
-      description: `There ${pendingRequests === 1 ? "is" : "are"} ${pendingRequests} pending update${
+      description: `There ${
+        pendingRequests === 1 ? "is" : "are"
+      } ${pendingRequests} pending update${
         pendingRequests === 1 ? "" : "s"
-      } or request${pendingRequests === 1 ? "" : "s"} awaiting review. Stay on top of them.`,
+      } or request${
+        pendingRequests === 1 ? "" : "s"
+      } awaiting review. Stay on top of them.`,
       metric: `${pendingRequests} pending`,
     });
   }
@@ -121,7 +129,8 @@ export const generateMotivationalReminders = ({
       id: "class-nudge",
       tone: "neutral",
       title: "🔔 No upcoming classes yet",
-      description: "Plan your next learning session and keep the momentum going even between classes.",
+      description:
+        "Plan your next learning session and keep the momentum going even between classes.",
       metric: "Free time to prepare",
     });
   }
@@ -132,7 +141,9 @@ export const generateMotivationalReminders = ({
       id: "achievement-milestone",
       tone: "positive",
       title: "⭐ You're reaching milestones",
-      description: `You've unlocked ${unlockedBadgesCount} badge${unlockedBadgesCount === 1 ? "" : "s"} and reached Level ${currentLevel}. Impressive progress!`,
+      description: `You've unlocked ${unlockedBadgesCount} badge${
+        unlockedBadgesCount === 1 ? "" : "s"
+      } and reached Level ${currentLevel}. Impressive progress!`,
       metric: `Level ${currentLevel} + ${unlockedBadgesCount} badges`,
     });
   }
@@ -159,7 +170,8 @@ export const generateMotivationalReminders = ({
       id: "default",
       tone: "positive",
       title: "🏆 Keep up the great work",
-      description: "Your dashboard looks healthy. Continue the good habits and stay consistent.",
+      description:
+        "Your dashboard looks healthy. Continue the good habits and stay consistent.",
       metric: "All systems go",
     });
   }

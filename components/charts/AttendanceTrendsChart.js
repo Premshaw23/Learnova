@@ -86,8 +86,7 @@ const AttendanceTrendsChart = ({ data: propData, className = "" }) => {
           pointStyle: "rectRounded",
           font: {
             size: 12,
-            family:
-              "'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif",
+            family: "'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif",
           },
         },
       },
@@ -137,9 +136,7 @@ const AttendanceTrendsChart = ({ data: propData, className = "" }) => {
   };
 
   return (
-    <div
-      className={`w-full aspect-video min-h-[300px] ${className}`}
-    >
+    <div className={`w-full aspect-video min-h-[300px] ${className}`}>
       <Bar data={chartData} options={options} />
     </div>
   );

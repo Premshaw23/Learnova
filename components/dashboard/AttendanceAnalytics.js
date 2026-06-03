@@ -30,7 +30,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler,
+  Filler
 );
 
 const DEFAULT_SUBJECT_DATA = [
@@ -113,7 +113,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
 
         const attendanceQuery = query(
           collection(db, "attendance_records"),
-          where("userId", "==", userId),
+          where("userId", "==", userId)
         );
 
         const snapshot = await getDocs(attendanceQuery);
@@ -130,7 +130,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
         if (totalAbsent < 0) totalAbsent = 0;
 
         const attendancePercentage = Math.round(
-          (totalPresent / safeTotalClasses) * 100,
+          (totalPresent / safeTotalClasses) * 100
         );
 
         setAttendanceRecords(records);
@@ -162,7 +162,8 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
   const subjectPerformance = useMemo(() => {
     const subjectMap = new Map();
 
-    const source = attendanceRecords.length > 0 ? attendanceRecords : recentActivity;
+    const source =
+      attendanceRecords.length > 0 ? attendanceRecords : recentActivity;
 
     source.forEach((entry) => {
       const subject = entry.subject || "General";
@@ -193,7 +194,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
     const recordsByDate = new Set(
       attendanceRecords
         .filter((record) => typeof record.date === "string")
-        .map((record) => record.date),
+        .map((record) => record.date)
     );
 
     return Array.from({ length: 7 }).map((_, index) => {
@@ -226,10 +227,15 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
 
     return Array.from({ length: 6 }).map((_, index) => {
       const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      const weekdays = countWeekdaysInMonth(date.getFullYear(), date.getMonth());
+      const monthKey = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}`;
+      const weekdays = countWeekdaysInMonth(
+        date.getFullYear(),
+        date.getMonth()
+      );
       const attendance = Math.round(
-        ((recordsByMonth.get(monthKey) || 0) / Math.max(1, weekdays)) * 100,
+        ((recordsByMonth.get(monthKey) || 0) / Math.max(1, weekdays)) * 100
       );
 
       return {
@@ -245,14 +251,17 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
       datasets: [
         {
           data: [stats.totalPresent, stats.totalAbsent],
-          backgroundColor: ["rgba(79, 70, 229, 0.9)", "rgba(239, 68, 68, 0.85)"],
+          backgroundColor: [
+            "rgba(79, 70, 229, 0.9)",
+            "rgba(239, 68, 68, 0.85)",
+          ],
           borderColor: ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.1)"],
           borderWidth: 2,
           hoverOffset: 10,
         },
       ],
     }),
-    [stats.totalPresent, stats.totalAbsent],
+    [stats.totalPresent, stats.totalAbsent]
   );
 
   const trendData = useMemo(() => {
@@ -295,7 +304,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
         },
       ],
     }),
-    [subjectPerformance],
+    [subjectPerformance]
   );
 
   const commonOptions = {
@@ -385,7 +394,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {['weekly', 'monthly'].map((tab) => (
+          {["weekly", "monthly"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTrendTab(tab)}
@@ -414,26 +423,29 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
                 </p>
               </div>
               <div className="w-32 h-32">
-                <Doughnut data={donutData} options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  cutout: "70%",
-                  plugins: {
-                    legend: {
-                      position: "bottom",
-                      labels: {
-                        color: "rgba(100, 116, 139, 0.9)",
-                        boxWidth: 12,
-                        padding: 20,
+                <Doughnut
+                  data={donutData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: "70%",
+                    plugins: {
+                      legend: {
+                        position: "bottom",
+                        labels: {
+                          color: "rgba(100, 116, 139, 0.9)",
+                          boxWidth: 12,
+                          padding: 20,
+                        },
+                      },
+                      tooltip: {
+                        backgroundColor: "rgba(15, 23, 42, 0.95)",
+                        titleColor: "#fff",
+                        bodyColor: "#e2e8f0",
                       },
                     },
-                    tooltip: {
-                      backgroundColor: "rgba(15, 23, 42, 0.95)",
-                      titleColor: "#fff",
-                      bodyColor: "#e2e8f0",
-                    },
-                  },
-                }} />
+                  }}
+                />
               </div>
             </div>
 
@@ -479,7 +491,8 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
             </h4>
           </div>
           <div className="text-sm text-slate-500 dark:text-slate-400">
-            Highest rate {Math.max(...subjectPerformance.map((item) => item.rate), 0)}%
+            Highest rate{" "}
+            {Math.max(...subjectPerformance.map((item) => item.rate), 0)}%
           </div>
         </div>
         <div className="h-80">

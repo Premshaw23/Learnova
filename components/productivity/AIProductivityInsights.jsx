@@ -5,50 +5,47 @@ import { motion } from "framer-motion";
 import { Brain, Sparkles, TrendingUp, Target } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 
-export default function AIProductivityInsights({
-  analytics,
-  isDark,
-}) {
-    const { user } = useAuthContext();
+export default function AIProductivityInsights({ analytics, isDark }) {
+  const { user } = useAuthContext();
 
   const [loading, setLoading] = useState(false);
   const [insights, setInsights] = useState(null);
 
   const generateInsights = async () => {
-  setLoading(true);
-
-  try {
     setLoading(true);
 
-    if (!user) {
-      alert("Please login to generate AI insights.");
-      return;
+    try {
+      setLoading(true);
+
+      if (!user) {
+        alert("Please login to generate AI insights.");
+        return;
+      }
+
+      const idToken = await user.getIdToken();
+
+      const response = await fetch("/api/ai-productivity", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(analytics),
+      });
+
+      const data = await response.json();
+
+      console.log(data);
+
+      if (data.success) {
+        setInsights(data.data);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-
-    const idToken = await user.getIdToken();
-
-    const response = await fetch("/api/ai-productivity", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`,
-      },
-      body: JSON.stringify(analytics),
-    });
-
-    const data = await response.json();
-
-    console.log(data);
-
-    if (data.success) {
-      setInsights(data.data);
-    }
-  } catch (error) {
-    console.error(error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <motion.div
@@ -105,9 +102,7 @@ export default function AIProductivityInsights({
         >
           <Sparkles className="w-10 h-10 mx-auto mb-3 text-purple-400" />
 
-          <p className="font-medium mb-2">
-            Personalized Productivity Guidance
-          </p>
+          <p className="font-medium mb-2">Personalized Productivity Guidance</p>
 
           <p
             className={`text-sm ${

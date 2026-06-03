@@ -46,7 +46,12 @@ function buildHeatmapData() {
       const date = new Date(start);
       date.setDate(start.getDate() + week * daysPerWeek + day);
       const randomValue = Math.random();
-      const status = randomValue < 0.55 ? "productive" : randomValue < 0.85 ? "lowEnergy" : "stressSpike";
+      const status =
+        randomValue < 0.55
+          ? "productive"
+          : randomValue < 0.85
+            ? "lowEnergy"
+            : "stressSpike";
       weekData.push({
         date: date.toISOString(),
         label: formatHeatmapDate(date),
@@ -71,10 +76,15 @@ export default function StudyEnergyHeatmap() {
     <section className="rounded-[2rem] border border-white/10 bg-white/10 dark:bg-slate-950/80 dark:border-slate-700 shadow-2xl shadow-slate-950/20 backdrop-blur-xl p-6 lg:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Wellness</p>
-          <h2 className="mt-2 text-3xl font-semibold text-white">Study Energy Heatmap</h2>
+          <p className="text-sm uppercase tracking-[0.4em] text-slate-400">
+            Wellness
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold text-white">
+            Study Energy Heatmap
+          </h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-            Track weekly productivity patterns with dynamic energy states and a quick status overview.
+            Track weekly productivity patterns with dynamic energy states and a
+            quick status overview.
           </p>
         </div>
         <div className="rounded-3xl border border-slate-800/70 bg-slate-950/80 px-4 py-3 text-center text-sm text-slate-300 shadow-sm">
@@ -89,7 +99,12 @@ export default function StudyEnergyHeatmap() {
         <div className="grid grid-cols-[auto_1fr] gap-4 md:grid-cols-[auto_1fr]">
           <div className="space-y-2">
             {dayNames.map((day) => (
-              <div key={day} className="text-xs uppercase tracking-[0.35em] text-slate-500">{day}</div>
+              <div
+                key={day}
+                className="text-xs uppercase tracking-[0.35em] text-slate-500"
+              >
+                {day}
+              </div>
             ))}
           </div>
 
@@ -104,7 +119,9 @@ export default function StudyEnergyHeatmap() {
                       <button
                         key={`cell-${weekIndex}-${dayIndex}`}
                         type="button"
-                        onMouseEnter={() => setHovered({ ...cell, weekIndex, dayIndex })}
+                        onMouseEnter={() =>
+                          setHovered({ ...cell, weekIndex, dayIndex })
+                        }
                         onMouseLeave={() => setHovered(null)}
                         className={`h-10 w-10 rounded-2xl border border-white/10 transition-transform duration-200 hover:scale-105 ${meta.classes}`}
                         aria-label={`${dayNames[dayIndex]} ${cell.label}: ${meta.label}`}
@@ -121,9 +138,15 @@ export default function StudyEnergyHeatmap() {
                 exit={{ opacity: 0, y: 8 }}
                 className="pointer-events-none absolute right-4 top-4 z-20 rounded-3xl border border-white/10 bg-slate-950/95 px-4 py-3 text-left text-sm text-slate-100 shadow-2xl shadow-slate-950/40"
               >
-                <p className="text-xs uppercase tracking-[0.35em] text-violet-200">{hovered.label}</p>
-                <p className="mt-2 font-semibold text-white">{statusMeta[hovered.status].label}</p>
-                <p className="mt-1 text-slate-400">{statusMeta[hovered.status].description}</p>
+                <p className="text-xs uppercase tracking-[0.35em] text-violet-200">
+                  {hovered.label}
+                </p>
+                <p className="mt-2 font-semibold text-white">
+                  {statusMeta[hovered.status].label}
+                </p>
+                <p className="mt-1 text-slate-400">
+                  {statusMeta[hovered.status].description}
+                </p>
               </motion.div>
             )}
           </div>
@@ -131,7 +154,10 @@ export default function StudyEnergyHeatmap() {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           {Object.entries(statusMeta).map(([key, meta]) => (
-            <div key={key} className="flex items-center gap-3 rounded-3xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-300">
+            <div
+              key={key}
+              className="flex items-center gap-3 rounded-3xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-300"
+            >
               <span className={`h-3.5 w-3.5 rounded-full ${meta.classes}`} />
               <div>
                 <p className="font-semibold text-white">{meta.label}</p>

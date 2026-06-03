@@ -15,24 +15,20 @@ import * as faceapi from "face-api.js";
 import { z } from "zod";
 import { apiFetch } from "@/lib/apiClient";
 
-
 // Strict validation schema matching issue #1567 criteria
 const registrationSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(3, "Name must be at least 3 characters long"),
+  name: z.string().trim().min(3, "Name must be at least 3 characters long"),
   rollNo: z
     .string()
     .trim()
     .min(8, "Roll Number must be at least 8 characters long")
     .regex(/[A-Z]/, "Roll Number must contain at least one uppercase letter")
     .regex(/[0-9]/, "Roll Number must contain at least one number")
-    .regex(/[^A-Za-z0-9]/, "Roll Number must contain at least one special character"),
-  email: z
-    .string()
-    .trim()
-    .email("Please enter a valid email address"),
+    .regex(
+      /[^A-Za-z0-9]/,
+      "Roll Number must contain at least one special character"
+    ),
+  email: z.string().trim().email("Please enter a valid email address"),
 });
 
 export default function RegisterPage() {
@@ -101,7 +97,9 @@ export default function RegisterPage() {
         }
       } catch (err) {
         console.error("Face registration failed:", err);
-        toast.error("Face registration failed. Please try again or use email signup.");
+        toast.error(
+          "Face registration failed. Please try again or use email signup."
+        );
       }
     };
 
@@ -138,25 +136,26 @@ export default function RegisterPage() {
     const hasSpecialChar = /[^A-Za-z0-9]/.test(rollNo);
 
     if (rollNo.length < 8 || !hasUppercase || !hasNumber || !hasSpecialChar) {
-      const msg = "Validation failed: Must be 8+ characters with an uppercase letter, number, and special character.";
+      const msg =
+        "Validation failed: Must be 8+ characters with an uppercase letter, number, and special character.";
       setError(msg);
       toast.error(msg);
       return;
     }
 
     if (!isValidEmail(email)) {
-  const suggestion = suggestEmailCorrection(email);
-  const message = suggestion
-    ? `Invalid email. Did you mean ${suggestion}?`
-    : "Please enter a valid email address.";
+      const suggestion = suggestEmailCorrection(email);
+      const message = suggestion
+        ? `Invalid email. Did you mean ${suggestion}?`
+        : "Please enter a valid email address.";
 
-  setEmailSuggestion(suggestion || null);
-  setError(message);
-  toast.error(message);
+      setEmailSuggestion(suggestion || null);
+      setError(message);
+      toast.error(message);
 
-  return;
-}
-setEmailSuggestion(null);
+      return;
+    }
+    setEmailSuggestion(null);
 
     const photoValidation = validateRequired(photo, "Profile Photo");
     if (photoValidation !== true) {
@@ -169,13 +168,17 @@ setEmailSuggestion(null);
     let faceDescriptorString = "";
     if (photo) {
       if (!modelsLoaded) {
-        setError("Face recognition models are loading. Please wait a moment and try again.");
+        setError(
+          "Face recognition models are loading. Please wait a moment and try again."
+        );
         toast.error("Face models are still loading. Please wait.");
         setIsLoading(false);
         return;
       }
 
-      const toastId = toast.loading("Analyzing profile photo for face detection...");
+      const toastId = toast.loading(
+        "Analyzing profile photo for face detection..."
+      );
       try {
         const photoUrl = URL.createObjectURL(photo);
         const img = await faceapi.fetchImage(photoUrl);
@@ -187,17 +190,26 @@ setEmailSuggestion(null);
         URL.revokeObjectURL(photoUrl);
 
         if (!detection) {
-          setError("Could not detect a clear face in the uploaded photo. Please upload a clear headshot.");
-          toast.error("Face detection failed. Please upload a clear headshot photo.", { id: toastId });
+          setError(
+            "Could not detect a clear face in the uploaded photo. Please upload a clear headshot."
+          );
+          toast.error(
+            "Face detection failed. Please upload a clear headshot photo.",
+            { id: toastId }
+          );
           setIsLoading(false);
           return;
         }
 
         faceDescriptorString = JSON.stringify(Array.from(detection.descriptor));
-        toast.success("Face successfully detected and processed!", { id: toastId });
+        toast.success("Face successfully detected and processed!", {
+          id: toastId,
+        });
       } catch (err) {
         console.error("Face detection error:", err);
-        setError("Error analyzing face image. Please ensure you uploaded a valid image file.");
+        setError(
+          "Error analyzing face image. Please ensure you uploaded a valid image file."
+        );
         toast.error("Error analyzing face. Please try again.", { id: toastId });
         setIsLoading(false);
         return;
@@ -259,7 +271,6 @@ setEmailSuggestion(null);
 
       <main className="relative z-10 flex items-start justify-center px-4 pb-16 pt-24">
         <div className="mt-8 w-full max-w-6xl flex flex-col lg:flex-row gap-8">
-
           {/* Form card */}
           <div className="flex-1 rounded-2xl border border-border bg-card shadow-xl shadow-black/5 dark:shadow-black/20 overflow-hidden">
             {/* Card header */}
@@ -272,7 +283,9 @@ setEmailSuggestion(null);
                   <h2 className="text-xl font-bold tracking-tight text-card-foreground">
                     Register New User
                   </h2>
-                  <p className="text-sm text-muted-foreground">Join the Learnova community</p>
+                  <p className="text-sm text-muted-foreground">
+                    Join the Learnova community
+                  </p>
                 </div>
               </div>
             </div>
@@ -291,7 +304,10 @@ setEmailSuggestion(null);
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Full Name */}
                 <div className="space-y-1.5">
-                  <label htmlFor="fullName" className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="fullName"
+                    className="flex items-center gap-2 text-sm font-medium text-foreground"
+                  >
                     <User className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                     Full Name
                   </label>
@@ -308,7 +324,10 @@ setEmailSuggestion(null);
 
                 {/* Roll Number */}
                 <div className="space-y-1.5">
-                  <label htmlFor="rollNumber" className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="rollNumber"
+                    className="flex items-center gap-2 text-sm font-medium text-foreground"
+                  >
                     <Hash className="w-4 h-4 text-violet-500 dark:text-violet-400" />
                     Roll Number
                   </label>
@@ -325,7 +344,10 @@ setEmailSuggestion(null);
 
                 {/* Email — read-only */}
                 <div className="space-y-1.5">
-                  <label htmlFor="emailAddress" className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="emailAddress"
+                    className="flex items-center gap-2 text-sm font-medium text-foreground"
+                  >
                     <Mail className="w-4 h-4 text-pink-500 dark:text-pink-400" />
                     Email Address
                   </label>
@@ -340,7 +362,10 @@ setEmailSuggestion(null);
 
                 {/* Profile Photo */}
                 <div className="space-y-1.5">
-                  <label htmlFor="profilePhoto" className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="profilePhoto"
+                    className="flex items-center gap-2 text-sm font-medium text-foreground"
+                  >
                     <Upload className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                     Profile Photo
                   </label>
@@ -384,8 +409,12 @@ setEmailSuggestion(null);
                   <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-green-500 shadow-lg">
                     <CheckCircle className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="text-lg font-bold text-card-foreground">Registration Successful!</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Welcome to Learnova</p>
+                  <h3 className="text-lg font-bold text-card-foreground">
+                    Registration Successful!
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Welcome to Learnova
+                  </p>
                 </div>
 
                 {/* Details */}
@@ -394,21 +423,27 @@ setEmailSuggestion(null);
                     <User className="w-4 h-4 shrink-0 text-indigo-500 dark:text-indigo-400" />
                     <div>
                       <p className="text-xs text-muted-foreground">Name</p>
-                      <p className="text-sm font-semibold text-foreground">{registeredUser.name}</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {registeredUser.name}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
                     <Hash className="w-4 h-4 shrink-0 text-violet-500 dark:text-violet-400" />
                     <div>
                       <p className="text-xs text-muted-foreground">Roll No</p>
-                      <p className="text-sm font-semibold text-foreground">{registeredUser.rollNo}</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {registeredUser.rollNo}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
                     <Mail className="w-4 h-4 shrink-0 text-pink-500 dark:text-pink-400" />
                     <div>
                       <p className="text-xs text-muted-foreground">Email</p>
-                      <p className="text-sm font-semibold text-foreground">{registeredUser.email}</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {registeredUser.email}
+                      </p>
                     </div>
                   </div>
 

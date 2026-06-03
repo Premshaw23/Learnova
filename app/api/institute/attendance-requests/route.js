@@ -8,10 +8,15 @@ import admin from "firebase-admin";
 export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, ["institute", "admin"]);
+  const { payload: decodedToken } = await requireRole(request, [
+    "institute",
+    "admin",
+  ]);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  
-  const rateLimitResult = await checkRateLimit(`institute_reqs_${ip}_${decodedToken.uid}`);
+
+  const rateLimitResult = await checkRateLimit(
+    `institute_reqs_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many requests. Please slow down.", 429);
   }
@@ -30,7 +35,10 @@ export const GET = withErrorHandler(async (request) => {
       .orderBy("createdAt", "desc");
 
     if (cursor) {
-      const cursorDoc = await db.collection("attendance_requests").doc(cursor).get();
+      const cursorDoc = await db
+        .collection("attendance_requests")
+        .doc(cursor)
+        .get();
       if (cursorDoc.exists) {
         query = query.startAfter(cursorDoc);
       }

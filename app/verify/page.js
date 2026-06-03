@@ -1,11 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebaseConfig";
-import {
-  sendEmailVerification,
-  reload,
-  signOut,
-} from "firebase/auth";
+import { sendEmailVerification, reload, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -29,12 +25,18 @@ export default function EmailVerificationPage() {
   const getDashboardLink = (role) => {
     if (!role) return "/profile";
     switch (role) {
-      case "student": return "/student/dashboard";
-      case "teacher": return "/teacher/dashboard";
-      case "institute": return "/institute/dashboard";
-      case "admin": return "/admin/dashboard";
-      case "parent": return "/parent/dashboard";
-      default: return "/profile";
+      case "student":
+        return "/student/dashboard";
+      case "teacher":
+        return "/teacher/dashboard";
+      case "institute":
+        return "/institute/dashboard";
+      case "admin":
+        return "/admin/dashboard";
+      case "parent":
+        return "/parent/dashboard";
+      default:
+        return "/profile";
     }
   };
 
@@ -73,7 +75,7 @@ export default function EmailVerificationPage() {
     try {
       await sendEmailVerification(user);
       setMessage(
-        "Verification email sent! Please check your inbox and spam folder.",
+        "Verification email sent! Please check your inbox and spam folder."
       );
       setResendCooldown(60); // 60 second cooldown
     } catch (error) {
@@ -100,7 +102,7 @@ export default function EmailVerificationPage() {
         }, 2000);
       } else {
         setMessage(
-          "Email not verified yet. Please check your inbox and click the verification link.",
+          "Email not verified yet. Please check your inbox and click the verification link."
         );
       }
     } catch (error) {

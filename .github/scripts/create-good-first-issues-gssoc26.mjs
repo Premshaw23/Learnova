@@ -627,12 +627,16 @@ async function createIssue(issue) {
     console.log(`   🔗 ${data.html_url}`);
   } else {
     console.error(
-      `❌ Failed to create "${issue.title}": ${data.message || JSON.stringify(data)}`
+      `❌ Failed to create "${issue.title}": ${
+        data.message || JSON.stringify(data)
+      }`
     );
   }
 }
 
-console.log(`🚀 Creating ${ISSUES.length} good-first issues on ${OWNER}/${REPO}...\n`);
+console.log(
+  `🚀 Creating ${ISSUES.length} good-first issues on ${OWNER}/${REPO}...\n`
+);
 
 for (const issue of ISSUES) {
   await createIssue(issue);

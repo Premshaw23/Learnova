@@ -7,7 +7,10 @@ export async function GET(request) {
   const endDate = searchParams.get("endDate");
 
   if (!instituteId) {
-    return NextResponse.json({ error: "instituteId is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "instituteId is required" },
+      { status: 400 }
+    );
   }
 
   if (startDate && endDate && new Date(startDate) > new Date(endDate)) {

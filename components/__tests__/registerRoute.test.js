@@ -73,19 +73,36 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
   });
 
   const createMockFile = (mimeType, size, magicBytes = []) => {
-    const buffer = new Uint8Array(magicBytes.concat(new Array(Math.max(0, 12 - magicBytes.length)).fill(0))).buffer;
+    const buffer = new Uint8Array(
+      magicBytes.concat(new Array(Math.max(0, 12 - magicBytes.length)).fill(0))
+    ).buffer;
     const BaseClass = typeof File !== "undefined" ? File : class {};
     const mockFileObj = Object.create(BaseClass.prototype);
-    Object.defineProperty(mockFileObj, "type", { value: mimeType, writable: true, enumerable: true, configurable: true });
-    Object.defineProperty(mockFileObj, "size", { value: size, writable: true, enumerable: true, configurable: true });
-    Object.defineProperty(mockFileObj, "arrayBuffer", { value: vi.fn().mockResolvedValue(buffer), writable: true, enumerable: true, configurable: true });
+    Object.defineProperty(mockFileObj, "type", {
+      value: mimeType,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+    Object.defineProperty(mockFileObj, "size", {
+      value: size,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+    Object.defineProperty(mockFileObj, "arrayBuffer", {
+      value: vi.fn().mockResolvedValue(buffer),
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
     Object.defineProperty(mockFileObj, "slice", {
       value: vi.fn().mockReturnValue({
         arrayBuffer: vi.fn().mockResolvedValue(buffer),
       }),
       writable: true,
       enumerable: true,
-      configurable: true
+      configurable: true,
     });
     return mockFileObj;
   };
@@ -145,29 +162,35 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     ["user@domain."],
     ["user @domain.com"],
     ["user@ domain.com"],
-  ])("rejects invalid email format '%s' with 400 Bad Request", async (invalidEmail) => {
-    const req = createMockRequest({
-      name: "John Doe",
-      rollNo: "123456",
-      email: invalidEmail,
-      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
-    });
+  ])(
+    "rejects invalid email format '%s' with 400 Bad Request",
+    async (invalidEmail) => {
+      const req = createMockRequest({
+        name: "John Doe",
+        rollNo: "123456",
+        email: invalidEmail,
+        photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
+      });
 
-    const response = await POST(req);
-    const body = await response.json();
+      const response = await POST(req);
+      const body = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(body.error).toBe("Invalid email format");
-    expect(mockInsertOne).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(400);
+      expect(body.error).toBe("Invalid email format");
+      expect(mockInsertOne).not.toHaveBeenCalled();
+    }
+  );
 
   test("rejects request if Authorization header is missing (401)", async () => {
-    const req = createMockRequest({
-      name: "John Doe",
-      rollNo: "123456",
-      email: "user@domain.com",
-      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
-    }, ""); // empty token
+    const req = createMockRequest(
+      {
+        name: "John Doe",
+        rollNo: "123456",
+        email: "user@domain.com",
+        photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
+      },
+      ""
+    ); // empty token
 
     const response = await POST(req);
     const body = await response.json();
@@ -178,12 +201,15 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
   });
 
   test("rejects request if Firebase token is invalid (401)", async () => {
-    const req = createMockRequest({
-      name: "John Doe",
-      rollNo: "123456",
-      email: "user@domain.com",
-      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
-    }, "invalid-token");
+    const req = createMockRequest(
+      {
+        name: "John Doe",
+        rollNo: "123456",
+        email: "user@domain.com",
+        photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
+      },
+      "invalid-token"
+    );
 
     const response = await POST(req);
     const body = await response.json();
@@ -194,12 +220,15 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
   });
 
   test("rejects request if authenticated email does not match requested email (403)", async () => {
-    const req = createMockRequest({
-      name: "John Doe",
-      rollNo: "123456",
-      email: "user@domain.com",
-      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
-    }, "different-user@domain.com");
+    const req = createMockRequest(
+      {
+        name: "John Doe",
+        rollNo: "123456",
+        email: "user@domain.com",
+        photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
+      },
+      "different-user@domain.com"
+    );
 
     const response = await POST(req);
     const body = await response.json();
@@ -214,7 +243,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     mockInsertOne.mockResolvedValue({ insertedId: "mock-id" });
 
     checkRateLimit.mockResolvedValue({ allowed: false });
-    
+
     const req6 = createMockRequest({
       name: "John Doe",
       rollNo: "123456",
@@ -250,10 +279,12 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
   test("handles MongoDB unique index duplicate key error (E11000) by returning 409 and rolling back blob upload", async () => {
     mockFindOne.mockResolvedValue(null);
-    
+
     // Simulate a race condition: another request finished inserting after our findOne check,
     // so MongoDB throws a duplicate key error (code 11000) on our insertOne call.
-    const duplicateKeyError = new Error("E11000 duplicate key error collection: users index: email_1 dup key");
+    const duplicateKeyError = new Error(
+      "E11000 duplicate key error collection: users index: email_1 dup key"
+    );
     duplicateKeyError.code = 11000;
     mockInsertOne.mockRejectedValue(duplicateKeyError);
 

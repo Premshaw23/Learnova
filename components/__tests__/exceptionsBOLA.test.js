@@ -60,12 +60,17 @@ describe("Exceptions BOLA Security Tests", () => {
     mockCollection = db.collection("exceptions");
   });
 
-  const createMockRequest = (url = "http://localhost/api/exceptions", headers = {}) => {
-    const headersMap = new Map(Object.entries({
-      "x-forwarded-for": "127.0.0.1",
-      "authorization": "Bearer valid-token",
-      ...headers
-    }));
+  const createMockRequest = (
+    url = "http://localhost/api/exceptions",
+    headers = {}
+  ) => {
+    const headersMap = new Map(
+      Object.entries({
+        "x-forwarded-for": "127.0.0.1",
+        authorization: "Bearer valid-token",
+        ...headers,
+      })
+    );
     return {
       url,
       headers: {
@@ -77,9 +82,17 @@ describe("Exceptions BOLA Security Tests", () => {
   test("list: restricts teacher to their subjects", async () => {
     verifyFirebaseToken.mockResolvedValue({
       valid: true,
-      decodedToken: { uid: "teacher-1", email: "teacher@domain.com", email_verified: true, role: "teacher" },
+      decodedToken: {
+        uid: "teacher-1",
+        email: "teacher@domain.com",
+        email_verified: true,
+        role: "teacher",
+      },
     });
-    getUserProfile.mockResolvedValue({ role: "teacher", subjects: ["Math", "Science"] });
+    getUserProfile.mockResolvedValue({
+      role: "teacher",
+      subjects: ["Math", "Science"],
+    });
 
     await listGET(createMockRequest("http://localhost/api/exceptions/list"));
 
@@ -90,10 +103,10 @@ describe("Exceptions BOLA Security Tests", () => {
           expect.objectContaining({
             $or: [
               { className: { $in: ["Math", "Science"] } },
-              { class: { $in: ["Math", "Science"] } }
-            ]
-          })
-        ])
+              { class: { $in: ["Math", "Science"] } },
+            ],
+          }),
+        ]),
       })
     );
   });
@@ -101,9 +114,17 @@ describe("Exceptions BOLA Security Tests", () => {
   test("all: restricts teacher to their subjects", async () => {
     verifyFirebaseToken.mockResolvedValue({
       valid: true,
-      decodedToken: { uid: "teacher-1", email: "teacher@domain.com", email_verified: true, role: "teacher" },
+      decodedToken: {
+        uid: "teacher-1",
+        email: "teacher@domain.com",
+        email_verified: true,
+        role: "teacher",
+      },
     });
-    getUserProfile.mockResolvedValue({ role: "teacher", subjects: ["Math", "Science"] });
+    getUserProfile.mockResolvedValue({
+      role: "teacher",
+      subjects: ["Math", "Science"],
+    });
 
     await allGET(createMockRequest("http://localhost/api/exceptions/all"));
 
@@ -113,10 +134,10 @@ describe("Exceptions BOLA Security Tests", () => {
           expect.objectContaining({
             $or: [
               { className: { $in: ["Math", "Science"] } },
-              { class: { $in: ["Math", "Science"] } }
-            ]
-          })
-        ])
+              { class: { $in: ["Math", "Science"] } },
+            ],
+          }),
+        ]),
       })
     );
   });
@@ -124,7 +145,12 @@ describe("Exceptions BOLA Security Tests", () => {
   test("all: allows admin to view all exceptions without subjects filter", async () => {
     verifyFirebaseToken.mockResolvedValue({
       valid: true,
-      decodedToken: { uid: "admin-1", email: "admin@domain.com", email_verified: true, role: "admin" },
+      decodedToken: {
+        uid: "admin-1",
+        email: "admin@domain.com",
+        email_verified: true,
+        role: "admin",
+      },
     });
     getUserProfile.mockResolvedValue({ role: "admin" });
 

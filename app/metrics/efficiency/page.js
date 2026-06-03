@@ -33,7 +33,10 @@ export default function EfficiencyMetricsPage() {
         <p className="text-slate-400 text-sm">
           Detailed workflow analysis and time-savings data will be published
           here. In the meantime, explore the{" "}
-          <Link href="/case-studies/impact" className="text-purple-400 underline hover:text-purple-300">
+          <Link
+            href="/case-studies/impact"
+            className="text-purple-400 underline hover:text-purple-300"
+          >
             Impact Reports
           </Link>{" "}
           page.

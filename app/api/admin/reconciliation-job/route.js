@@ -4,7 +4,10 @@ import { requireAdmin } from "@/lib/rbac";
 import { initializeFirebase, getAdminDb } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
-import { findStaleOperations, cleanupOldOperations } from "@/lib/transactionCoordinator";
+import {
+  findStaleOperations,
+  cleanupOldOperations,
+} from "@/lib/transactionCoordinator";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -41,17 +44,25 @@ export const POST = withErrorHandler(async (request) => {
     results.staleOperationsReviewed = staleOps.length;
 
     for (const op of staleOps) {
-      logger.info(`[reconciliation-job] Processing stale operation: ${op.operationId}`, {
-        operationType: op.operationType,
-        uid: op.uid,
-        status: op.status,
-      });
+      logger.info(
+        `[reconciliation-job] Processing stale operation: ${op.operationId}`,
+        {
+          operationType: op.operationType,
+          uid: op.uid,
+          status: op.status,
+        }
+      );
 
       // If operation failed and was fully compensated, mark as resolved
       if (op.status === "compensating" && op.fullyCompensated) {
         await mongoDB.collection("pending_operations").updateOne(
           { operationId: op.operationId },
-          { $set: { status: "resolved_by_reconciliation", updatedAt: new Date() } }
+          {
+            $set: {
+              status: "resolved_by_reconciliation",
+              updatedAt: new Date(),
+            },
+          }
         );
       }
     }
@@ -74,7 +85,8 @@ export const POST = withErrorHandler(async (request) => {
       const firestoreSnapshot = await firestoreQuery.get();
       if (firestoreSnapshot.empty) break;
       firestoreSnapshot.docs.forEach((doc) => firestoreUids.add(doc.id));
-      firestoreCursor = firestoreSnapshot.docs[firestoreSnapshot.docs.length - 1];
+      firestoreCursor =
+        firestoreSnapshot.docs[firestoreSnapshot.docs.length - 1];
     } while (firestoreCursor);
 
     // Page through MongoDB users
@@ -83,7 +95,11 @@ export const POST = withErrorHandler(async (request) => {
     let mongoCursor = null;
     let lastBatchSize = 0;
     do {
-      let mongoQuery = mongoDB.collection("users").find({}).sort({ _id: 1 }).limit(PAGE_SIZE);
+      let mongoQuery = mongoDB
+        .collection("users")
+        .find({})
+        .sort({ _id: 1 })
+        .limit(PAGE_SIZE);
       if (mongoCursor) {
         mongoQuery = mongoQuery.skip(mongoCursor);
       }
@@ -136,8 +152,11 @@ export const POST = withErrorHandler(async (request) => {
       }
     }
     if (mongoBulkOps.length > 0) {
-      const bulkResult = await mongoDB.collection("users").bulkWrite(mongoBulkOps, { ordered: false });
-      results.mongoToFirestoreReconciled = bulkResult.upsertedCount + bulkResult.modifiedCount;
+      const bulkResult = await mongoDB
+        .collection("users")
+        .bulkWrite(mongoBulkOps, { ordered: false });
+      results.mongoToFirestoreReconciled =
+        bulkResult.upsertedCount + bulkResult.modifiedCount;
     }
 
     // Bulk-reconcile: MongoDB → Firestore
@@ -157,7 +176,9 @@ export const POST = withErrorHandler(async (request) => {
           createdAt: mongoUser.createdAt || new Date().toISOString(),
           lastLogin: mongoUser.lastLogin || null,
         };
-        firestoreBatch.set(db.collection("users").doc(uid), profile, { merge: true });
+        firestoreBatch.set(db.collection("users").doc(uid), profile, {
+          merge: true,
+        });
         firestoreBatchSize++;
         firestoreBatchOps++;
 

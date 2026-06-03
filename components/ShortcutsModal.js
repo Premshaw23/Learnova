@@ -25,25 +25,27 @@ const shortcuts = [
     keys: ["Ctrl", "T"],
     mac: ["⌘", "T"],
     description: "toggle dark/light theme",
-    action: () => window.dispatchEvent(new CustomEvent("learnova:toggle-theme")),
+    action: () =>
+      window.dispatchEvent(new CustomEvent("learnova:toggle-theme")),
   },
   {
     keys: ["Ctrl", "H"],
     mac: ["⌘", "H"],
     description: "go to home/dashboard",
-    action: () => window.location.href = "/",
+    action: () => (window.location.href = "/"),
   },
   {
     keys: ["Ctrl", "L"],
     mac: ["⌘", "L"],
     description: "go to leaderboard",
-    action: () => window.location.href = "/leaderboard",
+    action: () => (window.location.href = "/leaderboard"),
   },
   {
     keys: ["Ctrl", "N"],
     mac: ["⌘", "N"],
     description: "open notifications",
-    action: () => window.dispatchEvent(new CustomEvent("learnova:open-notifications")),
+    action: () =>
+      window.dispatchEvent(new CustomEvent("learnova:open-notifications")),
   },
 ];
 
@@ -62,7 +64,8 @@ export default function ShortcutsModal() {
   useEffect(() => {
     const handleOpenTrigger = () => setIsOpen(true);
     window.addEventListener("learnova:open-shortcuts", handleOpenTrigger);
-    return () => window.removeEventListener("learnova:open-shortcuts", handleOpenTrigger);
+    return () =>
+      window.removeEventListener("learnova:open-shortcuts", handleOpenTrigger);
   }, []);
 
   // 2. Focus close button when opened
@@ -77,7 +80,11 @@ export default function ShortcutsModal() {
     const handleKeyDown = (e) => {
       // Ignore global shortcut triggers if the user is writing text inside input fields
       const targetTag = e.target.tagName;
-      if (targetTag === "INPUT" || targetTag === "TEXTAREA" || e.target.isContentEditable) {
+      if (
+        targetTag === "INPUT" ||
+        targetTag === "TEXTAREA" ||
+        e.target.isContentEditable
+      ) {
         return;
       }
 
@@ -106,7 +113,9 @@ export default function ShortcutsModal() {
           return;
         }
 
-        const match = shortcuts.find((s) => s.keys[1] === keyUpper || s.keys[1] === e.key);
+        const match = shortcuts.find(
+          (s) => s.keys[1] === keyUpper || s.keys[1] === e.key
+        );
         if (match && typeof match.action === "function") {
           e.preventDefault();
           match.action();
@@ -121,7 +130,9 @@ export default function ShortcutsModal() {
   return (
     <div
       className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 transition-all duration-300 ease-out ${
-        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        isOpen
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
       }`}
       onClick={onClose}
       role="dialog"

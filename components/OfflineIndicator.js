@@ -53,9 +53,12 @@ export default function OfflineIndicator() {
           Syncing records...
         </div>
       )}
-      
+
       {!isOffline && queueCount === 0 && syncStatus === "idle" && (
-        <div className="bg-green-500/90 text-white backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium animate-fade-out" style={{ animationDuration: '3s', animationFillMode: 'forwards' }}>
+        <div
+          className="bg-green-500/90 text-white backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium animate-fade-out"
+          style={{ animationDuration: "3s", animationFillMode: "forwards" }}
+        >
           <CheckCircle className="w-4 h-4" />
           Synced
         </div>

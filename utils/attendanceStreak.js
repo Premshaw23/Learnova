@@ -1,10 +1,6 @@
 function toUTCDay(date) {
   const d = new Date(date);
-  return Date.UTC(
-    d.getUTCFullYear(),
-    d.getUTCMonth(),
-    d.getUTCDate()
-  );
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -16,7 +12,9 @@ export function calculateCurrentStreak(records) {
   const filtered = safeRecords.filter((r) => r.date);
   if (filtered.length === 0) return 0;
 
-  const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sorted = [...filtered].sort(
+    (a, b) => new Date(b.date) - new Date(a.date)
+  );
 
   const unique = [];
   const seen = new Set();
@@ -64,7 +62,9 @@ export function calculateLongestStreak(records) {
   const filtered = safeRecords.filter((r) => r.date);
   if (filtered.length === 0) return 0;
 
-  const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sorted = [...filtered].sort(
+    (a, b) => new Date(b.date) - new Date(a.date)
+  );
 
   const unique = [];
   const seen = new Set();
@@ -127,7 +127,9 @@ export function calculateConsistency(records) {
 
   if (monthRecords.length === 0) return 0;
 
-  const sorted = [...monthRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sorted = [...monthRecords].sort(
+    (a, b) => new Date(b.date) - new Date(a.date)
+  );
 
   const unique = [];
   const seen = new Set();

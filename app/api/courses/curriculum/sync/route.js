@@ -5,7 +5,10 @@ import { requireRole } from "@/lib/rbac";
 export async function POST(request) {
   try {
     // Authenticate and authorize — only teachers and admins can modify curricula
-    const { payload, profile } = await requireRole(request, ["teacher", "admin"]);
+    const { payload, profile } = await requireRole(request, [
+      "teacher",
+      "admin",
+    ]);
 
     const body = await request.json();
     const { courseId, modules } = body;
@@ -31,13 +34,15 @@ export async function POST(request) {
 
       // Ownership check: only the original creator or an admin can modify a curriculum
       if (profile?.role !== "admin") {
-        const existing = await db.collection("course_curriculums").findOne(
-          { courseId },
-          { projection: { ownerId: 1 } }
-        );
+        const existing = await db
+          .collection("course_curriculums")
+          .findOne({ courseId }, { projection: { ownerId: 1 } });
         if (existing && existing.ownerId !== payload.uid) {
           return NextResponse.json(
-            { success: false, error: "Forbidden: You do not own this course curriculum" },
+            {
+              success: false,
+              error: "Forbidden: You do not own this course curriculum",
+            },
             { status: 403 }
           );
         }
@@ -54,8 +59,8 @@ export async function POST(request) {
           duration: les.duration || "15 mins",
           type: les.type || "video",
           completed: les.completed || false,
-          order: lesIdx
-        }))
+          order: lesIdx,
+        })),
       }));
 
       await db.collection("course_curriculums").updateOne(
@@ -80,7 +85,7 @@ export async function POST(request) {
       persisted: isDbPersisted,
       message: isDbPersisted
         ? "Curriculum synced atomically to MongoDB successfully"
-        : "Curriculum cached successfully (Demo fallback mode active)"
+        : "Curriculum cached successfully (Demo fallback mode active)",
     });
   } catch (error) {
     console.error("POST Curriculum Sync API Error:", error);

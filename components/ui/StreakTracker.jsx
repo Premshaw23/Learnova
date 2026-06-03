@@ -19,7 +19,11 @@ export default function StreakTracker({ className }) {
     try {
       const today = new Date();
       // Zero out time to get accurate calendar day comparisons
-      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const todayMidnight = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
 
       const storedStreak = localStorage.getItem("currentStreak");
       const storedLastActive = localStorage.getItem("lastActiveDate");
@@ -75,15 +79,23 @@ export default function StreakTracker({ className }) {
           : "text-zinc-400 bg-zinc-100 border-zinc-200 dark:bg-zinc-900/60 dark:border-zinc-800 dark:text-zinc-500",
         className
       )}
-      title={isActive ? `Active learning streak: ${streak} days!` : "Start your daily learning streak today!"}
+      title={
+        isActive
+          ? `Active learning streak: ${streak} days!`
+          : "Start your daily learning streak today!"
+      }
     >
       <Flame
         className={cn(
           "w-4 h-4 transition-transform duration-300",
-          isActive ? "text-orange-500 fill-orange-500 scale-110 drop-shadow-[0_0_4px_rgba(249,115,22,0.5)]" : "text-zinc-400 dark:text-zinc-600"
+          isActive
+            ? "text-orange-500 fill-orange-500 scale-110 drop-shadow-[0_0_4px_rgba(249,115,22,0.5)]"
+            : "text-zinc-400 dark:text-zinc-600"
         )}
       />
-      <span>{streak} Day{streak !== 1 ? "s" : ""} Streak</span>
+      <span>
+        {streak} Day{streak !== 1 ? "s" : ""} Streak
+      </span>
     </div>
   );
 }

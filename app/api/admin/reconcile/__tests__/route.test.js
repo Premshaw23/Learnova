@@ -84,7 +84,9 @@ import admin from "firebase-admin";
 describe("POST /api/admin/reconcile", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    requireAdmin.mockResolvedValue({ payload: { role: "admin", uid: "admin-1" } });
+    requireAdmin.mockResolvedValue({
+      payload: { role: "admin", uid: "admin-1" },
+    });
   });
 
   const createMockRequest = (body) => {
@@ -101,10 +103,18 @@ describe("POST /api/admin/reconcile", () => {
       uid: "user-1",
       customClaims: { role: "student" },
     });
-    admin.firestore().collection().doc().get.mockResolvedValue({
-      exists: true,
-      data: () => ({ email: "student@example.com", fullName: "Student", role: "student" }),
-    });
+    admin
+      .firestore()
+      .collection()
+      .doc()
+      .get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          email: "student@example.com",
+          fullName: "Student",
+          role: "student",
+        }),
+      });
 
     const db = await connectDb();
     db.collection().findOne.mockResolvedValue({
@@ -127,10 +137,18 @@ describe("POST /api/admin/reconcile", () => {
       uid: "user-2",
       customClaims: { role: "student" }, // Mismatched claim (Firestore says teacher)
     });
-    admin.firestore().collection().doc().get.mockResolvedValue({
-      exists: true,
-      data: () => ({ email: "teacher@example.com", fullName: "Teacher Name", role: "teacher" }),
-    });
+    admin
+      .firestore()
+      .collection()
+      .doc()
+      .get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          email: "teacher@example.com",
+          fullName: "Teacher Name",
+          role: "teacher",
+        }),
+      });
 
     const db = await connectDb();
     db.collection().findOne.mockResolvedValue({
@@ -160,6 +178,8 @@ describe("POST /api/admin/reconcile", () => {
       })
     );
 
-    expect(admin.auth().setCustomUserClaims).toHaveBeenCalledWith("user-2", { role: "teacher" });
+    expect(admin.auth().setCustomUserClaims).toHaveBeenCalledWith("user-2", {
+      role: "teacher",
+    });
   });
 });

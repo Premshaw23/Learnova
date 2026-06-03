@@ -16,11 +16,15 @@ export function TimerSection({
   applyManualTime,
   manualMinutes,
   setManualMinutes,
-  isDark
+  isDark,
 }) {
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60).toString().padStart(2, "0");
-    const secs = Math.floor(seconds % 60).toString().padStart(2, "0");
+    const mins = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const secs = Math.floor(seconds % 60)
+      .toString()
+      .padStart(2, "0");
     return `${mins}:${secs}`;
   };
 
@@ -41,7 +45,11 @@ export function TimerSection({
     >
       <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
         <div>
-          <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+          <p
+            className={`text-sm ${
+              isDark ? "text-slate-300" : "text-slate-600"
+            }`}
+          >
             Pomodoro Timer
           </p>
           <h2 className="text-2xl font-semibold flex items-center gap-2">
@@ -80,19 +88,23 @@ export function TimerSection({
             <div
               className="absolute inset-0 rounded-full"
               style={{
-                background: `conic-gradient(#a855f7 ${(1 - timeLeft / sessionSeconds) * 360}deg, rgba(255,255,255,0.08) 0deg)`,
+                background: `conic-gradient(#a855f7 ${
+                  (1 - timeLeft / sessionSeconds) * 360
+                }deg, rgba(255,255,255,0.08) 0deg)`,
               }}
             />
-            <div
-              className="absolute inset-2 rounded-full bg-slate-100/90 dark:bg-slate-950/70 flex items-center justify-center"
-            >
+            <div className="absolute inset-2 rounded-full bg-slate-100/90 dark:bg-slate-950/70 flex items-center justify-center">
               <span className={`text-3xl font-bold ${modeAccent}`}>
                 {formatTime(timeLeft)}
               </span>
             </div>
           </div>
           <div className="space-y-2">
-            <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+            <p
+              className={`text-sm ${
+                isDark ? "text-slate-300" : "text-slate-600"
+              }`}
+            >
               Focus sessions
             </p>
             <motion.div
@@ -103,7 +115,11 @@ export function TimerSection({
               <Flame className="w-5 h-5 text-orange-300" />
               {focusSessions} completed
             </motion.div>
-            <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+            <p
+              className={`text-sm ${
+                isDark ? "text-slate-300" : "text-slate-600"
+              }`}
+            >
               Focus minutes today: {focusMinutes} min
             </p>
           </div>
@@ -116,7 +132,11 @@ export function TimerSection({
               hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-white font-semibold
               flex items-center gap-2 shadow-lg shadow-purple-500/20 transition-all duration-300"
           >
-            {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            {isRunning ? (
+              <Pause className="w-4 h-4" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}
             {isRunning ? "Pause" : "Start"}
           </button>
           <button
@@ -140,7 +160,9 @@ export function TimerSection({
           >
             <label
               htmlFor="pomodoro-minutes"
-              className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}
+              className={`text-xs ${
+                isDark ? "text-slate-400" : "text-slate-500"
+              }`}
             >
               Min
             </label>
@@ -152,7 +174,11 @@ export function TimerSection({
               value={manualMinutes}
               onChange={(event) => setManualMinutes(event.target.value)}
               className={`w-14 rounded-lg bg-transparent border px-2 py-1 text-sm text-center
-                ${isDark ? "border-white/10 text-white" : "border-slate-200 text-slate-900"}
+                ${
+                  isDark
+                    ? "border-white/10 text-white"
+                    : "border-slate-200 text-slate-900"
+                }
                 focus:outline-none focus:ring-2 focus:ring-purple-400/40`}
             />
             <button

@@ -13,12 +13,14 @@ function normalizeName(name, path) {
 
   if (path === "/") return "Home";
 
-  return path
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => segment.replace(/[-_]/g, " "))
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ") || FALLBACK_PAGE_NAME;
+  return (
+    path
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => segment.replace(/[-_]/g, " "))
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(" ") || FALLBACK_PAGE_NAME
+  );
 }
 
 function sanitizeEntries(entries) {
@@ -33,7 +35,8 @@ function sanitizeEntries(entries) {
         path,
         name: normalizeName(entry?.name, path),
         timestamp:
-          typeof entry?.timestamp === "number" && Number.isFinite(entry.timestamp)
+          typeof entry?.timestamp === "number" &&
+          Number.isFinite(entry.timestamp)
             ? entry.timestamp
             : 0,
       };
@@ -58,7 +61,10 @@ export function addRecentlyVisitedPage(page) {
 
   const existing = getRecentlyVisitedPages();
   const deduped = existing.filter((entry) => entry.path !== path);
-  const updated = [{ path, name, timestamp }, ...deduped].slice(0, MAX_RECENT_PAGES);
+  const updated = [{ path, name, timestamp }, ...deduped].slice(
+    0,
+    MAX_RECENT_PAGES
+  );
 
   safeLocalStorageSet(STORAGE_KEY, updated);
   return updated;

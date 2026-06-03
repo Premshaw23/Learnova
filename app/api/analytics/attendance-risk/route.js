@@ -19,7 +19,11 @@ import { connectDb } from "@/lib/mongodb";
  *  - good     : attendanceRate >= 80
  */
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken, profile } = await requireRole(request, ["teacher", "institute", "admin"]);
+  const { payload: decodedToken, profile } = await requireRole(request, [
+    "teacher",
+    "institute",
+    "admin",
+  ]);
 
   const db = await connectDb();
 
@@ -100,10 +104,7 @@ export const GET = withErrorHandler(async (request) => {
             { $eq: ["$totalDays", 0] },
             100,
             {
-              $multiply: [
-                { $divide: ["$presentDays", "$totalDays"] },
-                100,
-              ],
+              $multiply: [{ $divide: ["$presentDays", "$totalDays"] }, 100],
             },
           ],
         },
@@ -165,11 +166,15 @@ export const GET = withErrorHandler(async (request) => {
           $switch: {
             branches: [
               {
-                case: { $lt: [{ $subtract: ["$recentRate", "$priorRate"] }, -5] },
+                case: {
+                  $lt: [{ $subtract: ["$recentRate", "$priorRate"] }, -5],
+                },
                 then: "declining",
               },
               {
-                case: { $gt: [{ $subtract: ["$recentRate", "$priorRate"] }, 5] },
+                case: {
+                  $gt: [{ $subtract: ["$recentRate", "$priorRate"] }, 5],
+                },
                 then: "improving",
               },
             ],

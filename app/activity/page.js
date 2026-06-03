@@ -101,7 +101,9 @@ export default function ActivityPage() {
       mouseMoveRaf.current = requestAnimationFrame(() => {
         const orb = orbRef.current;
         if (orb) {
-          orb.style.transform = `translate3d(${e.clientX - 192}px, ${e.clientY - 192}px, 0)`;
+          orb.style.transform = `translate3d(${e.clientX - 192}px, ${
+            e.clientY - 192
+          }px, 0)`;
         }
       });
     };
@@ -525,7 +527,11 @@ export default function ActivityPage() {
                           className="snap-start shrink-0 w-[300px]"
                         >
                           <Card
-                            className={`relative bg-card backdrop-blur-xl border border-border h-full overflow-hidden ${activity.saving ? "animate-pulse shadow-none border-dashed border-accent/50" : "shadow-lg shadow-accent/10"}`}
+                            className={`relative bg-card backdrop-blur-xl border border-border h-full overflow-hidden ${
+                              activity.saving
+                                ? "animate-pulse shadow-none border-dashed border-accent/50"
+                                : "shadow-lg shadow-accent/10"
+                            }`}
                           >
                             {/* Optimistic saving indicator */}
                             {activity.saving && (
@@ -775,7 +781,9 @@ export default function ActivityPage() {
                             ?.label
                         }`}
                       {selectedLevel !== "all" &&
-                        ` for ${levels.find((l) => l.id === selectedLevel)?.label}`}
+                        ` for ${
+                          levels.find((l) => l.id === selectedLevel)?.label
+                        }`}
                     </p>
                   </div>
                 </Reveal>

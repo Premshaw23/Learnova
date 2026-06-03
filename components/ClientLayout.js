@@ -68,10 +68,10 @@ const LearnovaChatbot = dynamic(() => import("@/components/LearnovaChatbot"), {
 
 export default function ClientLayout({ children }) {
   const [modalState, dispatch] = useReducer(modalReducer, modalInitialState);
-  
+
   // Visibility state tracking logic for Nova Chat Modal
   const [isChatOpen, setIsChatOpen] = useState(false);
-  
+
   const { user, userProfile } = useAuth();
   const pathname = usePathname();
 
@@ -89,17 +89,19 @@ export default function ClientLayout({ children }) {
 
   const handleEscape = useCallback(() => {
     dispatch({ type: "CLOSE_ALL" });
-    setIsChatOpen(false); 
+    setIsChatOpen(false);
     window.dispatchEvent(new CustomEvent("learnova:escape"));
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const listeners = Object.entries(modalEventMap).map(([eventName, actionType]) => {
-      const listener = () => dispatch({ type: actionType });
-      window.addEventListener(eventName, listener);
-      return [eventName, listener];
-    });
+    const listeners = Object.entries(modalEventMap).map(
+      ([eventName, actionType]) => {
+        const listener = () => dispatch({ type: actionType });
+        window.addEventListener(eventName, listener);
+        return [eventName, listener];
+      }
+    );
 
     return () => {
       listeners.forEach(([eventName, listener]) => {
@@ -125,8 +127,11 @@ export default function ClientLayout({ children }) {
             : input instanceof URL
               ? input.toString()
               : requestInput?.url || "";
-        const requestMethod =
-          (init.method || requestInput?.method || "GET").toUpperCase();
+        const requestMethod = (
+          init.method ||
+          requestInput?.method ||
+          "GET"
+        ).toUpperCase();
 
         if (shouldAttachCsrfToken(requestUrl, requestMethod)) {
           let csrfToken = getClientCsrfToken();
@@ -135,7 +140,9 @@ export default function ClientLayout({ children }) {
           }
 
           if (csrfToken) {
-            const requestHeaders = new Headers(requestInput?.headers || init.headers || {});
+            const requestHeaders = new Headers(
+              requestInput?.headers || init.headers || {}
+            );
             if (!requestHeaders.has("x-csrf-token")) {
               requestHeaders.set("X-CSRF-Token", csrfToken);
             }
@@ -183,22 +190,28 @@ export default function ClientLayout({ children }) {
       try {
         const today = new Date();
         const offset = today.getTimezoneOffset();
-        const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+        const localToday = new Date(today.getTime() - offset * 60 * 1000);
         const todayDateStr = localToday.toISOString().split("T")[0];
 
-        let clientStreak = normalizeStreakCount(localStorage.getItem("learnova_site_streak"));
+        let clientStreak = normalizeStreakCount(
+          localStorage.getItem("learnova_site_streak")
+        );
         // 1. Get client-side localStorage values
-        let clientLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
+        let clientLastVisit =
+          localStorage.getItem("learnova_site_last_visit") || "";
         let clientHistory = [];
         try {
-          const historyStr = localStorage.getItem("learnova_site_visit_history");
+          const historyStr = localStorage.getItem(
+            "learnova_site_visit_history"
+          );
           clientHistory = historyStr ? JSON.parse(historyStr) : [];
         } catch (_) {
           clientHistory = [];
         }
         if (!Array.isArray(clientHistory)) clientHistory = [];
 
-        const firestoreStreak = normalizeStreakCount(userProfile?.siteStreak) ?? 0;
+        const firestoreStreak =
+          normalizeStreakCount(userProfile?.siteStreak) ?? 0;
         const firestoreLastVisit = userProfile?.siteLastVisit || "";
         const firestoreHistory = userProfile?.siteVisitHistory || [];
 
@@ -209,22 +222,31 @@ export default function ClientLayout({ children }) {
         if (!lastVisit && firestoreLastVisit) {
           currentStreak = firestoreStreak;
           lastVisit = firestoreLastVisit;
-          history = Array.isArray(firestoreHistory) ? [...firestoreHistory] : [];
-          
-          localStorage.setItem("learnova_site_streak", currentStreak.toString());
+          history = Array.isArray(firestoreHistory)
+            ? [...firestoreHistory]
+            : [];
+
+          localStorage.setItem(
+            "learnova_site_streak",
+            currentStreak.toString()
+          );
           localStorage.setItem("learnova_site_last_visit", lastVisit);
-          localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
+          localStorage.setItem(
+            "learnova_site_visit_history",
+            JSON.stringify(history)
+          );
         }
 
         if (lastVisit !== todayDateStr) {
           let updatedStreak = currentStreak;
-          
+
           if (!lastVisit) {
             updatedStreak = 1;
           } else {
             const lastVisitDate = new Date(lastVisit);
             const currentVisitDate = new Date(todayDateStr);
-            const diffTime = currentVisitDate.getTime() - lastVisitDate.getTime();
+            const diffTime =
+              currentVisitDate.getTime() - lastVisitDate.getTime();
             const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
             if (diffDays === 1) {
@@ -244,25 +266,40 @@ export default function ClientLayout({ children }) {
           currentStreak = updatedStreak;
           lastVisit = todayDateStr;
 
-          localStorage.setItem("learnova_site_streak", currentStreak.toString());
+          localStorage.setItem(
+            "learnova_site_streak",
+            currentStreak.toString()
+          );
           localStorage.setItem("learnova_site_last_visit", lastVisit);
-          localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
+          localStorage.setItem(
+            "learnova_site_visit_history",
+            JSON.stringify(history)
+          );
 
           if (currentStreak > 1) {
-            toast.success(`🔥 Blazing visit streak! ${currentStreak} consecutive days. Keep it up!`, {
-              icon: "🔥",
-              duration: 5000,
-            });
+            toast.success(
+              `🔥 Blazing visit streak! ${currentStreak} consecutive days. Keep it up!`,
+              {
+                icon: "🔥",
+                duration: 5000,
+              }
+            );
           } else {
-            toast.success("🌱 Daily streak started! Log in tomorrow to protect your flame.", {
-              icon: "🌱",
-              duration: 5000,
-            });
+            toast.success(
+              "🌱 Daily streak started! Log in tomorrow to protect your flame.",
+              {
+                icon: "🌱",
+                duration: 5000,
+              }
+            );
           }
         } else {
           if (!history.includes(todayDateStr)) {
             history.push(todayDateStr);
-            localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
+            localStorage.setItem(
+              "learnova_site_visit_history",
+              JSON.stringify(history)
+            );
           }
         }
 
@@ -272,24 +309,34 @@ export default function ClientLayout({ children }) {
             const snapshot = await transaction.get(userDocRef);
             if (!snapshot.exists()) return;
 
-            const storedStreak = normalizeStreakCount(snapshot.data().siteStreak);
+            const storedStreak = normalizeStreakCount(
+              snapshot.data().siteStreak
+            );
             const storedLastVisit = snapshot.data().siteLastVisit || "";
-            const storedHistory = Array.isArray(snapshot.data().siteVisitHistory)
+            const storedHistory = Array.isArray(
+              snapshot.data().siteVisitHistory
+            )
               ? snapshot.data().siteVisitHistory
               : [];
 
             const mergedStreak = Math.max(currentStreak, storedStreak);
-            const mergedLastVisit = lastVisit > storedLastVisit ? lastVisit : storedLastVisit;
-            const mergedHistory = [...new Set([...storedHistory, ...history])].slice(-30);
+            const mergedLastVisit =
+              lastVisit > storedLastVisit ? lastVisit : storedLastVisit;
+            const mergedHistory = [
+              ...new Set([...storedHistory, ...history]),
+            ].slice(-30);
 
-            transaction.set(userDocRef, {
-              siteStreak: mergedStreak,
-              siteLastVisit: mergedLastVisit,
-              siteVisitHistory: mergedHistory,
-            }, { merge: true });
+            transaction.set(
+              userDocRef,
+              {
+                siteStreak: mergedStreak,
+                siteLastVisit: mergedLastVisit,
+                siteVisitHistory: mergedHistory,
+              },
+              { merge: true }
+            );
           });
         }
-
       } catch (error) {
         console.error("[streak-sync] Sync error:", error);
       }
@@ -313,13 +360,13 @@ export default function ClientLayout({ children }) {
       name: getRouteDisplayName(pathname, document.title),
     });
   }, [pathname]);
-  
+
   useIdleTimeout();
 
   return (
     <>
       {children}
-      
+
       <InstallPWA />
       <ShortcutsModal
         isOpen={modalState.isShortcutsOpen}
@@ -329,11 +376,11 @@ export default function ClientLayout({ children }) {
         isOpen={modalState.isSearchOpen}
         onClose={() => dispatch({ type: "CLOSE_ALL" })}
       />
-      
+
       {/* 💥 DEAD SPARKLE FLOATING BUTTON REMOVED FROM HERE FOR CLEAN VIEWPORT CONTROL */}
 
       <ErrorBoundary>
-        <LearnovaChatbot 
+        <LearnovaChatbot
           isOpen={isChatOpen}
           user={user}
           onClose={() => setIsChatOpen(false)}

@@ -15,22 +15,30 @@ vi.mock("@/lib/mongodb", () => ({
         sort: vi.fn().mockReturnValue({
           skip: vi.fn().mockReturnValue({
             limit: vi.fn().mockReturnValue({
-              toArray: vi.fn().mockResolvedValue([{ userMessage: "Hi", botMessage: "Hello" }])
-            })
-          })
-        })
-      })
-    })
-  })
+              toArray: vi
+                .fn()
+                .mockResolvedValue([
+                  { userMessage: "Hi", botMessage: "Hello" },
+                ]),
+            }),
+          }),
+        }),
+      }),
+    }),
+  }),
 }));
 
-const createMockRequest = (headers, body, url = "http://localhost/api/conversations") => ({
+const createMockRequest = (
+  headers,
+  body,
+  url = "http://localhost/api/conversations"
+) => ({
   headers: {
     get: (name) => headers[name.toLowerCase()] || null,
   },
   json: vi.fn().mockResolvedValue(body),
   text: vi.fn().mockResolvedValue(JSON.stringify(body)),
-  url
+  url,
 });
 
 describe("POST /api/conversations - Auth Security", () => {
@@ -42,7 +50,10 @@ describe("POST /api/conversations - Auth Security", () => {
   test("rejects unauthenticated request with 401 when requireAuth throws", async () => {
     requireAuth.mockRejectedValue(new AppError("Unauthorized", 401));
 
-    const req = createMockRequest({}, { userMessage: "Hi", botMessage: "Hello" });
+    const req = createMockRequest(
+      {},
+      { userMessage: "Hi", botMessage: "Hello" }
+    );
     const response = await POST(req);
     const body = await response.json();
 
