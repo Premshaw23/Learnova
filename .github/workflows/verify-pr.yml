@@ -19,10 +19,13 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci
 
-      - name: Verify Linter and Formatters
-        run: npm run lint --if-present
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run type checker
+        run: npm run typecheck
 
       - name: Execute Vitest Unit Tests
         run: npm run test
