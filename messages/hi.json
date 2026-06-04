@@ -1,0 +1,50 @@
+{
+  "nav": {
+    "home": "होम",
+    "about": "हमारे बारे में",
+    "contact": "संपर्क करें",
+    "login": "लॉग इन",
+    "signup": "साइन अप"
+  },
+  "about": {
+    "welcome": "Learnova में आपका स्वागत है",
+    "mission": "हमारा मिशन",
+    "impact": "हमारा प्रभाव",
+    "explore": "अन्वेषण करें"
+  },
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "error": "कुछ गलत हो गया",
+    "try_again": "पुनः प्रयास करें",
+    "go_back": "वापस जाएं"
+  },
+  "parentPortal": {
+    "dashboard": {
+      "title": "अभिभावक पोर्टल",
+      "welcome": "अभिभावक डैशबोर्ड में आपका स्वागत है",
+      "subtitle": "अपने बच्चे की शैक्षणिक प्रगति और गतिविधियों पर नज़र रखें।"
+    },
+    "navigation": {
+      "overview": "अवलोकन",
+      "attendance": "उपस्थिति",
+      "grades": "ग्रेड और अंक",
+      "notices": "सूचनाएं",
+      "fees": "शुल्क विवरण"
+    },
+    "metrics": {
+      "attendanceRate": "उपस्थिति दर",
+      "currentGrade": "वर्तमान ग्रेड",
+      "pendingFees": "बकाया शुल्क",
+      "activeWarnings": "सक्रिय चेतावनियाँ"
+    },
+    "alerts": {
+      "lowAttendanceWarning": "चेतावनी: आपके बच्चे की उपस्थिति आवश्यक न्यूनतम सीमा से नीचे है।",
+      "noDataAvailable": "प्रदर्शित करने के लिए कोई डेटा उपलब्ध नहीं है।"
+    },
+    "buttons": {
+      "viewDetails": "विवरण देखें",
+      "downloadReport": "रिपोर्ट डाउनलोड करें",
+      "contactTeacher": "शिक्षक से संपर्क करें"
+    }
+  }
+}

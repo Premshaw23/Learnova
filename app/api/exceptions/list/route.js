@@ -4,6 +4,8 @@ import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
+import { AppError, ForbiddenError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { escapeRegex, sanitizeSortField } from "@/utils/mongoUtils";
 
 // Forces Next.js to treat this as a runtime API instead of trying to statically compile it during npm run build
@@ -20,8 +22,12 @@ const ALLOWED_SORT_FIELDS = new Set([
 
 export const GET = withErrorHandler(async (request) => {
   const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher", "student"]);
-
-    const { searchParams } = new URL(request.url);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`exceptions_list_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
+  const { searchParams } = new URL(request.url);
 
     // Pagination - extract and validate query parameters
     const pageParam = searchParams.get("page");
@@ -58,14 +64,32 @@ export const GET = withErrorHandler(async (request) => {
       status: "pending",
     };
 
+    // Tenant isolation
+    const userInstituteId = profile?.instituteId || (profile?.role === "institute" ? profile?.uid : null);
+    if (userInstituteId) {
+      query.instituteId = userInstituteId;
+    } else if (profile?.role !== "admin") {
+      throw new ForbiddenError("Forbidden: User profile missing institute affiliation.");
+    }
+
     // Role-based filtering
     if (profile.role === "student") {
       query.studentEmail = decodedToken.email;
+    } else if (profile.role === "teacher") {
+      const teacherSubjects = profile.subjects || [];
+      query.$and = [
+        {
+          $or: [
+            { className: { $in: teacherSubjects } },
+            { class: { $in: teacherSubjects } }
+          ]
+        }
+      ];
     }
 
     // Search filter
     if (search) {
-      query.$or = [
+      const searchOr = [
         {
           reason: {
             $regex: search,
@@ -79,6 +103,11 @@ export const GET = withErrorHandler(async (request) => {
           },
         },
       ];
+      if (query.$and) {
+        query.$and.push({ $or: searchOr });
+      } else {
+        query.$or = searchOr;
+      }
     }
 
     // Total count

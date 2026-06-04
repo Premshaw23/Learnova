@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Image from "next/image";
 import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import contributors from "@/data/contributors.json";
@@ -8,6 +10,8 @@ const FALLBACK =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%231e293b'/%3E%3Ccircle cx='50' cy='38' r='18' fill='%23475569'/%3E%3Cellipse cx='50' cy='84' rx='28' ry='20' fill='%23475569'/%3E%3C/svg%3E";
 
 function ContributorCard({ username, name, admin }) {
+  const [imgSrc, setImgSrc] = useState(`https://github.com/${username}.png?size=160`);
+
   return (
     <a
       href={`https://github.com/${username}`}
@@ -22,14 +26,14 @@ function ContributorCard({ username, name, admin }) {
             : "h-16 w-16 ring-1 ring-white/10 group-hover:ring-accent/40"
         } transition-all duration-300`}
       >
-        <img
-          src={`https://github.com/${username}.png?size=160`}
+        <Image
+          src={imgSrc}
           alt={admin ? name : username}
           width={admin ? 80 : 64}
           height={admin ? 80 : 64}
           className="h-full w-full object-cover"
-          onError={(e) => {
-            e.currentTarget.src = FALLBACK;
+          onError={() => {
+            setImgSrc(FALLBACK);
           }}
         />
       </div>

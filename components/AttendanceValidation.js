@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast"; // or whatever toast library you're using
 import { useAuth } from "@/hooks/useAuth";
+import { apiFetch } from "@/lib/apiClient";
 import {
   AlertCircle,
   MapPin,
@@ -42,15 +43,125 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     currentLocation: null, // Add this field
   });
 
+  const modalContainerRef = useRef(null);
+  const triggerElementRef = useRef(null);
+  const componentMounted = useRef(true);
+
+  useEffect(() => {
+    componentMounted.current = true;
+    return () => {
+      componentMounted.current = false;
+    };
+  }, []);
+
+  // Close exception modal on Escape key press
+  useEffect(() => {
+    if (!showExceptionModal) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setShowExceptionModal(false);
+        setExceptionForm({
+          reason: "",
+          details: "",
+          studentId: "",
+          studentName: "",
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showExceptionModal]);
+
+  // Trap focus and restore focus on close for exception modal
+  useEffect(() => {
+    if (showExceptionModal) {
+      // Save trigger element for focus restoration on close
+      if (!triggerElementRef.current) {
+        triggerElementRef.current = document.activeElement;
+      }
+
+      // Shift focus inside modal initially after paint
+      const focusTimer = setTimeout(() => {
+        if (modalContainerRef.current) {
+          const focusableElements = modalContainerRef.current.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusableElements.length > 0) {
+            focusableElements[0].focus();
+          }
+        }
+      }, 50);
+
+      const handleTabTrap = (e) => {
+        if (e.key !== "Tab") return;
+        if (!modalContainerRef.current) return;
+
+        const focusableElements = modalContainerRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          // Tab
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      };
+
+      window.addEventListener("keydown", handleTabTrap);
+      return () => {
+        window.removeEventListener("keydown", handleTabTrap);
+        clearTimeout(focusTimer);
+      };
+    } else {
+      // Restore focus on close
+      const target = triggerElementRef.current;
+      const restoreFocus = () => {
+        let activeTarget = target;
+        if (!activeTarget || activeTarget === document.body || !document.body.contains(activeTarget)) {
+          const buttons = Array.from(document.querySelectorAll("button"));
+          activeTarget = buttons.find((btn) => btn.getAttribute("class")?.includes("border-orange-500")) ||
+                         buttons.find((btn) => btn.textContent.includes("Request Exception"));
+        }
+        if (activeTarget && typeof activeTarget.focus === "function") {
+          activeTarget.focus();
+        }
+      };
+
+      // Run synchronously for standard browser flows
+      restoreFocus();
+      // Run asynchronously as backup to bypass JSDOM unmount focus resets after React batching settles
+      const restoreTimer = setTimeout(restoreFocus, 50);
+
+      triggerElementRef.current = null;
+      return () => clearTimeout(restoreTimer);
+    }
+  }, [showExceptionModal]);
+
   // Load settings from secure API endpoint (with error handling & retry)
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     if (!user) return;
     setSettingsLoading(true);
     setSettingsError(null);
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/attendance/settings", {
+      const response = await apiFetch("/api/attendance/settings", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -73,12 +184,12 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     } finally {
       setSettingsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
     fetchSettings();
-  }, [user]);
+  }, [user, fetchSettings]);
 
   const getTimeWindowStatus = (timeWindow) => {
     if (!timeWindow) {
@@ -107,7 +218,9 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
   // Live countdown timer for the attendance window
   useEffect(() => {
-    if (!settings?.timeWindow) return;
+    if (!settings?.timeWindow) {
+      return undefined;
+    }
 
     const updateTimer = () => {
       const { start, end } = settings.timeWindow;
@@ -154,8 +267,12 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     updateTimer(); // run immediately
     const intervalId = setInterval(updateTimer, 1000); // update every second
 
-    return () => clearInterval(intervalId);
-  }, [settings]);
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [settings?.timeWindow, settings?.gpsLocation]);
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3;
@@ -193,6 +310,8 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         });
       });
 
+      if (!componentMounted.current) return;
+
       const userLat = position.coords.latitude;
       const userLng = position.coords.longitude;
       const distance = calculateDistance(
@@ -224,6 +343,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         );
       }
     } catch (error) {
+      if (!componentMounted.current) return;
       setRetryCount((prev) => prev + 1);
 
       if (error.code === 1) {
@@ -243,7 +363,9 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         );
       }
     } finally {
-      setIsLoading(false);
+      if (componentMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -273,7 +395,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     setPasscodeError("");
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/attendance/validate-passcode", {
+      const response = await apiFetch("/api/attendance/validate-passcode", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -300,7 +422,13 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     onValidationSuccess();
   };
 
-  const submitTimeExceptionRequest = async () => {
+  const submitTimeExceptionRequest = async (e) => {
+    const target = e?.currentTarget || e?.target || document.activeElement;
+    if (target && target !== document.body) {
+      triggerElementRef.current = target;
+    } else {
+      triggerElementRef.current = document.querySelector('button[class*="border-orange-500"]') || document.activeElement;
+    }
     setExceptionForm((prev) => ({
       ...prev,
       studentId: user?.email || "",
@@ -320,6 +448,8 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
           maximumAge: 0,
         });
       });
+
+      if (!componentMounted.current) return;
 
       const userLat = position.coords.latitude;
       const userLng = position.coords.longitude;
@@ -345,6 +475,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
       toast.success("Current location captured successfully");
     } catch (error) {
+      if (!componentMounted.current) return;
       // In getCurrentLocationForException, add error handling for denied permissions
       if (error.code === 1) {
         toast.error(
@@ -352,7 +483,9 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         );
       }
     } finally {
-      setModalLocationLoading(false);
+      if (componentMounted.current) {
+        setModalLocationLoading(false);
+      }
     }
   };
 
@@ -379,7 +512,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         },
       };
 
-      const response = await fetch("/api/exceptions/create", {
+      const response = await apiFetch("/api/exceptions/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -702,13 +835,14 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
             type="password"
             value={passcode}
             onChange={(e) => {
-              const val = e.target.value.replace(/\D/g, "");
-              setPasscode(val);
+              setPasscode(e.target.value);
             }}
             placeholder="• • • • • •"
             className="w-full bg-white/5 border-2 border-white/20 rounded-2xl px-8 py-6 text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/50 focus:border-purple-500 text-center text-3xl tracking-[0.5em] font-bold transition-all duration-300"
-            maxLength={8}
-            onKeyPress={(e) => e.key === "Enter" && validatePasscode()}
+            required
+            minLength={8}
+            maxLength={128}
+            onKeyDown={(e) => e.key === "Enter" && validatePasscode()}
           />
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 pointer-events-none"></div>
         </div>
@@ -931,7 +1065,10 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       {/* Exception Request Modal */}
       {showExceptionModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900/95 backdrop-blur-xl border-2 border-orange-500/50 rounded-2xl shadow-2xl max-w-md w-full">
+          <div 
+            ref={modalContainerRef}
+            className="bg-gray-900/95 backdrop-blur-xl border-2 border-orange-500/50 rounded-2xl shadow-2xl max-w-md w-full"
+          >
             <div className="p-6">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -982,10 +1119,14 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-2">
+                  <label 
+                    htmlFor="exception-reason"
+                    className="block text-xs font-semibold text-gray-200 mb-2"
+                  >
                     Reason for Exception
                   </label>
                   <select
+                    id="exception-reason"
                     value={exceptionForm.reason}
                     onChange={(e) =>
                       setExceptionForm((prev) => ({
@@ -1010,10 +1151,14 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-2">
+                  <label 
+                    htmlFor="exception-details"
+                    className="block text-xs font-semibold text-gray-200 mb-2"
+                  >
                     Additional Details
                   </label>
                   <textarea
+                    id="exception-details"
                     value={exceptionForm.details}
                     onChange={(e) =>
                       setExceptionForm((prev) => ({

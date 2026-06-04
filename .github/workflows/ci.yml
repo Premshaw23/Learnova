@@ -6,13 +6,21 @@ on:
   push:
     branches: [main, master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x, 22.x]
 
     steps:
       - name: 📥 Checkout code
@@ -22,15 +30,34 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: npm
 
       - name: 📚 Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
+
+      - name: 🎨 Run Prettier Code Formatting Check
+        run: npm run format:check
+
+      - name: 🧪 Run unit tests
+        run: npm test
+
+      - name: 🔧 Fix Tailwind CSS native binding
+        run: |
+          OXIDE_VER=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
+          npm install --no-save "@tailwindcss/oxide-linux-x64-gnu@${OXIDE_VER}"
+
+      - name: ⚡ Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
       - name: 🔨 Build project
         run: npm run build
         env:
-          # Set dummy env vars for build (non-sensitive)
           NEXT_PUBLIC_FIREBASE_API_KEY: dummy
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: dummy.firebaseapp.com
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: dummy

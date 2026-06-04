@@ -33,6 +33,7 @@ export default function EmailVerificationPage() {
       case "teacher": return "/teacher/dashboard";
       case "institute": return "/institute/dashboard";
       case "admin": return "/admin/dashboard";
+      case "parent": return "/parent/dashboard";
       default: return "/profile";
     }
   };
@@ -56,7 +57,11 @@ export default function EmailVerificationPage() {
         setResendCooldown((prev) => prev - 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [resendCooldown]);
 
   const handleResendVerification = async () => {

@@ -6,17 +6,20 @@ labels: ["enhancement", "feature"]
 assignees: ""
 ---
 
-## 🚀 Is your feature request related to a problem?
-A clear and concise description of what the problem is. Ex. "I'm always frustrated when [...]"
+# Problem
+Describe the issue clearly.
 
-## 💡 Describe the solution you'd like
-A clear and concise description of what you want to happen. Explain the ideal user flow and expected outcomes.
+# Current Behavior
+Explain existing behavior.
 
-## 🔄 Alternatives considered
-A clear and concise description of any alternative solutions or features you've considered.
+# Why This Improvement Is Needed
+Explain impact on users/developers.
 
-## 🎨 Visual Mockups / Wireframes
-If applicable, include any designs, wireframes, or reference layouts that show how this feature should look.
+# Proposed Solution
+Explain the implementation approach.
 
-## 📝 Additional Context
-Add any other context or screenshots about the feature request here.
+# Expected Outcome
+Explain expected improvements.
+
+# Additional Notes
+Optional technical/contextual notes.

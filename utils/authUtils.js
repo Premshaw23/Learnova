@@ -1,5 +1,3 @@
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebaseConfig";
 import { USER_ROLES } from "@/constants/userRoles";
 import { initializeUserStats } from "@/services/statsService";
 import {
@@ -69,7 +67,9 @@ export const getErrorMessage = (errorCode) => {
 };
 
 /**
- * Creates and stores a user profile in Firestore.
+ * Creates and stores a user profile via the server-side role validation
+ * endpoint. The role is cryptographically signed into the Firebase token
+ * via custom claims so the middleware can trust it.
  * @param {Object} user - Firebase authenticated user object.
  * @param {string} role - Role assigned to the user.
  * @param {Object} additionalData - Additional profile information.
@@ -82,29 +82,57 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
     throw new Error("Full name is required");
   }
 
-  const userProfile = {
-    uid: user.uid,
-    email: user.email,
-    fullName: fullName.trim(),
-    role,
-    createdAt: new Date(),
-    emailVerified: user.emailVerified,
-    lastLogin: new Date(),
-  };
+  const idToken = await user.getIdToken();
 
-  if (role === USER_ROLES.INSTITUTE) {
-    if (!instituteName?.trim()) {
-      throw new Error("Institute name is required");
-    }
-    userProfile.instituteName = instituteName.trim();
+  const response = await fetch("/api/auth/set-role", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      role,
+      fullName: fullName.trim(),
+      ...(role === USER_ROLES.INSTITUTE && instituteName?.trim()
+        ? { instituteName: instituteName.trim() }
+        : {}),
+      ...(additionalData.inviteCode
+        ? { inviteCode: additionalData.inviteCode }
+        : {}),
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data.error || "Failed to create user profile. Please try again."
+    );
   }
 
-  await setDoc(doc(db, "users", user.uid), userProfile);
+  try {
+    // Force refresh the token immediately after server-side custom claim assignment.
+    // This ensures the middleware receives an auth token with the role claim
+    // before the first redirect, avoiding expensive edge-runtime fallback lookups.
+    await user.getIdToken(true);
+  } catch (tokenError) {
+    console.error(
+      "[createUserProfile] Failed to refresh auth token after role assignment:",
+      tokenError?.message || tokenError,
+    );
+    throw new Error(
+      "Failed to update authentication token after signup. Please try again."
+    );
+  }
 
   // Initialize their empty dashboard stats
-  await initializeUserStats(user.uid);
+  try {
+    await initializeUserStats(user.uid);
+  } catch (error) {
+    console.log("Stats init failed", error);
+  }
 
-  return userProfile;
+  return data.data.userProfile;
 };
 
 /**
@@ -114,7 +142,7 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
  * @returns {Object} Validation result containing status and error messages.
  */
 export const validateForm = (formData, isLogin) => {
-  const { selectedRole, email, password, fullName, instituteName } = formData;
+  const { selectedRole, email, password, fullName, instituteName, inviteCode } = formData;
   const errors = {};
 
   // Role is always required
@@ -147,6 +175,16 @@ export const validateForm = (formData, isLogin) => {
       );
       if (instituteNameValidation !== true) {
         errors.instituteName = instituteNameValidation;
+      }
+    }
+
+    if (selectedRole === USER_ROLES.TEACHER || selectedRole === USER_ROLES.INSTITUTE) {
+      const inviteCodeValidation = validateRequired(
+        inviteCode,
+        "Invite code"
+      );
+      if (inviteCodeValidation !== true) {
+        errors.inviteCode = inviteCodeValidation;
       }
     }
   }

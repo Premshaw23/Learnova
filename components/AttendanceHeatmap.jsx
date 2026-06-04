@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import CalendarHeatmap from "react-calendar-heatmap";
+import AttendanceHeatmapSkeleton from "./AttendanceHeatmapSkeleton";
 
 const STATUS_LABELS = {
   present: "Present",
@@ -165,8 +166,12 @@ const AttendanceHeatmap = ({ recentActivity = [] }) => {
 
   const isEmpty = values.length === 0;
 
+  if (isEmpty) {
+    return <AttendanceHeatmapSkeleton />;
+  }
+
   return (
-    <div className="bg-black/40 backdrop-blur-xl rounded-[2rem] border border-white/10 p-6 shadow-2xl transition-all duration-500">
+    <div className="w-full max-w-full overflow-hidden bg-black/40 backdrop-blur-xl rounded-[2rem] border border-white/10 p-6 shadow-2xl transition-all duration-500">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
@@ -195,36 +200,25 @@ const AttendanceHeatmap = ({ recentActivity = [] }) => {
       </div>
 
       <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-slate-950/80 p-4 overflow-x-auto">
-        {isEmpty ? (
-          <div className="min-h-[220px] flex items-center justify-center rounded-3xl border border-dashed border-slate-700/60 bg-slate-950/60 p-8">
-            <div className="text-center">
-              <div className="mb-2 h-3.5 w-24 rounded-full bg-slate-700/70 animate-pulse" />
-              <p className="text-sm text-slate-400">
-                Loading attendance history…
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="min-w-[340px] sm:min-w-[520px]">
-            <CalendarHeatmap
-              startDate={startDate}
-              endDate={endDate}
-              values={values}
-              showWeekdayLabels
-              gutterSize={6}
-              weekdayLabels={["Mon", "Wed", "Fri"]}
-              classForValue={getCellClassName}
-              transformDayElement={(rect, value) =>
-                React.cloneElement(rect, {
-                  className: `${rect.props.className} cursor-pointer rounded-lg transition-all duration-200 ease-out ${getCellClassName(value)}`,
-                  onMouseEnter: (event) => showTooltip(value, event),
-                  onMouseLeave: clearTooltip,
-                  onTouchStart: (event) => showTooltip(value, event),
-                })
-              }
-            />
-          </div>
-        )}
+        <div className="min-w-[340px] sm:min-w-[520px]">
+          <CalendarHeatmap
+            startDate={startDate}
+            endDate={endDate}
+            values={values}
+            showWeekdayLabels
+            gutterSize={6}
+            weekdayLabels={["Mon", "Wed", "Fri"]}
+            classForValue={getCellClassName}
+            transformDayElement={(rect, value) =>
+              React.cloneElement(rect, {
+                className: `${rect.props.className} cursor-pointer rounded-lg transition-all duration-200 ease-out ${getCellClassName(value)}`,
+                onMouseEnter: (event) => showTooltip(value, event),
+                onMouseLeave: clearTooltip,
+                onTouchStart: (event) => showTooltip(value, event),
+              })
+            }
+          />
+        </div>
       </div>
 
       <div className="mt-4 rounded-3xl bg-white/5 border border-white/10 px-4 py-4 text-sm text-slate-400">

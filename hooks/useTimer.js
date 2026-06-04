@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 /**
  * Custom hook for managing timers with automatic cleanup
@@ -14,6 +15,7 @@ import { useEffect, useRef } from "react";
 export function useTimeout(callback, delay, immediate = false) {
   const timeoutRef = useRef(null);
   const callbackRef = useRef(callback);
+  const isMounted = useIsMounted();
 
   // Keep callback ref updated
   useEffect(() => {
@@ -27,21 +29,35 @@ export function useTimeout(callback, delay, immediate = false) {
     }
   };
 
+  const start = () => {
+    if (delay !== null && delay !== undefined) {
+      timeoutRef.current = setTimeout(() => {
+        if (isMounted()) callbackRef.current();
+        timeoutRef.current = null;
+      }, delay);
+    }
+  };
+
   useEffect(() => {
-    if (immediate) {
+    if (immediate && isMounted()) {
       callbackRef.current();
     }
 
-    if (delay !== null && delay !== undefined) {
-      timeoutRef.current = setTimeout(() => {
-        callbackRef.current();
-      }, delay);
-    }
+    start();
 
     return clear;
   }, [delay, immediate]);
 
-  return { clear, reset: () => clear() };
+  return {
+    clear,
+    reset: () => {
+      clear();
+      if (immediate && isMounted()) {
+        callbackRef.current();
+      }
+      start();
+    },
+  };
 }
 
 /**
@@ -56,6 +72,7 @@ export function useTimeout(callback, delay, immediate = false) {
 export function useInterval(callback, delay, immediate = false) {
   const intervalRef = useRef(null);
   const callbackRef = useRef(callback);
+  const isMounted = useIsMounted();
 
   // Keep callback ref updated
   useEffect(() => {
@@ -71,12 +88,12 @@ export function useInterval(callback, delay, immediate = false) {
 
   useEffect(() => {
     if (delay !== null && delay !== undefined) {
-      if (immediate) {
+      if (immediate && isMounted()) {
         callbackRef.current();
       }
       
       intervalRef.current = setInterval(() => {
-        callbackRef.current();
+        if (isMounted()) callbackRef.current();
       }, delay);
     }
 
@@ -86,11 +103,11 @@ export function useInterval(callback, delay, immediate = false) {
   return { clear, reset: () => {
     clear();
     if (delay !== null && delay !== undefined) {
-      if (immediate) {
+      if (immediate && isMounted()) {
         callbackRef.current();
       }
       intervalRef.current = setInterval(() => {
-        callbackRef.current();
+        if (isMounted()) callbackRef.current();
       }, delay);
     }
   }};

@@ -2,9 +2,9 @@ import { PATCH } from "@/app/api/settings/route";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -14,13 +14,17 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
+}));
+
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
 describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Tests", () => {
@@ -29,17 +33,17 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   let consoleLogMock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    mockUpdateOne = jest.fn();
+    mockUpdateOne = vi.fn();
     connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         updateOne: mockUpdateOne,
       }),
     });
 
     originalConsoleLog = console.log;
-    consoleLogMock = jest.fn();
+    consoleLogMock = vi.fn();
     console.log = consoleLogMock;
   });
 
@@ -52,7 +56,8 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
       headers: {
         get: (name) => headers[name.toLowerCase()] || null,
       },
-      json: jest.fn().mockResolvedValue(bodyData),
+      json: vi.fn().mockResolvedValue(bodyData),
+      text: vi.fn().mockResolvedValue(JSON.stringify(bodyData)),
     };
   };
 
@@ -81,7 +86,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("allows user to update their own settings successfully (no userId specified in body)", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
     mockUpdateOne.mockResolvedValue({ acknowledged: true });
 
     const req = createMockRequest(
@@ -92,7 +97,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.message).toBe("Settings saved successfully");
+    expect(body.data.message).toBe("Settings saved successfully");
     expect(mockUpdateOne).toHaveBeenCalledWith(
       { userId: "user-123" },
       expect.objectContaining({
@@ -110,7 +115,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("allows user to update their own settings successfully when bodyUserId matches authenticated uid", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
     mockUpdateOne.mockResolvedValue({ acknowledged: true });
 
     const req = createMockRequest(
@@ -121,7 +126,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.message).toBe("Settings saved successfully");
+    expect(body.data.message).toBe("Settings saved successfully");
     expect(mockUpdateOne).toHaveBeenCalledWith(
       { userId: "user-123" },
       expect.objectContaining({
@@ -135,7 +140,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("rejects standard user trying to update another user's settings with 403 Forbidden", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
     getUserProfile.mockResolvedValue({ role: "student" }); // Not an admin
 
     const req = createMockRequest(
@@ -152,7 +157,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("allows admin to update another user's settings successfully with 200 OK and logs audit line", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "admin-789", email: "admin@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "admin-789", email: "admin@example.com", email_verified: true });
     getUserProfile.mockResolvedValue({ role: "admin" });
     mockUpdateOne.mockResolvedValue({ acknowledged: true });
 
@@ -164,7 +169,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.message).toBe("Settings saved successfully");
+    expect(body.data.message).toBe("Settings saved successfully");
     expect(mockUpdateOne).toHaveBeenCalledWith(
       { userId: "victim-user-123" },
       expect.objectContaining({
@@ -181,7 +186,7 @@ describe("PATCH /api/settings - Security, Role-Based Access and Audit Logging Te
   });
 
   test("rejects request with unrecognized fields with 400 Bad Request", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com", email_verified: true });
 
     const req = createMockRequest(
       { authorization: "Bearer valid-token" },

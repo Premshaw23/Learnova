@@ -1,38 +1,43 @@
-import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
+import { requireAuth } from "@/lib/rbac";
+import { parseJSON, withErrorHandler } from "@/lib/error-handler";
+import { AppError, ValidationError } from "@/lib/errors";
+import { jsonSuccess } from "@/lib/api-response";
+import { createComplaintSchema } from "@/lib/validations/complaints";
+import { validateRequest } from "@/lib/validations/validateRequest";
 
-export async function POST(req) {
-  try {
-    const body = await req.json();
-    const { category, subject, description, priority } = body;
+export const dynamic = "force-dynamic";
 
-    // Validation
-    if (!category || !subject || !description || !priority) {
-      return NextResponse.json(
-        { message: "All fields are required" },
-        { status: 400 }
-      );
-    }
 
-    const db = await connectDb();
+const MAX_COMPLAINT_PAYLOAD_BYTES = 1024 * 10;
 
-    await db.collection("complaints").insertOne({
-      category,
-      subject,
-      description,
-      priority,
-      createdAt: new Date(),
-    });
+export const POST = withErrorHandler(async (req) => {
+  const decodedToken = await requireAuth(req);
 
-    return NextResponse.json(
-      { message: "Complaint submitted successfully" },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { message: "Server error" },
-      { status: 500 }
-    );
+  const validationResult = await validateRequest(req, createComplaintSchema, MAX_COMPLAINT_PAYLOAD_BYTES);
+  if (!validationResult.success) {
+    return validationResult.response;
   }
-}
+
+  const { category, subject, description, priority } = validationResult.data;
+
+  let db;
+  try {
+    db = await connectDb();
+  } catch (error) {
+    throw new AppError("Database connection failed. Please try again.", 503);
+  }
+
+  await db.collection("complaints").insertOne({
+    userId: decodedToken.uid,
+    userEmail: decodedToken.email,
+    category,
+    subject,
+    description,
+    priority,
+    status: "pending",
+    createdAt: new Date(),
+  });
+
+  return jsonSuccess({ message: "Complaint submitted successfully" });
+});
