@@ -198,17 +198,23 @@ export async function GET(request) {
     const warningLogsToInsert = [];
     const emailsToSend = [];
 
-    // Fetch all students with an instituteId once
+    // CRITICAL: Fetch all students with an instituteId once
+    // Institute boundaries must be enforced at data retrieval time
     const allStudents = await db.collection('users').find({
       role: 'student',
-      instituteId: { $exists: true }
+      instituteId: { $exists: true, $ne: null }  // Explicitly require valid instituteId
     }).toArray();
 
-    // Group students by instituteId
+    // Group students by instituteId for institute-scoped processing
+    // This ensures each institute only processes its own students
     const studentsByInstitute = new Map();
     for (const student of allStudents) {
       const instId = student.instituteId;
-      if (!instId) continue;
+      // Validate that student has a non-empty instituteId before processing
+      if (!instId || typeof instId !== 'string' || instId.trim() === '') {
+        console.warn(`[SECURITY] Student ${student.firebaseUid} has invalid instituteId, skipping`);
+        continue;
+      }
       if (!studentsByInstitute.has(instId)) {
         studentsByInstitute.set(instId, []);
       }
@@ -222,9 +228,25 @@ export async function GET(request) {
     for (const settings of allSettings) {
       const threshold = settings.institute.lowAttendanceThreshold || 75;
       const instituteId = settings.instituteId || settings._id?.toString() || settings.userId;
-      if (!instituteId) continue;
 
-      const instituteStudents = studentsByInstitute.get(instituteId) || [];
+      // CRITICAL: Validate institute boundary before processing students
+      // Ensure instituteId is valid and not null/empty to prevent cross-institute data access
+      if (!instituteId || typeof instituteId !== 'string' || instituteId.trim() === '') {
+        console.error(`[SECURITY] Invalid instituteId in settings, skipping institute processing`);
+        continue;
+      }
+
+      let instituteStudents = studentsByInstitute.get(instituteId) || [];
+
+      // Verify that retrieved students actually belong to this institute
+      // This prevents accidental cross-institute data processing
+      instituteStudents = instituteStudents.filter((student) => {
+        if (student.instituteId !== instituteId) {
+          console.error(`[SECURITY] Student ${student.firebaseUid} institute mismatch detected, filtering out`);
+          return false;
+        }
+        return true;
+      });
 
       if (instituteStudents.length === 0) continue;
 
