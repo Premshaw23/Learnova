@@ -12,20 +12,35 @@ export const GET = withErrorHandler(async (request, context) => {
   const parentId = decodedToken.uid;
   const { studentId } = context.params;
 
+  // Early validation: Immediately verify input parameters before any processing
+  if (!studentId || typeof studentId !== "string" || studentId.trim() === "") {
+    return jsonError("Invalid student ID provided.", 400);
+  }
+
+  // Prevent empty or whitespace-only IDs
+  const sanitizedStudentId = studentId.trim();
+  if (sanitizedStudentId.length === 0) {
+    return jsonError("Invalid student ID provided.", 400);
+  }
+
   initFirebaseAdmin();
   const db = getFirestore();
 
-  // 1. Verify parent-student linking relationship
-  const linkId = `${parentId}_${studentId}`;
+  // CRITICAL: Verify parent-student linking relationship IMMEDIATELY
+  // This authorization check must happen before any data access to prevent IDOR
+  // Do not proceed with any queries until ownership is verified
+  const linkId = `${parentId}_${sanitizedStudentId}`;
   const linkDoc = await db.collection("parent_student_links").doc(linkId).get();
+
   if (!linkDoc.exists) {
+    // Return 403 without exposing whether student exists or parent-student relationship exists
     return jsonError("Access Denied: You are not authorized to view this student's records.", 403);
   }
 
-  // 2. Query student attendance records
+  // 2. Query student attendance records (only after authorization is verified)
   const recordsQuery = await db
     .collection("attendance_records")
-    .where("userId", "==", studentId)
+    .where("userId", "==", sanitizedStudentId)
     .get();
 
   const records = [];
