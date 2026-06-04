@@ -32,6 +32,44 @@ const syncSchema = z.object({
 // Must stay in sync with the threshold enforced in app/api/attendance/record/route.js.
 const MIN_CONFIDENCE_THRESHOLD = 0.6;
 
+// Maximum offline window for syncing: 48 hours
+const MAX_OFFLINE_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+// Clock skew tolerance: allow 5 minutes of clock drift
+const CLOCK_SKEW_MS = 5 * 60 * 1000;
+
+/**
+ * Validates offline sync data against server state
+ * CRITICAL: All offline data must be verified against server records
+ */
+function validateSyncRecord(record, decodedToken, now) {
+  const validationErrors = [];
+
+  // 1. User ownership: Cannot sync records for other users
+  if (record.userId !== decodedToken.uid) {
+    validationErrors.push("User ownership mismatch: record belongs to different user");
+  }
+
+  // 2. Timestamp freshness: Prevent replay attacks and stale data
+  if (record.queuedAt > now + CLOCK_SKEW_MS) {
+    validationErrors.push("Future timestamp detected (exceeds clock skew tolerance)");
+  }
+
+  if (record.queuedAt < now - MAX_OFFLINE_WINDOW_MS) {
+    validationErrors.push(`Timestamp outside offline window (older than ${MAX_OFFLINE_WINDOW_MS / 1000 / 60 / 60} hours)`);
+  }
+
+  // 3. Data type validation
+  if (typeof record.queuedAt !== "number" || !Number.isFinite(record.queuedAt)) {
+    validationErrors.push("Invalid queuedAt: must be a valid timestamp number");
+  }
+
+  return {
+    isValid: validationErrors.length === 0,
+    errors: validationErrors,
+  };
+}
+
 export function normalizeConfidenceScore(confidenceScore) {
   let parsedScore = Number(confidenceScore);
 
@@ -104,22 +142,15 @@ async function handleSync(request) {
   const processedUserDates = new Set();
 
   const now = Date.now();
-  const MAX_OFFLINE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
 
   for (const record of records) {
-    // Only allow users to sync their own records (unless they are admin, but attendance is usually self-submitted)
-    if (record.userId !== decodedToken.uid) {
-      console.warn(`User ${decodedToken.uid} attempted to sync record for ${record.userId}`);
+    // CRITICAL: Validate all offline sync data before processing
+    const validation = validateSyncRecord(record, decodedToken, now);
+    if (!validation.isValid) {
+      console.warn(`[SECURITY] Sync record validation failed for user ${decodedToken.uid}:`, validation.errors);
       if (record.id !== undefined) {
         rejectedIds.push(record.id);
       }
-      continue;
-    }
-
-    // Validate timestamp: must be within the last 48 hours and not in the future (allowing 5 min clock skew)
-    if (record.queuedAt > now + 5 * 60 * 1000 || record.queuedAt < now - MAX_OFFLINE_WINDOW_MS) {
-      console.warn(`User ${decodedToken.uid} attempted to sync record with invalid queuedAt timestamp ${record.queuedAt}`);
-      rejectedIds.push(record.id);
       continue;
     }
 
