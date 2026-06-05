@@ -38,6 +38,111 @@ export const quizDatabase = {
       },
     ],
   },
+  "Java Programming Quiz": {
+    category: "coding",
+    level: "college",
+    timeLimit: 120,
+    questions: [
+      {
+        id: 1,
+        question: "Which keyword is used to inherit a class in Java?",
+        options: ["implements", "extends", "inherits", "super"],
+        answer: 1,
+      },
+      {
+        id: 2,
+        question: "What is the parent class of all Java classes?",
+        options: ["Object", "Base", "Main", "Root"],
+        answer: 0,
+      },
+      {
+        id: 3,
+        question: "Which collection preserves insertion order and allows duplicates?",
+        options: ["HashSet", "TreeSet", "ArrayList", "HashMap"],
+        answer: 2,
+      },
+    ],
+  },
+  "Python Programming Quiz": {
+    category: "coding",
+    level: "college",
+    timeLimit: 120,
+    questions: [
+      {
+        id: 1,
+        question: "What does the `len()` function return in Python?",
+        options: [
+          "The type of an object",
+          "The number of items in an object",
+          "The memory address of an object",
+          "The last element in an object",
+        ],
+        answer: 1,
+      },
+      {
+        id: 2,
+        question: "Which data structure is mutable and ordered in Python?",
+        options: ["tuple", "list", "set", "frozenset"],
+        answer: 1,
+      },
+      {
+        id: 3,
+        question: "Which keyword is used to define a function in Python?",
+        options: ["func", "def", "lambda", "function"],
+        answer: 1,
+      },
+    ],
+  },
+  "C Programming Quiz": {
+    category: "coding",
+    level: "college",
+    timeLimit: 120,
+    questions: [
+      {
+        id: 1,
+        question: "Which operator is used to access the value stored at an address in C?",
+        options: ["&", "*", "->", "%"],
+        answer: 1,
+      },
+      {
+        id: 2,
+        question: "What is the correct file extension for a C source file?",
+        options: [".cpp", ".c", ".cs", ".java"],
+        answer: 1,
+      },
+      {
+        id: 3,
+        question: "Which function is commonly used to allocate memory dynamically in C?",
+        options: ["printf", "malloc", "scanf", "free"],
+        answer: 1,
+      },
+    ],
+  },
+  "C++ Programming Quiz": {
+    category: "coding",
+    level: "college",
+    timeLimit: 120,
+    questions: [
+      {
+        id: 1,
+        question: "Which feature is a core part of C++ but not standard C?",
+        options: ["Pointers", "Classes", "Loops", "Arrays"],
+        answer: 1,
+      },
+      {
+        id: 2,
+        question: "What is the standard namespace used in many beginner C++ examples?",
+        options: ["std", "cpp", "main", "io"],
+        answer: 0,
+      },
+      {
+        id: 3,
+        question: "Which operator is used for dynamic memory allocation in C++?",
+        options: ["alloc", "new", "create", "malloc"],
+        answer: 1,
+      },
+    ],
+  },
   "Geometry Puzzle Master": {
     category: "math",
     level: "middle",

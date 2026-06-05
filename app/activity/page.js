@@ -216,6 +216,66 @@ export default function ActivityPage() {
       type: "quiz",
     },
     {
+      id: 9,
+      title: "Java Programming Quiz",
+      description:
+        "Review Java syntax, OOP concepts, and core collection fundamentals for college learners",
+      category: "coding",
+      level: "college",
+      duration: "20 min",
+      participants: 2148,
+      difficulty: "Intermediate",
+      rating: 4.8,
+      icon: BookOpen,
+      gradient: "from-orange-500 to-amber-600",
+      type: "quiz",
+    },
+    {
+      id: 10,
+      title: "Python Programming Quiz",
+      description:
+        "Strengthen your Python skills with loops, functions, lists, and core language patterns",
+      category: "coding",
+      level: "college",
+      duration: "18 min",
+      participants: 2684,
+      difficulty: "Intermediate",
+      rating: 4.9,
+      icon: Zap,
+      gradient: "from-green-500 to-emerald-600",
+      type: "quiz",
+    },
+    {
+      id: 11,
+      title: "C Programming Quiz",
+      description:
+        "Practice pointers, memory allocation, and C language fundamentals in a focused quiz",
+      category: "coding",
+      level: "college",
+      duration: "18 min",
+      participants: 1932,
+      difficulty: "Advanced",
+      rating: 4.7,
+      icon: Target,
+      gradient: "from-sky-500 to-cyan-600",
+      type: "quiz",
+    },
+    {
+      id: 12,
+      title: "C++ Programming Quiz",
+      description:
+        "Test your knowledge of classes, namespaces, and modern C++ essentials",
+      category: "coding",
+      level: "college",
+      duration: "20 min",
+      participants: 1765,
+      difficulty: "Advanced",
+      rating: 4.8,
+      icon: Brain,
+      gradient: "from-violet-500 to-fuchsia-600",
+      type: "quiz",
+    },
+    {
       id: 5,
       title: "Shakespeare Explorer",
       description:
@@ -297,8 +357,12 @@ export default function ActivityPage() {
       return;
     }
 
-    if (activities.some(a => a.title === activity.title)) {
+    const alreadyEnrolled = activities.find((a) => a.title === activity.title);
+    if (alreadyEnrolled) {
       toast("You are already enrolled in this activity", { icon: "ℹ️" });
+      if (activity.type === "quiz") {
+        router.push(`/activity/${alreadyEnrolled.id}`);
+      }
       return;
     }
 
@@ -321,8 +385,11 @@ export default function ActivityPage() {
       await updateUserStat(user.uid, "Courses Enrolled", 1);
       
       // 3. Seamless Reconciliation
-      setActivities(prev => [{ ...newActivity, id: dbId, saving: false }, ...prev]);
+      setActivities((prev) => [{ ...newActivity, id: dbId, saving: false }, ...prev]);
       toast.success(`Enrolled in ${newActivity.title}`);
+      if (activity.type === "quiz") {
+        router.push(`/activity/${dbId}`);
+      }
     } catch (error) {
       // 4. Automatic Rollback (Because setActivities wasn't called, the UI automatically reverts after the transition finishes)
       toast.error("Failed to enroll. Please try again.");
@@ -592,7 +659,7 @@ export default function ActivityPage() {
                         className={`w-full bg-gradient-to-r ${activity.gradient} hover:shadow-lg hover:shadow-accent/25 transition-transform duration-300 group-hover:scale-[1.02]`}
                       >
                         <Sparkles className="w-4 h-4 mr-2" />
-                        Enroll Now
+                        {activity.type === "quiz" ? "Start Quiz" : "Enroll Now"}
                         <ChevronRight className="w-4 h-4 ml-2" />
                       </Button>
                     </CardContent>
@@ -777,7 +844,7 @@ export default function ActivityPage() {
                         className={`w-full bg-gradient-to-r ${activity.gradient} hover:shadow-md transition-transform duration-300 text-xs sm:text-sm`}
                       >
                         <Sparkles className="w-3 h-3 mr-2" />
-                        Enroll Now
+                        {activity.type === "quiz" ? "Start Quiz" : "Enroll Now"}
                       </Button>
                     </CardContent>
                   </Card>
