@@ -205,10 +205,7 @@ function ComplaintDetailModal({ complaint, onClose }) {
   );
 }
 
-function AnalyticsSection({ complaints }) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  
+function AnalyticsSection({ complaints, isDark }) {
   const tooltipStyle = {
     contentStyle: {
       borderRadius: "12px",
@@ -391,7 +388,13 @@ export default function ComplaintsPage() {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [mounted, setMounted] = useState(false);
   const { user, loading: authLoading } = useAuthContext();
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [complaints, setComplaints] = useState([
     {
@@ -488,7 +491,10 @@ export default function ComplaintsPage() {
             />
           ) : (
             <Reveal>
-              <AnalyticsSection complaints={complaints} />
+              <AnalyticsSection 
+                complaints={complaints} 
+                isDark={mounted && theme === "dark"}
+              />
               <ComplaintsTable
                 complaints={complaints}
                 onRaiseComplaint={() => setShowForm(true)}
