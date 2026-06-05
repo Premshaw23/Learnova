@@ -1,63 +1,76 @@
 import { POST } from "./route";
-import { authenticateRequest, parseJSON } from "@/lib/error-handler";
+import { parseJSON } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
 
-jest.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
+vi.mock("@/lib/error-handler", () => {
   return {
-    authenticateRequest: jest.fn(),
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
-            return {
-              status: error.statusCode,
-              json: async () => ({ error: payload }),
-            };
-          }
+          const payload =
+            error.originalMessage !== undefined
+              ? error.originalMessage
+              : error.message;
           return {
-            status: 500,
-            json: async () => ({ error: error.message || "Internal server error" }),
+            status: error.statusCode ?? 500,
+            json: async () => ({
+              error: payload || error.message || "Internal server error",
+            }),
           };
         }
       };
     },
-    parseJSON: jest.fn(),
+    parseJSON: vi.fn(),
   };
 });
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("@/lib/rbac", () => ({
+  requireAuth: vi.fn(),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  initFirebaseAdmin: jest.fn(),
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/gamification-service", () => ({
-  awardXp: jest.fn().mockResolvedValue({ xpAwarded: 50, newLevel: null }),
+vi.mock("@/lib/firebase-admin", () => ({
+  initFirebaseAdmin: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
-jest.mock("@/lib/dateUtils", () => ({
-  getLocalDateKey: jest.fn(() => "2026-05-25"),
+vi.mock("@/lib/gamification-service", () => ({
+  awardXp: vi.fn().mockResolvedValue({ xpAwarded: 50, newLevel: null }),
 }));
 
-jest.mock("firebase-admin/firestore", () => ({
-  getFirestore: jest.fn(),
+vi.mock("@/lib/dateUtils", () => ({
+  getLocalDateKey: vi.fn(() => "2026-05-25"),
+}));
+
+vi.mock("@/lib/mongodb", () => {
+  const mockDb = {
+    collection: vi.fn(() => ({
+      updateOne: vi.fn().mockResolvedValue({}),
+      deleteOne: vi.fn().mockResolvedValue({}),
+    })),
+  };
+  return {
+    connectDb: vi.fn().mockResolvedValue(mockDb),
+  };
+});
+
+vi.mock("firebase-admin/firestore", () => ({
+  getFirestore: vi.fn(),
   FieldValue: {
-    serverTimestamp: jest.fn(() => "server-timestamp"),
+    serverTimestamp: vi.fn(() => "server-timestamp"),
   },
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -68,7 +81,7 @@ jest.mock("next/server", () => ({
 
 describe("attendance record route", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
   });
 
@@ -91,7 +104,8 @@ describe("attendance record route", () => {
   };
 
   test("writes attendance to Firestore with canonical doc id + instituteId using transaction", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "user-123",
       studentName: "Client Name",
@@ -107,15 +121,15 @@ describe("attendance record route", () => {
     });
 
     const docRef = {};
-    const collectionRef = { doc: jest.fn(() => docRef) };
-    const transactionSet = jest.fn();
-    const transactionGet = jest.fn().mockResolvedValue({ exists: false });
+    const collectionRef = { doc: vi.fn(() => docRef) };
+    const transactionSet = vi.fn();
+    const transactionGet = vi.fn().mockResolvedValue({ exists: false });
 
     getFirestore.mockReturnValue({
-      runTransaction: jest.fn(async (callback) => {
+      runTransaction: vi.fn(async (callback) => {
         return callback({ get: transactionGet, set: transactionSet });
       }),
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
     const response = await POST(createMockRequest());
@@ -138,12 +152,13 @@ describe("attendance record route", () => {
         offlineSynced: false,
         timestamp: FieldValue.serverTimestamp.mock.results[0].value,
       }),
-      { merge: true },
+      { merge: true }
     );
   });
 
   test("prevents duplicate check-in if document already exists", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "user-123",
       studentName: "Client Name",
@@ -159,15 +174,15 @@ describe("attendance record route", () => {
     });
 
     const docRef = {};
-    const collectionRef = { doc: jest.fn(() => docRef) };
-    const transactionSet = jest.fn();
-    const transactionGet = jest.fn().mockResolvedValue({ exists: true });
+    const collectionRef = { doc: vi.fn(() => docRef) };
+    const transactionSet = vi.fn();
+    const transactionGet = vi.fn().mockResolvedValue({ exists: true });
 
     getFirestore.mockReturnValue({
-      runTransaction: jest.fn(async (callback) => {
+      runTransaction: vi.fn(async (callback) => {
         return callback({ get: transactionGet, set: transactionSet });
       }),
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
     const response = await POST(createMockRequest());
@@ -181,15 +196,20 @@ describe("attendance record route", () => {
   });
 
   test("rejects request if unauthorized", async () => {
-    const { UnauthorizedError } = require("@/lib/errors");
-    authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockRejectedValue({
+      statusCode: 401,
+      message: "Unauthorized",
+      originalMessage: "Unauthorized",
+    });
 
     const response = await POST(createMockRequest());
     await assertApiError(response, 401, "Unauthorized");
   });
 
   test("rejects request with 403 Forbidden if attempting to submit for another user", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "another-user-456",
       studentName: "Client Name",
@@ -199,47 +219,68 @@ describe("attendance record route", () => {
     });
 
     const response = await POST(createMockRequest());
-    await assertApiError(response, 403, "Forbidden: Cannot submit attendance for another user");
+    await assertApiError(
+      response,
+      403,
+      "Forbidden: Cannot submit attendance for another user"
+    );
   });
 
   test("rejects request with 400 Bad Request if confidence score is invalid or below threshold", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
 
     // Scenario 1: below 60
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: 59,
     });
     let response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(
+      response,
+      400,
+      "Bad Request: Invalid or spoofed confidence score"
+    );
 
-    // Scenario 2: above 100
+    // Scenario 2: above 100 — caught by schema validation
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: 101,
     });
     response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(response, 400, "Validation failed");
 
-    // Scenario 3: NaN
+    // Scenario 3: NaN — caught by schema validation
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: "not-a-number",
     });
     response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(response, 400, "Validation failed");
   });
 
   test("rejects request if rate limit exceeded", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     checkRateLimit.mockResolvedValue({ allowed: false });
 
     const response = await POST(createMockRequest());
-    await assertApiError(response, 429, "Too many attempts. Please try again later.");
+    await assertApiError(
+      response,
+      429,
+      "Too many attempts. Please try again later."
+    );
   });
 
   test("simulates concurrent double-click requests and guarantees single write via OCC retry simulation", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "user-123",
       studentName: "Client Name",
@@ -255,12 +296,12 @@ describe("attendance record route", () => {
     });
 
     const docRef = "user-123_2026-05-25";
-    const collectionRef = { doc: jest.fn(() => docRef) };
+    const collectionRef = { doc: vi.fn(() => docRef) };
 
     const dbStore = new Map();
-    const transactionSet = jest.fn();
+    const transactionSet = vi.fn();
 
-    const runTransaction = jest.fn(async (callback) => {
+    const runTransaction = vi.fn(async (callback) => {
       let attempts = 0;
       while (attempts < 5) {
         attempts++;
@@ -288,7 +329,7 @@ describe("attendance record route", () => {
 
     getFirestore.mockReturnValue({
       runTransaction,
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
     const [response1, response2] = await Promise.all([
@@ -302,7 +343,10 @@ describe("attendance record route", () => {
     const resJson1 = await response1.json();
     const resJson2 = await response2.json();
 
-    const results = [resJson1.data.alreadyRecorded, resJson2.data.alreadyRecorded].sort();
+    const results = [
+      resJson1.data.alreadyRecorded,
+      resJson2.data.alreadyRecorded,
+    ].sort();
     expect(results).toEqual([false, true]);
 
     expect(dbStore.size).toBe(1);

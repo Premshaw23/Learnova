@@ -3,6 +3,8 @@
 import React, { useEffect } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
+import { logger } from "@/lib/logger";
+
 /**
  * Localized Error Boundary for Activity segment
  * Prevents errors inside app/activity routes from crashing the root layout.
@@ -10,7 +12,9 @@ import { AlertCircle, RefreshCw } from "lucide-react";
  */
 export default function ActivityError({ error, reset }) {
   useEffect(() => {
-    console.error("Captured Activity Segment Error:", error);
+    logger.error("Captured Activity Segment Error:", {
+      error: error?.message || error,
+    });
   }, [error]);
 
   return (
@@ -19,13 +23,14 @@ export default function ActivityError({ error, reset }) {
         <div className="inline-flex rounded-full bg-red-50 dark:bg-red-950/30 p-3 text-red-600 dark:text-red-400">
           <AlertCircle className="h-6 w-6" />
         </div>
-        
+
         <div className="space-y-2">
           <h3 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">
             Failed to load Activity view
           </h3>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            An error occurred while loading this segment. You can try reloading this specific section.
+            An error occurred while loading this segment. You can try reloading
+            this specific section.
           </p>
         </div>
 

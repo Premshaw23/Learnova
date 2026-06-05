@@ -120,22 +120,22 @@ const CopyInviteButton = ({ className = "" }) => {
           isCopied
             ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20 dark:shadow-emerald-500/10"
             : copyError
-            ? "bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-500/20 dark:shadow-rose-500/10"
-            : "bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800"
-          } ${className}`}
+              ? "bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-500/20 dark:shadow-rose-500/10"
+              : "bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+        } ${className}`}
         aria-label={
           isCopied
             ? "Invite link copied"
             : copyError
-            ? "Failed to copy invite link"
-            : "Copy study room invite link"
+              ? "Failed to copy invite link"
+              : "Copy study room invite link"
         }
         title={
           isCopied
             ? "Link copied!"
             : copyError
-            ? "Copy failed"
-            : "Copy Invite Link"
+              ? "Copy failed"
+              : "Copy Invite Link"
         }
       >
         <span className="relative w-5 h-5 flex items-center justify-center">
@@ -204,8 +204,8 @@ const CopyInviteButton = ({ className = "" }) => {
           isCopied
             ? "bg-slate-950 dark:bg-slate-900 border-slate-800/80 opacity-100 translate-y-0 scale-100"
             : copyError
-            ? "bg-rose-600 border-rose-500/50 opacity-100 translate-y-0 scale-100"
-            : "opacity-0 translate-y-1.5 scale-90"
+              ? "bg-rose-600 border-rose-500/50 opacity-100 translate-y-0 scale-100"
+              : "opacity-0 translate-y-1.5 scale-90"
         }`}
         role="status"
         aria-live="polite"
@@ -252,8 +252,8 @@ const CopyInviteButton = ({ className = "" }) => {
             isCopied
               ? "border-t-slate-950 dark:border-t-slate-900"
               : copyError
-              ? "border-t-rose-600"
-              : ""
+                ? "border-t-rose-600"
+                : ""
           }`}
         />
       </div>

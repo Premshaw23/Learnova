@@ -5,11 +5,11 @@ import EmptyNoticeState from "../EmptyNoticeState";
 describe("EmptyNoticeState", () => {
   const defaultProps = {
     query: "",
-    onResetFilters: jest.fn(),
+    onResetFilters: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders default message correctly when search query is empty", () => {

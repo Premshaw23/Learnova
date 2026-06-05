@@ -22,8 +22,12 @@ describe("formValidation utilities", () => {
     });
 
     test("returns error for null/undefined", () => {
-      expect(validateRequired(null, "Test Field")).toBe("Test Field is required");
-      expect(validateRequired(undefined, "Test Field")).toBe("Test Field is required");
+      expect(validateRequired(null, "Test Field")).toBe(
+        "Test Field is required"
+      );
+      expect(validateRequired(undefined, "Test Field")).toBe(
+        "Test Field is required"
+      );
     });
   });
 
@@ -34,7 +38,9 @@ describe("formValidation utilities", () => {
     });
 
     test("returns error if length is less than min", () => {
-      expect(validateMinLength("ab", 3, "Test Field")).toBe("Test Field must be at least 3 characters");
+      expect(validateMinLength("ab", 3, "Test Field")).toBe(
+        "Test Field must be at least 3 characters"
+      );
     });
   });
 
@@ -66,7 +72,8 @@ describe("formValidation utilities", () => {
     });
 
     test("returns error for weak passwords (missing components)", () => {
-      const requirementsErr = "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character.";
+      const requirementsErr =
+        "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character.";
       expect(validatePassword("short")).toBe(requirementsErr);
       expect(validatePassword("test@123")).toBe(requirementsErr); // no uppercase
       expect(validatePassword("TEST@123")).toBe(requirementsErr); // no lowercase
@@ -86,12 +93,18 @@ describe("formValidation utilities", () => {
     });
 
     test("returns error for short names", () => {
-      expect(validateName("A", "Full Name")).toBe("Full Name must be at least 2 characters");
+      expect(validateName("A", "Full Name")).toBe(
+        "Full Name must be at least 2 characters"
+      );
     });
 
     test("returns error for names containing numbers or special characters", () => {
-      expect(validateName("John123", "Full Name")).toBe("Full Name must only contain letters, spaces, hyphens, and apostrophes");
-      expect(validateName("John@Doe", "Full Name")).toBe("Full Name must only contain letters, spaces, hyphens, and apostrophes");
+      expect(validateName("John123", "Full Name")).toBe(
+        "Full Name must only contain letters, spaces, hyphens, and apostrophes"
+      );
+      expect(validateName("John@Doe", "Full Name")).toBe(
+        "Full Name must only contain letters, spaces, hyphens, and apostrophes"
+      );
     });
   });
 
@@ -107,7 +120,9 @@ describe("formValidation utilities", () => {
 
     test("returns error for invalid phone number formats", () => {
       expect(validatePhone("abc")).toBe("Please enter a valid phone number");
-      expect(validatePhone("123-456-7890")).toBe("Please enter a valid phone number");
+      expect(validatePhone("123-456-7890")).toBe(
+        "Please enter a valid phone number"
+      );
     });
   });
 });

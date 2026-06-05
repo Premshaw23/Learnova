@@ -21,9 +21,7 @@ const ChartSkeleton = ({ variant = "chart", className = "" }) => {
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <div
-            className={`h-4 w-36 rounded bg-gray-700/60 ${shimmer}`}
-          />
+          <div className={`h-4 w-36 rounded bg-gray-700/60 ${shimmer}`} />
           <div className="flex items-center gap-3">
             {[1, 2, 3].map((i) => (
               <div
@@ -92,22 +90,17 @@ const ChartSkeleton = ({ variant = "chart", className = "" }) => {
     >
       {/* Y-axis labels placeholder */}
       <div className="flex items-end gap-3 h-full">
-        {[65, 80, 45, 90, 55, 75, 60, 85, 50, 70, 40, 88].map(
-          (height, idx) => (
+        {[65, 80, 45, 90, 55, 75, 60, 85, 50, 70, 40, 88].map((height, idx) => (
+          <div key={idx} className="flex-1 flex flex-col justify-end">
             <div
-              key={idx}
-              className="flex-1 flex flex-col justify-end"
-            >
-              <div
-                className={`w-full rounded-t bg-gray-700/40 ${shimmer}`}
-                style={{
-                  height: `${height}%`,
-                  animationDelay: `${idx * 80}ms`,
-                }}
-              />
-            </div>
-          )
-        )}
+              className={`w-full rounded-t bg-gray-700/40 ${shimmer}`}
+              style={{
+                height: `${height}%`,
+                animationDelay: `${idx * 80}ms`,
+              }}
+            />
+          </div>
+        ))}
       </div>
       {/* X-axis line */}
       <div className="h-px bg-gray-700/60 mt-3" />

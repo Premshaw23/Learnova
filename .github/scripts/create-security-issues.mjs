@@ -351,7 +351,8 @@ Or use a well-tested email validation library.
     labels: ["security", "medium", "validation", "API"],
   },
   {
-    title: "SECURITY: No validation that uploaded file is actually a File object",
+    title:
+      "SECURITY: No validation that uploaded file is actually a File object",
     body: `## 🚨 Severity: MEDIUM
 
 ## 📝 Issue Description
@@ -481,7 +482,8 @@ Add the chosen mechanism **before** processing the registration.
     labels: ["security", "critical", "authentication", "API"],
   },
   {
-    title: "SECURITY: Labels endpoint exposes full user list without authentication",
+    title:
+      "SECURITY: Labels endpoint exposes full user list without authentication",
     body: `## 🚨 Severity: HIGH
 
 ## 📝 Issue Description
@@ -524,7 +526,8 @@ And it does so **without any authentication checks**. Anyone can enumerate all u
     labels: ["security", "high", "authentication", "API", "privacy"],
   },
   {
-    title: "SECURITY: Settings update endpoint accepts unauthenticated requests",
+    title:
+      "SECURITY: Settings update endpoint accepts unauthenticated requests",
     body: `## 🚨 Severity: CRITICAL
 
 ## 📝 Issue Description
@@ -947,7 +950,9 @@ async function createIssue(issue) {
   }
 }
 
-console.log(`🚀 Creating ${ISSUES.length} security issues on ${OWNER}/${REPO}...\n`);
+console.log(
+  `🚀 Creating ${ISSUES.length} security issues on ${OWNER}/${REPO}...\n`
+);
 
 for (const issue of ISSUES) {
   await createIssue(issue);

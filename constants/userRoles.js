@@ -5,6 +5,7 @@ export const USER_ROLES = {
   TEACHER: "teacher",
   INSTITUTE: "institute",
   ADMIN: "admin",
+  PARENT: "parent",
 };
 
 export const ROLE_CONFIG = {
@@ -31,5 +32,11 @@ export const ROLE_CONFIG = {
     title: "Admin",
     description: "System administration and technical support",
     color: "from-orange-500 to-red-500",
+  },
+  [USER_ROLES.PARENT]: {
+    icon: Users,
+    title: "Parent",
+    description: "Monitor your child's attendance and academic progress",
+    color: "from-pink-500 to-rose-500",
   },
 };

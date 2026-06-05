@@ -1,4 +1,5 @@
 "use client";
+import toast from "react-hot-toast";
 import { useEffect } from "react";
 import { useState } from "react";
 import {
@@ -37,8 +38,14 @@ import SkeletonCard from "@/components/ui/SkeletonCard";
 
 // CRITICAL FIX: Imported missing useAuth hook to prevent ReferenceError crash
 import { useAuth } from "@/hooks/useAuth";
-import { getOutboxRecords, removeFromOutbox, clearOutbox } from "@/lib/offlineStore";
-import { syncAttendanceQueue } from "@/lib/syncService";
+import {
+  getPendingActions as getOutboxRecords,
+  removePendingAction as removeFromOutbox,
+  clearPendingActions as clearOutbox,
+} from "@/db/offlineStore";
+import { triggerOfflineSync } from "@/utils/offlineRequestHandler";
+import { apiFetch } from "@/lib/apiClient";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -57,6 +64,7 @@ const SuperAdminDashboard = () => {
   const [showCriticalAlert, setShowCriticalAlert] = useState(false);
   const [systemStatus, setSystemStatus] = useState("operational");
   const { user } = useAuth();
+  const isMounted = useIsMounted();
 
   const [platformStats, setPlatformStats] = useState({
     totalInstitutes: 0,
@@ -82,6 +90,14 @@ const SuperAdminDashboard = () => {
   const [onlineStatus, setOnlineStatus] = useState(true);
   const [selectedRecordPayload, setSelectedRecordPayload] = useState(null);
 
+  // Parent student linking states
+  const [links, setLinks] = useState([]);
+  const [linksLoading, setLinksLoading] = useState(false);
+  const [parentEmail, setParentEmail] = useState("");
+  const [studentEmail, setStudentEmail] = useState("");
+  const [linkingSubmitLoading, setLinkingSubmitLoading] = useState(false);
+  const [linkSearchQuery, setLinkSearchQuery] = useState("");
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -90,7 +106,9 @@ const SuperAdminDashboard = () => {
     const updateOutbox = async () => {
       try {
         const records = await getOutboxRecords();
-        setOutboxRecords(records || []);
+        if (isMounted()) {
+          setOutboxRecords(records || []);
+        }
       } catch (err) {
         console.error("Error reading outbox in dashboard:", err);
       }
@@ -104,7 +122,8 @@ const SuperAdminDashboard = () => {
         {
           time: new Date().toLocaleTimeString(),
           type: "info",
-          message: "Network connection restored. Preparing automatic sync replay.",
+          message:
+            "Network connection restored. Preparing automatic sync replay.",
         },
         ...prev,
       ]);
@@ -117,7 +136,8 @@ const SuperAdminDashboard = () => {
         {
           time: new Date().toLocaleTimeString(),
           type: "warning",
-          message: "Network connection lost. Offline mode active. Outbox will cache sync actions.",
+          message:
+            "Network connection lost. Offline mode active. Outbox will cache sync actions.",
         },
         ...prev,
       ]);
@@ -161,8 +181,14 @@ const SuperAdminDashboard = () => {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      window.removeEventListener("attendance-sync-complete", handleSyncComplete);
-      window.removeEventListener("attendance-sync-rejected", handleSyncRejected);
+      window.removeEventListener(
+        "attendance-sync-complete",
+        handleSyncComplete
+      );
+      window.removeEventListener(
+        "attendance-sync-rejected",
+        handleSyncRejected
+      );
       clearInterval(interval);
     };
   }, []);
@@ -176,7 +202,7 @@ const SuperAdminDashboard = () => {
     const fetchStats = async () => {
       try {
         const token = await user.getIdToken();
-        const res = await fetch("/api/admin/stats", {
+        const res = await apiFetch("/api/admin/stats", {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         });
@@ -192,10 +218,12 @@ const SuperAdminDashboard = () => {
           if (data.featureUsage) setFeatureUsage(data.featureUsage);
         } else {
           console.error("Failed to fetch admin stats:", res.status);
+          toast.error("Failed to load platform stats. Please refresh.");
         }
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error("Error fetching admin stats:", err);
+        toast.error("Network error loading admin stats.");
       } finally {
         if (isActive) {
           setLoading(false);
@@ -210,6 +238,265 @@ const SuperAdminDashboard = () => {
       controller.abort();
     };
   }, [user]);
+
+  const fetchLinks = async () => {
+    if (!user) return;
+    setLinksLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await apiFetch("/api/admin/parent-student-link", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLinks(data.links || []);
+      } else {
+        toast.error("Failed to load parent-student links");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error loading links");
+    } finally {
+      setLinksLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "parent student linking") {
+      fetchLinks();
+    }
+  }, [activeTab, user]);
+
+  const handleCreateLink = async (e) => {
+    e.preventDefault();
+    if (!parentEmail.trim() || !studentEmail.trim()) {
+      toast.error("Both emails are required");
+      return;
+    }
+    setLinkingSubmitLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await apiFetch("/api/admin/parent-student-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          parentEmail: parentEmail.trim(),
+          studentEmail: studentEmail.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Accounts linked successfully!");
+        setParentEmail("");
+        setStudentEmail("");
+        fetchLinks();
+      } else {
+        toast.error(data.error || "Failed to link accounts");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error creating relationship link");
+    } finally {
+      setLinkingSubmitLoading(false);
+    }
+  };
+
+  const handleDeleteLink = async (parentId, studentId) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to remove this parent-student relationship?"
+      )
+    )
+      return;
+    try {
+      const token = await user.getIdToken();
+      const res = await apiFetch(
+        `/api/admin/parent-student-link?parentId=${parentId}&studentId=${studentId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        toast.success("Relationship removed successfully");
+        fetchLinks();
+      } else {
+        toast.error("Failed to delete relationship link");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error deleting link");
+    }
+  };
+
+  const renderParentStudentLinking = () => {
+    const filteredLinks = links.filter((link) => {
+      const query = linkSearchQuery.toLowerCase();
+      return (
+        link.parentName.toLowerCase().includes(query) ||
+        link.parentEmail.toLowerCase().includes(query) ||
+        link.studentName.toLowerCase().includes(query) ||
+        link.studentEmail.toLowerCase().includes(query)
+      );
+    });
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2 font-display">
+            <Users className="w-6 h-6 text-pink-400" />
+            Parent-Student Account Linking Manager
+          </h2>
+          <p className="text-sm text-gray-400">
+            Establish and manage relationships between Parent roles and Student
+            accounts.
+          </p>
+        </div>
+
+        {/* Link creation form */}
+        <div className="bg-gray-800/40 border border-white/10 rounded-2xl p-6 shadow-xl space-y-4">
+          <h3 className="text-lg font-semibold text-white">
+            Link New Accounts
+          </h3>
+          <form
+            onSubmit={handleCreateLink}
+            className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"
+          >
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Parent Email
+              </label>
+              <input
+                type="email"
+                required
+                value={parentEmail}
+                onChange={(e) => setParentEmail(e.target.value)}
+                placeholder="parent@example.com"
+                className="w-full bg-black/40 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Student Email
+              </label>
+              <input
+                type="email"
+                required
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+                placeholder="student@example.com"
+                className="w-full bg-black/40 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={linkingSubmitLoading}
+              className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-semibold py-2.5 px-6 rounded-xl transition-all duration-300 shadow-md hover:shadow-pink-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 h-[42px]"
+            >
+              {linkingSubmitLoading ? "Linking..." : "Link Accounts"}
+            </button>
+          </form>
+        </div>
+
+        {/* Relationship records list */}
+        <div className="bg-black/40 border border-white/10 rounded-2xl p-5 shadow-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-gray-400" />
+              Active Relationship Links
+            </h3>
+            <div className="relative w-full sm:w-64">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
+              </span>
+              <input
+                type="text"
+                value={linkSearchQuery}
+                onChange={(e) => setLinkSearchQuery(e.target.value)}
+                placeholder="Search parent/student..."
+                className="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
+              />
+            </div>
+          </div>
+
+          {linksLoading ? (
+            <div className="py-12 text-center text-gray-400 flex items-center justify-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-pink-400" />
+              Loading relationships...
+            </div>
+          ) : filteredLinks.length === 0 ? (
+            <div className="py-12 text-center border border-dashed border-gray-700 rounded-xl space-y-2">
+              <Users className="w-10 h-10 text-gray-500 mx-auto" />
+              <p className="font-medium text-gray-300">
+                No linked accounts found
+              </p>
+              <p className="text-xs text-gray-500">
+                Links will show up here after linking parent and student
+                accounts.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-gray-700/50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-800/50 text-gray-400 text-xs font-medium uppercase tracking-wider">
+                    <tr className="border-b border-gray-700/50">
+                      <th className="px-4 py-3 text-left">Parent Name</th>
+                      <th className="px-4 py-3 text-left">Parent Email</th>
+                      <th className="px-4 py-3 text-left">Student Name</th>
+                      <th className="px-4 py-3 text-left">Student Email</th>
+                      <th className="px-4 py-3 text-left">Linked At</th>
+                      <th className="px-4 py-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700/50 text-gray-300">
+                    {filteredLinks.map((link) => (
+                      <tr
+                        key={link.id}
+                        className="hover:bg-gray-800/30 transition-colors"
+                      >
+                        <td className="px-4 py-4 font-semibold text-white">
+                          {link.parentName}
+                        </td>
+                        <td className="px-4 py-4 font-mono text-xs">
+                          {link.parentEmail}
+                        </td>
+                        <td className="px-4 py-4 font-semibold text-white">
+                          {link.studentName}
+                        </td>
+                        <td className="px-4 py-4 font-mono text-xs">
+                          {link.studentEmail}
+                        </td>
+                        <td className="px-4 py-4 text-xs">
+                          {link.createdAt
+                            ? new Date(link.createdAt).toLocaleString()
+                            : "N/A"}
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <button
+                            onClick={() =>
+                              handleDeleteLink(link.parentId, link.studentId)
+                            }
+                            className="text-red-400 hover:text-red-300 p-1.5 hover:bg-red-500/10 rounded-lg transition-all"
+                            aria-label="Delete relationship link"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const renderOverview = () => (
     <div className="space-y-6">
@@ -440,8 +727,8 @@ const SuperAdminDashboard = () => {
                     alert.severity === "high"
                       ? "bg-red-500"
                       : alert.severity === "medium"
-                      ? "bg-yellow-500"
-                      : "bg-blue-500"
+                        ? "bg-yellow-500"
+                        : "bg-blue-500"
                   }`}
                 ></div>
                 <span className="text-sm text-gray-300">{alert.message}</span>
@@ -460,11 +747,11 @@ const SuperAdminDashboard = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Institute Management</h2>
         <div className="flex gap-3">
-          <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center gap-2 shadow-lg transition-all duration-300">
+          <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center gap-2 shadow-lg transition-all duration-300" aria-label="Action button">
             <Building2 className="w-4 h-4" />
             Add New Institute
           </button>
-          <button className="px-4 py-2 bg-gray-800/60 text-gray-300 rounded-xl hover:bg-gray-700/60 flex items-center gap-2 border border-gray-600/40 transition-all duration-300">
+          <button className="px-4 py-2 bg-gray-800/60 text-gray-300 rounded-xl hover:bg-gray-700/60 flex items-center gap-2 border border-gray-600/40 transition-all duration-300" aria-label="Action button">
             <Download className="w-4 h-4" />
             Export Report
           </button>
@@ -574,8 +861,8 @@ const SuperAdminDashboard = () => {
                           institute.healthScore > 90
                             ? "bg-green-500"
                             : institute.healthScore > 70
-                            ? "bg-yellow-500"
-                            : "bg-red-500"
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
                         }`}
                       ></div>
                       <span className="text-sm text-white">
@@ -590,19 +877,31 @@ const SuperAdminDashboard = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      <button aria-label="Institute Settings" className="text-blue-400 hover:text-blue-300 transition-colors">
+                      <button
+                        aria-label="Institute Settings"
+                        className="text-blue-400 hover:text-blue-300 transition-colors"
+                      >
                         <Settings className="w-4 h-4" />
                       </button>
                       {institute.status === "active" ? (
-                        <button aria-label="Lock Institute" className="text-yellow-400 hover:text-yellow-300 transition-colors">
+                        <button
+                          aria-label="Lock Institute"
+                          className="text-yellow-400 hover:text-yellow-300 transition-colors"
+                        >
                           <Lock className="w-4 h-4" />
                         </button>
                       ) : (
-                        <button aria-label="Unlock Institute" className="text-green-400 hover:text-green-300 transition-colors">
+                        <button
+                          aria-label="Unlock Institute"
+                          className="text-green-400 hover:text-green-300 transition-colors"
+                        >
                           <Unlock className="w-4 h-4" />
                         </button>
                       )}
-                      <button aria-label="Ban Institute" className="text-red-400 hover:text-red-300 transition-colors">
+                      <button
+                        aria-label="Ban Institute"
+                        className="text-red-400 hover:text-red-300 transition-colors"
+                      >
                         <Ban className="w-4 h-4" />
                       </button>
                     </div>
@@ -827,7 +1126,7 @@ const SuperAdminDashboard = () => {
                 15 attempts outside geofence radius
               </div>
             </div>
-            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors" aria-label="Action button">
               Investigate
             </button>
           </div>
@@ -840,7 +1139,7 @@ const SuperAdminDashboard = () => {
                 GPS spoofing detected - 3 devices
               </div>
             </div>
-            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors" aria-label="Action button">
               Investigate
             </button>
           </div>
@@ -887,7 +1186,7 @@ const SuperAdminDashboard = () => {
                 </td>
                 <td className="px-4 py-2 text-gray-300">2025-09-20</td>
                 <td className="px-4 py-2">
-                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors">
+                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors" aria-label="Action button">
                     View Report
                   </button>
                 </td>
@@ -902,7 +1201,7 @@ const SuperAdminDashboard = () => {
                 </td>
                 <td className="px-4 py-2 text-gray-300">2025-09-21</td>
                 <td className="px-4 py-2">
-                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors">
+                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors" aria-label="Action button">
                     View Report
                   </button>
                 </td>
@@ -923,13 +1222,18 @@ const SuperAdminDashboard = () => {
       },
       ...prev,
     ]);
-    await syncAttendanceQueue();
+    await triggerOfflineSync();
     const records = await getOutboxRecords();
     setOutboxRecords(records || []);
   };
 
   const handleClearOutbox = async () => {
-    if (!window.confirm("Are you sure you want to clear the entire offline sync queue? This will delete all pending offline actions permanently.")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to clear the entire offline sync queue? This will delete all pending offline actions permanently."
+      )
+    )
+      return;
     await clearOutbox();
     setSyncHistory((prev) => [
       {
@@ -957,7 +1261,11 @@ const SuperAdminDashboard = () => {
   };
 
   const renderSyncInspector = () => {
-    const queueHealthScore = outboxRecords.some((r) => Date.now() - r.queuedAt > 24 * 60 * 60 * 1000) ? 75 : 100;
+    const queueHealthScore = outboxRecords.some(
+      (r) => Date.now() - r.queuedAt > 24 * 60 * 60 * 1000
+    )
+      ? 75
+      : 100;
 
     return (
       <div className="space-y-6">
@@ -969,21 +1277,22 @@ const SuperAdminDashboard = () => {
               Offline Sync Replay Reconciliation Inspector
             </h2>
             <p className="text-sm text-gray-400">
-              Prune, replay, and monitor the client-side IndexedDB outbox queue in real-time.
+              Prune, replay, and monitor the client-side IndexedDB outbox queue
+              in real-time.
             </p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={handleForceSync}
               className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2 shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all duration-300"
-            >
+             aria-label="Action button">
               <Play className="w-4 h-4" />
               Sync Now
             </button>
             <button
               onClick={handleClearOutbox}
               className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 flex items-center gap-2 border border-red-500/30 transition-all duration-300"
-            >
+             aria-label="Action button">
               <Trash2 className="w-4 h-4" />
               Clear Queue
             </button>
@@ -995,12 +1304,18 @@ const SuperAdminDashboard = () => {
           <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-5 shadow-xl">
             <div className="flex items-center justify-between mb-2">
               <Database className="w-6 h-6 text-blue-400" />
-              <span className={`inline-flex px-2 py-0.5 text-xs rounded-full font-medium ${onlineStatus ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"}`}>
+              <span
+                className={`inline-flex px-2 py-0.5 text-xs rounded-full font-medium ${onlineStatus ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"}`}
+              >
                 {onlineStatus ? "Online" : "Offline"}
               </span>
             </div>
-            <h3 className="text-2xl font-bold text-blue-400">{outboxRecords.length}</h3>
-            <p className="text-sm text-gray-300 mt-1">Total Queued Operations</p>
+            <h3 className="text-2xl font-bold text-blue-400">
+              {outboxRecords.length}
+            </h3>
+            <p className="text-sm text-gray-300 mt-1">
+              Total Queued Operations
+            </p>
           </div>
 
           <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-xl border border-green-500/20 rounded-2xl p-5 shadow-xl">
@@ -1008,7 +1323,9 @@ const SuperAdminDashboard = () => {
               <CheckCircle2 className="w-6 h-6 text-green-400" />
               <span className="text-xs text-gray-400">This Session</span>
             </div>
-            <h3 className="text-2xl font-bold text-green-400">{sessionSyncedCount}</h3>
+            <h3 className="text-2xl font-bold text-green-400">
+              {sessionSyncedCount}
+            </h3>
             <p className="text-sm text-gray-300 mt-1">Successfully Synced</p>
           </div>
 
@@ -1017,7 +1334,9 @@ const SuperAdminDashboard = () => {
               <AlertTriangle className="w-6 h-6 text-red-400" />
               <span className="text-xs text-gray-400">Rejected Replays</span>
             </div>
-            <h3 className="text-2xl font-bold text-red-400">{sessionRejectedCount}</h3>
+            <h3 className="text-2xl font-bold text-red-400">
+              {sessionRejectedCount}
+            </h3>
             <p className="text-sm text-gray-300 mt-1">Rejected Replays</p>
           </div>
 
@@ -1026,7 +1345,9 @@ const SuperAdminDashboard = () => {
               <Activity className="w-6 h-6 text-purple-400" />
               <span className="text-xs text-gray-400">Queue Health</span>
             </div>
-            <h3 className={`text-2xl font-bold ${queueHealthScore === 100 ? "text-purple-400" : "text-yellow-400"}`}>
+            <h3
+              className={`text-2xl font-bold ${queueHealthScore === 100 ? "text-purple-400" : "text-yellow-400"}`}
+            >
               {queueHealthScore}%
             </h3>
             <p className="text-sm text-gray-300 mt-1">Stale Record Health</p>
@@ -1045,8 +1366,13 @@ const SuperAdminDashboard = () => {
             {outboxRecords.length === 0 ? (
               <div className="py-12 text-center border border-dashed border-gray-700 rounded-xl space-y-2">
                 <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto" />
-                <p className="font-medium text-gray-300 font-display">Outbox Queue Clean</p>
-                <p className="text-xs text-gray-500">No cached actions or pending synchronizations detected in IndexedDB.</p>
+                <p className="font-medium text-gray-300 font-display">
+                  Outbox Queue Clean
+                </p>
+                <p className="text-xs text-gray-500">
+                  No cached actions or pending synchronizations detected in
+                  IndexedDB.
+                </p>
               </div>
             ) : (
               <div className="overflow-hidden rounded-xl border border-gray-700/50">
@@ -1055,7 +1381,9 @@ const SuperAdminDashboard = () => {
                     <thead className="bg-gray-800/50 text-gray-400 text-xs font-medium uppercase tracking-wider">
                       <tr className="border-b border-gray-700/50">
                         <th className="px-4 py-3 text-left">ID</th>
-                        <th className="px-4 py-3 text-left">Record / Identity</th>
+                        <th className="px-4 py-3 text-left">
+                          Record / Identity
+                        </th>
                         <th className="px-4 py-3 text-left">Confidence</th>
                         <th className="px-4 py-3 text-left">Queued At</th>
                         <th className="px-4 py-3 text-left">Status</th>
@@ -1064,27 +1392,43 @@ const SuperAdminDashboard = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-700/50">
                       {outboxRecords.map((record) => {
-                        const isStale = Date.now() - record.queuedAt > 24 * 60 * 60 * 1000;
+                        const isStale =
+                          Date.now() - record.queuedAt > 24 * 60 * 60 * 1000;
                         return (
-                          <tr key={record.id} className="hover:bg-gray-800/30 transition-colors">
-                            <td className="px-4 py-4 text-xs font-mono text-gray-400 font-bold">#{record.id}</td>
-                            <td className="px-4 py-4">
-                              <div className="font-medium text-white">{record.studentName || "Self Submit"}</div>
-                              <div className="text-xs text-gray-400 font-mono">UID: {record.userId.slice(0, 8)}...</div>
+                          <tr
+                            key={record.id}
+                            className="hover:bg-gray-800/30 transition-colors"
+                          >
+                            <td className="px-4 py-4 text-xs font-mono text-gray-400 font-bold">
+                              #{record.id}
                             </td>
-                            <td className="px-4 py-4 font-mono text-gray-300">{(record.confidenceScore * 100).toFixed(0)}%</td>
+                            <td className="px-4 py-4">
+                              <div className="font-medium text-white">
+                                {record.studentName || "Self Submit"}
+                              </div>
+                              <div className="text-xs text-gray-400 font-mono">
+                                UID: {record.userId.slice(0, 8)}...
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 font-mono text-gray-300">
+                              {(record.confidenceScore * 100).toFixed(0)}%
+                            </td>
                             <td className="px-4 py-4 text-xs text-gray-400">
                               {new Date(record.queuedAt).toLocaleString()}
                             </td>
                             <td className="px-4 py-4">
-                              <span className={`inline-flex px-2 py-0.5 text-xs rounded-full border ${isStale ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "bg-blue-500/20 text-blue-400 border-blue-500/30"}`}>
+                              <span
+                                className={`inline-flex px-2 py-0.5 text-xs rounded-full border ${isStale ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "bg-blue-500/20 text-blue-400 border-blue-500/30"}`}
+                              >
                                 {isStale ? "Stale (>24h)" : "Pending"}
                               </span>
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex items-center justify-center gap-2">
                                 <button
-                                  onClick={() => setSelectedRecordPayload(record)}
+                                  onClick={() =>
+                                    setSelectedRecordPayload(record)
+                                  }
                                   className="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-600/40 text-gray-300 px-2 py-1 rounded transition-colors"
                                 >
                                   View Payload
@@ -1118,7 +1462,8 @@ const SuperAdminDashboard = () => {
             <div className="h-[300px] overflow-y-auto pr-2 space-y-3 font-mono text-xs scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
               {syncHistory.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-gray-500 text-center text-[11px] py-12">
-                  No real-time synchronization events recorded yet. Ready and listening to connection changes.
+                  No real-time synchronization events recorded yet. Ready and
+                  listening to connection changes.
                 </div>
               ) : (
                 syncHistory.map((log, index) => (
@@ -1128,10 +1473,10 @@ const SuperAdminDashboard = () => {
                       log.type === "success"
                         ? "bg-green-500/10 border-green-500/20 text-green-400"
                         : log.type === "error"
-                        ? "bg-red-500/10 border-red-500/20 text-red-400"
-                        : log.type === "warning"
-                        ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
-                        : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                          ? "bg-red-500/10 border-red-500/20 text-red-400"
+                          : log.type === "warning"
+                            ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
+                            : "bg-blue-500/10 border-blue-500/20 text-blue-400"
                     }`}
                   >
                     <div className="flex justify-between font-bold text-[10px] opacity-75 mb-0.5">
@@ -1158,6 +1503,7 @@ const SuperAdminDashboard = () => {
                 <button
                   onClick={() => setSelectedRecordPayload(null)}
                   className="text-gray-400 hover:text-white transition-colors"
+                  aria-label="Close payload details"
                 >
                   ✕
                 </button>
@@ -1215,7 +1561,10 @@ const SuperAdminDashboard = () => {
                 {new Date().toLocaleDateString()}
               </div>
             </div>
-            <button className="relative p-2.5 bg-gray-800/60 hover:bg-gray-700/60 rounded-xl border border-gray-600/40 transition-colors shadow-sm">
+            <button
+              aria-label="View critical alerts"
+              className="relative p-2.5 bg-gray-800/60 hover:bg-gray-700/60 rounded-xl border border-gray-600/40 transition-colors shadow-sm"
+            >
               <AlertTriangle className="w-5 h-5 text-gray-300" />
               {criticalAlerts.length > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md">
@@ -1241,7 +1590,14 @@ const SuperAdminDashboard = () => {
 
       {/* Tabs Navigation */}
       <div className="flex items-center gap-4 border-b border-white/10 pb-2">
-        {["overview", "institutes", "monitoring", "security", "sync reconciliation"].map((tab) => (
+        {[
+          "overview",
+          "institutes",
+          "monitoring",
+          "security",
+          "sync reconciliation",
+          "parent student linking",
+        ].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1264,6 +1620,8 @@ const SuperAdminDashboard = () => {
           {activeTab === "monitoring" && renderSystemMonitoring()}
           {activeTab === "security" && renderSecurityCenter()}
           {activeTab === "sync reconciliation" && renderSyncInspector()}
+          {activeTab === "parent student linking" &&
+            renderParentStudentLinking()}
         </div>
       </div>
     </div>

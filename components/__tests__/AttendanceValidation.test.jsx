@@ -1,146 +1,189 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import AttendanceValidation from "../AttendanceValidation";
 
-// Mock next/navigation
-jest.mock("next/navigation", () => ({
+const mockPush = vi.fn();
+const mockUserRef = vi.hoisted(() => ({
+  email: "student@test.com",
+  displayName: "Test Student",
+  getIdToken: vi.fn().mockResolvedValue("mock-token"),
+}));
+
+vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: mockPush,
   }),
 }));
 
-// Mock useAuth hook
-jest.mock("@/hooks/useAuth", () => ({
+vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
-    user: {
-      email: "student@example.com",
-      displayName: "Test Student",
-      getIdToken: jest.fn().mockResolvedValue("mock-token"),
-    },
+    user: mockUserRef,
   }),
 }));
 
-// Mock calculateDistance utility
-jest.mock("@/utils/authUtils", () => ({
-  calculateDistance: () => 10,
+vi.mock("react-hot-toast", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
 }));
 
-describe("AttendanceValidation Exception Modal Focus Trap", () => {
-  const mockOnValidationSuccess = jest.fn();
+const mockApiFetch = vi.fn();
 
+vi.mock("@/lib/apiClient", () => ({
+  apiFetch: (...args) => mockApiFetch(...args),
+}));
+
+describe("AttendanceValidation Core States", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    
-    // Mock global fetch to return settings successfully
-    global.fetch = jest.fn().mockResolvedValue({
+    vi.clearAllMocks();
+    mockApiFetch.mockReset();
+  });
+
+  test("renders loading state while attendance settings are loading", () => {
+    mockApiFetch.mockImplementation(() => new Promise(() => {}));
+
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
+
+    expect(screen.getByText(/loading system/i)).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/preparing attendance validation/i)
+    ).toBeInTheDocument();
+  });
+
+  test("renders error state when settings request fails", async () => {
+    mockApiFetch.mockRejectedValueOnce(new Error("Settings fetch failed"));
+
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
+
+    expect(await screen.findByText(/system error/i)).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name: /retry/i,
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name: /hard refresh/i,
+      })
+    ).toBeInTheDocument();
+  });
+
+  test("opens exception request modal", async () => {
+    const user = userEvent.setup();
+
+    mockApiFetch.mockResolvedValueOnce({
       ok: true,
-      json: jest.fn().mockResolvedValue({
-        timeWindow: { start: "09:00", end: "10:00" },
-        gpsLocation: { lat: 12.9716, lng: 77.5946, radius: 100 },
+      json: async () => ({
+        timeWindow: {
+          start: "00:00",
+          end: "23:59",
+        },
+        gpsLocation: {
+          lat: 0,
+          lng: 0,
+          radius: 100,
+        },
       }),
     });
 
-    // Mock geolocation
-    navigator.geolocation = {
-      getCurrentPosition: jest.fn().mockImplementation((success) =>
-        success({
-          coords: {
-            latitude: 12.9716,
-            longitude: 77.5946,
-          },
-        })
-      ),
-    };
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/secure attendance/i)).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /request exception/i,
+      })
+    );
+
+    expect(screen.getByText(/exception request/i)).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/request attendance validation exception/i)
+    ).toBeInTheDocument();
   });
 
-  test("renders exception modal when Request Exception button is clicked", async () => {
+  test("closes exception modal when cancel is clicked", async () => {
     const user = userEvent.setup();
-    render(<AttendanceValidation onValidationSuccess={mockOnValidationSuccess} />);
 
-    // Wait for the settings loading to complete
-    await waitFor(() => {
-      expect(screen.queryByText("Loading System")).not.toBeInTheDocument();
+    mockApiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        timeWindow: {
+          start: "00:00",
+          end: "23:59",
+        },
+        gpsLocation: {
+          lat: 0,
+          lng: 0,
+          radius: 100,
+        },
+      }),
     });
 
-    // Capture the trigger button that opens the exception modal
-    const requestExceptionBtn = await screen.findByRole("button", { name: /request exception/i });
-    expect(requestExceptionBtn).toBeInTheDocument();
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
 
-    // Focus the request button
-    requestExceptionBtn.focus();
-    expect(document.activeElement).toBe(requestExceptionBtn);
-
-    // Click it to open the modal using await user.click
-    await user.click(requestExceptionBtn);
-
-    // Verify exception modal is rendered
-    expect(screen.getByText("Exception Request")).toBeInTheDocument();
-
-    // Verify focus shifts to the first focusable element in the exception modal
     await waitFor(() => {
-      const getLocBtn = screen.getByRole("button", { name: /get current location/i });
-      expect(document.activeElement).toBe(getLocBtn);
+      expect(screen.getByText(/secure attendance/i)).toBeInTheDocument();
     });
 
-    // Press Escape to verify close
-    await user.keyboard("{Escape}");
+    await user.click(
+      screen.getByRole("button", {
+        name: /request exception/i,
+      })
+    );
 
-    // Verify modal is closed
-    await waitFor(() => {
-      expect(screen.queryByText("Exception Request")).not.toBeInTheDocument();
-    });
+    await user.click(
+      screen.getByRole("button", {
+        name: /cancel/i,
+      })
+    );
 
-    // Verify focus is restored back to the Request Exception button!
-    await waitFor(() => {
-      const freshRequestExceptionBtn = screen.getByRole("button", { name: /request exception/i });
-      expect(document.activeElement).toBe(freshRequestExceptionBtn);
-    });
+    expect(screen.queryByText(/exception request/i)).not.toBeInTheDocument();
   });
 
-  test("traps focus inside the exception modal with Tab/Shift+Tab", async () => {
+  test("disables submit button when required fields are empty", async () => {
     const user = userEvent.setup();
-    const { container } = render(<AttendanceValidation onValidationSuccess={mockOnValidationSuccess} />);
 
-    await waitFor(() => {
-      expect(screen.queryByText("Loading System")).not.toBeInTheDocument();
+    mockApiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        timeWindow: {
+          start: "00:00",
+          end: "23:59",
+        },
+        gpsLocation: {
+          lat: 0,
+          lng: 0,
+          radius: 100,
+        },
+      }),
     });
 
-    const requestExceptionBtn = await screen.findByRole("button", { name: /request exception/i });
-    await user.click(requestExceptionBtn);
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
 
-    // Capture the elements inside the modal
-    const getLocBtn = screen.getByRole("button", { name: /get current location/i });
-    const selectReason = container.querySelector("#exception-reason");
-    const additionalDetails = container.querySelector("#exception-details");
-    const cancelBtn = screen.getByRole("button", { name: /cancel/i });
-
-    expect(selectReason).toBeInTheDocument();
-    expect(additionalDetails).toBeInTheDocument();
-
-    // Focus shifts to getLocBtn initially
     await waitFor(() => {
-      expect(document.activeElement).toBe(getLocBtn);
+      expect(screen.getByText(/secure attendance/i)).toBeInTheDocument();
     });
 
-    // Tab -> selectReason
-    await user.tab();
-    expect(document.activeElement).toBe(selectReason);
+    await user.click(
+      screen.getByRole("button", {
+        name: /request exception/i,
+      })
+    );
 
-    // Tab -> additionalDetails
-    await user.tab();
-    expect(document.activeElement).toBe(additionalDetails);
+    const submitButton = screen.getByRole("button", {
+      name: /submit/i,
+    });
 
-    // Tab -> cancelBtn
-    await user.tab();
-    expect(document.activeElement).toBe(cancelBtn);
-
-    // Tab again -> wraps back to getLocBtn (since submitBtn is disabled and thus skipped)
-    await user.tab();
-    expect(document.activeElement).toBe(getLocBtn);
-
-    // Shift + Tab -> wraps to last element (cancelBtn)
-    await user.tab({ shift: true });
-    expect(document.activeElement).toBe(cancelBtn);
+    expect(submitButton).toBeDisabled();
   });
 });

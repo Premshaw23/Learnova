@@ -1,0 +1,13 @@
+OG Image placeholder — Replace with actual 1200x630 PNG if desired.
+An og-image.jpg already exists in this directory and is currently in use.
+
+Design specs:
+  - Dimensions: 1200 x 630 px
+  - Background: Dark (e.g. #0f172a)
+  - Text color: White
+  - Title: "Learnova — Smart Attendance & Curriculum Management"
+  - Subtitle: "For teachers, students, and institutions"
+  - Include Learnova logo/branding
+
+Current OG image in use: public/og-image.jpg
+Referenced in metadata as: /og-image.jpg

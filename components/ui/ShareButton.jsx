@@ -16,31 +16,50 @@ export default function ShareButton({ className = "" }) {
 
   const handleShare = async () => {
     try {
-      const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+      const shareUrl =
+        typeof window !== "undefined" ? window.location.href : "";
+
       if (!shareUrl) {
         throw new Error("Unable to retrieve window.location.href");
       }
 
-      await navigator.clipboard.writeText(shareUrl);
-      setIsCopied(true);
-      toast.success("Link copied to clipboard!");
+      if (navigator.share) {
+        await navigator.share({
+          title: "Learnova Project",
+          text: "Check out this article/link from Learnova!",
+          url: shareUrl,
+        });
 
-      // Clear any existing timeout to avoid race conditions
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+        toast.success("Shared successfully!");
+      } else {
+        // Fallback: copy link to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+
+        setIsCopied(true);
+        toast.success("Link copied to clipboard!");
+
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+
+        // Reset copied state after 2 seconds
+        timeoutRef.current = setTimeout(() => {
+          setIsCopied(false);
+        }, 2000);
+      }
+    } catch (error) {
+      // Ignore share cancel action
+      if (error.name === "AbortError") {
+        return;
       }
 
-      // Revert copied state after 2 seconds
-      timeoutRef.current = setTimeout(() => {
-        setIsCopied(false);
-      }, 2000);
-    } catch (error) {
-      console.error("Clipboard copy failed:", error);
-      toast.error("Failed to copy link. Please copy it manually.");
+      console.error("Sharing failed:", error);
+      toast.error("Failed to share link. Please copy it manually.");
     }
   };
 
-  // Clean up the timeout on unmount to prevent memory leaks
+  // Cleanup timeout on component unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
@@ -87,6 +106,7 @@ export default function ShareButton({ className = "" }) {
           )}
         </AnimatePresence>
       </div>
+
       <motion.span
         initial={{ opacity: 0.7 }}
         animate={{ opacity: 1 }}

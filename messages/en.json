@@ -1,0 +1,21 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "contact": "Contact",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "about": {
+    "welcome": "Welcome to Learnova",
+    "mission": "Our Mission",
+    "impact": "Our Impact",
+    "explore": "Explore"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "try_again": "Try Again",
+    "go_back": "Go Back"
+  }
+}

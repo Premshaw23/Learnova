@@ -2,7 +2,7 @@ import React from "react";
 import { Sparkles } from "lucide-react";
 import CourseFilters from "@/components/courses/CourseFilters";
 import CourseLibrary from "@/components/courses/CourseLibrary";
-import { getPaginatedCourses } from "@/lib/courses";
+import { COURSES, getPaginatedCourses } from "@/lib/courses";
 
 export const metadata = {
   title: "Courses · Learnova",
@@ -56,7 +56,8 @@ export default async function CoursesPage({ searchParams }) {
                 Course Library
               </h1>
               <p className="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed">
-                Unlock your potential with our elite, premium courses. Learn advanced concepts directly from industry leads.
+                Unlock your potential with our elite, premium courses. Learn
+                advanced concepts directly from industry leads.
               </p>
             </div>
           </div>
@@ -75,6 +76,7 @@ export default async function CoursesPage({ searchParams }) {
           q={q}
           total={total}
           limit={limit}
+          allCourses={COURSES}
         />
       </main>
     </div>

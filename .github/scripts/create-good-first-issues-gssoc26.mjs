@@ -553,7 +553,7 @@ export function calculateAttendanceRate(records, userId) {
     title: "Test: Write unit tests for form validation utilities",
     body: `## 📝 Task Description
 
-Form validation utilities lack test coverage. Write Jest tests to verify validators work correctly for valid/invalid inputs.
+Form validation utilities lack test coverage. Write Vitest tests to verify validators work correctly for valid/invalid inputs.
 
 ## 🎯 Why This Matters
 
@@ -632,7 +632,9 @@ async function createIssue(issue) {
   }
 }
 
-console.log(`🚀 Creating ${ISSUES.length} good-first issues on ${OWNER}/${REPO}...\n`);
+console.log(
+  `🚀 Creating ${ISSUES.length} good-first issues on ${OWNER}/${REPO}...\n`
+);
 
 for (const issue of ISSUES) {
   await createIssue(issue);

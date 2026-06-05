@@ -1,99 +1,118 @@
 "use client";
-import { Sparkles, Shield, Zap } from "lucide-react";
+
+import { Shield, Zap, Sparkles } from "lucide-react";
 import { ROLE_CONFIG } from "@/constants/userRoles";
 
+const ROLE_GLOW = {
+  student: "hover:border-blue-500/40 hover:shadow-blue-500/8",
+  teacher: "hover:border-emerald-500/40 hover:shadow-emerald-500/8",
+  institute: "hover:border-violet-500/40 hover:shadow-violet-500/8",
+  admin: "hover:border-orange-500/40 hover:shadow-orange-500/8",
+  parent: "hover:border-pink-500/40 hover:shadow-pink-500/8",
+};
+
+const FEATURES = [
+  {
+    icon: Shield,
+    iconClass: "text-indigo-500 dark:text-indigo-400",
+    title: "Secure Access",
+    desc: "Role-based permissions with enterprise-grade security compliance.",
+  },
+  {
+    icon: Zap,
+    iconClass: "text-violet-500 dark:text-violet-400",
+    title: "Real-time Sync",
+    desc: "Instant updates synced seamlessly across all your devices.",
+  },
+  {
+    icon: Sparkles,
+    iconClass: "text-pink-500 dark:text-pink-400",
+    title: "Custom Dashboard",
+    desc: "Tailored layouts built for your role and platform activities.",
+  },
+];
+
 export default function RoleSelection({ onRoleSelect }) {
-  // Keyboard handler — Enter ya Space press hone pe role select hoga
-  const handleKeyDown = (e, role) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault(); // Page scroll rokne ke liye Space key pe
-      onRoleSelect(role);
-    }
-  };
-
   return (
-    <div className="relative max-w-5xl mx-auto text-center px-4 py-8 overflow-hidden">
-      {/* Ambient Background Accents */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[350px] w-[350px] rounded-full bg-indigo-600/10 blur-[100px] pointer-events-none" />
-      <div className="absolute top-3/4 left-1/4 -translate-y-1/2 h-[300px] w-[300px] rounded-full bg-purple-500/10 blur-[90px] pointer-events-none" />
+    <div className="relative mx-auto max-w-5xl px-4 py-10 text-center">
+      {/* Ambient blobs */}
+      <div className="pointer-events-none absolute left-1/2 top-1/4 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/8 blur-[100px] dark:bg-indigo-500/12" />
+      <div className="pointer-events-none absolute left-1/4 top-3/4 h-64 w-64 -translate-y-1/2 rounded-full bg-violet-500/8 blur-[90px] dark:bg-violet-500/12" />
 
-      <div className="mb-12 relative z-10">
-        <div className="inline-flex items-center gap-2.5 bg-gradient-to-r from-indigo-700 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent mb-4">
-          <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Choose Your Role</h1>
+      {/* Heading */}
+      <div className="relative z-10 mb-10">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/8 px-4 py-1.5 dark:border-indigo-400/20 dark:bg-indigo-400/10">
+          <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+          <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+            Get started
+          </span>
         </div>
-        <p className="text-slate-600 dark:text-slate-300 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
-          Select your portal to unlock your customized Learnova dashboard and features
+        <h1 className="bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-600 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent dark:from-indigo-400 dark:via-violet-400 dark:to-pink-400 sm:text-5xl">
+          Choose Your Role
+        </h1>
+        <p className="mx-auto mt-3 max-w-lg text-base text-muted-foreground">
+          Select your portal to unlock your personalised Learnova dashboard and
+          features.
         </p>
       </div>
 
-      {/* Role Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 relative z-10">
+      {/* Role cards */}
+      <div className="relative z-10 mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Object.entries(ROLE_CONFIG).map(([role, config]) => {
-          const IconComponent = config.icon;
-          
-          // Custom glowing borders and shadows matching each role's color scheme
-          const shadowGlow = {
-            student: "hover:shadow-blue-500/10 hover:border-blue-500/30",
-            teacher: "hover:shadow-green-500/10 hover:border-green-500/30",
-            institute: "hover:shadow-purple-500/10 hover:border-purple-500/30",
-            admin: "hover:shadow-orange-500/10 hover:border-orange-500/30",
-          }[role] || "hover:shadow-indigo-500/10 hover:border-indigo-500/30";
-
+          const glow =
+            ROLE_GLOW[role] ??
+            "hover:border-indigo-500/40 hover:shadow-indigo-500/8";
           return (
             <button
               key={role}
+              type="button"
               onClick={() => onRoleSelect(role)}
               aria-label={`Select ${config.title} role`}
-              onKeyDown={(e) => handleKeyDown(e, role)} // Keyboard support
-              className={`group p-6 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 ${shadowGlow} transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.03] active:scale-[0.98] text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 cursor-pointer shadow-xl w-full max-w-[280px] sm:max-w-none mx-auto`}
+              className={`group relative flex flex-col items-center rounded-2xl border border-border bg-card p-6 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${glow}`}
             >
+              {/* Icon */}
               <div
-                className={`w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-r ${config.color} p-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}
+                className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${config.color} shadow-md transition-transform duration-300 group-hover:scale-110`}
               >
-                <IconComponent className="w-8 h-8 text-white animate-pulse" />
+                <config.icon className="h-7 w-7 text-white" />
               </div>
-              <h3 className="text-xl text-center mx-auto font-bold text-white mb-3 group-hover:text-indigo-300 transition-colors">
+
+              {/* Text */}
+              <h3 className="mb-2 text-base font-bold text-card-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                 {config.title}
               </h3>
-              <p className="text-white/85 text-sm leading-relaxed group-hover:text-white transition-colors">
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 {config.description}
               </p>
+
+              {/* CTA pill — appears on hover */}
               <div
-                className={`mt-6 py-2.5 px-4 rounded-xl bg-gradient-to-r ${config.color} opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all duration-300 shadow-md`}
+                aria-hidden="true"
+                className={`mt-5 w-full rounded-xl bg-gradient-to-r ${config.color} py-2 text-sm font-semibold text-white opacity-0 transition-all duration-300 group-hover:opacity-100 group-focus-visible:opacity-100`}
               >
-                <span className="text-white text-sm font-semibold">
-                  Select Role
-                </span>
+                Select Role
               </div>
             </button>
           );
         })}
       </div>
 
-      {/* Features Preview */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto relative z-10">
-        <div className="p-6 bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-          <Shield className="w-10 h-10 text-indigo-400 mx-auto mb-4" />
-          <h4 className="font-bold text-white mb-2 text-base">Secure Access</h4>
-          <p className="text-white/85 text-sm leading-relaxed">
-            Role-based permissions and high-security compliance standards
-          </p>
-        </div>
-        <div className="p-6 bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-          <Zap className="w-10 h-10 text-purple-400 mx-auto mb-4" />
-          <h4 className="font-bold text-white mb-2 text-base">Real-time Sync</h4>
-          <p className="text-white/85 text-sm leading-relaxed">
-            Instant database updates synced seamlessly across all devices
-          </p>
-        </div>
-        <div className="p-6 sm:col-span-2 lg:col-span-1 bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-white/20 transition-all duration-300">
-          <Sparkles className="w-10 h-10 text-pink-400 mx-auto mb-4" />
-          <h4 className="font-bold text-white mb-2 text-base">Custom Dashboard</h4>
-          <p className="text-white/85 text-sm leading-relaxed">
-            Tailored layouts built for your specialized platform activities
-          </p>
-        </div>
+      {/* Feature strip */}
+      <div className="relative z-10 grid gap-4 sm:grid-cols-3">
+        {FEATURES.map(({ icon: Icon, iconClass, title, desc }) => (
+          <div
+            key={title}
+            className="rounded-2xl border border-border bg-card p-5 text-left transition-all duration-200 hover:border-border/80 hover:shadow-sm"
+          >
+            <Icon className={`mb-3 h-8 w-8 ${iconClass}`} />
+            <h4 className="mb-1 text-sm font-bold text-card-foreground">
+              {title}
+            </h4>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {desc}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );

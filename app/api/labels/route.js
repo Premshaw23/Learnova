@@ -21,7 +21,11 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   // Authentication and Role Verification
-  await requireRole(request, ["admin", "teacher", "student"]);
+  const { profile } = await requireRole(request, [
+    "admin",
+    "teacher",
+    "student",
+  ]);
 
   // Search query — escape metacharacters to prevent ReDoS
   const { searchParams } = new URL(request.url);
@@ -36,6 +40,16 @@ export const GET = withErrorHandler(async (request) => {
         ],
       }
     : {};
+
+  if (profile.role !== "admin") {
+    if (profile.instituteId) {
+      query.instituteId = profile.instituteId;
+    } else {
+      // If a non-admin (like a student) doesn't have an instituteId,
+      // they shouldn't be able to search other users globally.
+      query.instituteId = "unassigned_no_match";
+    }
+  }
 
   // Database — faceDescriptor is excluded from the projection.
   // Biometric embeddings are sensitive personal data and must not be
@@ -55,9 +69,10 @@ export const GET = withErrorHandler(async (request) => {
     .limit(50)
     .toArray();
 
+  const showImageFlag = profile.role !== "student";
   const sanitizedUsers = allUsers.map(({ image, ...rest }) => ({
     ...rest,
-    hasImage: !!image,
+    ...(showImageFlag ? { hasImage: !!image } : {}),
   }));
 
   return jsonSuccess(sanitizedUsers, 200);

@@ -5,13 +5,32 @@ import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import React from "react";
 import toast from "react-hot-toast";
-import { Upload, User, Mail, Hash, Sparkles, CheckCircle } from "lucide-react";
+import { Upload, User, Mail, Hash, CheckCircle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
+import useUnsavedChangesWarning from "@/hooks/useUnsavedChangesWarning";
 import NextImage from "next/image";
 import { validateRequired, validateName } from "@/utils/formValidation";
 import { isValidEmail, suggestEmailCorrection } from "@/utils/emailValidation";
 import * as faceapi from "face-api.js";
+import { z } from "zod";
+import { apiFetch } from "@/lib/apiClient";
+
+// Strict validation schema matching issue #1567 criteria
+const registrationSchema = z.object({
+  name: z.string().trim().min(3, "Name must be at least 3 characters long"),
+  rollNo: z
+    .string()
+    .trim()
+    .min(8, "Roll Number must be at least 8 characters long")
+    .regex(/[A-Z]/, "Roll Number must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Roll Number must contain at least one number")
+    .regex(
+      /[^A-Za-z0-9]/,
+      "Roll Number must contain at least one special character"
+    ),
+  email: z.string().trim().email("Please enter a valid email address"),
+});
 
 export default function RegisterPage() {
   const MODEL_URL = "/models";
@@ -47,6 +66,9 @@ export default function RegisterPage() {
   const [error, setError] = useState(null);
   const [emailSuggestion, setEmailSuggestion] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useUnsavedChangesWarning(isDirty);
 
   // ✅ CORRECT LOCATION: Prefill email from auth user using useEffect
   useEffect(() => {
@@ -64,7 +86,7 @@ export default function RegisterPage() {
     const loadImage = async () => {
       try {
         const token = await user?.getIdToken();
-        const res = await fetch(`/api/images?id=${registeredUser._id}`, {
+        const res = await apiFetch(`/api/images?id=${registeredUser._id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 
@@ -77,8 +99,11 @@ export default function RegisterPage() {
         } else {
           URL.revokeObjectURL(url);
         }
-      } catch {
-        // silently fail
+      } catch (err) {
+        console.error("Face registration failed:", err);
+        toast.error(
+          "Face registration failed. Please try again or use email signup."
+        );
       }
     };
 
@@ -109,19 +134,32 @@ export default function RegisterPage() {
       setError(rollNoValidation);
       return;
     }
+
+    const hasUppercase = /[A-Z]/.test(rollNo); // Or substitute with password variable if available
+    const hasNumber = /[0-9]/.test(rollNo);
+    const hasSpecialChar = /[^A-Za-z0-9]/.test(rollNo);
+
+    if (rollNo.length < 8 || !hasUppercase || !hasNumber || !hasSpecialChar) {
+      const msg =
+        "Validation failed: Must be 8+ characters with an uppercase letter, number, and special character.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     if (!isValidEmail(email)) {
-  const suggestion = suggestEmailCorrection(email);
-  const message = suggestion
-    ? `Invalid email. Did you mean ${suggestion}?`
-    : "Please enter a valid email address.";
+      const suggestion = suggestEmailCorrection(email);
+      const message = suggestion
+        ? `Invalid email. Did you mean ${suggestion}?`
+        : "Please enter a valid email address.";
 
-  setEmailSuggestion(suggestion || null);
-  setError(message);
-  toast.error(message);
+      setEmailSuggestion(suggestion || null);
+      setError(message);
+      toast.error(message);
 
-  return;
-}
-setEmailSuggestion(null);
+      return;
+    }
+    setEmailSuggestion(null);
 
     const photoValidation = validateRequired(photo, "Profile Photo");
     if (photoValidation !== true) {
@@ -134,13 +172,17 @@ setEmailSuggestion(null);
     let faceDescriptorString = "";
     if (photo) {
       if (!modelsLoaded) {
-        setError("Face recognition models are loading. Please wait a moment and try again.");
+        setError(
+          "Face recognition models are loading. Please wait a moment and try again."
+        );
         toast.error("Face models are still loading. Please wait.");
         setIsLoading(false);
         return;
       }
 
-      const toastId = toast.loading("Analyzing profile photo for face detection...");
+      const toastId = toast.loading(
+        "Analyzing profile photo for face detection..."
+      );
       try {
         const photoUrl = URL.createObjectURL(photo);
         const img = await faceapi.fetchImage(photoUrl);
@@ -152,17 +194,26 @@ setEmailSuggestion(null);
         URL.revokeObjectURL(photoUrl);
 
         if (!detection) {
-          setError("Could not detect a clear face in the uploaded photo. Please upload a clear headshot.");
-          toast.error("Face detection failed. Please upload a clear headshot photo.", { id: toastId });
+          setError(
+            "Could not detect a clear face in the uploaded photo. Please upload a clear headshot."
+          );
+          toast.error(
+            "Face detection failed. Please upload a clear headshot photo.",
+            { id: toastId }
+          );
           setIsLoading(false);
           return;
         }
 
         faceDescriptorString = JSON.stringify(Array.from(detection.descriptor));
-        toast.success("Face successfully detected and processed!", { id: toastId });
+        toast.success("Face successfully detected and processed!", {
+          id: toastId,
+        });
       } catch (err) {
         console.error("Face detection error:", err);
-        setError("Error analyzing face image. Please ensure you uploaded a valid image file.");
+        setError(
+          "Error analyzing face image. Please ensure you uploaded a valid image file."
+        );
         toast.error("Error analyzing face. Please try again.", { id: toastId });
         setIsLoading(false);
         return;
@@ -187,7 +238,7 @@ setEmailSuggestion(null);
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await fetch("/api/register", {
+      const res = await apiFetch("/api/register", {
         method: "POST",
         headers,
         body: formData,
@@ -201,6 +252,7 @@ setEmailSuggestion(null);
         setRollNo("");
         setEmail(user?.email || ""); // ✅ Reset email to auth user's email
         setPhoto(null);
+        setIsDirty(false);
         toast.success("Registration successful!");
       } else {
         setError(data.error || "An unknown error occurred."); // ✅ Provide a default error message
@@ -215,55 +267,53 @@ setEmailSuggestion(null);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/20 via-slate-900/40 to-slate-900"></div>
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, rgba(156, 146, 172, 0.15) 1px, transparent 0)`,
-          backgroundSize: "20px 20px",
-        }}
-      ></div>
-
-      {/* Floating sparkles */}
-      <div className="absolute top-20 left-10 text-purple-400/30 animate-pulse">
-        <Sparkles className="w-6 h-6" />
-      </div>
-      <div className="absolute top-40 right-20 text-blue-400/30 animate-pulse delay-1000">
-        <Sparkles className="w-4 h-4" />
-      </div>
-      <div className="absolute bottom-40 left-20 text-pink-400/30 animate-pulse delay-2000">
-        <Sparkles className="w-5 h-5" />
-      </div>
+    <div className="relative min-h-screen bg-background overflow-hidden">
+      {/* Ambient background blobs */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-indigo-500/5 blur-[120px] dark:bg-indigo-500/8" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-[350px] w-[350px] rounded-full bg-violet-500/5 blur-[100px] dark:bg-violet-500/8" />
 
       <Navbar />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12 relative z-10">
-        <div className="w-full max-w-6xl mt-12 flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-            {/* Shimmer effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite] pointer-events-none"></div>
-
-            <div className="relative z-10">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center gap-2 mb-4">
-                  <div className="p-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg">
-                    <User className="w-6 h-6 text-white" />
-                  </div>
-                  <Sparkles className="w-5 h-5 text-purple-400" />
+      <main className="relative z-10 flex items-start justify-center px-4 pb-16 pt-24">
+        <div className="mt-8 w-full max-w-6xl flex flex-col lg:flex-row gap-8">
+          {/* Form card */}
+          <div className="flex-1 rounded-2xl border border-border bg-card shadow-xl shadow-black/5 dark:shadow-black/20 overflow-hidden">
+            {/* Card header */}
+            <div className="border-b border-border px-8 py-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md">
+                  <User className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">
-                  Register New User
-                </h2>
-                <p className="text-slate-300 text-lg">
-                  Join the Learnova community
-                </p>
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-card-foreground">
+                    Register New User
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Join the Learnova community
+                  </p>
+                </div>
               </div>
+            </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <label htmlFor="fullName" className="flex items-center gap-2 text-slate-200 font-medium">
-                    <User className="w-4 h-4 text-purple-400" />
+            {/* Card body */}
+            <div className="px-8 py-6">
+              {error && (
+                <div className="mb-5 flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/8 px-4 py-3">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-destructive/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                  </span>
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Full Name */}
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="fullName"
+                    className="flex items-center gap-2 text-sm font-medium text-foreground"
+                  >
+                    <User className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                     Full Name
                   </label>
                   <input
@@ -271,15 +321,22 @@ setEmailSuggestion(null);
                     type="text"
                     placeholder="Enter your full name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value.trimStart());
+                      setIsDirty(true);
+                    }}
                     required
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300 backdrop-blur-sm"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="rollNumber" className="flex items-center gap-2 text-slate-200 font-medium">
-                    <Hash className="w-4 h-4 text-blue-400" />
+                {/* Roll Number */}
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="rollNumber"
+                    className="flex items-center gap-2 text-sm font-medium text-foreground"
+                  >
+                    <Hash className="w-4 h-4 text-violet-500 dark:text-violet-400" />
                     Roll Number
                   </label>
                   <input
@@ -287,127 +344,134 @@ setEmailSuggestion(null);
                     type="text"
                     placeholder="Enter your roll number"
                     value={rollNo}
-                    onChange={(e) => setRollNo(e.target.value)}
+                    onChange={(e) => {
+                      setRollNo(e.target.value);
+                      setIsDirty(true);
+                    }}
                     required
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 backdrop-blur-sm"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400"
                   />
                 </div>
 
-                {/* Email (auto from auth, read-only) */}
-                <div className="space-y-2">
-                  <label htmlFor="emailAddress" className="flex items-center gap-2 text-slate-200 font-medium">
-                    <Mail className="w-4 h-4 text-pink-400" />
+                {/* Email — read-only */}
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="emailAddress"
+                    className="flex items-center gap-2 text-sm font-medium text-foreground"
+                  >
+                    <Mail className="w-4 h-4 text-pink-500 dark:text-pink-400" />
                     Email Address
                   </label>
                   <input
                     id="emailAddress"
                     type="email"
                     value={email}
-                    readOnly // ✅ user cannot change
-                    className="w-full p-4 bg-white/10 border border-white/20 rounded-xl text-slate-400 cursor-not-allowed"
+                    readOnly
+                    className="w-full rounded-xl border border-border bg-muted px-4 py-3 text-sm text-muted-foreground cursor-not-allowed"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="profilePhoto" className="flex items-center gap-2 text-slate-200 font-medium">
-                    <Upload className="w-4 h-4 text-green-400" />
+                {/* Profile Photo */}
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="profilePhoto"
+                    className="flex items-center gap-2 text-sm font-medium text-foreground"
+                  >
+                    <Upload className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                     Profile Photo
                   </label>
-                  <div className="relative">
-                    <input
-                      id="profilePhoto"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-                      required
-                      className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-purple-500 file:to-pink-500 file:text-white file:font-medium hover:file:from-purple-600 hover:file:to-pink-600 transition-all duration-300 backdrop-blur-sm"
-                    />
-                  </div>
+                  <input
+                    id="profilePhoto"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      setPhoto(e.target.files?.[0] || null);
+                      setIsDirty(true);
+                    }}
+                    required
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400 file:mr-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-indigo-500 file:to-violet-600 file:px-4 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:from-indigo-600 hover:file:to-violet-700"
+                  />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-purple-500/25 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                  className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 transition-all duration-200 hover:from-indigo-500 hover:to-violet-500 hover:shadow-lg hover:shadow-indigo-500/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-2 focus:ring-offset-card disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {isLoading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        Registering...
-                      </>
-                    ) : (
-                      <>
-                        <User className="w-5 h-5" />
-                        Register Account
-                      </>
-                    )}
-                  </span>
+                  {isLoading ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Registering…
+                    </>
+                  ) : (
+                    <>
+                      <User className="w-4 h-4" />
+                      Register Account
+                    </>
+                  )}
                 </button>
               </form>
-
-              {error && (
-                <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-center font-medium backdrop-blur-sm">
-                  {error}
-                </div>
-              )}
             </div>
           </div>
 
+          {/* Success card */}
           {registeredUser && (
-            <div className="flex-1 flex flex-col items-center justify-start">
-              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8 shadow-2xl w-full max-w-md relative overflow-hidden">
-                {/* Success shimmer */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-400/10 to-transparent -translate-x-full animate-[shimmer_2s_ease-in-out_infinite] pointer-events-none"></div>
-
-                <div className="relative z-10 text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mb-6 shadow-lg">
-                    <CheckCircle className="w-8 h-8 text-white" />
+            <div className="flex flex-1 flex-col items-center justify-start">
+              <div className="w-full max-w-md rounded-2xl border border-emerald-500/20 bg-card shadow-xl shadow-black/5 dark:shadow-black/20 overflow-hidden">
+                {/* Success header */}
+                <div className="border-b border-border bg-emerald-500/5 px-8 py-6 text-center">
+                  <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-green-500 shadow-lg">
+                    <CheckCircle className="w-7 h-7 text-white" />
                   </div>
-
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-2">
+                  <h3 className="text-lg font-bold text-card-foreground">
                     Registration Successful!
                   </h3>
-                  <p className="text-slate-300 mb-6">Welcome to Learnova</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Welcome to Learnova
+                  </p>
+                </div>
 
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-                    <div className="space-y-4 text-left">
-                      <div className="flex items-center gap-3">
-                        <User className="w-4 h-4 text-purple-400" />
-                        <span className="text-slate-300">
-                          <span className="font-medium text-white">Name:</span>{" "}
-                          {registeredUser.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Hash className="w-4 h-4 text-blue-400" />
-                        <span className="text-slate-300">
-                          <span className="font-medium text-white">
-                            Roll No:
-                          </span>{" "}
-                          {registeredUser.rollNo}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Mail className="w-4 h-4 text-pink-400" />
-                        <span className="text-slate-300">
-                          <span className="font-medium text-white">Email:</span>{" "}
-                          {registeredUser.email}
-                        </span>
-                      </div>
+                {/* Details */}
+                <div className="px-8 py-6 space-y-4">
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                    <User className="w-4 h-4 shrink-0 text-indigo-500 dark:text-indigo-400" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Name</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {registeredUser.name}
+                      </p>
                     </div>
-
-                    {registeredUser._id && registeredUserImageUrl && (
-                      <div className="mt-6">
-                        <img
-                          src={registeredUserImageUrl}
-                          alt={`${registeredUser.name}'s photo`}
-                          className="w-full h-auto rounded-xl shadow-lg border border-white/10"
-                        />
-                      </div>
-                    )}
                   </div>
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                    <Hash className="w-4 h-4 shrink-0 text-violet-500 dark:text-violet-400" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Roll No</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {registeredUser.rollNo}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                    <Mail className="w-4 h-4 shrink-0 text-pink-500 dark:text-pink-400" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {registeredUser.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {registeredUser._id && registeredUserImageUrl && (
+                    <div className="relative mt-2 h-64 w-full overflow-hidden rounded-xl border border-border">
+                      <NextImage
+                        src={registeredUserImageUrl}
+                        alt={`${registeredUser.name}'s photo`}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

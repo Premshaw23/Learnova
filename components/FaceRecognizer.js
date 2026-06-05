@@ -6,6 +6,7 @@ import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
+import { getAverageEAR } from "@/utils/livenessUtils";
 import { syncAttendanceQueue } from "@/lib/syncService";
 
 // ============================================================================
@@ -16,6 +17,7 @@ const EAR_THRESHOLD = 0.25;
 const BLINK_COOLDOWN_MS = 300;
 const WORKER_PROCESSING_INTERVAL_MS = 80; // Pushed to ~12 FPS for smoother tracking
 const FPS_SAMPLE_SIZE = 30;
+const MODEL_URL = "/models";
 
 /**
  * ============================================================================
@@ -24,6 +26,7 @@ const FPS_SAMPLE_SIZE = 30;
  * Architected to offload ML operations to a dedicated Web Worker while
  * maintaining an ultra-premium, 60fps UI with advanced diagnostics,
  * military-grade scanning overlays, and robust connection handling.
+ * Integrates latest master branch skeleton UI and lifecycle updates.
  *
  * @param {Object} props - Component properties.
  * @param {Object} props.authUser - The currently authenticated Firebase user.
@@ -70,6 +73,7 @@ export default function FaceRecognizer({ authUser }) {
   const [message, setMessage] = useState("Initializing core systems...");
   const [finished, setFinished] = useState(false);
   const [detectedPerson, setDetectedPerson] = useState(null);
+  const [modelsReady, setModelsReady] = useState(false); // From master
   const [isLoading, setIsLoading] = useState(true);
   const [confidence, setConfidence] = useState(0);
   const [attendanceState, setAttendanceState] = useState("idle");
@@ -90,6 +94,30 @@ export default function FaceRecognizer({ authUser }) {
   const labels = fetchedLabels;
 
   // ============================================================================
+  // 🧹 HARD CLEANUP FUNCTION (Integrated from master)
+  // ============================================================================
+  const stopAllMedia = useCallback(() => {
+    isMounted.current = false;
+    if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach((t) => t.stop());
+      activeStreamRef.current = null;
+    }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current.pause();
+    }
+
+    if (workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = null;
+    }
+  }, []);
+
+  // ============================================================================
   // 🌐 NETWORK CONNECTIVITY LISTENER
   // ============================================================================
   useEffect(() => {
@@ -98,6 +126,13 @@ export default function FaceRecognizer({ authUser }) {
     const handleOnline = () => {
       if (!isMounted.current) return;
       setIsOffline(false);
+      setAttendanceState((prev) => {
+        if (prev === "queued-offline") {
+          setMessage("Synced with secure servers.");
+          return "saved";
+        }
+        return prev;
+      });
       syncAttendanceQueue();
     };
 
@@ -119,7 +154,7 @@ export default function FaceRecognizer({ authUser }) {
   // 🧠 WEB WORKER INITIALIZATION & EVENT BUS
   // ============================================================================
   useEffect(() => {
-    if (!labelsLoading && !labelsError && labels.length > 0) {
+    if (!labelsLoading && !labelsError && labels?.length > 0) {
       initWebWorker();
     }
   }, [labelsLoading, labelsError, labels]);
@@ -142,6 +177,7 @@ export default function FaceRecognizer({ authUser }) {
             setMessage(workerMsg);
             break;
           case 'INIT_SUCCESS':
+            setModelsReady(true);
             setMessage("ML Engine Ready ✅ Synchronizing optics...");
             startVideo();
             break;
@@ -308,7 +344,11 @@ export default function FaceRecognizer({ authUser }) {
   // ============================================================================
   const startVideo = async () => {
     try {
-      if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
+
+      if (!isMounted.current || signal.aborted) return;
       setMessage("Requesting optic sensor permissions...");
       
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -319,17 +359,20 @@ export default function FaceRecognizer({ authUser }) {
         },
       });
 
-      if (!isMounted.current || abortControllerRef.current.signal.aborted) {
+      if (!isMounted.current || signal.aborted) {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
 
+      if (activeStreamRef.current) {
+        activeStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
       activeStreamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-          if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
+          if (!isMounted.current || signal.aborted) return;
           videoRef.current.play().catch((e) => console.warn("Video play interrupted", e));
           
           setIsLoading(false);
@@ -445,29 +488,8 @@ export default function FaceRecognizer({ authUser }) {
   // ============================================================================
   useEffect(() => {
     isMounted.current = true;
-    abortControllerRef.current = new AbortController();
-
-    return () => {
-      isMounted.current = false;
-      if (abortControllerRef.current) abortControllerRef.current.abort();
-      if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
-      
-      if (activeStreamRef.current) {
-        activeStreamRef.current.getTracks().forEach((t) => t.stop());
-        activeStreamRef.current = null;
-      }
-      
-      if (videoRef.current) {
-        videoRef.current.pause();
-        videoRef.current.srcObject = null;
-      }
-      
-      if (workerRef.current) {
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-    };
-  }, [facingMode]);
+    return stopAllMedia;
+  }, [stopAllMedia]);
 
   // ============================================================================
   // 💾 ATTENDANCE PERSISTENCE PROTOCOL
@@ -502,7 +524,7 @@ export default function FaceRecognizer({ authUser }) {
           confidenceScore: confidence,
         });
 
-        if (!isMounted.current) return;
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
 
         if (result.queuedOffline) {
           setAttendanceState("queued-offline");
@@ -511,7 +533,7 @@ export default function FaceRecognizer({ authUser }) {
           setAttendanceState(result.alreadyRecorded ? "already-recorded" : "saved");
         }
       } catch (err) {
-        if (!isMounted.current) return;
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
         setAttendanceState("error");
         setMessage(err.message || "Network Error: Could not save attendance record.");
       }
@@ -637,19 +659,42 @@ export default function FaceRecognizer({ authUser }) {
           </div>
         )}
 
-        {/* Global Loading / Initializing Screen */}
+        {/* Global Loading / Initializing Skeleton (Integrated from master) */}
         {isLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/90 backdrop-blur-xl z-40">
-            <div className="relative w-24 h-24 mb-8">
-              <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full" />
-              <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin" />
-              <div className="absolute inset-2 border-4 border-emerald-500/20 rounded-full" />
-              <div className="absolute inset-2 border-4 border-emerald-500 rounded-full border-b-transparent animate-[spin_2s_linear_infinite_reverse]" />
+          <div
+            role="status"
+            aria-label={message}
+            className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/85 backdrop-blur-sm z-40 gap-6 px-8"
+          >
+            {/* Pulsing skeleton placeholder */}
+            <div className="w-full max-w-sm space-y-3 animate-pulse">
+              <div className="h-48 bg-slate-700/60 rounded-xl" />
+              <div className="h-4 bg-slate-700/60 rounded-full w-3/4 mx-auto" />
+              <div className="h-3 bg-slate-700/40 rounded-full w-1/2 mx-auto" />
             </div>
-            <p className="text-white font-medium text-lg tracking-widest uppercase animate-pulse">
-              {message}
-            </p>
-            <p className="text-zinc-500 text-sm mt-2 font-mono">Initializing Tensor Web Worker...</p>
+
+            {/* Spinner + message */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+              <p className="text-white font-medium text-sm text-center max-w-xs">
+                {message}
+              </p>
+            </div>
+
+            {/* Step progress indicators */}
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span
+                className={
+                  modelsReady ? "text-green-400 font-semibold" : "text-gray-500"
+                }
+              >
+                {modelsReady ? "✓" : "○"} AI Models
+              </span>
+              <span className="text-gray-600">›</span>
+              <span className="text-gray-500">○ Camera</span>
+              <span className="text-gray-600">›</span>
+              <span className="text-gray-500">○ Face Matching</span>
+            </div>
           </div>
         )}
 

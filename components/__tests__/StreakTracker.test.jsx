@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, act } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import StreakTracker from "../ui/StreakTracker";
 
 // Mock localStorage
@@ -24,18 +24,18 @@ Object.defineProperty(window, "localStorage", {
 describe("StreakTracker Component", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   test("should initialize streak to 1 and store today as lastActiveDate on first render", () => {
     render(<StreakTracker />);
-    
+
     act(() => {
-      jest.runAllTimers();
+      vi.runAllTimers();
     });
 
     const streakText = screen.getByText(/1 Day Streak/i);
@@ -52,15 +52,22 @@ describe("StreakTracker Component", () => {
     // Set yesterday's date
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayMidnight = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+    const yesterdayMidnight = new Date(
+      yesterday.getFullYear(),
+      yesterday.getMonth(),
+      yesterday.getDate()
+    );
 
     window.localStorage.setItem("currentStreak", "3");
-    window.localStorage.setItem("lastActiveDate", yesterdayMidnight.toISOString());
+    window.localStorage.setItem(
+      "lastActiveDate",
+      yesterdayMidnight.toISOString()
+    );
 
     render(<StreakTracker />);
 
     act(() => {
-      jest.runAllTimers();
+      vi.runAllTimers();
     });
 
     const streakText = screen.getByText(/4 Days Streak/i);
@@ -71,7 +78,11 @@ describe("StreakTracker Component", () => {
 
   test("should keep streak the same if lastActiveDate is today", () => {
     const today = new Date();
-    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayMidnight = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
 
     window.localStorage.setItem("currentStreak", "5");
     window.localStorage.setItem("lastActiveDate", todayMidnight.toISOString());
@@ -79,7 +90,7 @@ describe("StreakTracker Component", () => {
     render(<StreakTracker />);
 
     act(() => {
-      jest.runAllTimers();
+      vi.runAllTimers();
     });
 
     const streakText = screen.getByText(/5 Days Streak/i);
@@ -91,15 +102,22 @@ describe("StreakTracker Component", () => {
   test("should reset streak to 1 if lastActiveDate was more than 1 day ago", () => {
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    const threeDaysAgoMidnight = new Date(threeDaysAgo.getFullYear(), threeDaysAgo.getMonth(), threeDaysAgo.getDate());
+    const threeDaysAgoMidnight = new Date(
+      threeDaysAgo.getFullYear(),
+      threeDaysAgo.getMonth(),
+      threeDaysAgo.getDate()
+    );
 
     window.localStorage.setItem("currentStreak", "10");
-    window.localStorage.setItem("lastActiveDate", threeDaysAgoMidnight.toISOString());
+    window.localStorage.setItem(
+      "lastActiveDate",
+      threeDaysAgoMidnight.toISOString()
+    );
 
     render(<StreakTracker />);
 
     act(() => {
-      jest.runAllTimers();
+      vi.runAllTimers();
     });
 
     const streakText = screen.getByText(/1 Day Streak/i);

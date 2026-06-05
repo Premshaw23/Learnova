@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
-import { X, Loader2 } from "lucide-react";
+
+import { useState, useEffect, useRef } from "react";
+import { X, Loader2, Mail, KeyRound } from "lucide-react";
 
 export default function ForgotPasswordModal({
   show,
@@ -12,103 +13,161 @@ export default function ForgotPasswordModal({
 }) {
   const [email, setEmail] = useState(initialEmail);
   const [localError, setLocalError] = useState("");
+  const inputRef = useRef(null);
+
+  // Sync initial email when modal opens
+  useEffect(() => {
+    if (show) {
+      setEmail(initialEmail);
+      setLocalError("");
+      // Focus input after transition
+      const t = setTimeout(() => inputRef.current?.focus(), 120);
+      return () => clearTimeout(t);
+    }
+  }, [show, initialEmail]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!show) return;
+    const handler = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [show, onClose]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setLocalError("");
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setLocalError("Please enter a valid email address.");
       return;
     }
     onSubmit(email.trim());
   };
 
+  const displayError = localError || error;
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="forgot-password-title"
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
-        show ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        show
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
       }`}
     >
       {/* Backdrop */}
       <div
-        className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
           show ? "opacity-100" : "opacity-0"
         }`}
         onClick={onClose}
+        aria-hidden="true"
       />
 
-      {/* Modal Card */}
+      {/* Modal */}
       <div
-        className={`relative w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-purple-500/20 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-purple-500/5 overflow-hidden transition-all duration-300 transform ${
-          show ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"
+        className={`relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-black/10 dark:shadow-black/40 transition-all duration-300 ${
+          show
+            ? "opacity-100 scale-100 translate-y-0"
+            : "opacity-0 scale-95 translate-y-4"
         }`}
       >
-        {/* Ambient Glowing Spotlights */}
-        <div className="absolute -top-16 -left-16 h-32 w-32 rounded-full bg-purple-500/10 blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-16 -right-16 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
+        {/* Subtle top accent */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
 
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full p-1.5 transition-all duration-200 cursor-pointer"
-          aria-label="Close modal"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="text-center mb-6 relative z-10">
-          <h3 className="text-2xl font-extrabold text-white bg-clip-text bg-gradient-to-r from-white via-slate-200 to-purple-400 mb-2">
-            Reset Password
-          </h3>
-          <p className="text-slate-300 text-sm leading-relaxed max-w-sm mx-auto">
-            Enter your email address below, and we'll send you a secure link to reset your password.
-          </p>
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-border px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 dark:bg-indigo-400/10">
+              <KeyRound className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h3
+                id="forgot-password-title"
+                className="text-base font-bold text-card-foreground"
+              >
+                Reset Password
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                We'll send a secure link to your inbox.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Email Address
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="reset-email"
+              className="block text-sm font-medium text-card-foreground"
+            >
+              Email address
             </label>
             <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+              </div>
               <input
+                ref={inputRef}
+                id="reset-email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
                   setLocalError("");
                 }}
-                className="w-full px-4 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 text-white placeholder-slate-500 text-sm transition-all duration-300 focus:outline-none"
+                className={`w-full rounded-xl border bg-background py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400 ${
+                  displayError
+                    ? "border-destructive focus:ring-destructive/30 focus:border-destructive"
+                    : "border-border"
+                }`}
                 required
               />
             </div>
-            {(localError || error) && <p className="text-red-400 text-xs mt-2 font-medium">{localError || error}</p>}
+            {displayError && (
+              <p className="flex items-center gap-1.5 text-xs font-medium text-destructive">
+                <span className="inline-block h-1 w-1 rounded-full bg-destructive" />
+                {displayError}
+              </p>
+            )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          {/* Actions */}
+          <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="w-full sm:flex-1 py-3 px-4 bg-slate-800 border border-white/5 text-slate-300 font-semibold text-sm rounded-xl hover:bg-slate-700/80 hover:text-white hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 cursor-pointer"
+              className="flex-1 rounded-xl border border-border bg-background py-3 text-sm font-semibold text-foreground transition-all duration-200 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full sm:flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold text-sm rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 transition-all duration-200 hover:from-indigo-500 hover:to-violet-500 hover:shadow-lg hover:shadow-indigo-500/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-2 focus:ring-offset-card disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  Sending...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending…
                 </>
               ) : (
-                "Send Reset Link"
+                "Send reset link"
               )}
             </button>
           </div>

@@ -7,22 +7,27 @@ import { getLocalDateKey } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { awardXp } from "@/lib/gamification-service";
+import { executeSaga } from "@/lib/transactionCoordinator";
+import { connectDb } from "@/lib/mongodb";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 const syncSchema = z.object({
-  records: z.array(
-    z.object({
-      id: z.number().optional(), // IDB key
-      userId: z.string(),
-      studentName: z.string().optional(),
-      email: z.string().optional(),
-      confidenceScore: z.number().optional(),
-      queuedAt: z.number(),
-      date: z.string().optional(),
-    })
-  ).min(1),
+  records: z
+    .array(
+      z.object({
+        id: z.number().optional(), // IDB key
+        userId: z.string(),
+        studentName: z.string().optional(),
+        email: z.string().optional(),
+        confidenceScore: z.number().optional(),
+        queuedAt: z.number(),
+        date: z.string().optional(),
+      })
+    )
+    .min(1)
+    .max(100, "Too many records in a single sync batch"),
 });
 
 // Minimum face-match confidence required to record attendance.
@@ -52,7 +57,11 @@ export function normalizeConfidenceScore(confidenceScore) {
 }
 
 function resolveAttendanceIdentity(decodedToken, userProfile) {
-  const profileName = [userProfile?.fullName, userProfile?.displayName, decodedToken?.name]
+  const profileName = [
+    userProfile?.fullName,
+    userProfile?.displayName,
+    decodedToken?.name,
+  ]
     .find((value) => typeof value === "string" && value.trim())
     ?.trim();
 
@@ -69,7 +78,9 @@ function resolveAttendanceIdentity(decodedToken, userProfile) {
 async function handleSync(request) {
   const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`attendance_sync_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `attendance_sync_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
@@ -86,13 +97,24 @@ async function handleSync(request) {
         success: false,
         error: "User profile not found for attendance sync.",
       },
-      { status: 404 },
+      { status: 404 }
+    );
+  }
+
+  if (!userProfile?.instituteId) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          "User profile missing institute affiliation. Cannot sync attendance.",
+      },
+      { status: 403 }
     );
   }
 
   const serverIdentity = resolveAttendanceIdentity(decodedToken, userProfile);
-  const instituteId = userProfile?.instituteId || null;
-  
+  const instituteId = userProfile.instituteId;
+
   const successfulIds = [];
   const rejectedIds = [];
 
@@ -106,7 +128,9 @@ async function handleSync(request) {
   for (const record of records) {
     // Only allow users to sync their own records (unless they are admin, but attendance is usually self-submitted)
     if (record.userId !== decodedToken.uid) {
-      console.warn(`User ${decodedToken.uid} attempted to sync record for ${record.userId}`);
+      console.warn(
+        `User ${decodedToken.uid} attempted to sync record for ${record.userId}`
+      );
       if (record.id !== undefined) {
         rejectedIds.push(record.id);
       }
@@ -114,8 +138,13 @@ async function handleSync(request) {
     }
 
     // Validate timestamp: must be within the last 48 hours and not in the future (allowing 5 min clock skew)
-    if (record.queuedAt > now + 5 * 60 * 1000 || record.queuedAt < now - MAX_OFFLINE_WINDOW_MS) {
-      console.warn(`User ${decodedToken.uid} attempted to sync record with invalid queuedAt timestamp ${record.queuedAt}`);
+    if (
+      record.queuedAt > now + 5 * 60 * 1000 ||
+      record.queuedAt < now - MAX_OFFLINE_WINDOW_MS
+    ) {
+      console.warn(
+        `User ${decodedToken.uid} attempted to sync record with invalid queuedAt timestamp ${record.queuedAt}`
+      );
       rejectedIds.push(record.id);
       continue;
     }
@@ -134,10 +163,12 @@ async function handleSync(request) {
 
     // Reject records whose face-match confidence is below the minimum threshold.
     // The online attendance path enforces >= 60%; offline sync must apply the same guard.
-    const normalizedConfidence = normalizeConfidenceScore(record.confidenceScore);
+    const normalizedConfidence = normalizeConfidenceScore(
+      record.confidenceScore
+    );
     if (normalizedConfidence === null) {
       console.warn(
-        `User ${decodedToken.uid} submitted offline attendance with confidence below threshold (raw: ${record.confidenceScore})`,
+        `User ${decodedToken.uid} submitted offline attendance with confidence below threshold (raw: ${record.confidenceScore})`
       );
       if (record.id !== undefined) {
         rejectedIds.push(record.id);
@@ -145,62 +176,99 @@ async function handleSync(request) {
       continue;
     }
 
-    const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
+    // Use saga to atomically write attendance + award XP.
+    // If XP awarding fails, attendance is still recorded (it's the primary write),
+    // but the saga tracks the failure for reconciliation.
+    const sagaResult = await executeSaga({
+      operationType: "attendance_sync",
+      uid: decodedToken.uid,
+      steps: [
+        {
+          name: "write_attendance",
+          execute: async (ctx) => {
+            const newDocRef = db
+              .collection("attendance_records")
+              .doc(`${decodedToken.uid}_${recordDate}`);
+            await db.runTransaction(async (transaction) => {
+              const existingAttendance = await transaction.get(newDocRef);
+              if (existingAttendance.exists) {
+                ctx._alreadyProcessed = true;
+                return;
+              }
 
-    let wasWritten = false;
-    try {
-      wasWritten = await db.runTransaction(async (transaction) => {
-        const existingAttendance = await transaction.get(newDocRef);
-        if (existingAttendance.exists) {
-          return false;
-        }
+              transaction.set(newDocRef, {
+                userId: decodedToken.uid,
+                studentName: serverIdentity.studentName,
+                email: serverIdentity.email,
+                instituteId,
+                timestamp: FieldValue.serverTimestamp(),
+                date: recordDate,
+                status: "present",
+                confidenceScore: normalizedConfidence,
+                offlineSynced: true,
+                queuedAt: new Date(record.queuedAt),
+              });
+            });
+          },
+          compensate: null, // Attendance writes are append-only; no rollback needed
+        },
+        {
+          name: "write_mongodb_attendance",
+          execute: async (ctx) => {
+            if (ctx._alreadyProcessed) return;
+            const mongoDB = await connectDb();
+            await mongoDB.collection("attendance").updateOne(
+              { userId: decodedToken.uid, date: recordDate },
+              {
+                $set: {
+                  userId: decodedToken.uid,
+                  studentName: serverIdentity.studentName,
+                  email: serverIdentity.email,
+                  instituteId,
+                  timestamp: new Date(record.queuedAt),
+                  date: recordDate,
+                  status: "present",
+                  confidenceScore: normalizedConfidence,
+                  offlineSynced: true,
+                  queuedAt: new Date(record.queuedAt),
+                },
+              },
+              { upsert: true }
+            );
+          },
+          compensate: async () => {
+            const mongoDB = await connectDb();
+            await mongoDB
+              .collection("attendance")
+              .deleteOne({ userId: decodedToken.uid, date: recordDate });
+          },
+        },
+        {
+          name: "award_xp",
+          execute: async (ctx) => {
+            if (ctx._alreadyProcessed) return;
+            await awardXp(decodedToken.uid, "attendance_marked", {
+              attendanceHour: record.queuedAt
+                ? new Date(record.queuedAt).getHours()
+                : new Date().getHours(),
+              attendanceDate: recordDate,
+            });
+          },
+          compensate: null, // XP is a side-effect; failure doesn't block attendance
+        },
+      ],
+    });
 
-        if (
-          (record.studentName && record.studentName !== serverIdentity.studentName) ||
-          (record.email && record.email !== serverIdentity.email)
-        ) {
-          console.warn(
-            `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
-          );
-        }
-
-        transaction.set(newDocRef, {
-          userId: decodedToken.uid,
-          studentName: serverIdentity.studentName,
-          email: serverIdentity.email,
-          instituteId,
-          timestamp: FieldValue.serverTimestamp(),
-          date: recordDate,
-          status: "present",
-          confidenceScore: normalizedConfidence,
-          offlineSynced: true,
-          queuedAt: new Date(record.queuedAt),
-        });
-
-        return true;
-      });
-    } catch (txnError) {
+    if (sagaResult.success) {
+      successfulIds.push(record.id);
+      processedUserDates.add(userDateKey);
+    } else {
       console.error(
-        `[sync] Transaction failed for record ${decodedToken.uid}_${recordDate}:`,
-        txnError.message,
+        `[attendance-sync] Saga failed for user ${decodedToken.uid} date ${recordDate}: ${sagaResult.error}`
       );
-      continue;
-    }
-
-    successfulIds.push(record.id);
-
-    if (!wasWritten) {
-      continue;
-    }
-
-    processedUserDates.add(userDateKey);
-
-    try {
-      await awardXp(decodedToken.uid, "attendance_marked", {
-        attendanceHour: record.queuedAt ? new Date(record.queuedAt).getHours() : new Date().getHours(),
-      });
-    } catch (error) {
-      console.error(`Failed to award XP for offline-synced record (${decodedToken.uid}_${recordDate}):`, error);
+      if (record.id !== undefined) {
+        rejectedIds.push(record.id);
+      }
     }
   }
 
@@ -209,7 +277,8 @@ async function handleSync(request) {
     syncedIds: successfulIds,
     rejectedIds,
     ...(rejectedIds.length > 0 && {
-      warning: "Some records were not synced because they exceeded the 48-hour offline window. These records have been removed from your local queue.",
+      warning:
+        "Some records were not synced because they exceeded the 48-hour offline window. These records have been removed from your local queue.",
     }),
   });
 }

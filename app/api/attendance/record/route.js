@@ -1,97 +1,69 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler, authenticateRequest, parseJSON } from "@/lib/error-handler";
-import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { awardXp } from "@/lib/gamification-service";
+import { withErrorHandler } from "@/lib/error-handler";
+import { requireAuth } from "@/lib/rbac";
 import { getLocalDateKey } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
+import { recordAttendanceSchema, withValidation } from "@/lib/validations";
+import { AttendanceService } from "@/lib/services/attendanceService";
 
-export const POST = withErrorHandler(async (request) => {
-  const decodedToken = await authenticateRequest(request);
+export const POST = withErrorHandler(
+  withValidation(recordAttendanceSchema, async (request, validatedData, context) => {
+    const token = await requireAuth(request);
 
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`attendance_record_${ip}_${decodedToken.uid}`);
-  if (!rateLimitResult.allowed) {
-    throw new AppError("Too many attempts. Please try again later.", 429);
-  }
-
-  const body = await parseJSON(request, 1024);
-  const { userId, studentName, email, confidenceScore, date } = body;
-  const normalizedDate = (date || getLocalDateKey()).toString();
-
-  // 2. Ensure they are only submitting attendance for their own UID!
-  if (decodedToken.uid !== userId) {
-    return jsonError("Forbidden: Cannot submit attendance for another user", 403);
-  }
-
-  // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)
-  // Fix Client-Side Spoofing by rejecting undefined, null, strings, NaN, and out of bounds numbers
-  const parsedConfidence = Number(confidenceScore);
-  if (
-    confidenceScore === undefined ||
-    confidenceScore === null ||
-    Number.isNaN(parsedConfidence) ||
-    parsedConfidence < 60 ||
-    parsedConfidence > 100
-  ) {
-    return jsonError("Bad Request: Invalid or spoofed confidence score", 400);
-  }
-
-  // Normalize confidence score to 0-1 range for consistency across the DB and dashboards
-  const normalizedConfidence = parsedConfidence / 100;
-
-  // 4. Write attendance to Firestore (single source of truth).
-  // Use a deterministic doc id and a transaction to prevent duplicates and match client duplicate checks.
-  initFirebaseAdmin();
-  const db = getFirestore();
-  const userProfile = await getUserProfile(decodedToken.uid);
-  const instituteId = userProfile?.instituteId || null;
-
-  // Use authoritative, verified data from Firebase JWT token (decodedToken) to completely prevent
-  // client-supplied parameter spoofing and impersonation attacks.
-  const resolvedName = userProfile?.fullName || decodedToken.name || decodedToken.displayName || decodedToken.email?.split("@")[0] || "Unknown User";
-  const resolvedEmail = userProfile?.email || decodedToken.email || "unknown@learnova.edu";
-
-  const docRef = db.collection("attendance_records").doc(`${userId}_${normalizedDate}`);
-
-  let alreadyRecorded = false;
-  await db.runTransaction(async (transaction) => {
-    const existingDoc = await transaction.get(docRef);
-    if (existingDoc.exists) {
-      alreadyRecorded = true;
-      return;
+    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const rateLimitResult = await checkRateLimit(
+      `attendance_record_${ip}_${token.uid}`
+    );
+    if (!rateLimitResult.allowed) {
+      throw new AppError("Too many attempts. Please try again later.", 429);
     }
 
-    transaction.set(
-      docRef,
+    const { userId, studentName, email, confidenceScore, date } = validatedData;
+    const normalizedDate = date || getLocalDateKey();
+
+    // 2. Ensure they are only submitting attendance for their own UID, OR they are a teacher/admin!
+    const isTeacherOrAdmin =
+      token.role === "teacher" || token.role === "admin";
+    if (token.uid !== userId && !isTeacherOrAdmin) {
+      return jsonError(
+        "Forbidden: Cannot submit attendance for another user",
+        403
+      );
+    }
+
+    // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)
+    const parsedConfidence = Number(confidenceScore);
+    if (parsedConfidence < 60) {
+      return jsonError("Bad Request: Invalid or spoofed confidence score", 400);
+    }
+
+    // Normalize confidence score to 0-1 range for consistency across the DB and dashboards
+    const normalizedConfidence = parsedConfidence / 100;
+
+    // 4. Record attendance using the domain service
+    const sagaResult = await AttendanceService.recordAttendance(
       {
         userId,
-        studentName: resolvedName,
-        email: resolvedEmail,
-        instituteId,
-        timestamp: FieldValue.serverTimestamp(),
-        date: normalizedDate,
-        status: "present",
-        confidenceScore: normalizedConfidence,
-        offlineSynced: false,
+        studentName,
+        email,
+        confidenceScore,
+        normalizedDate,
       },
-      { merge: true },
+      token
     );
-  });
 
-  if (alreadyRecorded) {
-    return jsonSuccess({ alreadyRecorded: true }, 200);
-  }
+    if (sagaResult.context._alreadyRecorded) {
+      return jsonSuccess({ alreadyRecorded: true }, 200);
+    }
 
-  // Gamification is a side effect — failures must not block attendance recording
-  try {
-    await awardXp(userId, "attendance_marked", {
-      attendanceHour: new Date().getHours(),
-    });
-  } catch (error) {
-    console.error("Failed to award XP after attendance:", error);
-  }
+    if (!sagaResult.success) {
+      console.error(
+        `[attendance] Saga failed at step "${sagaResult.failedStep}" for user ${userId}: ${sagaResult.error}`
+      );
+      return jsonError("Attendance recording failed", 502);
+    }
 
-  return jsonSuccess({ alreadyRecorded: false }, 201);
-});
+    return jsonSuccess({ alreadyRecorded: false }, 201);
+  })
+);

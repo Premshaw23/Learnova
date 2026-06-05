@@ -1,56 +1,63 @@
 import { POST } from "./route";
-import { authenticateRequest, parseJSON } from "@/lib/error-handler";
-import { checkRateLimit } from "@/lib/rateLimit";
-import { connectDb } from "@/lib/mongodb";
-import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
-import { assertApiError } from "@/testUtils/assertApiError";
+import { authenticateRequest, parseJSON } from "../../../../lib/error-handler";
+import { checkRateLimit } from "../../../../lib/rateLimit";
+import { connectDb } from "../../../../lib/mongodb";
+import { UnauthorizedError } from "../../../../lib/errors";
+import { assertApiSuccess } from "../../../../testUtils/assertApiSuccess";
+import { assertApiError } from "../../../../testUtils/assertApiError";
 
-jest.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
+vi.mock("../../../../lib/error-handler", () => {
   return {
-    authenticateRequest: jest.fn(),
+    authenticateRequest: vi.fn(),
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
+          if (
+            error &&
+            (error.statusCode !== undefined || error.name === "AppError")
+          ) {
+            const payload =
+              error.originalMessage !== undefined
+                ? error.originalMessage
+                : error.message;
             return {
-              status: error.statusCode,
+              status: error.statusCode || 500,
               json: async () => ({ error: payload }),
             };
           }
           return {
             status: 500,
-            json: async () => ({ error: error.message || "Internal server error" }),
+            json: async () => ({
+              error: error.message || "Internal server error",
+            }),
           };
         }
       };
     },
-    parseJSON: jest.fn(),
+    parseJSON: vi.fn(),
   };
 });
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("../../../../lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/mongodb", () => {
-  const mockCollection = {
-    insertMany: jest.fn().mockResolvedValue({ acknowledged: true }),
-  };
+const mockCollection = {
+  insertMany: vi.fn().mockResolvedValue({ acknowledged: true }),
+};
+
+vi.mock("../../../../lib/mongodb", () => {
   const mockDb = {
-    collection: jest.fn(() => mockCollection),
+    collection: vi.fn(() => mockCollection),
   };
   return {
-    connectDb: jest.fn(() => Promise.resolve(mockDb)),
-    _mockCollection: mockCollection,
-    _mockDb: mockDb,
+    connectDb: vi.fn(() => Promise.resolve(mockDb)),
   };
 });
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -60,16 +67,15 @@ jest.mock("next/server", () => ({
 }));
 
 describe("notifications seed route", () => {
-  let mockCollection;
-
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("@/lib/mongodb")._mockCollection;
   });
 
   const createMockRequest = (headers = {}) => {
-    const headersMap = new Map(Object.entries({ "x-forwarded-for": "127.0.0.1", ...headers }));
+    const headersMap = new Map(
+      Object.entries({ "x-forwarded-for": "127.0.0.1", ...headers })
+    );
     return {
       headers: {
         get: (key) => headersMap.get(key.toLowerCase()) || null,
@@ -78,7 +84,10 @@ describe("notifications seed route", () => {
   };
 
   test("successfully seeds notifications for own account", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    authenticateRequest.mockResolvedValue({
+      uid: "user-123",
+      email_verified: true,
+    });
     parseJSON.mockResolvedValue({ userId: "user-123" });
 
     const response = await POST(createMockRequest());
@@ -94,7 +103,10 @@ describe("notifications seed route", () => {
   });
 
   test("rejects request with 400 Bad Request if userId is missing from request body", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    authenticateRequest.mockResolvedValue({
+      uid: "user-123",
+      email_verified: true,
+    });
     parseJSON.mockResolvedValue({});
 
     const response = await POST(createMockRequest());
@@ -103,29 +115,38 @@ describe("notifications seed route", () => {
   });
 
   test("rejects request with 403 Forbidden if trying to seed notifications for another user", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    authenticateRequest.mockResolvedValue({
+      uid: "user-123",
+      email_verified: true,
+    });
     parseJSON.mockResolvedValue({ userId: "other-user-456" });
 
     const response = await POST(createMockRequest());
-    await assertApiError(response, 403, "Forbidden: You can only seed notifications for your own account");
+    await assertApiError(
+      response,
+      403,
+      "Forbidden: You can only seed notifications for your own account"
+    );
   });
 
   test("rejects request with 401 if unauthorized", async () => {
-    const { UnauthorizedError } = require("@/lib/errors");
-    authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+    authenticateRequest.mockRejectedValue(
+      new UnauthorizedError("Unauthorized")
+    );
 
     const response = await POST(createMockRequest());
     await assertApiError(response, 401, "Unauthorized");
   });
 
   test("rejects request with 429 if rate limit is exceeded", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    authenticateRequest.mockResolvedValue({
+      uid: "user-123",
+      email_verified: true,
+    });
     parseJSON.mockResolvedValue({ userId: "user-123" });
     checkRateLimit.mockResolvedValue({ allowed: false });
 
     const response = await POST(createMockRequest());
-    expect(response.status).toBe(429);
-    const body = await response.json();
-    expect(body.error).toBe("Too many requests. Please slow down.");
+    await assertApiError(response, 429, "Too many requests. Please slow down.");
   });
 });
