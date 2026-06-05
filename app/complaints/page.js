@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { Navbar } from "@/components/Navbar";
 import ComplaintsTable from "@/components/ComplaintsTable";
 import ComplaintForm from "@/components/ComplaintForm";
@@ -205,6 +206,27 @@ function ComplaintDetailModal({ complaint, onClose }) {
 }
 
 function AnalyticsSection({ complaints }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  
+  const tooltipStyle = {
+    contentStyle: {
+      borderRadius: "12px",
+      background: isDark ? "#0f172a" : "#ffffff",
+      border: isDark ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(0,0,0,0.1)",
+      padding: "8px 12px",
+    },
+    itemStyle: {
+      color: isDark ? "#ffffff" : "#000000",
+      fontSize: "12px",
+      fontWeight: "600",
+    },
+    labelStyle: { 
+      color: isDark ? "#94a3b8" : "#475569", 
+      fontWeight: "700" 
+    },
+  };
+
   const total = complaints.length;
   const pending = complaints.filter((c) => c.status === "Pending").length;
   const resolved = complaints.filter((c) => c.status === "Resolved").length;
@@ -304,18 +326,9 @@ function AnalyticsSection({ complaints }) {
                 />
                 {/* HOVER TOOLTIP TEXT COLOR REPAIR PIE */}
                 <Tooltip
-                  contentStyle={{
-                    borderRadius: "12px",
-                    background: "#0f172a",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    padding: "8px 12px",
-                  }}
-                  itemStyle={{
-                    color: "#ffffff",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                  }}
-                  labelStyle={{ color: "#94a3b8" }}
+                  contentStyle={tooltipStyle.contentStyle}
+                  itemStyle={tooltipStyle.itemStyle}
+                  labelStyle={tooltipStyle.labelStyle}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -347,18 +360,9 @@ function AnalyticsSection({ complaints }) {
                 {/* HOVER TOOLTIP TEXT COLOR REPAIR BAR */}
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,0.02)" }}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    background: "#0f172a",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    padding: "8px 12px",
-                  }}
-                  itemStyle={{
-                    color: "#ffffff",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                  }}
-                  labelStyle={{ color: "#94a3b8", fontWeight: "700" }}
+                  contentStyle={tooltipStyle.contentStyle}
+                  itemStyle={tooltipStyle.itemStyle}
+                  labelStyle={tooltipStyle.labelStyle}
                 />
                 <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                   {barData.map((entry, index) => (
