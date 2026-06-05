@@ -1,27 +1,25 @@
-import nextJest from 'next/jest.js'
+import nextJest from "next/jest.js";
 
 const createJestConfig = nextJest({
-  dir: './',
-})
+  dir: "./",
+});
 
 const customJestConfig = {
-  testEnvironment: 'jsdom',
+  testEnvironment: "jsdom",
 
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
 
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
-    '^.+\\.module\\.(css|sass|scss)$': 'identity-obj-proxy',
+    "^@/(.*)$": "<rootDir>/$1",
+    "^.+\\.module\\.(css|sass|scss)$": "identity-obj-proxy",
   },
-}
+};
 
 const jestConfig = async () => {
   const config = await createJestConfig(customJestConfig)();
   // Override transformIgnorePatterns to whitelist bson and mongodb from being ignored
-  config.transformIgnorePatterns = [
-    'node_modules/(?!(bson|mongodb|undici)/)',
-  ];
+  config.transformIgnorePatterns = ["node_modules/(?!(bson|mongodb|undici)/)"];
   return config;
-}
+};
 
 export default jestConfig;

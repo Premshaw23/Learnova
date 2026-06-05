@@ -15,11 +15,13 @@ import {
   Check,
   ChevronRight,
   AlertCircle,
-  Award
+  Award,
+  Bookmark,
+  ListTodo
 } from "lucide-react";
 import ShareButton from "@/components/ui/ShareButton";
 import toast from "react-hot-toast";
-import { db } from "@/lib/firebaseConfig";
+import { db, isMockAuthMode, MOCK_USER } from "@/lib/firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { updateActivityProgress } from "@/services/activityService";
@@ -36,7 +38,14 @@ const Confetti = () => {
       const distance = 100 + Math.random() * 250;
       const x = Math.cos(angle) * distance;
       const y = Math.sin(angle) * distance - (100 + Math.random() * 150);
-      const colors = ["#ff007f", "#3b82f6", "#10b981", "#eab308", "#a855f7", "#ff5722"];
+      const colors = [
+        "#ff007f",
+        "#3b82f6",
+        "#10b981",
+        "#eab308",
+        "#a855f7",
+        "#ff5722",
+      ];
       const color = colors[Math.floor(Math.random() * colors.length)];
       const size = 6 + Math.random() * 8;
       const rotation = Math.random() * 360;
@@ -82,16 +91,16 @@ const Confetti = () => {
   );
 };
 
-const MOCK_USER = { uid: "mock-student-uid-947", email: "mock.student@learnova.edu" };
-
 export default function ActivityGame() {
   const params = useParams();
   const router = useRouter();
   const { user: realUser, loading: authLoading } = useAuth();
 
-  // Temporary local development-only authentication bypass for offline testing
-  const isDev = process.env.NODE_ENV === "development";
-  const user = realUser || (isDev ? MOCK_USER : null);
+  // Development-only authentication bypass — requires explicit opt-in.
+  // Set NEXT_PUBLIC_ENABLE_DEV_MOCK_AUTH=true in .env.local to enable.
+  // Uses the centralized MOCK_USER from lib/firebaseConfig (single source of truth).
+  // NEVER set the opt-in flag on staging, preview, or production deployments.
+  const user = realUser || (isMockAuthMode ? MOCK_USER : null);
 
   const [mounted, setMounted] = useState(false);
   const [activityData, setActivityData] = useState(null);
@@ -103,6 +112,8 @@ export default function ActivityGame() {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [direction, setDirection] = useState(1); // 1 = forward, -1 = backward
+  const [markedQuestions, setMarkedQuestions] = useState({});
+  const [isReviewingSummary, setIsReviewingSummary] = useState(false);
 
   // Timer states
   const [timeLeft, setTimeLeft] = useState(0);
@@ -147,16 +158,17 @@ export default function ActivityGame() {
         } else {
           if (isDev) {
             // Fallback for custom dev ids (e.g. quantum-quiz, geometry-quiz)
-            const title = params.id === "quantum-quiz"
-              ? "Quantum Physics Quiz"
-              : params.id === "geometry-quiz"
-              ? "Geometry Puzzle Master"
-              : "General Knowledge Quiz";
+            const title =
+              params.id === "quantum-quiz"
+                ? "Quantum Physics Quiz"
+                : params.id === "geometry-quiz"
+                  ? "Geometry Puzzle Master"
+                  : "General Knowledge Quiz";
             setActivityData({
               id: params.id,
               title,
               type: "quiz",
-              progress: 0
+              progress: 0,
             });
             const quizData = getQuizDataByTitle(title);
             setQuiz(quizData);
@@ -169,16 +181,17 @@ export default function ActivityGame() {
         console.error("Error loading activity:", err);
         if (isDev) {
           // Dev fallback for offline testing
-          const title = params.id === "quantum-quiz"
-            ? "Quantum Physics Quiz"
-            : params.id === "geometry-quiz"
-            ? "Geometry Puzzle Master"
-            : "General Knowledge Quiz";
+          const title =
+            params.id === "quantum-quiz"
+              ? "Quantum Physics Quiz"
+              : params.id === "geometry-quiz"
+                ? "Geometry Puzzle Master"
+                : "General Knowledge Quiz";
           setActivityData({
             id: params.id,
             title,
             type: "quiz",
-            progress: 0
+            progress: 0,
           });
           const quizData = getQuizDataByTitle(title);
           setQuiz(quizData);
@@ -249,8 +262,13 @@ export default function ActivityGame() {
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-red-500/5 rounded-full blur-[120px] pointer-events-none" />
         <div className="max-w-md w-full text-center space-y-6 bg-zinc-900/50 backdrop-blur-md border border-zinc-800/80 p-8 rounded-3xl shadow-xl">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
-          <h2 className="text-2xl font-bold tracking-tight">Activity Not Found</h2>
-          <p className="text-zinc-400">We could not load this learning activity. It may have been removed or doesn't exist.</p>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Activity Not Found
+          </h2>
+          <p className="text-zinc-400">
+            We could not load this learning activity. It may have been removed
+            or doesn't exist.
+          </p>
           <button
             onClick={() => router.push("/activity")}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 text-zinc-100 font-semibold border border-zinc-700/50 transition-all duration-200"
@@ -304,7 +322,9 @@ export default function ActivityGame() {
         toast.error("Saved progress locally, but failed to sync online.");
       }
     } else {
-      toast("Keep trying! Double check your answers and try again.", { icon: "💪" });
+      toast("Keep trying! Double check your answers and try again.", {
+        icon: "💪",
+      });
     }
   };
 
@@ -315,12 +335,19 @@ export default function ActivityGame() {
     }));
   };
 
+  const toggleMarkForReview = (idx) => {
+    setMarkedQuestions((prev) => ({
+      ...prev,
+      [idx]: !prev[idx],
+    }));
+  };
+
   const handleNext = () => {
     if (currentQuestionIdx < quiz.questions.length - 1) {
       setDirection(1);
       setCurrentQuestionIdx((prev) => prev + 1);
     } else {
-      handleQuizSubmit();
+      setIsReviewingSummary(true);
     }
   };
 
@@ -339,9 +366,15 @@ export default function ActivityGame() {
     setFinalScore(null);
     setTimeLeft(quiz.timeLimit);
     setIsStarted(true);
+    setMarkedQuestions({});
+    setIsReviewingSummary(false);
   };
 
-  const currentProgressPercent = Math.round(((currentQuestionIdx + (hasSelectedCurrent ? 1 : 0)) / quiz.questions.length) * 100);
+  const currentProgressPercent = Math.round(
+    ((currentQuestionIdx + (hasSelectedCurrent ? 1 : 0)) /
+      quiz.questions.length) *
+      100
+  );
 
   // 1. Intro Screen
   if (!isStarted && !isCompleted) {
@@ -380,22 +413,36 @@ export default function ActivityGame() {
                 {activityData.title}
               </h1>
               <p className="text-zinc-400 text-lg max-w-xl mx-auto">
-                Test your understanding and earn score milestones! Pass with a score of 60% or higher to complete the activity and advance your learning profile.
+                Test your understanding and earn score milestones! Pass with a
+                score of 60% or higher to complete the activity and advance your
+                learning profile.
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto bg-zinc-900/30 backdrop-blur-sm border border-zinc-800/50 p-6 rounded-2xl">
               <div className="text-center">
-                <span className="block text-zinc-500 text-xs uppercase tracking-wider font-semibold">Questions</span>
-                <span className="text-xl font-bold text-zinc-200">{quiz.questions.length} Qs</span>
+                <span className="block text-zinc-500 text-xs uppercase tracking-wider font-semibold">
+                  Questions
+                </span>
+                <span className="text-xl font-bold text-zinc-200">
+                  {quiz.questions.length} Qs
+                </span>
               </div>
               <div className="text-center border-x border-zinc-800/50">
-                <span className="block text-zinc-500 text-xs uppercase tracking-wider font-semibold">Time Limit</span>
-                <span className="text-xl font-bold text-zinc-200">{quiz.timeLimit}s</span>
+                <span className="block text-zinc-500 text-xs uppercase tracking-wider font-semibold">
+                  Time Limit
+                </span>
+                <span className="text-xl font-bold text-zinc-200">
+                  {quiz.timeLimit}s
+                </span>
               </div>
               <div className="text-center">
-                <span className="block text-zinc-500 text-xs uppercase tracking-wider font-semibold">Target</span>
-                <span className="text-xl font-bold text-zinc-200">60% Pass</span>
+                <span className="block text-zinc-500 text-xs uppercase tracking-wider font-semibold">
+                  Target
+                </span>
+                <span className="text-xl font-bold text-zinc-200">
+                  60% Pass
+                </span>
               </div>
             </div>
 
@@ -483,8 +530,12 @@ export default function ActivityGame() {
             {/* Stats Summary Cards */}
             <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
               <div className="bg-zinc-800/40 border border-zinc-800 p-4 rounded-2xl flex flex-col justify-center items-center">
-                <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">Your Score</span>
-                <span className={`text-3xl font-black ${isPassing ? "text-green-400" : "text-red-400"}`}>
+                <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">
+                  Your Score
+                </span>
+                <span
+                  className={`text-3xl font-black ${isPassing ? "text-green-400" : "text-red-400"}`}
+                >
                   {finalScore?.percentage}%
                 </span>
                 <span className="text-zinc-400 text-xs mt-1">
@@ -493,7 +544,9 @@ export default function ActivityGame() {
               </div>
 
               <div className="bg-zinc-800/40 border border-zinc-800 p-4 rounded-2xl flex flex-col justify-center items-center">
-                <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">XP Gained</span>
+                <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">
+                  XP Gained
+                </span>
                 <span className="text-3xl font-black text-indigo-400">
                   {isPassing ? "+100 XP" : "0 XP"}
                 </span>
@@ -509,7 +562,7 @@ export default function ActivityGame() {
                 onClick={handleRetry}
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 border border-zinc-700/50 text-zinc-100 font-bold transition-all duration-200"
-              >
+               aria-label="Action button">
                 <RotateCcw className="w-4 h-4" />
                 Retry Quiz
               </button>
@@ -521,6 +574,131 @@ export default function ActivityGame() {
               >
                 Continue Learning
                 <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        </main>
+      </div>
+    );
+  }
+
+  // 2.5. Submission Summary Screen
+  if (isReviewingSummary) {
+    const answeredCount = Object.keys(selectedAnswers).length;
+    const unansweredCount = quiz.questions.length - answeredCount;
+    const markedCount = Object.values(markedQuestions).filter(Boolean).length;
+
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-16 relative overflow-hidden flex flex-col justify-between">
+        {/* Glow Spheres */}
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+          <button
+            onClick={() => setIsReviewingSummary(false)}
+            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
+            type="button"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
+            Back to Quiz
+          </button>
+
+          {/* Live Quiz Countdown Timer */}
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 font-mono text-sm font-bold ${
+            isTimeLow
+              ? "bg-red-500/10 border-red-500/30 text-red-400 animate-pulse scale-105"
+              : "bg-zinc-900 border-zinc-800/80 text-zinc-300"
+          }`}>
+            <Clock className={`w-4 h-4 ${isTimeLow ? "text-red-400" : "text-zinc-500"}`} />
+            <span>{formatTime(timeLeft)}</span>
+          </div>
+        </header>
+
+        <main className="max-w-2xl mx-auto px-6 py-10 relative z-10 flex-grow flex flex-col justify-center w-full">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="w-full bg-zinc-900/40 backdrop-blur-md border border-zinc-800/80 p-6 md:p-8 rounded-3xl shadow-xl space-y-6 text-center"
+          >
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-2">
+              <ListTodo className="w-6 h-6" />
+            </div>
+
+            <h2 className="text-2xl font-bold tracking-tight">Quiz Submission Summary</h2>
+            <p className="text-zinc-400 text-sm max-w-md mx-auto">
+              Please review your question answers and status before final submission. Click on any question in the palette below to jump back and revise it.
+            </p>
+
+            {/* Counts dashboard */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl">
+                <span className="text-zinc-500 text-xs font-semibold block mb-1">Answered</span>
+                <span className="text-2xl font-bold text-green-400">{answeredCount}</span>
+              </div>
+              <div className="bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl">
+                <span className="text-zinc-500 text-xs font-semibold block mb-1">Unanswered</span>
+                <span className="text-2xl font-bold text-zinc-400">{unansweredCount}</span>
+              </div>
+              <div className="bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl">
+                <span className="text-zinc-500 text-xs font-semibold block mb-1">Marked</span>
+                <span className="text-2xl font-bold text-amber-400">{markedCount}</span>
+              </div>
+            </div>
+
+            {/* Palette display */}
+            <div className="border-t border-zinc-800/80 pt-6 space-y-3">
+              <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider block text-left">
+                Question Palette
+              </span>
+              <div className="grid grid-cols-5 sm:grid-cols-8 gap-2">
+                {quiz.questions.map((_, idx) => {
+                  const isAnswered = selectedAnswers[idx] !== undefined;
+                  const isMarked = markedQuestions[idx];
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setIsReviewingSummary(false);
+                        setCurrentQuestionIdx(idx);
+                      }}
+                      className={`relative h-10 w-10 rounded-xl flex items-center justify-center font-bold text-xs transition-all duration-200 ${
+                        isMarked
+                          ? "bg-amber-500/10 border border-amber-500 text-amber-400 hover:bg-amber-500/20"
+                          : isAnswered
+                          ? "bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20"
+                          : "bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 text-zinc-400"
+                      }`}
+                      type="button"
+                    >
+                      {idx + 1}
+                      {isMarked && (
+                        <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-amber-500 rounded-full flex items-center justify-center border-2 border-zinc-950">
+                          <Bookmark className="w-1.5 h-1.5 text-zinc-950 fill-zinc-950" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Confirm Submission buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-zinc-800/80">
+              <button
+                onClick={() => setIsReviewingSummary(false)}
+                type="button"
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-zinc-800 hover:bg-zinc-900 text-zinc-400 font-bold transition-all duration-200"
+              >
+                Back to Quiz
+              </button>
+              <button
+                onClick={handleQuizSubmit}
+                type="button"
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold transition-all duration-200"
+              >
+                Confirm and Submit
               </button>
             </div>
           </motion.div>
@@ -542,7 +720,11 @@ export default function ActivityGame() {
       <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
         <button
           onClick={() => {
-            if (confirm("Are you sure you want to exit the quiz? Current progress will not be saved.")) {
+            if (
+              confirm(
+                "Are you sure you want to exit the quiz? Current progress will not be saved."
+              )
+            ) {
               router.push("/activity");
             }
           }}
@@ -554,134 +736,229 @@ export default function ActivityGame() {
         </button>
 
         {/* Live Quiz Countdown Timer */}
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 font-mono text-sm font-bold ${
-          isTimeLow
-            ? "bg-red-500/10 border-red-500/30 text-red-400 animate-pulse scale-105"
-            : "bg-zinc-900 border-zinc-800/80 text-zinc-300"
-        }`}>
-          <Clock className={`w-4 h-4 ${isTimeLow ? "text-red-400" : "text-zinc-500"}`} />
+        <div
+          className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 font-mono text-sm font-bold ${
+            isTimeLow
+              ? "bg-red-500/10 border-red-500/30 text-red-400 animate-pulse scale-105"
+              : "bg-zinc-900 border-zinc-800/80 text-zinc-300"
+          }`}
+        >
+          <Clock
+            className={`w-4 h-4 ${isTimeLow ? "text-red-400" : "text-zinc-500"}`}
+          />
           <span>{formatTime(timeLeft)}</span>
         </div>
       </header>
 
       {/* Main Runner Container */}
-      <main className="max-w-2xl mx-auto px-6 py-10 relative z-10 flex-grow flex flex-col justify-center w-full">
-        {/* Dynamic Progress indicator */}
-        <div className="mb-8 space-y-2">
-          <div className="flex justify-between items-center text-xs font-semibold text-zinc-400">
-            <span>Progress: {currentProgressPercent}%</span>
-            <span>Question {currentQuestionIdx + 1} of {quiz.questions.length}</span>
-          </div>
-          <div className="w-full h-2.5 bg-zinc-900 border border-zinc-800/50 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-accent rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${currentProgressPercent}%` }}
-              transition={{ duration: 0.3 }}
-            />
-          </div>
-        </div>
-
-        {/* Interactive Sliding Question Card */}
-        <div className="relative overflow-hidden w-full">
-          <AnimatePresence mode="wait" custom={direction}>
-            <motion.div
-              key={currentQuestionIdx}
-              custom={direction}
-              variants={{
-                enter: (dir) => ({
-                  x: dir > 0 ? 150 : -150,
-                  opacity: 0,
-                  scale: 0.98,
-                }),
-                center: {
-                  x: 0,
-                  opacity: 1,
-                  scale: 1,
-                },
-                exit: (dir) => ({
-                  x: dir < 0 ? 150 : -150,
-                  opacity: 0,
-                  scale: 0.98,
-                }, { duration: 0.15 }),
-              }}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{
-                x: { type: "spring", stiffness: 350, damping: 30 },
-                opacity: { duration: 0.2 },
-              }}
-              className="w-full bg-zinc-900/40 backdrop-blur-md border border-zinc-800/80 p-6 md:p-8 rounded-3xl shadow-xl space-y-6"
-            >
-              {/* Question text */}
-              <h3 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-100 leading-snug">
-                {currentQuestion.question}
-              </h3>
-
-              {/* Single-choice options list */}
-              <div className="space-y-3">
-                {currentQuestion.options.map((option, idx) => {
-                  const isSelected = selectedAnswers[currentQuestionIdx] === idx;
-                  const optionLetters = ["A", "B", "C", "D"];
-
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handleSelectOption(idx)}
-                      className={`w-full text-left flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200 select-none group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                        isSelected
-                          ? "bg-indigo-600/10 border-indigo-500 text-indigo-200"
-                          : "bg-zinc-900/30 border-zinc-800/80 hover:bg-zinc-900/60 hover:border-zinc-700 text-zinc-300"
-                      }`}
-                      type="button"
-                    >
-                      {/* Letter marker tag */}
-                      <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 transition-colors duration-200 ${
-                        isSelected
-                          ? "bg-indigo-500 text-white"
-                          : "bg-zinc-800 text-zinc-400 group-hover:bg-zinc-700 group-hover:text-zinc-200"
-                      }`}>
-                        {optionLetters[idx] || idx + 1}
-                      </span>
-                      <span className="font-semibold text-sm md:text-base flex-grow leading-relaxed">
-                        {option}
-                      </span>
-
-                      {/* Select check badge */}
-                      {isSelected && (
-                        <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
-                          <Check className="w-3.5 h-3.5 text-white" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+      <main className="max-w-5xl mx-auto px-6 py-10 relative z-10 flex-grow flex flex-col justify-center w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start w-full">
+          {/* Left Side: Question area */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Dynamic Progress indicator */}
+            <div className="mb-4 space-y-2">
+              <div className="flex justify-between items-center text-xs font-semibold text-zinc-400">
+                <span>Progress: {currentProgressPercent}%</span>
+                <span>Question {currentQuestionIdx + 1} of {quiz.questions.length}</span>
               </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+              <div className="w-full h-2.5 bg-zinc-900 border border-zinc-800/50 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-accent rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${currentProgressPercent}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+            </div>
 
-        {/* Navigation Step Controllers */}
-        <div className="flex justify-between gap-4 mt-8">
-          <button
-            onClick={handlePrev}
-            disabled={currentQuestionIdx === 0}
-            type="button"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-zinc-800 hover:bg-zinc-900 text-zinc-400 disabled:opacity-40 disabled:pointer-events-none font-semibold transition-all duration-200"
-          >
-            Previous
-          </button>
+            {/* Interactive Sliding Question Card */}
+            <div className="relative overflow-hidden w-full">
+              <AnimatePresence mode="wait" custom={direction}>
+                <motion.div
+                  key={currentQuestionIdx}
+                  custom={direction}
+                  variants={{
+                    enter: (dir) => ({
+                      x: dir > 0 ? 150 : -150,
+                      opacity: 0,
+                      scale: 0.98,
+                    }),
+                    center: {
+                      x: 0,
+                      opacity: 1,
+                      scale: 1,
+                    },
+                    exit: (dir) => ({
+                      x: dir < 0 ? 150 : -150,
+                      opacity: 0,
+                      scale: 0.98,
+                    }),
+                  }}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{
+                    x: { type: "spring", stiffness: 350, damping: 30 },
+                    opacity: { duration: 0.2 },
+                  }}
+                  className="w-full bg-zinc-900/40 backdrop-blur-md border border-zinc-800/80 p-6 md:p-8 rounded-3xl shadow-xl space-y-6"
+                >
+                  {/* Question text */}
+                  <h3 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-100 leading-snug">
+                    {currentQuestion.question}
+                  </h3>
 
-          <button
-            onClick={handleNext}
-            disabled={!hasSelectedCurrent}
-            type="button"
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none active:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transition-all duration-200"
-          >
-            {currentQuestionIdx === quiz.questions.length - 1 ? "Finish Quiz" : "Next Question"}
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </button>
+                  {/* Single-choice options list */}
+                  <div className="space-y-3">
+                    {currentQuestion.options.map((option, idx) => {
+                      const isSelected = selectedAnswers[currentQuestionIdx] === idx;
+                      const optionLetters = ["A", "B", "C", "D"];
+
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => handleSelectOption(idx)}
+                          className={`w-full text-left flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200 select-none group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                            isSelected
+                              ? "bg-indigo-600/10 border-indigo-500 text-indigo-200"
+                              : "bg-zinc-900/30 border-zinc-800/80 hover:bg-zinc-900/60 hover:border-zinc-700 text-zinc-300"
+                          }`}
+                          type="button"
+                        >
+                          {/* Letter marker tag */}
+                          <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 transition-colors duration-200 ${
+                            isSelected
+                              ? "bg-indigo-500 text-white"
+                              : "bg-zinc-800 text-zinc-400 group-hover:bg-zinc-700 group-hover:text-zinc-200"
+                          }`}>
+                            {optionLetters[idx] || idx + 1}
+                          </span>
+                          <span className="font-semibold text-sm md:text-base flex-grow leading-relaxed">
+                            {option}
+                          </span>
+
+                          {/* Select check badge */}
+                          {isSelected && (
+                            <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
+                              <Check className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Navigation Step Controllers */}
+            <div className="flex justify-between gap-4 mt-8">
+              <button
+                onClick={handlePrev}
+                disabled={currentQuestionIdx === 0}
+                type="button"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-zinc-800 hover:bg-zinc-900 text-zinc-400 disabled:opacity-40 disabled:pointer-events-none font-semibold transition-all duration-200"
+              >
+                Previous
+              </button>
+
+              <button
+                onClick={() => toggleMarkForReview(currentQuestionIdx)}
+                type="button"
+                className={`inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl border font-semibold transition-all duration-200 ${
+                  markedQuestions[currentQuestionIdx]
+                    ? "bg-amber-500/10 border-amber-500 text-amber-400 hover:bg-amber-500/20"
+                    : "border-zinc-800 hover:bg-zinc-900 text-zinc-400"
+                }`}
+              >
+                <Bookmark className={`w-4 h-4 ${markedQuestions[currentQuestionIdx] ? "fill-amber-400" : ""}`} />
+                {markedQuestions[currentQuestionIdx] ? "Marked" : "Mark for Review"}
+              </button>
+
+              <button
+                onClick={handleNext}
+                disabled={!hasSelectedCurrent}
+                type="button"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none active:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transition-all duration-200"
+              >
+                {currentQuestionIdx === quiz.questions.length - 1 ? "Finish Quiz" : "Next Question"}
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </button>
+            </div>
+          </div>
+
+          {/* Right Side: Question Navigator / Palette */}
+          <div className="lg:col-span-1 bg-zinc-900/40 backdrop-blur-md border border-zinc-800/80 p-6 rounded-3xl space-y-6">
+            <div>
+              <h4 className="text-md font-bold text-zinc-100 flex items-center gap-2">
+                <ListTodo className="w-4 h-4 text-indigo-400" />
+                Question Palette
+              </h4>
+              <p className="text-zinc-500 text-xs mt-1">Jump to any question or review status.</p>
+            </div>
+
+            <div className="grid grid-cols-5 gap-2">
+              {quiz.questions.map((_, idx) => {
+                const isSelected = currentQuestionIdx === idx;
+                const isAnswered = selectedAnswers[idx] !== undefined;
+                const isMarked = markedQuestions[idx];
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setDirection(idx > currentQuestionIdx ? 1 : -1);
+                      setCurrentQuestionIdx(idx);
+                    }}
+                    className={`relative h-10 rounded-xl flex items-center justify-center font-bold text-xs transition-all duration-200 ${
+                      isSelected
+                        ? "bg-indigo-600/20 border-2 border-indigo-500 text-indigo-300"
+                        : isMarked
+                        ? "bg-amber-500/10 border border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
+                        : isAnswered
+                        ? "bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20"
+                        : "bg-zinc-900/60 border border-zinc-800/80 hover:bg-zinc-900/90 text-zinc-500 hover:text-zinc-300"
+                    }`}
+                    type="button"
+                  >
+                    {idx + 1}
+                    {isMarked && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full flex items-center justify-center border border-zinc-950">
+                        <Bookmark className="w-1 h-1 text-zinc-950 fill-zinc-950" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-4 border-t border-zinc-800/80 flex flex-col gap-2.5 text-xs text-zinc-400">
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded bg-indigo-600/20 border border-indigo-500 flex items-center justify-center font-bold text-[8px] text-indigo-300">1</span>
+                <span>Active Question</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded bg-green-500/10 border border-green-500/30 flex items-center justify-center font-bold text-[8px] text-green-400">2</span>
+                <span>Answered</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded bg-amber-500/10 border border-amber-500/50 flex items-center justify-center font-bold text-[8px] text-amber-400">3</span>
+                <span>Marked for Review</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-center font-bold text-[8px] text-zinc-500">4</span>
+                <span>Unanswered</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsReviewingSummary(true)}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 border border-zinc-700/50 text-zinc-200 text-sm font-semibold transition-all duration-200"
+              type="button"
+            >
+              Review & Submit Quiz
+            </button>
+          </div>
         </div>
       </main>
     </div>

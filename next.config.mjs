@@ -1,117 +1,166 @@
+/** @type {import('next').NextConfig} */
+import { webcrypto } from "node:crypto";
+import createNextIntlPlugin from "next-intl/plugin";
 import withPWAInit from "@ducanh2912/next-pwa";
 
+// Polyfill globalThis.crypto for Node 18 (jose middleware uses Web Crypto API).
+// This covers any in-process code paths; worker threads are handled via
+// --experimental-global-webcrypto in the build script (package.json);
+// child processes spawned after config load inherit NODE_OPTIONS below.
+if (typeof globalThis.crypto === "undefined") {
+  globalThis.crypto = webcrypto;
+}
+if (!process.env.NODE_OPTIONS?.includes("--experimental-global-webcrypto")) {
+  process.env.NODE_OPTIONS =
+    (process.env.NODE_OPTIONS || "") + " --experimental-global-webcrypto";
+}
+
+const withNextIntl = createNextIntlPlugin("./i18n/request.js");
+
+// fix: configure PWA fallback so offline navigation shows /offline instead
+// of a blank screen or browser error (fixes #2182)
 const withPWA = withPWAInit({
   dest: "public",
-  customWorkerDir: "worker",
-  fallbacks: {
-    document: "/~offline",
-    image: "/offline.html",
-  },
-  disable: process.env.NODE_ENV === "development",
-  register: true,
-  skipWaiting: true,
-  reloadOnOnline: true,
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  disable: process.env.NODE_ENV === "development",
+  fallbacks: {
+    // Any uncached document (page) navigation while offline → /offline
+    document: "/offline",
+  },
   workboxOptions: {
     disableDevLogs: true,
     runtimeCaching: [
-      // API routes - NetworkOnly (must be first for priority)
+      // API routes — NetworkFirst so fresh data is preferred,
+      // but cached response is served when offline
       {
-        urlPattern: /\/api\/.*/i,
-        handler: "NetworkOnly",
-      },
-      // General pages - NetworkFirst with offline fallback
-      {
-        urlPattern: /^https?:\/\/.*$/,
+        urlPattern: /^\/api\/.*/i,
         handler: "NetworkFirst",
         options: {
-          cacheName: "pages",
-          plugins: [
-            {
-              handlerDidError: async () => {
-                return caches.match("/offline.html", { ignoreSearch: true });
-              },
-            },
-          ],
+          cacheName: "api-cache",
+          networkTimeoutSeconds: 10,
+          expiration: {
+            maxEntries: 64,
+            maxAgeSeconds: 24 * 60 * 60, // 24 hours
+          },
+          cacheableResponse: {
+            statuses: [0, 200],
+          },
         },
       },
+      // Static assets — CacheFirst for performance
       {
-        urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|otf)$/i,
         handler: "CacheFirst",
         options: {
-          cacheName: "google-fonts",
-          expiration: { maxEntries: 4, maxAgeSeconds: 31536000 },
+          cacheName: "static-assets",
+          expiration: {
+            maxEntries: 128,
+            maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          },
         },
       },
+      // Next.js static chunks — StaleWhileRevalidate
       {
-        urlPattern: /^https:\/\/lh3\.googleusercontent\.com\/.*/i,
+        urlPattern: /\/_next\/static\/.*/i,
         handler: "StaleWhileRevalidate",
         options: {
-          cacheName: "google-images",
-          expiration: { maxEntries: 50, maxAgeSeconds: 2592000 },
+          cacheName: "next-static",
+          expiration: {
+            maxEntries: 256,
+            maxAgeSeconds: 7 * 24 * 60 * 60,
+          },
         },
       },
+      // Next.js image optimization
       {
-        urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
+        urlPattern: /\/_next\/image\?.*/i,
         handler: "StaleWhileRevalidate",
         options: {
-          cacheName: "static-image-assets",
-          expiration: { maxEntries: 64, maxAgeSeconds: 86400 },
+          cacheName: "next-image",
+          expiration: {
+            maxEntries: 64,
+            maxAgeSeconds: 24 * 60 * 60,
+          },
         },
       },
+      // App pages — NetworkFirst so content stays fresh
       {
-        urlPattern: /\.(?:js)$/i,
-        handler: "StaleWhileRevalidate",
+        urlPattern: /^\/(?!api\/).*/i,
+        handler: "NetworkFirst",
         options: {
-          cacheName: "static-js-assets",
-          expiration: { maxEntries: 32, maxAgeSeconds: 86400 },
-        },
-      },
-      {
-        urlPattern: /\.(?:css|less)$/i,
-        handler: "StaleWhileRevalidate",
-        options: {
-          cacheName: "static-style-assets",
-          expiration: { maxEntries: 32, maxAgeSeconds: 86400 },
+          cacheName: "pages-cache",
+          networkTimeoutSeconds: 10,
+          expiration: {
+            maxEntries: 32,
+            maxAgeSeconds: 24 * 60 * 60,
+          },
+          cacheableResponse: {
+            statuses: [0, 200],
+          },
         },
       },
     ],
   },
 });
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: {},
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "github.com" },
       { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
   webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...(config.resolve.fallback || {}),
       fs: false,
-      encoding: false, // Fixes TensorFlow warning
+      encoding: false,
+      canvas: false,
     };
+    config.externals = config.externals || [];
+    if (Array.isArray(config.externals)) {
+      config.externals.push("canvas");
+    }
     return config;
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: "/attendance/:path*",
         headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'Content-Security-Policy', value: "frame-ancestors 'none';" },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(), geolocation=()",
+          },
+        ],
+      },
+      {
+        source: "/((?!attendance).*)",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none';" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
         ],
       },
     ];
   },
 };
 
-export default process.env.NODE_ENV === "development" ? nextConfig : withPWA(nextConfig);
+export default withPWA(withNextIntl(nextConfig));

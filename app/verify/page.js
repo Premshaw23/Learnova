@@ -1,11 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebaseConfig";
-import {
-  sendEmailVerification,
-  reload,
-  signOut,
-} from "firebase/auth";
+import { sendEmailVerification, reload, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -29,11 +25,18 @@ export default function EmailVerificationPage() {
   const getDashboardLink = (role) => {
     if (!role) return "/profile";
     switch (role) {
-      case "student": return "/student/dashboard";
-      case "teacher": return "/teacher/dashboard";
-      case "institute": return "/institute/dashboard";
-      case "admin": return "/admin/dashboard";
-      default: return "/profile";
+      case "student":
+        return "/student/dashboard";
+      case "teacher":
+        return "/teacher/dashboard";
+      case "institute":
+        return "/institute/dashboard";
+      case "admin":
+        return "/admin/dashboard";
+      case "parent":
+        return "/parent/dashboard";
+      default:
+        return "/profile";
     }
   };
 
@@ -56,7 +59,11 @@ export default function EmailVerificationPage() {
         setResendCooldown((prev) => prev - 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [resendCooldown]);
 
   const handleResendVerification = async () => {
@@ -68,7 +75,7 @@ export default function EmailVerificationPage() {
     try {
       await sendEmailVerification(user);
       setMessage(
-        "Verification email sent! Please check your inbox and spam folder.",
+        "Verification email sent! Please check your inbox and spam folder."
       );
       setResendCooldown(60); // 60 second cooldown
     } catch (error) {
@@ -95,7 +102,7 @@ export default function EmailVerificationPage() {
         }, 2000);
       } else {
         setMessage(
-          "Email not verified yet. Please check your inbox and click the verification link.",
+          "Email not verified yet. Please check your inbox and click the verification link."
         );
       }
     } catch (error) {
@@ -140,7 +147,7 @@ export default function EmailVerificationPage() {
           <button
             onClick={handleBackToAuth}
             className="mb-8 flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
-          >
+           aria-label="Action button">
             <ArrowLeft className="w-5 h-5" />
             Back to Sign In
           </button>
@@ -268,7 +275,7 @@ export default function EmailVerificationPage() {
                   <button
                     onClick={handleSignOut}
                     className="text-indigo-400 hover:text-indigo-300 font-medium text-sm transition-colors"
-                  >
+                   aria-label="Action button">
                     Sign out and use different email
                   </button>
                 </div>
@@ -279,7 +286,7 @@ export default function EmailVerificationPage() {
             <div className="mt-8 text-center">
               <p className="text-gray-400 text-sm">
                 Still having trouble?{" "}
-                <button className="text-indigo-400 hover:text-indigo-300 transition-colors">
+                <button className="text-indigo-400 hover:text-indigo-300 transition-colors" aria-label="Action button">
                   Contact Support
                 </button>
               </p>

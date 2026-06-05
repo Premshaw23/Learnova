@@ -57,7 +57,11 @@ function usePooledCollection(key, buildQuery, enabled = true) {
     const q = buildQuery();
     if (!q) {
       if (!db) {
-        setError(new Error("Firestore is not initialized. Check your Firebase configuration."));
+        setError(
+          new Error(
+            "Firestore is not initialized. Check your Firebase configuration."
+          )
+        );
       }
       setLoading(false);
       return;
@@ -80,7 +84,7 @@ function usePooledCollection(key, buildQuery, enabled = true) {
     );
 
     return unsub;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled]);
 
   return { data, loading, error };
@@ -94,19 +98,22 @@ export function FirestoreProvider({ children }) {
   const userRole = userProfile?.role ?? "student";
   const isReady = !authLoading && !!uid;
 
-  // ── Notices ──────────────────────────────────────────────────────────────────
-  const noticesKey = `notices:role:${userRole}`;
+  const instituteId = userProfile?.instituteId ?? null;
+  const noticesKey = `notices:role:${userRole}:institute:${instituteId}`;
   const noticesQuery = useCallback(() => {
-    if (!isReady || !db) return null;
+    if (!isReady || !db || !userProfile || !instituteId) return null;
     try {
       return query(
         collection(db, "notices"),
-        where("targetAudience", "array-contains", userRole)
+        where("targetAudience", "array-contains", userRole),
+        where("instituteId", "==", instituteId),
+        orderBy("createdAt", "desc"),
+        limit(100)
       );
     } catch {
       return null;
     }
-  }, [isReady, userRole]);
+  }, [isReady, userRole, userProfile, instituteId]);
 
   const {
     data: notices,

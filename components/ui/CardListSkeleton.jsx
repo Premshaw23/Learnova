@@ -14,16 +14,16 @@ const CardListSkeleton = ({ count = 3, variant = "card" }) => {
         {/* Table Header Skeleton */}
         <div className="grid grid-cols-5 gap-4 pb-4 border-b border-gray-700/50">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className={`h-4 bg-gray-700/50 rounded ${shimmer}`}
-            />
+            <div key={i} className={`h-4 bg-gray-700/50 rounded ${shimmer}`} />
           ))}
         </div>
 
         {/* Table Rows Skeleton */}
         {Array.from({ length: count }).map((_, idx) => (
-          <div key={idx} className="grid grid-cols-5 gap-4 py-4 border-b border-gray-700/20">
+          <div
+            key={idx}
+            className="grid grid-cols-5 gap-4 py-4 border-b border-gray-700/20"
+          >
             {[1, 2, 3, 4, 5].map((colIdx) => (
               <div
                 key={colIdx}
@@ -74,7 +74,7 @@ const CardListSkeleton = ({ count = 3, variant = "card" }) => {
                 className={`h-3 bg-gray-700/40 rounded ${shimmer}`}
                 style={{
                   width: lineIdx === 3 ? "60%" : "100%",
-                  animationDelay: `${(idx * 50 + lineIdx * 75)}ms`,
+                  animationDelay: `${idx * 50 + lineIdx * 75}ms`,
                 }}
               />
             ))}
@@ -85,16 +85,16 @@ const CardListSkeleton = ({ count = 3, variant = "card" }) => {
             <div className="flex items-center gap-2">
               <div
                 className={`h-8 w-8 rounded-full bg-gray-700/50 ${shimmer}`}
-                style={{ animationDelay: `${(idx * 50 + 150)}ms` }}
+                style={{ animationDelay: `${idx * 50 + 150}ms` }}
               />
               <div
                 className={`h-3 w-20 bg-gray-700/40 rounded ${shimmer}`}
-                style={{ animationDelay: `${(idx * 50 + 175)}ms` }}
+                style={{ animationDelay: `${idx * 50 + 175}ms` }}
               />
             </div>
             <div
               className={`h-8 px-4 bg-gray-700/40 rounded-lg ${shimmer}`}
-              style={{ animationDelay: `${(idx * 50 + 200)}ms` }}
+              style={{ animationDelay: `${idx * 50 + 200}ms` }}
             />
           </div>
         </div>

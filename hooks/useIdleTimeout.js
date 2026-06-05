@@ -7,6 +7,10 @@ const WARNING_BEFORE = 2 * 60 * 1000;
 
 export function useIdleTimeout() {
   const { signOut } = useAuth();
+  const signOutRef = useRef(signOut);
+  useEffect(() => {
+    signOutRef.current = signOut;
+  }, [signOut]);
   const logoutTimer = useRef(null);
   const warningTimer = useRef(null);
   const warningToastId = useRef(null);
@@ -34,24 +38,26 @@ export function useIdleTimeout() {
 
     logoutTimer.current = setTimeout(async () => {
       toast.dismiss(warningToastId.current);
-      await signOut();
+      await signOutRef.current();
     }, IDLE_TIMEOUT);
   };
 
   useEffect(() => {
     const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
-    
+
     const throttledReset = () => {
       if (throttleTimer.current) return;
-      
+
       throttleTimer.current = setTimeout(() => {
         throttleTimer.current = null;
       }, 1000);
-      
+
       resetTimers();
     };
 
-    events.forEach((e) => window.addEventListener(e, throttledReset, { passive: true }));
+    events.forEach((e) =>
+      window.addEventListener(e, throttledReset, { passive: true })
+    );
     resetTimers();
 
     return () => {

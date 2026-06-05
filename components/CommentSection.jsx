@@ -1,32 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquare, Send, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-// REMOVE db AND useAuth IMPORTS FOR NOW TO PREVENT CRASHES
+import {
+  getCommentStorageKey,
+  normalizeStoredComments,
+} from "@/lib/commentStorage";
+import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/storage";
+import { useAuth } from "@/hooks/useAuth";
 
 const CommentSection = ({ noticeId }) => {
-  // 1. FAKE USER BYPASS: This pretends you are logged in as a Teacher or Student
-  const mockUser = {
-    uid: "mock_user_123",
-    displayName: "Prem Shaw",
-    role: "Contributor" // Displays a premium-looking badge next to your name
-  };
+  const { user } = useAuth();
 
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+  var storageKey = getCommentStorageKey(noticeId);
 
-  // 2. Load existing fake comments or persistent local storage comments
   useEffect(() => {
-    if (!noticeId) return;
-    
-    // Check if we have comments stored in the browser for this notice
-    const savedComments = localStorage.getItem(`comments_${noticeId}`);
+    const savedComments = safeLocalStorageGet(storageKey, null);
+
     if (savedComments) {
-      setComments(JSON.parse(savedComments));
+      setComments(normalizeStoredComments(savedComments));
     } else {
-      // Seed data so the screen isn't empty when you first look at it
       const defaultComments = [
         {
           id: "seed_1",
@@ -39,12 +35,51 @@ const CommentSection = ({ noticeId }) => {
           userName: "Rahul Sharma",
           userRole: "Student",
           text: "Got it! Thanks for the update.",
-        }
+        },
       ];
+
       setComments(defaultComments);
-      localStorage.setItem(`comments_${noticeId}`, JSON.stringify(defaultComments));
+      localStorage.setItem(storageKey, JSON.stringify(defaultComments));
     }
   }, [noticeId]);
+  const insertMarkdown = (syntax) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const replacement = syntax + selectedText + syntax;
+
+    // Construct the new string
+    const updatedValue =
+      text.substring(0, start) + replacement + text.substring(end);
+    setNewComment(updatedValue);
+
+    // Refocus and place the cursor seamlessly back inside or after the syntax
+    setTimeout(() => {
+      textarea.focus();
+      const offset = syntax.length;
+      textarea.setSelectionRange(start + offset, end + offset);
+    }, 0);
+  };
+
+  // Keyboard shortcut listener
+  const handleKeyDown = (event) => {
+    const isModifierPressed = event.ctrlKey || event.metaKey;
+
+    if (isModifierPressed) {
+      if (event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        insertMarkdown("**"); // Bold format
+      } else if (event.key.toLowerCase() === "i") {
+        event.preventDefault();
+        insertMarkdown("*"); // Italic format
+      }
+    }
+  };
 
   // 3. Handle comment submission without needing a live backend database connection
   const handleSubmitComment = (e) => {
@@ -53,17 +88,29 @@ const CommentSection = ({ noticeId }) => {
 
     const freshComment = {
       id: `comment_${Date.now()}`,
-      userName: mockUser.displayName,
-      userRole: mockUser.role,
+      userName: user?.displayName || "Anonymous",
+      userRole: user?.role || "Member",
       text: newComment.trim(),
     };
 
     const updatedComments = [...comments, freshComment];
     setComments(updatedComments);
-    
+
     // Save to browser memory so it stays there when you refresh the page
-    localStorage.setItem(`comments_${noticeId}`, JSON.stringify(updatedComments));
+
+    localStorage.setItem(storageKey, JSON.stringify(updatedComments));
+
     setNewComment("");
+  };
+
+  const handleDeleteComment = (commentId) => {
+    const updatedComments = comments.filter(
+      (comment) => comment.id !== commentId
+    );
+
+    setComments(updatedComments);
+
+    localStorage.setItem(storageKey, JSON.stringify(updatedComments));
   };
 
   return (
@@ -84,20 +131,38 @@ const CommentSection = ({ noticeId }) => {
               exit={{ opacity: 0, x: 10 }}
               className="rounded-2xl border border-slate-300 dark:border-slate-800/40 bg-slate-100 dark:bg-slate-950/40 p-3"
             >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{comment.userName}</span>
-                <span className="rounded-md bg-slate-300 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
-                  {comment.userRole}
-                </span>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    {comment.userName}
+                  </span>
+
+                  <span className="rounded-md bg-slate-300 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+                    {comment.userRole}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => handleDeleteComment(comment.id)}
+                  className="text-slate-400 hover:text-red-500 transition-colors"
+                  title="Delete comment"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 break-words">{comment.text}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 break-words">
+                {comment.text}
+              </p>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
 
       {/* Interactive Input form box */}
-      <form onSubmit={handleSubmitComment} className="relative flex items-center gap-2">
+      <form
+        onSubmit={handleSubmitComment}
+        className="relative flex items-center gap-2"
+      >
         <input
           type="text"
           value={newComment}
@@ -107,7 +172,7 @@ const CommentSection = ({ noticeId }) => {
         />
         <button
           type="submit"
-          disabled={!newComment.trim()}
+          disabled={!newComment.trim() || !user}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-indigo-500 p-1.5 text-white transition hover:bg-indigo-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500"
         >
           <Send className="h-3.5 w-3.5" />

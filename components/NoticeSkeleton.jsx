@@ -12,23 +12,23 @@ const SkeletonCard = ({ delay = 0 }) => (
     <div className="animate-pulse space-y-4">
       {/* Category label */}
       <div className="h-3 w-24 rounded-full bg-slate-800" />
-      
+
       {/* Title */}
       <div className="h-5 w-3/4 rounded-full bg-slate-800" />
-      
+
       {/* Description lines */}
       <div className="space-y-2 pt-2">
         <div className="h-4 w-full rounded-full bg-slate-800" />
         <div className="h-4 w-full rounded-full bg-slate-800" />
         <div className="h-4 w-5/6 rounded-full bg-slate-800" />
       </div>
-      
+
       {/* Tags */}
       <div className="flex gap-2 pt-2">
         <div className="h-6 w-16 rounded-full bg-slate-800" />
         <div className="h-6 w-20 rounded-full bg-slate-800" />
       </div>
-      
+
       {/* Metadata */}
       <div className="grid gap-3 sm:grid-cols-3 pt-2">
         <div className="h-10 rounded-3xl bg-slate-800" />
@@ -48,4 +48,3 @@ const NoticeSkeleton = ({ count = 4 }) => (
 );
 
 export default NoticeSkeleton;
-

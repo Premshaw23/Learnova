@@ -1,12 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  Flame,
-  Sparkles,
-  AlertTriangle,
-  ShieldCheck,
-} from "lucide-react";
+import { Flame, Sparkles, AlertTriangle, ShieldCheck } from "lucide-react";
 
 const cardToneStyles = {
   positive: "border-green-500/30 bg-green-500/10 text-green-200",
@@ -24,19 +19,19 @@ const iconMap = {
 
 /**
  * MotivationalReminders Component
- * 
+ *
  * Displays dynamic reminder cards based on real user dashboard data
  * Cards are generated from user activity, attendance, engagement metrics
  * NOT from mock data or hardcoded values
- * 
+ *
  * @param {Array} cards - Array of reminder card objects with: id, tone, title, description
  * @param {String} title - Optional custom section title (default: "Motivational Reminders")
  * @param {String} subtitle - Optional custom section subtitle
  */
-const MotivationalReminders = ({ 
-  cards = [], 
+const MotivationalReminders = ({
+  cards = [],
   title = "Stay consistent with your progress.",
-  subtitle = "Personalized goals from your dashboard data"
+  subtitle = "Personalized goals from your dashboard data",
 }) => {
   if (!cards || cards.length === 0) {
     return null;
@@ -51,9 +46,7 @@ const MotivationalReminders = ({
           <p className="text-sm uppercase tracking-[0.24em] text-gray-400">
             Motivational Reminders
           </p>
-          <h2 className="text-2xl font-bold text-white">
-            {title}
-          </h2>
+          <h2 className="text-2xl font-bold text-white">{title}</h2>
         </div>
         <div className="hidden sm:flex items-center gap-2 text-sm text-gray-400">
           <Sparkles className="w-5 h-5 text-accent" />

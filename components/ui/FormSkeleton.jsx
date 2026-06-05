@@ -13,8 +13,12 @@ const FormSkeleton = () => {
       {/* Header Skeleton */}
       <div className="space-y-3 mb-8">
         <div className={`h-8 w-64 bg-gray-700/60 rounded-lg ${shimmer}`} />
-        <div className={`h-4 w-full max-w-lg bg-gray-700/40 rounded ${shimmer}`} />
-        <div className={`h-4 w-full max-w-md bg-gray-700/40 rounded ${shimmer}`} />
+        <div
+          className={`h-4 w-full max-w-lg bg-gray-700/40 rounded ${shimmer}`}
+        />
+        <div
+          className={`h-4 w-full max-w-md bg-gray-700/40 rounded ${shimmer}`}
+        />
       </div>
 
       {/* Form Fields */}

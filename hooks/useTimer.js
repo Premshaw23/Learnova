@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 /**
  * Custom hook for managing timers with automatic cleanup
  * Prevents memory leaks by ensuring timers are cleared on component unmount
- * 
+ *
  * @param {Function} callback - Function to execute when timer fires
  * @param {number} delay - Delay in milliseconds
  * @param {boolean} [immediate=false] - Whether to execute immediately on mount
@@ -14,6 +15,7 @@ import { useEffect, useRef } from "react";
 export function useTimeout(callback, delay, immediate = false) {
   const timeoutRef = useRef(null);
   const callbackRef = useRef(callback);
+  const isMounted = useIsMounted();
 
   // Keep callback ref updated
   useEffect(() => {
@@ -27,27 +29,41 @@ export function useTimeout(callback, delay, immediate = false) {
     }
   };
 
+  const start = () => {
+    if (delay !== null && delay !== undefined) {
+      timeoutRef.current = setTimeout(() => {
+        if (isMounted()) callbackRef.current();
+        timeoutRef.current = null;
+      }, delay);
+    }
+  };
+
   useEffect(() => {
-    if (immediate) {
+    if (immediate && isMounted()) {
       callbackRef.current();
     }
 
-    if (delay !== null && delay !== undefined) {
-      timeoutRef.current = setTimeout(() => {
-        callbackRef.current();
-      }, delay);
-    }
+    start();
 
     return clear;
   }, [delay, immediate]);
 
-  return { clear, reset: () => clear() };
+  return {
+    clear,
+    reset: () => {
+      clear();
+      if (immediate && isMounted()) {
+        callbackRef.current();
+      }
+      start();
+    },
+  };
 }
 
 /**
  * Custom hook for managing intervals with automatic cleanup
  * Prevents memory leaks by ensuring intervals are cleared on component unmount
- * 
+ *
  * @param {Function} callback - Function to execute on each interval
  * @param {number} delay - Delay in milliseconds between executions
  * @param {boolean} [immediate=false] - Whether to execute immediately on mount
@@ -56,6 +72,7 @@ export function useTimeout(callback, delay, immediate = false) {
 export function useInterval(callback, delay, immediate = false) {
   const intervalRef = useRef(null);
   const callbackRef = useRef(callback);
+  const isMounted = useIsMounted();
 
   // Keep callback ref updated
   useEffect(() => {
@@ -71,27 +88,30 @@ export function useInterval(callback, delay, immediate = false) {
 
   useEffect(() => {
     if (delay !== null && delay !== undefined) {
-      if (immediate) {
+      if (immediate && isMounted()) {
         callbackRef.current();
       }
-      
+
       intervalRef.current = setInterval(() => {
-        callbackRef.current();
+        if (isMounted()) callbackRef.current();
       }, delay);
     }
 
     return clear;
   }, [delay, immediate]);
 
-  return { clear, reset: () => {
-    clear();
-    if (delay !== null && delay !== undefined) {
-      if (immediate) {
-        callbackRef.current();
+  return {
+    clear,
+    reset: () => {
+      clear();
+      if (delay !== null && delay !== undefined) {
+        if (immediate && isMounted()) {
+          callbackRef.current();
+        }
+        intervalRef.current = setInterval(() => {
+          if (isMounted()) callbackRef.current();
+        }, delay);
       }
-      intervalRef.current = setInterval(() => {
-        callbackRef.current();
-      }, delay);
-    }
-  }};
+    },
+  };
 }

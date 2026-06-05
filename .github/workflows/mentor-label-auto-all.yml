@@ -1,0 +1,322 @@
+name: GSSoC — Auto Mentor Label (All Events)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Triggers on EVERY issue/PR lifecycle event so mentor:Ayushh-Sharmaa is
+# applied the moment anything is opened, updated, closed, or merged.
+# A scheduled sweep runs every 2 hours as a zero-miss safety net.
+# Also removes mentor:Premshaw23 whenever it is found.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  # ── Issues ────────────────────────────────────────────────────────────────
+  issues:
+    types:
+      - opened
+      - closed
+      - reopened
+      - assigned
+      - unassigned
+      - labeled
+      - unlabeled
+      - edited
+      - pinned
+      - unpinned
+      - milestoned
+      - demilestoned
+      - transferred
+      - deleted
+
+  # ── Pull Requests (safe for forks) ────────────────────────────────────────
+  pull_request_target:
+    types:
+      - opened
+      - closed
+      - reopened
+      - assigned
+      - unassigned
+      - labeled
+      - unlabeled
+      - edited
+      - ready_for_review
+      - converted_to_draft
+      - review_requested
+      - review_request_removed
+      - synchronize
+      - auto_merge_enabled
+      - auto_merge_disabled
+
+  # ── PR Reviews ────────────────────────────────────────────────────────────
+  pull_request_review:
+    types:
+      - submitted
+      - edited
+      - dismissed
+
+  # ── PR Review Comments ────────────────────────────────────────────────────
+  pull_request_review_comment:
+    types:
+      - created
+      - edited
+      - deleted
+
+  # ── Scheduled sweep — every 2 hours (catches anything the events missed) ──
+  schedule:
+    - cron: '0 */2 * * *'
+
+  # ── Manual trigger ────────────────────────────────────────────────────────
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run? (true = log only)'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+concurrency:
+  group: auto-mentor-label-${{ github.event.issue.number || github.event.pull_request.number || 'sweep' }}
+  cancel-in-progress: false
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB A — Single-item fast path (runs on real events with a specific item)
+  # ════════════════════════════════════════════════════════════════════════════
+  label-single-item:
+    name: Label Single Item (Event Triggered)
+    if: >
+      github.event_name != 'schedule' &&
+      github.event_name != 'workflow_dispatch' &&
+      (
+        github.event.issue.number != null ||
+        github.event.pull_request.number != null
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Apply / fix mentor label on single item
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const ADD_LABEL    = 'mentor:Ayushh-Sharmaa';
+            const REMOVE_LABEL = 'mentor:Premshaw23';
+            const LABEL_COLOR  = '6f42c1';
+            const DRY_RUN      = false;
+
+            const itemNum  = context.payload.issue?.number
+                          ?? context.payload.pull_request?.number;
+            const itemType = context.payload.issue ? 'Issue' : 'PR';
+
+            if (!itemNum) {
+              console.log('⏭️  No issue/PR number in payload — skipping');
+              return;
+            }
+
+            console.log(`🎯 Processing ${itemType} #${itemNum} (event: ${context.eventName})`);
+
+            // ── Retry helper ──────────────────────────────────────────────────
+            async function withRetry(fn, tag, max = 5) {
+              for (let i = 1; i <= max; i++) {
+                try { return await fn(); }
+                catch (e) {
+                  const retryable = e.status === 429 || e.status >= 500 || e.status === 403;
+                  if (retryable && i < max) {
+                    const wait = Math.min(2 ** i * 1500, 30000);
+                    console.log(`⚠️  ${tag} attempt ${i} (${e.status}) — retry in ${wait}ms`);
+                    await new Promise(r => setTimeout(r, wait));
+                  } else throw e;
+                }
+              }
+            }
+
+            // ── Ensure label exists ───────────────────────────────────────────
+            async function ensureLabel() {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: ADD_LABEL });
+              } catch (e) {
+                if (e.status === 404) {
+                  await github.rest.issues.createLabel({
+                    owner, repo, name: ADD_LABEL,
+                    color: LABEL_COLOR,
+                    description: 'GSSoC: Mentor — @Ayushh-Sharmaa',
+                  });
+                  console.log(`✅ Created label: ${ADD_LABEL}`);
+                }
+              }
+            }
+
+            await ensureLabel();
+
+            // ── Fetch current labels ──────────────────────────────────────────
+            const { data: labels } = await withRetry(
+              () => github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: itemNum }),
+              'list-labels'
+            );
+            const names = labels.map(l => l.name);
+
+            // ── Add mentor label ──────────────────────────────────────────────
+            if (!names.includes(ADD_LABEL)) {
+              console.log(`🏷️  Adding ${ADD_LABEL} to ${itemType} #${itemNum}`);
+              await withRetry(
+                () => github.rest.issues.addLabels({ owner, repo, issue_number: itemNum, labels: [ADD_LABEL] }),
+                'add-label'
+              );
+            } else {
+              console.log(`⏭️  ${ADD_LABEL} already on ${itemType} #${itemNum}`);
+            }
+
+            // ── Remove old mentor label ───────────────────────────────────────
+            if (names.includes(REMOVE_LABEL)) {
+              console.log(`🗑️  Removing ${REMOVE_LABEL} from ${itemType} #${itemNum}`);
+              try {
+                await withRetry(
+                  () => github.rest.issues.removeLabel({ owner, repo, issue_number: itemNum, name: REMOVE_LABEL }),
+                  'remove-label'
+                );
+              } catch (e) {
+                if (e.status !== 404) throw e;
+              }
+            }
+
+            console.log(`✅ Done — ${itemType} #${itemNum}`);
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB B — Full sweep (scheduled + manual — ensures zero items ever missed)
+  # ════════════════════════════════════════════════════════════════════════════
+  sweep-all-items:
+    name: Full Sweep (Scheduled / Manual)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Sweep all issues and PRs
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const ADD_LABEL    = 'mentor:Ayushh-Sharmaa';
+            const REMOVE_LABEL = 'mentor:Premshaw23';
+            const LABEL_COLOR  = '6f42c1';
+            const DRY_RUN      = context.payload.inputs?.dry_run === 'true';
+
+            console.log(`🚀 Full sweep — Mode: ${DRY_RUN ? 'DRY RUN' : 'LIVE'}`);
+            console.log(`🏷️  Add   : ${ADD_LABEL}`);
+            console.log(`🗑️  Remove: ${REMOVE_LABEL}`);
+            console.log('──────────────────────────────────────────────────');
+
+            // ── Retry helper ──────────────────────────────────────────────────
+            async function withRetry(fn, tag, max = 6) {
+              for (let i = 1; i <= max; i++) {
+                try { return await fn(); }
+                catch (e) {
+                  const retryable = e.status === 429 || e.status >= 500 || e.status === 403 || e.status === 401;
+                  if (retryable && i < max) {
+                    const retryAfter = parseInt(e.response?.headers?.['retry-after'] || '0') * 1000;
+                    const wait = retryAfter || Math.min(2 ** i * 2000, 60000);
+                    console.log(`⚠️  ${tag} attempt ${i} (${e.status}) — retry in ${wait / 1000}s`);
+                    await new Promise(r => setTimeout(r, wait));
+                  } else throw e;
+                }
+              }
+            }
+
+            // ── Ensure label exists ───────────────────────────────────────────
+            if (!DRY_RUN) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: ADD_LABEL });
+                console.log(`✅ Label exists: ${ADD_LABEL}`);
+              } catch (e) {
+                if (e.status === 404) {
+                  await github.rest.issues.createLabel({
+                    owner, repo, name: ADD_LABEL,
+                    color: LABEL_COLOR,
+                    description: 'GSSoC: Mentor — @Ayushh-Sharmaa',
+                  });
+                  console.log(`✅ Created label: ${ADD_LABEL}`);
+                }
+              }
+            }
+
+            let added = 0, removed = 0, skipped = 0, errors = 0;
+
+            async function processItem(number, type) {
+              let names;
+              try {
+                const { data } = await withRetry(
+                  () => github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: number }),
+                  `list-#${number}`
+                );
+                names = data.map(l => l.name);
+              } catch (e) {
+                console.log(`❌ ${type} #${number} — fetch failed: ${e.message}`);
+                errors++;
+                return;
+              }
+
+              // Add
+              if (!names.includes(ADD_LABEL)) {
+                console.log(`🏷️  ${type} #${number} — ${DRY_RUN ? '[DRY RUN] ' : ''}adding ${ADD_LABEL}`);
+                if (!DRY_RUN) {
+                  try {
+                    await withRetry(
+                      () => github.rest.issues.addLabels({ owner, repo, issue_number: number, labels: [ADD_LABEL] }),
+                      `add-#${number}`
+                    );
+                    added++;
+                  } catch (e) {
+                    console.log(`❌ ${type} #${number} — add failed: ${e.message}`);
+                    errors++;
+                  }
+                } else { added++; }
+              } else {
+                skipped++;
+              }
+
+              // Remove old label
+              if (REMOVE_LABEL && names.includes(REMOVE_LABEL)) {
+                console.log(`🗑️  ${type} #${number} — ${DRY_RUN ? '[DRY RUN] ' : ''}removing ${REMOVE_LABEL}`);
+                if (!DRY_RUN) {
+                  try {
+                    await withRetry(
+                      () => github.rest.issues.removeLabel({ owner, repo, issue_number: number, name: REMOVE_LABEL }),
+                      `remove-#${number}`
+                    );
+                    removed++;
+                  } catch (e) {
+                    if (e.status !== 404) {
+                      console.log(`❌ ${type} #${number} — remove failed: ${e.message}`);
+                      errors++;
+                    }
+                  }
+                } else { removed++; }
+              }
+            }
+
+            // ── Paginate ALL items (open + closed) ────────────────────────────
+            for await (const page of github.paginate.iterator(
+              github.rest.issues.listForRepo,
+              { owner, repo, state: 'all', per_page: 100 }
+            )) {
+              for (const item of page.data) {
+                const type = item.pull_request ? 'PR' : 'Issue';
+                await processItem(item.number, type);
+              }
+            }
+
+            console.log('──────────────────────────────────────────────────');
+            console.log(`✅ Sweep complete`);
+            console.log(`   🏷️  Added   : ${added}`);
+            console.log(`   🗑️  Removed  : ${removed}`);
+            console.log(`   ⏭️  Skipped  : ${skipped}`);
+            console.log(`   ❌ Errors   : ${errors}`);
+
+            if (errors > 0) core.setFailed(`${errors} error(s) — check logs above`);

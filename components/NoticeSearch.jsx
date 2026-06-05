@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Search, XCircle, Sparkles, TrendingUp, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,6 +16,24 @@ const NoticeSearch = ({
   const [localSearch, setLocalSearch] = useState(value || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, []);
 
   // Filter suggestions based on search input
   const filteredSuggestions = useMemo(() => {
@@ -76,7 +94,10 @@ const NoticeSearch = ({
   };
 
   return (
-    <div className="sticky top-20 z-40 rounded-[2rem] border border-slate-800 bg-slate-950/95 px-5 py-4 shadow-2xl shadow-slate-950/20 backdrop-blur-xl transition-all duration-300 md:px-6">
+    <div
+      ref={containerRef}
+      className="sticky top-20 z-40 rounded-[2rem] border border-slate-800 bg-slate-950/95 px-5 py-4 shadow-2xl shadow-slate-950/20 backdrop-blur-xl transition-all duration-300 md:px-6"
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex-1 min-w-0">
           <label htmlFor="notice-search" className="sr-only">
@@ -145,7 +166,9 @@ const NoticeSearch = ({
                             ? "bg-indigo-600/20 text-indigo-200"
                             : "text-slate-300 hover:text-indigo-200"
                         } ${index === 0 ? "rounded-t-3xl" : ""} ${
-                          index === filteredSuggestions.length - 1 ? "rounded-b-3xl" : ""
+                          index === filteredSuggestions.length - 1
+                            ? "rounded-b-3xl"
+                            : ""
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -164,11 +187,13 @@ const NoticeSearch = ({
             </AnimatePresence>
           </div>
 
-
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-            <span>{resultsCount} result{resultsCount === 1 ? "" : "s"}</span>
+            <span>
+              {resultsCount} result{resultsCount === 1 ? "" : "s"}
+            </span>
             <span className="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900/80 px-2 py-1 text-slate-300">
-              {activeFilterCount} active filter{activeFilterCount === 1 ? "" : "s"}
+              {activeFilterCount} active filter
+              {activeFilterCount === 1 ? "" : "s"}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2 py-1 text-slate-300">
               <Sparkles className="h-4 w-4 text-indigo-300" /> Instant updates
@@ -180,7 +205,7 @@ const NoticeSearch = ({
           type="button"
           onClick={onClearFilters}
           className="shrink-0 rounded-3xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 active:scale-95"
-        >
+         aria-label="Action button">
           Clear filters
         </button>
       </div>

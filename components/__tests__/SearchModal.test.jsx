@@ -4,14 +4,14 @@ import userEvent from "@testing-library/user-event";
 import SearchModal from "../SearchModal";
 
 // Mock next/navigation
-jest.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: vi.fn(),
   }),
 }));
 
 // Mock useAuthContext hook
-jest.mock("@/contexts/AuthContext", () => ({
+vi.mock("@/contexts/AuthContext", () => ({
   useAuthContext: () => ({
     userProfile: { role: "student" },
     isAuthenticated: true,
@@ -19,10 +19,10 @@ jest.mock("@/contexts/AuthContext", () => ({
 }));
 
 describe("SearchModal Keyboard Events and Propagation", () => {
-  const mockOnClose = jest.fn();
+  const mockOnClose = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders search modal and shifts focus to input on open", async () => {
@@ -41,7 +41,9 @@ describe("SearchModal Keyboard Events and Propagation", () => {
     render(<SearchModal isOpen={true} onClose={mockOnClose} />);
 
     await waitFor(() => {
-      expect(document.activeElement).toBe(screen.getByPlaceholderText("Search pages and actions..."));
+      expect(document.activeElement).toBe(
+        screen.getByPlaceholderText("Search pages and actions...")
+      );
     });
 
     await user.keyboard("{Escape}");
@@ -50,7 +52,7 @@ describe("SearchModal Keyboard Events and Propagation", () => {
 
   test("isolates keyboard events and stops them from bleeding to global window handlers", async () => {
     const user = userEvent.setup();
-    const windowListener = jest.fn();
+    const windowListener = vi.fn();
     window.addEventListener("keydown", windowListener);
 
     render(<SearchModal isOpen={true} onClose={mockOnClose} />);

@@ -5,7 +5,7 @@ import { useState, useCallback, useMemo } from "react";
 /**
  * Custom hook for managing notice search and filter state
  * Provides optimized state management with memoized computations
- * 
+ *
  * @param {Array} notices - Array of notice objects to filter
  * @returns {Object} Filter state and handlers
  */
@@ -28,12 +28,21 @@ export const useNoticeFilters = (notices) => {
         dateRange !== "all",
         showOnlyUnread,
       ].filter(Boolean).length,
-    [selectedCategory, selectedPriority, selectedTags, dateRange, showOnlyUnread]
+    [
+      selectedCategory,
+      selectedPriority,
+      selectedTags,
+      dateRange,
+      showOnlyUnread,
+    ]
   );
 
   // Extract available tags from notices
   const availableTags = useMemo(
-    () => Array.from(new Set(notices.flatMap((notice) => notice.tags || []))).sort(),
+    () =>
+      Array.from(
+        new Set(notices.flatMap((notice) => notice.tags || []))
+      ).sort(),
     [notices]
   );
 
@@ -79,12 +88,12 @@ export const useNoticeFilters = (notices) => {
     dateRange,
     sortOrder,
     showOnlyUnread,
-    
+
     // Computed values
     activeFilterCount,
     availableTags,
     searchSuggestions,
-    
+
     // Setters
     setSearchQuery,
     setSelectedCategory,
@@ -93,7 +102,7 @@ export const useNoticeFilters = (notices) => {
     setDateRange,
     setSortOrder,
     setShowOnlyUnread,
-    
+
     // Handlers
     handleTagToggle,
     handleClearFilters,

@@ -8,21 +8,23 @@ describe("ExceptionRequestsList Focus Trap and Accessibility", () => {
     exceptionRequests: [],
     isLoadingRequests: false,
     requestsError: null,
-    fetchAllRequests: jest.fn(),
+    fetchAllRequests: vi.fn(),
     showAllRequestsModal: false,
-    setShowAllRequestsModal: jest.fn(),
+    setShowAllRequestsModal: vi.fn(),
     allRequests: [],
-    handleExceptionRequest: jest.fn(),
+    handleExceptionRequest: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("does not render modal when showAllRequestsModal is false", () => {
     render(<ExceptionRequestsList {...defaultProps} />);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.queryByText("All Exception Requests")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("All Exception Requests")
+    ).not.toBeInTheDocument();
   });
 
   test("renders modal and implements dynamic focus trap with async loading content", async () => {
@@ -35,19 +37,28 @@ describe("ExceptionRequestsList Focus Trap and Accessibility", () => {
 
       return (
         <div>
-          <button id="trigger-btn" onClick={() => setShowModal(true)}>Open</button>
-          <button id="load-async-btn" onClick={() => setAllRequests([
-            {
-              id: "req-1",
-              studentName: "Student One",
-              studentId: "STU001",
-              className: "Class A",
-              reason: "medical_emergency",
-              details: "Doctor visit",
-              status: "pending",
-              timestamp: new Date().toISOString(),
+          <button id="trigger-btn" onClick={() => setShowModal(true)}>
+            Open
+          </button>
+          <button
+            id="load-async-btn"
+            onClick={() =>
+              setAllRequests([
+                {
+                  id: "req-1",
+                  studentName: "Student One",
+                  studentId: "STU001",
+                  className: "Class A",
+                  reason: "medical_emergency",
+                  details: "Doctor visit",
+                  status: "pending",
+                  timestamp: new Date().toISOString(),
+                },
+              ])
             }
-          ])}>Load Async</button>
+          >
+            Load Async
+          </button>
           <ExceptionRequestsList
             {...defaultProps}
             showAllRequestsModal={showModal}
@@ -62,7 +73,7 @@ describe("ExceptionRequestsList Focus Trap and Accessibility", () => {
 
     // Capture the trigger button that opens the modal
     const triggerBtn = screen.getByRole("button", { name: "Open" });
-    
+
     // Click to open the modal
     await user.click(triggerBtn);
 
@@ -77,7 +88,7 @@ describe("ExceptionRequestsList Focus Trap and Accessibility", () => {
 
     // Currently only two focusable elements exist inside the empty modal: Close (X) and Close at the bottom
     const bottomCloseBtn = screen.getByRole("button", { name: "Close" });
-    
+
     // Press Tab - should move focus to the bottom Close button
     await user.tab();
     expect(document.activeElement).toBe(bottomCloseBtn);
@@ -99,7 +110,7 @@ describe("ExceptionRequestsList Focus Trap and Accessibility", () => {
 
     // Let's press Escape to verify modal close
     await user.keyboard("{Escape}");
-    
+
     // Verify that focus is restored back to the original trigger button!
     expect(document.activeElement).toBe(triggerBtn);
   });

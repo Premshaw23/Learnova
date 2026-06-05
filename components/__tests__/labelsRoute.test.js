@@ -3,9 +3,9 @@ import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken, getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -15,17 +15,17 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn(),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn(),
 }));
 
 describe("GET /api/labels - Security & Authentication Tests", () => {
@@ -34,38 +34,56 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
   let mockFind;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 10 });
 
     verifyFirebaseToken.mockImplementation(async (token) => {
-      if (!token || token === "invalid-token") return { valid: false, reason: "Invalid" };
-      return { valid: true, decodedToken: { uid: "mock-uid", email: "user@domain.com" } };
+      if (!token || token === "invalid-token")
+        return { valid: false, reason: "Invalid" };
+      return {
+        valid: true,
+        decodedToken: {
+          uid: "mock-uid",
+          email: "user@domain.com",
+          email_verified: true,
+          role: "teacher",
+        },
+      };
     });
 
     getUserProfile.mockResolvedValue({ role: "teacher" });
 
-    mockToArray = jest.fn();
-    mockLimit = jest.fn().mockReturnValue({
+    mockToArray = vi.fn();
+    mockLimit = vi.fn().mockReturnValue({
       toArray: mockToArray,
     });
-    mockFind = jest.fn().mockReturnValue({
+    mockFind = vi.fn().mockReturnValue({
       limit: mockLimit,
     });
 
     connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         find: mockFind,
       }),
     });
   });
 
-  const createMockRequest = (tokenVal, ip = "127.0.0.1", url = "http://localhost/api/labels") => {
-    const authHeader = tokenVal !== undefined ? (tokenVal ? `Bearer ${tokenVal}` : "") : "Bearer valid-token";
+  const createMockRequest = (
+    tokenVal,
+    ip = "127.0.0.1",
+    url = "http://localhost/api/labels"
+  ) => {
+    const authHeader =
+      tokenVal !== undefined
+        ? tokenVal
+          ? `Bearer ${tokenVal}`
+          : ""
+        : "Bearer valid-token";
     return {
       url,
       headers: {
-        get: jest.fn().mockImplementation((name) => {
+        get: vi.fn().mockImplementation((name) => {
           if (name.toLowerCase() === "authorization") {
             return authHeader;
           }
@@ -102,8 +120,18 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
 
   test("returns projected labels list without image URLs for authenticated users bounded to 50 records (200)", async () => {
     const mockUsers = [
-      { name: "Alice", email: "alice@domain.com", image: "https://example.com/alice.jpg", sensitiveField: "secret" },
-      { name: "Bob", email: "bob@domain.com", image: "https://example.com/bob.jpg", sensitiveField: "secret" },
+      {
+        name: "Alice",
+        email: "alice@domain.com",
+        image: "https://example.com/alice.jpg",
+        sensitiveField: "secret",
+      },
+      {
+        name: "Bob",
+        email: "bob@domain.com",
+        image: "https://example.com/bob.jpg",
+        sensitiveField: "secret",
+      },
     ];
     mockToArray.mockResolvedValue(mockUsers);
 
@@ -114,18 +142,35 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data).toEqual([
-      { name: "Alice", email: "alice@domain.com", sensitiveField: "secret", hasImage: true },
-      { name: "Bob", email: "bob@domain.com", sensitiveField: "secret", hasImage: true },
+      {
+        name: "Alice",
+        email: "alice@domain.com",
+        sensitiveField: "secret",
+        hasImage: true,
+      },
+      {
+        name: "Bob",
+        email: "bob@domain.com",
+        sensitiveField: "secret",
+        hasImage: true,
+      },
     ]);
     expect(connectDb).toHaveBeenCalled();
-    expect(mockFind).toHaveBeenCalledWith({}, { projection: { _id: 1, name: 1, email: 1, image: 1 } });
+    expect(mockFind).toHaveBeenCalledWith(
+      { instituteId: "unassigned_no_match" },
+      { projection: { _id: 1, name: 1, email: 1, image: 1 } }
+    );
     expect(mockLimit).toHaveBeenCalledWith(50);
   });
 
   test("applies case-insensitive regex filtering on name and email when search parameter is provided", async () => {
     mockToArray.mockResolvedValue([]);
 
-    const req = createMockRequest("valid-token", "127.0.0.1", "http://localhost/api/labels?search=alice");
+    const req = createMockRequest(
+      "valid-token",
+      "127.0.0.1",
+      "http://localhost/api/labels?search=alice"
+    );
     const response = await GET(req);
     const body = await response.json();
 
@@ -137,6 +182,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
           { name: { $regex: "alice", $options: "i" } },
           { email: { $regex: "alice", $options: "i" } },
         ],
+        instituteId: "unassigned_no_match",
       },
       { projection: { _id: 1, name: 1, email: 1, image: 1 } }
     );
@@ -146,7 +192,11 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
   test("escapes regex metacharacters in search param before querying MongoDB", async () => {
     mockToArray.mockResolvedValue([]);
 
-    const req = createMockRequest("valid-token", "10.0.0.5", "http://localhost/api/labels?search=test.*%2B%3F");
+    const req = createMockRequest(
+      "valid-token",
+      "10.0.0.5",
+      "http://localhost/api/labels?search=test.*%2B%3F"
+    );
     const response = await GET(req);
     const body = await response.json();
 
@@ -159,6 +209,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
           { name: { $regex: "test\\.\\*\\+\\?", $options: "i" } },
           { email: { $regex: "test\\.\\*\\+\\?", $options: "i" } },
         ],
+        instituteId: "unassigned_no_match",
       },
       { projection: { _id: 1, name: 1, email: 1, image: 1 } }
     );
@@ -190,5 +241,51 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
 
     expect(response11.status).toBe(429);
     expect(body11.error).toContain("Too many attempts");
+  });
+
+  test("does not expose hasImage flag for student role to prevent enumeration", async () => {
+    const mockUsers = [
+      {
+        name: "Alice",
+        email: "alice@domain.com",
+        image: "https://example.com/alice.jpg",
+      },
+      {
+        name: "Bob",
+        email: "bob@domain.com",
+        image: "https://example.com/bob.jpg",
+      },
+    ];
+    mockToArray.mockResolvedValue(mockUsers);
+
+    getUserProfile.mockResolvedValue({ role: "student" });
+
+    // student token needs role claim too
+    verifyFirebaseToken.mockImplementation(async (token) => {
+      if (!token || token === "invalid-token")
+        return { valid: false, reason: "Invalid" };
+      return {
+        valid: true,
+        decodedToken: {
+          uid: "mock-uid",
+          email: "user@domain.com",
+          email_verified: true,
+          role: "student",
+        },
+      };
+    });
+
+    const req = createMockRequest("valid-token");
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([
+      { name: "Alice", email: "alice@domain.com" },
+      { name: "Bob", email: "bob@domain.com" },
+    ]);
+    expect(body.data[0]).not.toHaveProperty("hasImage");
+    expect(body.data[1]).not.toHaveProperty("hasImage");
   });
 });

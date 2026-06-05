@@ -135,7 +135,7 @@ const ISSUES = [
 
 **Relevant files:** \`components/AuthForm.js\`, \`package.json\`
 
-**Expected solution:** Create \`components/__tests__/AuthForm.test.js\` with at least 5 test cases using Jest and React Testing Library.
+**Expected solution:** Create \`components/__tests__/AuthForm.test.js\` with at least 5 test cases using Vitest and React Testing Library.
 
 ## ✅ Acceptance Criteria
 
@@ -187,7 +187,8 @@ const ISSUES = [
     labels: ["good first issue", "enhancement", "validation"],
   },
   {
-    title: "UI: Make the Role Selection screen accessible with keyboard navigation",
+    title:
+      "UI: Make the Role Selection screen accessible with keyboard navigation",
     body: `Role selection cards in \`RoleSelection.js\` may not be keyboard-navigable, preventing access for users who rely on keyboards.
 
 **Relevant files:** \`components/RoleSelection.js\`

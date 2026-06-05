@@ -228,3 +228,7 @@ Your contributions make Learnova better. We appreciate:
 - Community support
 
 **Happy coding!** 🎓
+
+
+### Firebase Auth State Listener Rules
+- Unsubscribe from listeners on component unmount to prevent leaks.

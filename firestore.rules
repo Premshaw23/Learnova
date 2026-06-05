@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Reusable functions for role-based access control
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isTeacher() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    function isStudent() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+
+    // Users Collection
+    // Anyone authenticated can read user profiles, but users can only edit their own profile
+    // Only teachers/admins can create new teacher profiles (handled via Cloud Functions usually, so blocked here)
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Courses Collection
+    // Students can read courses, but only teachers can create/update/delete them
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow write: if isTeacher();
+    }
+
+    // Enrollments Collection
+    // Students can read their own enrollments. They can only create an enrollment for themselves.
+    // Teachers can read all enrollments for their courses.
+    match /enrollments/{enrollmentId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.studentId || isTeacher());
+      allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
+      allow update, delete: if isTeacher();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

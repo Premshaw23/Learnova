@@ -84,7 +84,8 @@
 }
 
 /* Neighboring month days */
-.calendar-glass-wrapper .react-calendar__month-view__days__day--neighboringMonth {
+.calendar-glass-wrapper
+  .react-calendar__month-view__days__day--neighboringMonth {
   color: #475569; /* slate-600 */
 }
 

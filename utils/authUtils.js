@@ -110,12 +110,27 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
     );
   }
 
+  try {
+    // Force refresh the token immediately after server-side custom claim assignment.
+    // This ensures the middleware receives an auth token with the role claim
+    // before the first redirect, avoiding expensive edge-runtime fallback lookups.
+    await user.getIdToken(true);
+  } catch (tokenError) {
+    console.error(
+      "[createUserProfile] Failed to refresh auth token after role assignment:",
+      tokenError?.message || tokenError
+    );
+    throw new Error(
+      "Failed to update authentication token after signup. Please try again."
+    );
+  }
+
   // Initialize their empty dashboard stats
   try {
-  await initializeUserStats(user.uid);
-} catch (error) {
-  console.log("Stats init failed", error);
-}
+    await initializeUserStats(user.uid);
+  } catch (error) {
+    console.log("Stats init failed", error);
+  }
 
   return data.data.userProfile;
 };
@@ -127,7 +142,8 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
  * @returns {Object} Validation result containing status and error messages.
  */
 export const validateForm = (formData, isLogin) => {
-  const { selectedRole, email, password, fullName, instituteName, inviteCode } = formData;
+  const { selectedRole, email, password, fullName, instituteName, inviteCode } =
+    formData;
   const errors = {};
 
   // Role is always required
@@ -156,18 +172,18 @@ export const validateForm = (formData, isLogin) => {
     if (selectedRole === USER_ROLES.INSTITUTE) {
       const instituteNameValidation = validateRequired(
         instituteName,
-        "Institute name",
+        "Institute name"
       );
       if (instituteNameValidation !== true) {
         errors.instituteName = instituteNameValidation;
       }
     }
 
-    if (selectedRole === USER_ROLES.TEACHER || selectedRole === USER_ROLES.INSTITUTE) {
-      const inviteCodeValidation = validateRequired(
-        inviteCode,
-        "Invite code"
-      );
+    if (
+      selectedRole === USER_ROLES.TEACHER ||
+      selectedRole === USER_ROLES.INSTITUTE
+    ) {
+      const inviteCodeValidation = validateRequired(inviteCode, "Invite code");
       if (inviteCodeValidation !== true) {
         errors.inviteCode = inviteCodeValidation;
       }

@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import Skeleton from "@/components/ui/Skeleton";
 
@@ -39,13 +40,13 @@ export default function CoursesLoading() {
             <div className="space-y-3">
               {/* Card Image Placeholder */}
               <Skeleton className="w-full h-40 bg-slate-800/70 rounded-xl" />
-              
+
               {/* Category tag */}
               <Skeleton className="h-5 w-20 bg-slate-800/50 rounded-lg" />
 
               {/* Title */}
               <Skeleton className="h-6 w-3/4 bg-slate-800/80" />
-              
+
               {/* Description */}
               <div className="space-y-1.5 pt-1">
                 <Skeleton className="h-3 w-full bg-slate-800/40" />
