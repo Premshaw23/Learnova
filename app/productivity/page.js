@@ -310,7 +310,7 @@ export default function ProductivityPage() {
         localStorage.setItem(TASKS_KEY, JSON.stringify(currentTasks));
         localStorage.setItem(AGENDA_KEY, JSON.stringify(currentAgenda));
       } catch (_) {
-        // localStorage may be full or unavailable
+        toast.error("Storage full: Cannot save tasks offline");
       }
 
       if (!user || isSyncingRef.current) return;
