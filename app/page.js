@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import CommentSection from "@/components/CommentSection";
+import SmartNoticeBoard from "@/components/SmartNoticeBoard";
 import {
   TrendingUp,
   Award,

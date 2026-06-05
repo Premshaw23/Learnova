@@ -25,6 +25,21 @@ const CATEGORIES = [
 ];
 
 const SmartNoticeBoard = () => {
+  const handleTogglePin = useCallback(async (noticeId, currentStatus) => {
+  try {
+    // 1. Optimistic Update logic is handled by the UI state immediately
+    // If your context supports a local update, call it here.
+    
+    // 2. Fire the DB update in the background
+    const noticeRef = doc(db, "notices", noticeId);
+    await updateDoc(noticeRef, { isPinned: !currentStatus });
+    
+    toast.success(currentStatus ? "Notice unpinned" : "Notice pinned!");
+  } catch (err) {
+    console.error("Failed to pin:", err);
+    toast.error("Failed to update pin status. Reverting...");
+  }
+}, []);
   const { user, userProfile, loading: authLoading } = useAuth();
 
   // ── Consume the shared pooled subscription from FirestoreContext ──────────
@@ -774,28 +789,18 @@ const SmartNoticeBoard = () => {
                               }}
                             >
                               <NoticeCard
-                                notice={
-                                  notice
-                                }
-                                isRead={
-                                  isRead
-                                }
-                                onToggleRead={() =>
-                                  isRead
-                                    ? markAsUnread(
-                                        notice.id
-                                      )
-                                    : markAsRead(
-                                        notice.id
-                                      )
-                                }
-                                searchQuery={
-                                  searchQuery
-                                }
-                                getRelativeTime={
-                                  getRelativeTime
-                                }
-                              />
+                              notice={notice}
+                              isRead={isRead}
+                              onToggleRead={() =>
+                                isRead
+                                ? markAsUnread(notice.id)
+                                : markAsRead(notice.id)
+                               }
+                               // This is the new prop added for Issue #2011
+                               onTogglePin={() => handleTogglePin(notice.id, notice.isPinned)}
+                               searchQuery={searchQuery}
+                               getRelativeTime={getRelativeTime}
+                               />
                             </motion.div>
                           );
                         }
