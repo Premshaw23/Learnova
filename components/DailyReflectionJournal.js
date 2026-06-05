@@ -113,7 +113,7 @@ export default function DailyReflectionJournal() {
               type="button"
               onClick={handleSave}
               className="inline-flex items-center justify-center gap-2 rounded-3xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-violet-400/40"
-            >
+             aria-label="Action button">
               <Feather className="h-4 w-4" /> Save reflection
             </button>
             <p className="text-sm text-slate-400">

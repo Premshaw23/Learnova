@@ -15,6 +15,7 @@ const BLINK_COOLDOWN_MS = 300;
 const PROCESSING_INTERVAL_MS = 100;
 
 export default function FaceRecognizer({ authUser }) {
+  // ── REFS: Track lifecycle and streams ──────────
   const isMounted = useRef(true);
   const activeStreamRef = useRef(null);
   const videoRef = useRef(null);
@@ -28,6 +29,7 @@ export default function FaceRecognizer({ authUser }) {
 
   const animationFrameId = useRef(null);
   const lastDetectionTime = useRef(0);
+  
   const blinkStateRef = useRef({
     isEyeClosed: false,
     blinkCount: 0,
@@ -35,11 +37,7 @@ export default function FaceRecognizer({ authUser }) {
     lastBlinkTime: 0,
   });
 
-  const {
-    labels: fetchedLabels,
-    loading: labelsLoading,
-    error,
-  } = useLabels(authUser);
+  const { labels: fetchedLabels, loading: labelsLoading, error } = useLabels(authUser);
 
   const [message, setMessage] = useState("Loading AI models...");
   const [finished, setFinished] = useState(false);
@@ -51,6 +49,27 @@ export default function FaceRecognizer({ authUser }) {
   const [livenessState, setLivenessState] = useState("IDLE");
   const [blinkPrompt, setBlinkPrompt] = useState("");
   const [facingMode, setFacingMode] = useState("user");
+  const [isOffline, setIsOffline] = useState(typeof window !== "undefined" ? !navigator.onLine : false);
+
+  // ── HARD CLEANUP FUNCTION ──────────
+  const stopAllMedia = useCallback(() => {
+    isMounted.current = false;
+    if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach((t) => t.stop());
+      activeStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current.pause();
+    }
+  }, []);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return stopAllMedia;
+  }, [stopAllMedia]);
+
   const [isOffline, setIsOffline] = useState(
     typeof window !== "undefined" ? !navigator.onLine : false
   );
@@ -357,6 +376,15 @@ export default function FaceRecognizer({ authUser }) {
     );
   };
 
+  const processVideo = async () => {
+    if (!isMounted.current || !videoRef.current || videoRef.current.paused) return;
+
+    let faceapi = faceapiRef.current;
+    if (!faceapi) {
+      faceapi = await import("face-api.js");
+      faceapiRef.current = faceapi;
+    }
+    if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
   const processVideo = async (signal) => {
     if (
       !videoRef.current ||

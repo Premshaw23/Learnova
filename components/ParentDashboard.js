@@ -300,7 +300,7 @@ const ParentDashboard = () => {
             <button
               onClick={fetchDashboardData}
               className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-semibold py-2.5 px-6 rounded-xl transition shadow-lg flex items-center gap-2 mx-auto"
-            >
+             aria-label="Action button">
               <RefreshCw className="w-4 h-4" />
               Refresh Portal
             </button>
@@ -409,7 +409,7 @@ const ParentDashboard = () => {
               <button
                 onClick={saveThreshold}
                 className="px-5 py-2 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 rounded-xl transition text-sm font-semibold shadow-lg shadow-pink-500/10 text-white"
-              >
+               aria-label="Action button">
                 Save Changes
               </button>
             </div>

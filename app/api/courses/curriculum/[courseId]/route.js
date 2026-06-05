@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
+import { requireAuth } from "@/lib/rbac";
+import { withErrorHandler } from "@/lib/error-handler";
 
-// Premium mock syllabi for various courses as a fallback
 const MOCK_CURRICULUMS = {
   "nextjs-mastery": [
     {
@@ -117,102 +118,101 @@ const MOCK_CURRICULUMS = {
   ],
 };
 
-export async function GET(request, { params }) {
-  try {
-    const { courseId } = await params;
+const COURSE_ID_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-    let curriculum = null;
+export const GET = withErrorHandler(async (request, { params }) => {
+  await requireAuth(request);
+  const { courseId } = await params;
 
-    // Attempt database query if MongoDB is configured
-    try {
-      if (process.env.MONGODB_URI) {
-        const db = await connectDb();
-        const record = await db
-          .collection("course_curriculums")
-          .findOne({ courseId });
-        if (record) {
-          curriculum = record.modules;
-        }
-      }
-    } catch (dbError) {
-      console.warn(
-        "MongoDB fetch failed, falling back to static mock data:",
-        dbError.message
-      );
-    }
-
-    // Fall back to high-fidelity mock curriculum or construct a generic one dynamically
-    if (!curriculum) {
-      curriculum = MOCK_CURRICULUMS[courseId] || [
-        {
-          id: `mod-generic-1`,
-          title: "Module 1: Foundations & Core Concepts",
-          order: 0,
-          lessons: [
-            {
-              id: `les-generic-1-1`,
-              title: "Welcome and Course Overview",
-              duration: "10 mins",
-              type: "video",
-              completed: false,
-              order: 0,
-            },
-            {
-              id: `les-generic-1-2`,
-              title: "Setup and Prerequisites",
-              duration: "15 mins",
-              type: "article",
-              completed: false,
-              order: 1,
-            },
-          ],
-        },
-        {
-          id: `mod-generic-2`,
-          title: "Module 2: Practice & Applications",
-          order: 1,
-          lessons: [
-            {
-              id: `les-generic-2-1`,
-              title: "Hands-on Exercise",
-              duration: "30 mins",
-              type: "code",
-              completed: false,
-              order: 0,
-            },
-            {
-              id: `les-generic-2-2`,
-              title: "Knowledge Evaluation Quiz",
-              duration: "12 mins",
-              type: "quiz",
-              completed: false,
-              order: 1,
-            },
-          ],
-        },
-      ];
-    }
-
-    // Sort modules and lessons by their order field to guarantee structural consistency
-    const sortedCurriculum = curriculum
-      .map((mod) => ({
-        ...mod,
-        lessons: (mod.lessons || []).sort(
-          (a, b) => (a.order ?? 0) - (b.order ?? 0)
-        ),
-      }))
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
-    return NextResponse.json({
-      success: true,
-      courseId,
-      modules: sortedCurriculum,
-    });
-  } catch (error) {
-    console.error("GET Curriculum API Error:", error);
+  if (typeof courseId !== "string" || !COURSE_ID_REGEX.test(courseId)) {
     return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
-      { status: 500 }
+      { success: false, error: "Invalid course ID format" },
+      { status: 400 }
     );
   }
-}
+
+  let curriculum = null;
+
+  try {
+    if (process.env.MONGODB_URI) {
+      const db = await connectDb();
+      const record = await db
+        .collection("course_curriculums")
+        .findOne({ courseId: { $eq: courseId } });
+      if (record) {
+        curriculum = record.modules;
+      }
+    }
+  } catch (dbError) {
+    console.warn(
+      "MongoDB fetch failed, falling back to static mock data:",
+      dbError.message
+    );
+  }
+
+  if (!curriculum) {
+    curriculum = MOCK_CURRICULUMS[courseId] || [
+      {
+        id: `mod-generic-1`,
+        title: "Module 1: Foundations & Core Concepts",
+        order: 0,
+        lessons: [
+          {
+            id: `les-generic-1-1`,
+            title: "Welcome and Course Overview",
+            duration: "10 mins",
+            type: "video",
+            completed: false,
+            order: 0,
+          },
+          {
+            id: `les-generic-1-2`,
+            title: "Setup and Prerequisites",
+            duration: "15 mins",
+            type: "article",
+            completed: false,
+            order: 1,
+          },
+        ],
+      },
+      {
+        id: `mod-generic-2`,
+        title: "Module 2: Practice & Applications",
+        order: 1,
+        lessons: [
+          {
+            id: `les-generic-2-1`,
+            title: "Hands-on Exercise",
+            duration: "30 mins",
+            type: "code",
+            completed: false,
+            order: 0,
+          },
+          {
+            id: `les-generic-2-2`,
+            title: "Knowledge Evaluation Quiz",
+            duration: "12 mins",
+            type: "quiz",
+            completed: false,
+            order: 1,
+          },
+        ],
+      },
+    ];
+  }
+
+  const sortedCurriculum = curriculum
+    .map((mod) => ({
+      ...mod,
+      lessons: (mod.lessons || []).sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0)
+      ),
+    }))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  return NextResponse.json({
+    success: true,
+    courseId,
+    modules: sortedCurriculum,
+  });
+});

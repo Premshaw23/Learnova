@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 
 /**
  * ScrollProgress Component
@@ -9,6 +10,7 @@ import React, { useEffect, useRef } from "react";
  */
 export default function ScrollProgress() {
   const progressRef = useRef(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     let ticking = false;
@@ -44,12 +46,14 @@ export default function ScrollProgress() {
       passive: true,
     });
 
+    // Reset scroll and progress on mount or route change
+    window.scrollTo(0, 0);
     updateProgress();
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
-  }, []);
+  }, [pathname]);
 
   return (
     <div

@@ -158,7 +158,7 @@ export default function TimetablePage() {
           <button
             onClick={generatePlan}
             className="mt-5 w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium py-2.5 rounded-lg transition"
-          >
+           aria-label="Action button">
             Generate Study Plan
           </button>
         </div>

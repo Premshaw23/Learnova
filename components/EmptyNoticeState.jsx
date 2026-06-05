@@ -25,7 +25,7 @@ const EmptyNoticeState = ({ query, onResetFilters }) => (
       type="button"
       onClick={onResetFilters}
       className="inline-flex items-center justify-center rounded-3xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
-    >
+     aria-label="Action button">
       Reset filters
     </button>
     <div className="inline-flex items-center gap-2 text-sm text-slate-500">

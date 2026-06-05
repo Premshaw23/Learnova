@@ -81,7 +81,7 @@ export default function DailyGoals() {
             type="button"
             onClick={addGoal}
             className="inline-flex items-center justify-center rounded-3xl bg-slate-900 text-white px-5 py-3 text-sm font-semibold transition hover:bg-slate-800"
-          >
+           aria-label="Action button">
             <Plus className="mr-2 h-4 w-4" /> Add Goal
           </button>
         </div>

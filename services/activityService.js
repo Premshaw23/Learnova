@@ -28,7 +28,7 @@ export const logActivity = async (userId, activityData) => {
 export const getUserActivities = async (userId) => {
   if (!userId) return [];
   try {
-    const response = await fetch("/api/activities");
+    const response = await fetch(`/api/activities?userId=${userId}`);
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       throw new Error(err.error || "Failed to get activities");

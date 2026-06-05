@@ -35,13 +35,6 @@ export const GET = withErrorHandler(async (request) => {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  const imageUrl = await getUserImageFromDb({ 
-    id, 
-  const decodedToken = await requireAuth(request);
-  const profile = (await getUserProfile(decodedToken.uid)) || {
-    role: "student",
-  };
-
   const imageUrl = await getUserImageFromDb({
     id,
     callerUid: decodedToken.uid,

@@ -1,10 +1,12 @@
+
 import { connectDb } from "@/lib/mongodb";
 import { requireAuth } from "@/lib/rbac";
 import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 import { AppError, ValidationError } from "@/lib/errors";
-import { jsonSuccess } from "@/lib/api-response";
+import { jsonSuccess, fail } from "@/lib/api-response"; //  added fail import
 import { createComplaintSchema } from "@/lib/validations/complaints";
 import { validateRequest } from "@/lib/validations/validateRequest";
+import { checkRateLimit } from "@/lib/rateLimit"; //  added import
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,19 @@ const MAX_COMPLAINT_PAYLOAD_BYTES = 1024 * 10;
 
 export const POST = withErrorHandler(async (req) => {
   const decodedToken = await requireAuth(req);
+
+  //  Rate limit by both IP and userId to prevent spam from authenticated users
+  const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(
+    `complaints_post_${ip}_${decodedToken.uid}`
+  );
+  if (!rateLimitResult.allowed) {
+    return fail(
+      429,
+      "TOO_MANY_REQUESTS",
+      "Too many complaint submissions. Please wait before submitting again."
+    );
+  }
 
   const validationResult = await validateRequest(
     req,

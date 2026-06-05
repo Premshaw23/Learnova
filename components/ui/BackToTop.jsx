@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ChevronUp } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 /**
  * BackToTop Component
@@ -10,6 +11,7 @@ import { ChevronUp } from "lucide-react";
  */
 export default function BackToTop() {
   const [isVisible, setIsVisible] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,13 +22,13 @@ export default function BackToTop() {
     // Attach event listener using passive option for scroll performance
     window.addEventListener("scroll", handleScroll, { passive: true });
 
-    // Initial check in case page mounts pre-scrolled
+    // Initial check and reset visibility on mount or route change
     handleScroll();
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
-  }, []);
+  }, [pathname]);
 
   const scrollToTop = () => {
     window.scrollTo({

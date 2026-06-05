@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -9,9 +10,10 @@ export function useSessionMonitor() {
   const { signOut } = useAuth();
   const router = useRouter();
   const isIntercepting = useRef(false);
+  const isSessionExpired = useRef(false);   //  local ref — no window pollution
+  const resetTimerRef = useRef(null);        //  store timer ID so we can cancel it
 
   useEffect(() => {
-    // Only run in the browser and only attach once
     if (typeof window === "undefined" || isIntercepting.current) return;
 
     isIntercepting.current = true;
@@ -20,8 +22,6 @@ export function useSessionMonitor() {
     window.fetch = async (...args) => {
       const response = await originalFetch(...args);
 
-      // Check for 401 Unauthorized
-      // Only intercept our own API calls, not third-party requests
       const requestUrl =
         typeof args[0] === "string" ? args[0] : args[0]?.url || "";
       const isOwnApi =
@@ -31,12 +31,9 @@ export function useSessionMonitor() {
 
       if (!isOwnApi) return response;
 
-      // Only 401 Unauthorized indicates session expiry.
-      // 403 Forbidden is used for RBAC, CSRF, and other non-session errors.
       if (response.status === 401) {
-        // Prevent multiple toasts/redirects if multiple requests fail simultaneously
-        if (!window.__sessionExpired) {
-          window.__sessionExpired = true;
+        if (!isSessionExpired.current) {       
+          isSessionExpired.current = true;    
 
           toast.error("Session expired. Please log in again.");
 
@@ -48,9 +45,9 @@ export function useSessionMonitor() {
 
           router.push("/auth");
 
-          // Reset flag after a short delay allowing redirect to happen
-          setTimeout(() => {
-            window.__sessionExpired = false;
+          resetTimerRef.current = setTimeout(() => {
+            isSessionExpired.current = false;  
+            resetTimerRef.current = null;
           }, 5000);
         }
       }
@@ -61,6 +58,12 @@ export function useSessionMonitor() {
     return () => {
       window.fetch = originalFetch;
       isIntercepting.current = false;
+      isSessionExpired.current = false;        //  always reset on unmount
+
+      if (resetTimerRef.current) {             //  cancel pending timer on unmount
+        clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = null;
+      }
     };
   }, [signOut, router]);
 }

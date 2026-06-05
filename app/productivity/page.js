@@ -249,7 +249,7 @@ const AcademicEligibilityCard = ({ isDark }) => {
         <button
           onClick={handleCheck}
           className="w-full rounded-xl bg-cyan-500 hover:bg-cyan-400 transition-colors px-3 py-1.5 text-sm font-semibold text-slate-900"
-        >
+         aria-label="Action button">
           Check Eligibility
         </button>
 

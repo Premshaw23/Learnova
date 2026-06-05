@@ -76,7 +76,7 @@ export default function ComplaintForm({ onClose, onSubmitComplaint }) {
                 type="button"
                 onClick={onClose}
                 className="flex items-center gap-2 mb-8 text-xs font-bold uppercase tracking-widest bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-2xl transition border border-white/10 cursor-pointer"
-              >
+               aria-label="Action button">
                 <ArrowLeft size={14} /> Back
               </button>
               <p className="text-xs uppercase tracking-[0.3em] text-indigo-200 font-semibold">

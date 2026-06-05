@@ -150,7 +150,7 @@ export default function AttendanceRiskDashboard() {
         <button
           onClick={fetchRiskData}
           className="mt-3 text-xs underline opacity-70 hover:opacity-100"
-        >
+         aria-label="Action button">
           Retry
         </button>
       </div>
@@ -176,7 +176,7 @@ export default function AttendanceRiskDashboard() {
         <button
           onClick={fetchRiskData}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
-        >
+         aria-label="Action button">
           <RefreshCw className="w-3.5 h-3.5" />
           Refresh
         </button>

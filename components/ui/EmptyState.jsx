@@ -56,7 +56,7 @@ const EmptyState = ({
         <button
           onClick={onAction}
           className="relative px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold rounded-xl text-sm shadow-md shadow-indigo-500/20 dark:shadow-indigo-500/10 hover:shadow-indigo-500/30 active:scale-95 active:shadow-sm transition-all duration-200"
-        >
+         aria-label="Action button">
           {buttonText}
         </button>
       )}

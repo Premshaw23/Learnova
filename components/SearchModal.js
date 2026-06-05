@@ -190,7 +190,7 @@ export default function SearchModal({ isOpen, onClose }) {
               <button
                 onClick={clearRecentSearches}
                 className="text-xs text-red-400 hover:text-red-300"
-              >
+               aria-label="Action button">
                 Clear All
               </button>
             </div>

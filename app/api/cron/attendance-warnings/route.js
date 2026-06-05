@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import admin from "firebase-admin";
 import { authorizeCronRequest } from "@/lib/cronAuth";
 import { connectDb } from "@/lib/mongodb";
-import { initializeFirebase } from "@/lib/firebase-admin";
 import { evaluateStudentAttendance } from "@/lib/attendanceUtils";
 
 export const dynamic = "force-dynamic";
@@ -86,25 +84,6 @@ async function getRecentWarningUserIds(db, userIds, cooldownDate) {
   return new Set(checks.filter(Boolean));
 }
 
-async function loadFirestoreAttendanceByUser(firestore, studentIds) {
-  const attendanceByUser = new Map();
-
-  await Promise.all(
-    studentIds.map(async (uid) => {
-      const snapshot = await firestore
-        .collection("attendance_records")
-        .where("userId", "==", uid)
-        .get();
-
-      attendanceByUser.set(
-        uid,
-        snapshot.docs.map((doc) => doc.data())
-      );
-    })
-  );
-
-  return attendanceByUser;
-}
 
 async function sendWarningEmails(emailsToSend) {
   const hasEmailConfig =
@@ -257,95 +236,40 @@ export async function GET(request) {
 
       if (instituteStudents.length === 0) continue;
 
-      // Process students in batches to keep memory usage bounded
-      for (let i = 0; i < instituteStudents.length; i += STUDENT_BATCH_SIZE) {
-        const batch = instituteStudents.slice(i, i + STUDENT_BATCH_SIZE);
-        const batchUids = batch.map(s => s.firebaseUid).filter(Boolean);
-        if (batchUids.length === 0) continue;
-
-        // Load attendance records for this batch only
-        const records = await db.collection("attendance").find({
-          userId: { $in: batchUids },
-          instituteId,
-        }).toArray();
-
-        const attendanceByUser = new Map(batchUids.map(uid => [uid, []]));
-        for (const record of records) {
-          const userRecords = attendanceByUser.get(record.userId);
-          if (userRecords) {
-            userRecords.push(record);
-          }
-      // Load attendance from MongoDB scoped to this institute only.
       const instituteStudentUids = instituteStudents
         .map((s) => s.firebaseUid)
         .filter(Boolean);
-      const mongoAttendance = await loadMongoAttendanceByUser(
-        db,
-        instituteId,
-        instituteStudentUids
-      );
 
-      // Build attendanceByUser from mongoAttendance
+      const attendanceRecords = await db
+        .collection("attendance")
+        .find({ userId: { $in: instituteStudentUids }, instituteId })
+        .toArray();
+
       const attendanceByUser = new Map();
-      for (const [uid, records] of mongoAttendance || []) {
-        attendanceByUser.set(uid, records);
+      for (const record of attendanceRecords) {
+        if (!attendanceByUser.has(record.userId)) {
+          attendanceByUser.set(record.userId, []);
+        }
+        attendanceByUser.get(record.userId).push(record);
       }
 
       for (const student of instituteStudents) {
         const studentUid = student.firebaseUid;
         if (!studentUid) continue;
 
-        // Skip if warned recently (batch cooldown check)
         if (recentWarningUserIds.has(studentUid)) {
           continue;
         }
 
-        // Check cooldown for this batch only (scoped $in query)
-        const recentLogs = await db.collection("warning_logs").find({
-          userId: { $in: batchUids },
-          createdAt: { $gte: cooldownDate },
-        }).project({ userId: 1 }).toArray();
-        const cooldownSet = new Set(recentLogs.map(l => l.userId));
-
-        for (const student of batch) {
-          const uid = student.firebaseUid;
-          if (!uid || cooldownSet.has(uid)) continue;
-
-          const studentAttendance = attendanceByUser.get(uid) || [];
-          const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
-
-          if (evaluation.isBelowThreshold) {
-            const email = student.email;
-            const name = student.name || student.fullName || 'Student';
-
-            notificationsToInsert.push({
-              userId: uid,
-              title: 'Low Attendance Warning',
-              message: `Your current attendance is ${evaluation.percentage}%, which is below the required ${threshold}%. Please improve your attendance.`,
-              type: 'warning',
-              read: false,
-              createdAt: now,
-            });
-
-            warningLogsToInsert.push({
-              userId: uid,
-              percentage: evaluation.percentage,
-        const uid = student.uid || student.firebaseUid;
-        if (!uid) continue;
-
-        // Use MongoDB attendance data (scoped by institute) instead of Firestore
-        const studentAttendance = attendanceByUser.get(uid) || [];
-        const evaluation = evaluateStudentAttendance(
-          studentAttendance,
-          threshold
-        );
+        const studentAttendance = attendanceByUser.get(studentUid) || [];
+        const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
 
         if (evaluation.isBelowThreshold) {
           const email = student.email;
           const name = student.name || student.fullName || "Student";
 
           notificationsToInsert.push({
-            userId: uid,
+            userId: studentUid,
             title: "Low Attendance Warning",
             message: `Your current attendance is ${evaluation.percentage}%, which is below the required ${threshold}%. Please improve your attendance.`,
             type: "warning",
@@ -354,7 +278,7 @@ export async function GET(request) {
           });
 
           warningLogsToInsert.push({
-            userId: uid,
+            userId: studentUid,
             percentage: evaluation.percentage,
             threshold,
             createdAt: now,
@@ -366,23 +290,12 @@ export async function GET(request) {
               to_name: name,
               attendance_percentage: evaluation.percentage,
               threshold,
-              createdAt: now,
             });
-
-            if (email) {
-              emailsToSend.push({
-                to_email: email,
-                to_name: name,
-                attendance_percentage: evaluation.percentage,
-                threshold,
-              });
-            }
-
-            totalWarnings++;
           }
+
+          totalWarnings++;
         }
 
-        // Flush accumulated notifications to prevent unbounded memory growth
         if (notificationsToInsert.length >= FLUSH_THRESHOLD) {
           await flushNotifications();
         }

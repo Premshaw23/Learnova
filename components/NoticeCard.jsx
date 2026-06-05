@@ -124,6 +124,8 @@ const createPdfDownload = (notice) => {
   doc.setTextColor(100, 116, 139); // Slate-500
 
   const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
+  const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const dateStr = createdAt.toLocaleDateString([], {
     month: "short",
     day: "numeric",
@@ -203,9 +205,6 @@ const createPdfDownload = (notice) => {
   // ────────────────────────────────────────────────────────────
 
   const lines = doc.splitTextToSize(safeContent, contentWidth);
-
-
-  const lines = doc.splitTextToSize(notice.content || "", contentWidth);
   const lineHeight = 6.5;
 
   lines.forEach((line) => {
@@ -329,7 +328,30 @@ const NoticeCard = ({
     }
   }, [notice]);
 
+  const handleCopyLink = useCallback(async () => {
+  const noticeUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/notices/${notice.id}`
+      : "";
+
+  try {
+    await navigator.clipboard.writeText(noticeUrl);
+
+    setCopyFeedback(true);
+
+    setTimeout(() => {
+      setCopyFeedback(false);
+    }, 2000);
+  } catch (err) {
+    console.error("Failed to copy notice link", err);
+  }
+}, [notice]);
+
   const handleShareNotice = useCallback(async () => {
+    const noticeUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/notices/${notice.id}`
+        : "";
     if (
       typeof navigator !== "undefined" &&
       typeof navigator.share === "function"
@@ -337,7 +359,8 @@ const NoticeCard = ({
       try {
         await navigator.share({
           title: notice.title || "Notice",
-          text: exportText,
+          text: notice.content || "",
+          url: noticeUrl,
         });
         return;
       } catch (error) {
@@ -346,9 +369,16 @@ const NoticeCard = ({
         }
       }
     }
-
-    handleExportNotice();
-  }, [exportText, handleExportNotice, notice.title]);
+    try {
+      await navigator.clipboard.writeText(noticeUrl);
+      setCopyFeedback(true);
+      setTimeout(() => {
+        setCopyFeedback(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy notice URL", err);
+    }
+  }, [notice]);
 
   return (
     <motion.article
@@ -400,9 +430,8 @@ const NoticeCard = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.15 }}
-            className={`text-xl font-semibold transition ${
-              isRead ? "text-slate-200" : "text-white"
-            }`}
+            className={`text-xl font-semibold transition ${isRead ? "text-slate-200" : "text-white"
+              }`}
           >
             {highlightMatch(notice.title, searchQuery)}
           </motion.h3>
@@ -414,11 +443,10 @@ const NoticeCard = ({
             onClick={onToggleRead}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`inline-flex items-center gap-2 rounded-3xl border px-4 py-2 text-sm font-semibold transition active:scale-95 ${
-              isRead
+            className={`inline-flex items-center gap-2 rounded-3xl border px-4 py-2 text-sm font-semibold transition active:scale-95 ${isRead
                 ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
                 : "border-indigo-500/40 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
-            }`}
+              }`}
             aria-label={isRead ? "Mark notice unread" : "Mark notice read"}
           >
             {isRead ? (
@@ -463,6 +491,18 @@ const NoticeCard = ({
           >
             <Copy className="h-4 w-4" />
             Markdown
+          </motion.button>
+
+          <motion.button
+            type="button"
+            onClick={handleCopyLink}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center gap-2 rounded-3xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20 active:scale-95"
+            aria-label={`Copy link for ${notice.title || "notice"}`}
+          >
+            <Copy className="h-4 w-4" />
+            Copy Link
           </motion.button>
 
           <motion.button
@@ -531,5 +571,4 @@ const NoticeCard = ({
   );
 };
 
-export default NoticeCard;
 export default NoticeCard;

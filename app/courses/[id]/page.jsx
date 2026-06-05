@@ -634,7 +634,7 @@ export default function CourseDetailPage() {
                     <button
                       onClick={handleAddNote}
                       className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shrink-0 shadow-lg shadow-indigo-600/10 active:scale-95"
-                    >
+                     aria-label="Action button">
                       Save Note
                     </button>
                   </div>
@@ -722,7 +722,7 @@ export default function CourseDetailPage() {
                           ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shadow-md"
                           : "bg-zinc-900/80 hover:bg-zinc-800 text-indigo-400 hover:text-indigo-300 shadow-lg"
                       }`}
-                    >
+                     aria-label="Action button">
                       <Users className="w-5 h-5" />
                       {isPodActive ? "Close Pod View" : "Start Study Pod"}
                     </button>

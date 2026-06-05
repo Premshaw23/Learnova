@@ -124,6 +124,36 @@ export const quizDatabase = {
       },
     ],
   },
+  "Grammar Galaxy": {
+    category: "language",
+    level: "elementary",
+    timeLimit: 90, // 1.5 minutes
+    questions: [
+      {
+        id: 1,
+        question: "Which of the following is a proper noun?",
+        options: ["city", "dog", "Alice", "happiness"],
+        answer: 2, // Alice
+      },
+      {
+        id: 2,
+        question: "Identify the verb in the sentence: 'She runs every morning.'",
+        options: ["She", "runs", "every", "morning"],
+        answer: 1, // runs
+      },
+      {
+        id: 3,
+        question:
+          "Which sentence is grammatically correct?",
+        options: [
+          "He don't like pizza.",
+          "They is going to the park.",
+          "She has a cat.",
+          "We was late to the party.",
+        ],
+        answer: 2, // She has a cat.
+      },
+    ], 
 };
 
 /**

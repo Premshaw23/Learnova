@@ -107,6 +107,7 @@ export default function Footer() {
     { label: "Register", href: "/register" },
     { label: "Contributors", href: "/contributors" },
     { label: "Terms & Conditions", href: "/terms" },
+    { label: "Privacy Policy", href: "/privacy" },
     { label: "Streaks", href: "/streaks" },
     { label: "GitHub Codebase", href: "https://github.com/Premshaw23/Learnova", external: true },
     { label: "Discord Server", href: "https://discord.gg/", external: true },
@@ -178,40 +179,39 @@ export default function Footer() {
               {socialLinks.map((s) => (
                 <SocialIcon key={s.label} {...s} />
               ))}
+              <motion.a
+                href="https://discord.gg/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Discord"
+                whileHover={{ scale: 1.15, y: -3 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/30 hover:border-purple-500/50 hover:text-purple-400"
+              >
+                <FaDiscord size={18} />
+              </motion.a>
             </div>
           </div>
 
           {/* Quick Links */}
-          <div className="space-y-5">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">
-              Quick Links
-            </h3>
-            <ul className="space-y-3">
+          <div className="space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-white/90 sm:text-sm">Quick Links</h3>
+            <ul className="grid grid-cols-2 gap-3 sm:block sm:space-y-3">
               {quickLinks.map((link) => (
                 <FooterLink key={link.href} href={link.href}>
                   {link.label}
                 </FooterLink>
               ))}
-              <li
-                onClick={() =>
-                  window.dispatchEvent(
-                    new CustomEvent("learnova:open-shortcuts")
-                  )
-                }
-                className="col-span-2 cursor-pointer group flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-              >
-                <Keyboard className="h-4 w-4 text-fuchsia-200" /> Keyboard
-                Shortcuts
+              <li onClick={() => window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"))} className="col-span-2 cursor-pointer group flex items-center gap-2 text-sm text-slate-300 hover:text-white">
+                <Keyboard className="h-4 w-4 text-fuchsia-200" /> Keyboard Shortcuts
               </li>
             </ul>
           </div>
 
           {/* Sections */}
-          <div className="space-y-5">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">
-              Sections
-            </h3>
-            <ul className="space-y-3">
+          <div className="space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-white/90 sm:text-sm">Sections</h3>
+            <ul className="grid grid-cols-2 gap-3 sm:block sm:space-y-3">
               {sectionLinks.map((link) => (
                 <FooterLink key={link.href} href={link.href}>
                   {link.label}
@@ -220,12 +220,10 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact Column with Integrated Modern Campus Card */}
-          <div className="space-y-6">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">
-              Contact
-            </h3>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300 space-y-2">
+          {/* Contact Column */}
+          <div className="space-y-5">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-white/90 sm:text-sm">Contact</h3>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300 space-y-2 sm:rounded-2xl">
               <p>
                 Email:{" "}
                 <a
@@ -236,11 +234,8 @@ export default function Footer() {
                 </a>
               </p>
               <p>Phone: {CONTACT_INFO.phone}</p>
-              <Link
-                href="/contact"
-                className="inline-flex items-center gap-1 text-purple-400 hover:underline"
-              >
-                Get in touch <ExternalLink size={11} />
+              <Link href="/contact" className="inline-flex items-center gap-1 text-purple-400 hover:underline">
+                Get in touch <ExternalLink size={11}/>
               </Link>
             </div>
             <div className="rounded-xl border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-transparent to-cyan-500/10 p-4 sm:rounded-2xl">
