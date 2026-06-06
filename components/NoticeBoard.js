@@ -15,6 +15,10 @@ import NoticeCard from "./NoticeCard";
 import EmptyNoticeState from "./EmptyNoticeState";
 import NoticeSkeleton from "./NoticeSkeleton";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+
 const CATEGORIES = [
   { id: "all", label: "All Notices" },
   { id: "academic", label: "Academic" },
@@ -23,310 +27,257 @@ const CATEGORIES = [
   { id: "general", label: "General" },
   { id: "technical", label: "Technical" },
 ];
-const SmartNoticeBoard = () => {
-  const handleTogglePin = useCallback(async (noticeId, currentStatus) => {
-  try {
-    // 1. Optimistic Update logic is handled by the UI state immediately
-    // If your context supports a local update, call it here.
-    
-    // 2. Fire the DB update in the background
-    const noticeRef = doc(db, "notices", noticeId);
-    await updateDoc(noticeRef, { isPinned: !currentStatus });
-    
-    toast.success(currentStatus ? "Notice unpinned" : "Notice pinned!");
-  } catch (err) {
-    console.error("Failed to pin:", err);
-    toast.error("Failed to update pin status. Reverting...");
-  }
-}, []);
-  // ── Modal State for Issue #2008 ──────────
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [noticeTitle, setNoticeTitle] = useState("");
-  const [noticeDescription, setNoticeDescription] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
+const PRIORITY_OPTIONS = [
+  { id: "all", label: "All Priorities" },
+  { id: "low", label: "Low" },
+  { id: "medium", label: "Medium" },
+  { id: "high", label: "High" },
+];
+
+const DATE_RANGE_OPTIONS = [
+  { id: "all", label: "All Time" },
+  { id: "today", label: "Today" },
+  { id: "7d", label: "Last 7 Days" },
+  { id: "30d", label: "Last 30 Days" },
+];
+
+const SORT_OPTIONS = [
+  { id: "newest", label: "Newest First" },
+  { id: "oldest", label: "Oldest First" },
+];
+
+const ITEMS_PER_PAGE = 5;
+
+const DEFAULT_NOTICE_PAYLOAD = {
+  category: "general",
+  priority: "medium",
+  isPinned: false,
+  tags: [],
+  targetAudience: ["student", "teacher", "parent"],
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Animation variants
+// ─────────────────────────────────────────────────────────────────────────────
+
+const cardVariants = {
+  hidden: {
+    opacity: 0,
+    y: 20,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: "easeOut",
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.95,
+    transition: {
+      duration: 0.2,
+    },
+  },
+};
+
+const modalVariants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.95,
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.2,
+      ease: "easeOut",
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.95,
+    transition: {
+      duration: 0.15,
+    },
+  },
+};
+
+const overlayVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+  exit: { opacity: 0 },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper utilities
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Normalise a Firestore Timestamp, a plain Date, or a string/number into a
+ * native JS Date so downstream components can call .getTime() safely.
+ */
+const normaliseDate = (value) => {
+  if (value instanceof Date) return value;
+  if (value?.toDate) return value.toDate();
+  return new Date(value || Date.now());
+};
+
+/**
+ * Returns the number of active (non-default) filters so the UI can show a
+ * badge count on the filter panel toggle.
+ */
+const countActiveFilters = ({
+  selectedCategory,
+  selectedPriority,
+  selectedTags,
+  dateRange,
+  showOnlyUnread,
+}) => {
+  let count = 0;
+  if (selectedCategory !== "all") count++;
+  if (selectedPriority !== "all") count++;
+  if (selectedTags.length > 0) count++;
+  if (dateRange !== "all") count++;
+  if (showOnlyUnread) count++;
+  return count;
+};
+
+/**
+ * Derives a simple activity feed from the raw notices list when no explicit
+ * activity array is provided by the backend.
+ */
+const deriveActivityFromNotices = (notices) =>
+  (notices || []).slice(0, 5).map((notice, idx) => ({
+    id: notice?.id || idx,
+    title: notice?.title || "Untitled",
+    timestamp: notice?.createdAt || new Date(),
+    user: notice?.author || "System",
+    type: notice?.isPinned
+      ? "pin"
+      : notice?.priority === "high"
+        ? "urgent"
+        : "create",
+  }));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SmartNoticeBoard — main component
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SmartNoticeBoard = () => {
+
+  // ── Auth & Firestore data ──────────────────────────────────────────────
   const { user, userProfile, loading: authLoading } = useAuth();
 
-  const handleCreateNotice = async (e) => {
-    if (e) e.preventDefault();
-    if (!noticeTitle.trim() || !noticeDescription.trim()) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch("/api/notices", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: noticeTitle.trim(),
-          content: noticeDescription.trim(),
-          category: "general",
-          priority: "medium",
-          isPinned: false,
-          tags: [],
-          targetAudience: ["student", "teacher", "parent"],
-        }),
-      });
-
-      const data = await response.json();
-      if (response.ok && data.success) {
-        toast.success("Notice published successfully!");
-        setIsCreateModalOpen(false);
-        setNoticeTitle("");
-        setNoticeDescription("");
-      } else {
-        toast.error(data.error || "Failed to publish notice");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error publishing notice");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ── Consume the shared pooled subscription from FirestoreContext ──────────
-  // No local onSnapshot — notices arrive from the global singleton listener.
   const {
     notices: rawNotices,
     loading: noticesLoading,
     error: noticesError,
   } = useNotices();
 
+  // ── Modal state (Issue #2008) ──────────────────────────────────────────
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [noticeTitle, setNoticeTitle] = useState("");
+  const [noticeDescription, setNoticeDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Search & filter state ──────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
-
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  // Debounced search for better performance
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
   const [selectedCategory, setSelectedCategory] = useState("all");
-
   const [selectedPriority, setSelectedPriority] = useState("all");
-
   const [selectedTags, setSelectedTags] = useState([]);
-
   const [dateRange, setDateRange] = useState("all");
-
   const [sortOrder, setSortOrder] = useState("newest");
-
   const [showOnlyUnread, setShowOnlyUnread] = useState(false);
 
+  // ── Pagination state ───────────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
 
-  const itemsPerPage = 5;
-
+  // ── Read / unread state ────────────────────────────────────────────────
   const [readNotices, setReadNotices] = useState(new Set());
 
+  // ── Tab state ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState("notices");
 
+  // ── Activity (reserved for a real activity-log endpoint) ──────────────
   const [activity] = useState([]);
 
+  // ── Derived user identifier ────────────────────────────────────────────
   const userId = user?.uid || user?.id || "anonymous";
 
-  // Normalise createdAt to a JS Date so downstream components can safely call
-  // getRelativeTime() regardless of whether it arrived as a Firestore Timestamp
-  // or was already converted by firestorePool's snapshot mapper.
+  // ─────────────────────────────────────────────────────────────────────────
+  // Normalise raw Firestore notices
+  // ─────────────────────────────────────────────────────────────────────────
+
   const notices = useMemo(
     () =>
       rawNotices.map((n) => ({
         ...n,
-        createdAt:
-          n.createdAt instanceof Date
-            ? n.createdAt
-            : n.createdAt?.toDate
-              ? n.createdAt.toDate()
-              : new Date(n.createdAt || Date.now()),
+        createdAt: normaliseDate(n.createdAt),
       })),
     [rawNotices]
   );
 
-  // Derived activity
-  const derivedActivity = useMemo(() => {
-    if (activity?.length > 0) {
-      return activity;
-    }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Activity feed
+  // ─────────────────────────────────────────────────────────────────────────
 
-    return (notices || []).slice(0, 5).map((notice, idx) => ({
-      id: notice?.id || idx,
-      title: notice?.title || "Untitled",
-      timestamp: notice?.createdAt || new Date(),
-      user: notice?.author || "System",
-      type: notice?.isPinned
-        ? "pin"
-        : notice?.priority === "high"
-          ? "urgent"
-          : "create",
-    }));
+  const derivedActivity = useMemo(() => {
+    if (activity?.length > 0) return activity;
+    return deriveActivityFromNotices(notices);
   }, [activity, notices]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Combined loading flag
+  // ─────────────────────────────────────────────────────────────────────────
 
   const loading = authLoading || noticesLoading;
 
-  // Show toast once if the pool reports an error
+  // ─────────────────────────────────────────────────────────────────────────
+  // Side effects
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Debounce the search query — avoids re-filtering on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Surface a toast notification when the pool listener errors out
   useEffect(() => {
     if (noticesError) {
       toast.error("Failed to load notices");
     }
   }, [noticesError]);
 
-  // Load read notices from user profile or local storage fallback
+  // Hydrate read-state from Firestore profile or localStorage fallback
   useEffect(() => {
     if (!userId || userId === "anonymous") return;
 
     if (userProfile && Array.isArray(userProfile.readNotices)) {
       setReadNotices(new Set(userProfile.readNotices));
-    } else {
-      try {
-        const saved = localStorage.getItem(`readNotices_${userId}`);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) setReadNotices(new Set(parsed));
+      return;
+    }
+
+    try {
+      const saved = localStorage.getItem(`readNotices_${userId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setReadNotices(new Set(parsed));
         }
-      } catch (err) {
-        console.error("Failed to load read notices locally:", err);
       }
+    } catch (err) {
+      console.error("Failed to load read notices locally:", err);
     }
   }, [userId, userProfile]);
 
-  // Save read state
-  const saveReadState = useCallback(
-    async (state) => {
-      const stateArray = [...state];
-      // Save locally as a fallback/cache
-      try {
-        localStorage.setItem(
-          `readNotices_${userId}`,
-          JSON.stringify(stateArray)
-        );
-      } catch (err) {
-        console.error("Failed to save read state locally:", err);
-      }
-
-      // Sync to Firestore
-      if (user && userId !== "anonymous") {
-        try {
-          const userRef = doc(db, "users", userId);
-          await updateDoc(userRef, {
-            readNotices: stateArray,
-          });
-        } catch (err) {
-          console.error("Failed to sync read state to Firestore:", err);
-        }
-      }
-    },
-    [userId, user]
-  );
-
-  // Mark as read
-  const markAsRead = useCallback(
-    (noticeId) => {
-      setReadNotices((current) => {
-        const next = new Set(current);
-
-        next.add(noticeId);
-
-        saveReadState(next);
-
-        return next;
-      });
-    },
-    [saveReadState]
-  );
-
-  // Mark as unread
-  const markAsUnread = useCallback(
-    (noticeId) => {
-      setReadNotices((current) => {
-        const next = new Set(current);
-
-        next.delete(noticeId);
-
-        saveReadState(next);
-
-        return next;
-      });
-    },
-    [saveReadState]
-  );
-
-  // Relative time
-  const getRelativeTime = useCallback((date) => {
-    const now = new Date();
-
-    const diff = now.getTime() - new Date(date).getTime();
-
-    const minutes = Math.floor(diff / 60000);
-
-    if (minutes < 1) {
-      return "Just now";
-    }
-
-    if (minutes < 60) {
-      return `${minutes}m ago`;
-    }
-
-    const hours = Math.floor(minutes / 60);
-
-    if (hours < 24) {
-      return `${hours}h ago`;
-    }
-
-    const days = Math.floor(hours / 24);
-
-    if (days < 7) {
-      return `${days}d ago`;
-    }
-
-    return new Date(date).toLocaleDateString();
-  }, []);
-
-  // Available tags
-  const availableTags = useMemo(() => {
-    const tags = notices.flatMap((notice) => notice?.tags || []);
-
-    return [...new Set(tags)];
-  }, [notices]);
-
-  // Suggestions
-  const searchOptions = useMemo(() => {
-    return notices.map((notice) => notice?.title || "");
-  }, [notices]);
-
-  // Active filters count
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-
-    if (selectedCategory !== "all") count++;
-
-    if (selectedPriority !== "all") count++;
-
-    if (selectedTags.length > 0) count++;
-
-    if (dateRange !== "all") count++;
-
-    if (showOnlyUnread) count++;
-
-    return count;
-  }, [
-    selectedCategory,
-    selectedPriority,
-    selectedTags,
-    dateRange,
-    showOnlyUnread,
-  ]);
-
-  // Reset page on filter change
+  // Reset to page 1 whenever any filter / sort option changes
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -339,27 +290,236 @@ const SmartNoticeBoard = () => {
     sortOrder,
   ]);
 
-  // Filter notices
+  // ─────────────────────────────────────────────────────────────────────────
+  // Callbacks
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Persist the read-notice set to both localStorage and Firestore so state
+   * survives page refreshes and syncs across devices.
+   */
+  const saveReadState = useCallback(
+    async (state) => {
+      const stateArray = [...state];
+
+      // Always write to localStorage as a fast cache / offline fallback
+      try {
+        localStorage.setItem(
+          `readNotices_${userId}`,
+          JSON.stringify(stateArray)
+        );
+      } catch (err) {
+        console.error("Failed to save read state locally:", err);
+      }
+
+      // Best-effort Firestore sync for authenticated users
+      if (user && userId !== "anonymous") {
+        try {
+          const userRef = doc(db, "users", userId);
+          await updateDoc(userRef, { readNotices: stateArray });
+        } catch (err) {
+          console.error("Failed to sync read state to Firestore:", err);
+        }
+      }
+    },
+    [userId, user]
+  );
+
+  /** Mark a single notice as read and persist the updated set. */
+  const markAsRead = useCallback(
+    (noticeId) => {
+      setReadNotices((current) => {
+        const next = new Set(current);
+        next.add(noticeId);
+        saveReadState(next);
+        return next;
+      });
+    },
+    [saveReadState]
+  );
+
+  /** Mark a single notice as unread and persist the updated set. */
+  const markAsUnread = useCallback(
+    (noticeId) => {
+      setReadNotices((current) => {
+        const next = new Set(current);
+        next.delete(noticeId);
+        saveReadState(next);
+        return next;
+      });
+    },
+    [saveReadState]
+  );
+
+  /**
+   * Toggle the pinned status of a notice (Issue #2011).
+   * Fires a Firestore update in the background; the real-time listener handles
+   * the optimistic UI update automatically.
+   */
+  const handleTogglePin = useCallback(
+    async (noticeId, currentStatus) => {
+      try {
+        const noticeRef = doc(db, "notices", noticeId);
+        await updateDoc(noticeRef, { isPinned: !currentStatus });
+        toast.success(currentStatus ? "Notice unpinned" : "Notice pinned!");
+      } catch (err) {
+        console.error("Failed to toggle pin:", err);
+        toast.error("Failed to update pin status. Reverting...");
+      }
+    },
+    []
+  );
+
+  /**
+   * Submit a new notice via the REST API (Issue #2008).
+   * Wired to the floating create-notice modal.
+   */
+  const handleCreateNotice = useCallback(
+    async (e) => {
+      if (e) e.preventDefault();
+
+      if (!noticeTitle.trim() || !noticeDescription.trim()) {
+        toast.error("Please fill in all fields");
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        const token = await user.getIdToken();
+
+        const response = await fetch("/api/notices", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...DEFAULT_NOTICE_PAYLOAD,
+            title: noticeTitle.trim(),
+            content: noticeDescription.trim(),
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          toast.success("Notice published successfully!");
+          setIsCreateModalOpen(false);
+          setNoticeTitle("");
+          setNoticeDescription("");
+        } else {
+          toast.error(data.error || "Failed to publish notice");
+        }
+      } catch (err) {
+        console.error("handleCreateNotice error:", err);
+        toast.error("Error publishing notice");
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [noticeTitle, noticeDescription, user]
+  );
+
+  /** Reset every filter back to its default value. */
+  const handleClearFilters = useCallback(() => {
+    setSearchQuery("");
+    setSelectedCategory("all");
+    setSelectedPriority("all");
+    setSelectedTags([]);
+    setDateRange("all");
+    setSortOrder("newest");
+    setShowOnlyUnread(false);
+    setCurrentPage(1);
+  }, []);
+
+  /** Toggle a tag in / out of the active tag-filter set. */
+  const handleTagToggle = useCallback((tag) => {
+    setSelectedTags((current) =>
+      current.includes(tag)
+        ? current.filter((item) => item !== tag)
+        : [...current, tag]
+    );
+  }, []);
+
+  /** Populate the search box when the user selects an autocomplete suggestion. */
+  const handleSuggestionSelect = useCallback((suggestion) => {
+    setSearchQuery(suggestion);
+  }, []);
+
+  /**
+   * Returns a human-readable relative-time string for any given Date value.
+   * Examples: "Just now", "5m ago", "3h ago", "2d ago", "06/12/2025".
+   */
+  const getRelativeTime = useCallback((date) => {
+    const now = new Date();
+    const diff = now.getTime() - new Date(date).getTime();
+    const minutes = Math.floor(diff / 60000);
+
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+
+    return new Date(date).toLocaleDateString();
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Derived / memoised values
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Flat, deduplicated list of every tag across all notices. */
+  const availableTags = useMemo(() => {
+    const tags = notices.flatMap((notice) => notice?.tags || []);
+    return [...new Set(tags)];
+  }, [notices]);
+
+  /** Notice titles used as autocomplete suggestions in the search input. */
+  const searchOptions = useMemo(
+    () => notices.map((notice) => notice?.title || ""),
+    [notices]
+  );
+
+  /** Count of filters that differ from their defaults (drives the badge). */
+  const activeFilterCount = useMemo(
+    () =>
+      countActiveFilters({
+        selectedCategory,
+        selectedPriority,
+        selectedTags,
+        dateRange,
+        showOnlyUnread,
+      }),
+    [selectedCategory, selectedPriority, selectedTags, dateRange, showOnlyUnread]
+  );
+
+  /**
+   * The fully filtered, sorted notice list.
+   * Pinned notices always float to the top regardless of the chosen sort order.
+   */
   const filteredNotices = useMemo(() => {
     const queryText = debouncedQuery.trim().toLowerCase();
-
     const now = Date.now();
 
     return notices
       .filter((notice) => {
-        const haystack = `
-          ${notice?.title || ""}
-          ${notice?.content || ""}
-          ${notice?.category || ""}
-          ${(notice?.tags || []).join(" ")}
-        `.toLowerCase();
+        // Full-text search across title, content, category and tags
+        const haystack = [
+          notice?.title || "",
+          notice?.content || "",
+          notice?.category || "",
+          ...(notice?.tags || []),
+        ]
+          .join(" ")
+          .toLowerCase();
 
-        // Search
-        if (queryText && !haystack.includes(queryText)) {
-          return false;
-        }
+        if (queryText && !haystack.includes(queryText)) return false;
 
-        // Category
+        // Category filter
         if (
           selectedCategory !== "all" &&
           notice?.category !== selectedCategory
@@ -367,7 +527,7 @@ const SmartNoticeBoard = () => {
           return false;
         }
 
-        // Priority
+        // Priority filter
         if (
           selectedPriority !== "all" &&
           notice?.priority !== selectedPriority
@@ -375,7 +535,7 @@ const SmartNoticeBoard = () => {
           return false;
         }
 
-        // Tags
+        // Tags filter — notice must contain ALL selected tags
         if (
           selectedTags.length > 0 &&
           !selectedTags.every((tag) => notice?.tags?.includes(tag))
@@ -383,22 +543,17 @@ const SmartNoticeBoard = () => {
           return false;
         }
 
-        // Unread
-        if (showOnlyUnread && readNotices.has(notice.id)) {
-          return false;
-        }
+        // Unread-only filter
+        if (showOnlyUnread && readNotices.has(notice.id)) return false;
 
-        // Date range
+        // Date-range filter
         const noticeTime = new Date(notice?.createdAt).getTime();
-
         if (dateRange === "today") {
           return now - noticeTime <= 24 * 60 * 60 * 1000;
         }
-
         if (dateRange === "7d") {
           return now - noticeTime <= 7 * 24 * 60 * 60 * 1000;
         }
-
         if (dateRange === "30d") {
           return now - noticeTime <= 30 * 24 * 60 * 60 * 1000;
         }
@@ -406,18 +561,15 @@ const SmartNoticeBoard = () => {
         return true;
       })
       .sort((a, b) => {
-        // Pinned first
-        if (a.isPinned !== b.isPinned) {
-          return a.isPinned ? -1 : 1;
-        }
+        // Pinned notices always sort to the top
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
 
-        // Sort order
+        // Secondary sort by date
         if (sortOrder === "oldest") {
           return (
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
         }
-
         return (
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
@@ -434,58 +586,54 @@ const SmartNoticeBoard = () => {
     readNotices,
   ]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredNotices.length / itemsPerPage);
+  // ── Pagination ───────────────────────────────────────────────────────────
+  const totalPages = Math.ceil(filteredNotices.length / ITEMS_PER_PAGE);
 
   const safeCurrentPage =
     currentPage > totalPages && totalPages > 0 ? totalPages : currentPage;
 
-  const indexOfLastItem = safeCurrentPage * itemsPerPage;
-
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const indexOfLastItem = safeCurrentPage * ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
 
   const paginatedNotices = filteredNotices.slice(
     indexOfFirstItem,
     indexOfLastItem
   );
 
-  // Unread count
-  const unreadCount = useMemo(() => {
-    return notices.filter((notice) => !readNotices.has(notice.id)).length;
-  }, [notices, readNotices]);
+  // ── Stats ────────────────────────────────────────────────────────────────
+  const unreadCount = useMemo(
+    () => notices.filter((notice) => !readNotices.has(notice.id)).length,
+    [notices, readNotices]
+  );
 
-  // Clear filters
-  const handleClearFilters = useCallback(() => {
-    setSearchQuery("");
-    setSelectedCategory("all");
-    setSelectedPriority("all");
-    setSelectedTags([]);
-    setDateRange("all");
-    setSortOrder("newest");
-    setShowOnlyUnread(false);
-    setCurrentPage(1);
-  }, []);
+  const pinnedCount = useMemo(
+    () => notices.filter((n) => n.isPinned).length,
+    [notices]
+  );
 
-  // Toggle tags
-  const handleTagToggle = useCallback((tag) => {
-    setSelectedTags((current) =>
-      current.includes(tag)
-        ? current.filter((item) => item !== tag)
-        : [...current, tag]
-    );
-  }, []);
+  const highPriorityCount = useMemo(
+    () => notices.filter((n) => n.priority === "high").length,
+    [notices]
+  );
 
-  // Suggestion select
-  const handleSuggestionSelect = useCallback((suggestion) => {
-    setSearchQuery(suggestion);
-  }, []);
+  const statsConfig = useMemo(
+    () => [
+      { label: "Total", value: notices.length, color: "text-white" },
+      { label: "Unread", value: unreadCount, color: "text-emerald-400" },
+      { label: "Pinned", value: pinnedCount, color: "text-yellow-400" },
+      { label: "High", value: highPriorityCount, color: "text-red-400" },
+    ],
+    [notices.length, unreadCount, pinnedCount, highPriorityCount]
+  );
 
-  // Loading UI
+  // ─────────────────────────────────────────────────────────────────────────
+  // Early return — loading skeleton
+  // ─────────────────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white">
         <Navbar />
-
         <div className="mx-auto max-w-7xl px-4 py-8">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
             <NoticeSkeleton count={4} />
@@ -495,115 +643,34 @@ const SmartNoticeBoard = () => {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
       <div className="mx-auto max-w-7xl px-4 py-8">
-        {/* Header */}
+
+        {/* ── Page Header ────────────────────────────────────────────────── */}
         <div className="mb-8 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+
+            {/* Title block */}
             <div>
               <p className="mb-2 text-sm uppercase tracking-[0.3em] text-indigo-300">
                 Notice Center
               </p>
-
               <h1 className="text-4xl font-bold">Smart Notice Board</h1>
-
               <p className="mt-3 text-slate-400">
                 Search, filter, and manage notices in real-time.
               </p>
             </div>
-            {/* ── CREATE NOTICE BUTTON ────────── */}
-            <div className="fixed bottom-8 right-8">
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-full font-bold shadow-xl transition-all"
-              >
-                + Create Notice
-              </button>
-            </div>
 
-            {/* ── CREATE NOTICE MODAL (ISSUE #2008) ────────── */}
-            <AnimatePresence>
-              {isCreateModalOpen && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-                >
-                  <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-4">
-                    <h3 className="text-xl font-bold text-white">
-                      Create New Notice
-                    </h3>
-                    <input
-                      value={noticeTitle}
-                      onChange={(e) => setNoticeTitle(e.target.value)}
-                      placeholder="Title"
-                      className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white"
-                    />
-
-                    {/* DESCRIPTION TEXTAREA WITH CHARACTER COUNTER */}
-                    <textarea
-                      value={noticeDescription}
-                      onChange={(e) => setNoticeDescription(e.target.value)}
-                      maxLength={1000}
-                      rows={5}
-                      placeholder="Enter description..."
-                      className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white resize-none"
-                    />
-                    <div
-                      className={`text-xs text-right ${noticeDescription.length > 900 ? "text-red-500" : "text-slate-500"}`}
-                    >
-                      {noticeDescription.length} / 1000
-                    </div>
-
-                    <div className="flex justify-end gap-3">
-                      <button
-                        onClick={() => setIsCreateModalOpen(false)}
-                        disabled={isSubmitting}
-                        className="text-slate-400 disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleCreateNotice}
-                        disabled={isSubmitting}
-                        className="bg-indigo-600 px-4 py-2 rounded-lg text-white disabled:opacity-50"
-                      >
-                        {isSubmitting ? "Posting..." : "Post"}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Stats */}
+            {/* Stats grid */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {[
-                {
-                  label: "Total",
-                  value: notices.length,
-                  color: "text-white",
-                },
-                {
-                  label: "Unread",
-                  value: unreadCount,
-                  color: "text-emerald-400",
-                },
-                {
-                  label: "Pinned",
-                  value: notices.filter((n) => n.isPinned).length,
-                  color: "text-yellow-400",
-                },
-                {
-                  label: "High",
-                  value: notices.filter((n) => n.priority === "high").length,
-                  color: "text-red-400",
-                },
-              ].map((stat) => (
+              {statsConfig.map((stat) => (
                 <div
                   key={stat.label}
                   className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4 text-center"
@@ -611,7 +678,6 @@ const SmartNoticeBoard = () => {
                   <p className={`text-3xl font-bold ${stat.color}`}>
                     {stat.value}
                   </p>
-
                   <p className="mt-2 text-xs uppercase tracking-widest text-slate-400">
                     {stat.label}
                   </p>
@@ -621,7 +687,93 @@ const SmartNoticeBoard = () => {
           </div>
         </div>
 
-        {/* Tab Selection */}
+        {/* ── Floating Create Button ──────────────────────────────────────── */}
+        <div className="fixed bottom-8 right-8 z-40">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-full font-bold shadow-xl transition-all"
+          >
+            + Create Notice
+          </button>
+        </div>
+
+        {/* ── Create Notice Modal (Issue #2008) ───────────────────────────── */}
+        <AnimatePresence>
+          {isCreateModalOpen && (
+            <motion.div
+              variants={overlayVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            >
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-4"
+              >
+                <h3 className="text-xl font-bold text-white">
+                  Create New Notice
+                </h3>
+
+                {/* Title input */}
+                <input
+                  value={noticeTitle}
+                  onChange={(e) => setNoticeTitle(e.target.value)}
+                  placeholder="Title"
+                  className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+
+                {/* Description textarea with character counter */}
+                <div className="space-y-1">
+                  <textarea
+                    value={noticeDescription}
+                    onChange={(e) => setNoticeDescription(e.target.value)}
+                    maxLength={1000}
+                    rows={5}
+                    placeholder="Enter description..."
+                    className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                  <div
+                    className={`text-xs text-right ${
+                      noticeDescription.length > 900
+                        ? "text-red-500"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    {noticeDescription.length} / 1000
+                  </div>
+                </div>
+
+                {/* Modal action buttons */}
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setIsCreateModalOpen(false);
+                      setNoticeTitle("");
+                      setNoticeDescription("");
+                    }}
+                    disabled={isSubmitting}
+                    className="text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateNotice}
+                    disabled={isSubmitting}
+                    className="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-lg text-white font-semibold disabled:opacity-50 transition-colors"
+                  >
+                    {isSubmitting ? "Posting..." : "Post"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Tab Bar ────────────────────────────────────────────────────── */}
         <div className="mb-6 flex justify-start">
           <div className="flex space-x-2 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800">
             <button
@@ -634,7 +786,6 @@ const SmartNoticeBoard = () => {
             >
               Active Notices
             </button>
-
             <button
               onClick={() => setActiveTab("overview")}
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${
@@ -648,14 +799,16 @@ const SmartNoticeBoard = () => {
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* ── Tab Content ────────────────────────────────────────────────── */}
+
         {activeTab === "overview" ? (
+
+          /* ── Activity Feed tab ─────────────────────────────────────────── */
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-white">
                 Recent Notice Activity
               </h2>
-
               <span className="text-xs text-indigo-300 uppercase tracking-widest font-semibold bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full">
                 Live Feed
               </span>
@@ -670,7 +823,6 @@ const SmartNoticeBoard = () => {
                   >
                     <div>
                       <p className="text-white font-medium">{item?.title}</p>
-
                       <p className="text-slate-400 text-xs mt-1">
                         By{" "}
                         <span className="text-slate-300 font-semibold">
@@ -679,7 +831,6 @@ const SmartNoticeBoard = () => {
                         • {getRelativeTime(item?.timestamp)}
                       </p>
                     </div>
-
                     <span className="text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider bg-blue-500/10 text-blue-300 border border-blue-500/20">
                       {item?.type}
                     </span>
@@ -691,16 +842,19 @@ const SmartNoticeBoard = () => {
                 <p className="text-slate-500 text-base">
                   No recent activity available
                 </p>
-
                 <p className="text-slate-600 text-xs mt-1">
                   Check back later for system logs and notice actions.
                 </p>
               </div>
             )}
           </div>
+
         ) : (
+
+          /* ── Active Notices tab ────────────────────────────────────────── */
           <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
-            {/* Sidebar */}
+
+            {/* Sidebar — search + filters */}
             <aside className="space-y-6">
               <NoticeSearch
                 value={searchQuery}
@@ -711,7 +865,6 @@ const SmartNoticeBoard = () => {
                 suggestions={searchOptions}
                 onSuggestionSelect={handleSuggestionSelect}
               />
-
               <NoticeFilters
                 categories={CATEGORIES}
                 selectedCategory={selectedCategory}
@@ -730,7 +883,7 @@ const SmartNoticeBoard = () => {
               />
             </aside>
 
-            {/* Notices */}
+            {/* Main notice list */}
             <main>
               {filteredNotices.length === 0 ? (
                 <EmptyNoticeState
@@ -739,6 +892,7 @@ const SmartNoticeBoard = () => {
                 />
               ) : (
                 <>
+                  {/* Animated card grid */}
                   <motion.div layout className="grid gap-5 lg:grid-cols-2">
                     <AnimatePresence>
                       {paginatedNotices.map((notice) => {
@@ -748,21 +902,10 @@ const SmartNoticeBoard = () => {
                           <motion.div
                             key={notice.id}
                             layout
-                            initial={{
-                              opacity: 0,
-                              y: 20,
-                            }}
-                            animate={{
-                              opacity: 1,
-                              y: 0,
-                            }}
-                            exit={{
-                              opacity: 0,
-                              scale: 0.95,
-                            }}
-                            transition={{
-                              duration: 0.3,
-                            }}
+                            variants={cardVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
                           >
                             <NoticeCard
                               notice={notice}
@@ -772,40 +915,9 @@ const SmartNoticeBoard = () => {
                                   ? markAsUnread(notice.id)
                                   : markAsRead(notice.id)
                               }
-                              layout
-                              initial={{
-                                opacity: 0,
-                                y: 20,
-                              }}
-                              animate={{
-                                opacity: 1,
-                                y: 0,
-                              }}
-                              exit={{
-                                opacity: 0,
-                                scale: 0.95,
-                              }}
-                              transition={{
-                                duration: 0.3,
-                              }}
-                            >
-                              <NoticeCard
-                              notice={notice}
-                              isRead={isRead}
-                              onToggleRead={() =>
-                                isRead
-                                ? markAsUnread(notice.id)
-                                : markAsRead(notice.id)
-                               }
-                               // This is the new prop added for Issue #2011
-                               onTogglePin={() => handleTogglePin(notice.id, notice.isPinned)}
-                               searchQuery={searchQuery}
-                               getRelativeTime={getRelativeTime}
-                               />
-                            </motion.div>
-                          );
-                        }
-                      )}
+                              onTogglePin={() =>
+                                handleTogglePin(notice.id, notice.isPinned)
+                              }
                               searchQuery={searchQuery}
                               getRelativeTime={getRelativeTime}
                             />
@@ -815,7 +927,7 @@ const SmartNoticeBoard = () => {
                     </AnimatePresence>
                   </motion.div>
 
-                  {/* Pagination */}
+                  {/* Pagination controls */}
                   {totalPages > 1 && (
                     <div className="mt-8 flex items-center justify-between border-t border-slate-800 pt-6">
                       <p className="text-sm text-slate-400">
@@ -844,7 +956,6 @@ const SmartNoticeBoard = () => {
                         >
                           Previous
                         </button>
-
                         <button
                           onClick={() =>
                             setCurrentPage((p) => Math.min(p + 1, totalPages))
