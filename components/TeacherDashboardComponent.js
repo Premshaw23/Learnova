@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { Navbar } from "./Navbar";
+import { dashboardContentOffsetClass } from "@/components/navigation";
 import Image from "next/image";
 import CurriculumBuilder from "./dashboard/CurriculumBuilder";
 import { useAuth } from "@/hooks/useAuth";
@@ -82,7 +83,8 @@ import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
 import { apiFetch } from "@/lib/apiClient";
-
+import { syncOfflineQueue, getPendingRecordsCount } from "@/services/offlineSyncQueue";
+import { auth } from "@/lib/firebaseConfig";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -91,6 +93,11 @@ const AttendanceTrendsChart = dynamic(
 const EngagementChart = dynamic(
   () => import("@/components/charts/EngagementChart"),
   { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> }
+);
+
+const TeacherAchievementPanel = dynamic(
+  () => import("@/components/achievements/TeacherAchievementPanel"),
+  { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 
 const TeacherDashboard = () => {
@@ -142,6 +149,49 @@ const TeacherDashboard = () => {
   const [isExporting, setIsExporting] = useState(false);
 
   const isInitialFetchRef = useRef(true);
+
+  // Background Sync Effect
+  useEffect(() => {
+    const handleOnlineSync = async () => {
+      if (!user) return;
+      const count = await getPendingRecordsCount();
+      if (count === 0) return;
+
+      toast.loading(`Syncing ${count} offline attendance records...`, { id: 'offline-sync' });
+      
+      const token = await user.getIdToken();
+      const result = await syncOfflineQueue(async (record) => {
+        try {
+          const res = await fetch("/api/attendance/record", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(record),
+          });
+          return res.ok;
+        } catch (e) {
+          return false;
+        }
+      });
+
+      if (result.success) {
+        toast.success(`Successfully synced ${result.synced} records`, { id: 'offline-sync' });
+      } else {
+        toast.error(`Failed to sync ${result.failed} records`, { id: 'offline-sync' });
+      }
+    };
+
+    window.addEventListener("online", handleOnlineSync);
+    
+    // Attempt sync on mount if online
+    if (navigator.onLine && user) {
+      handleOnlineSync();
+    }
+
+    return () => window.removeEventListener("online", handleOnlineSync);
+  }, [user]);
 
   const handleExport = (format) => {
     setIsExporting(true);
@@ -1110,7 +1160,7 @@ const TeacherDashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className={`min-h-screen bg-background relative overflow-hidden ${dashboardContentOffsetClass}`}>
       {/* Premium Navbar */}
       <Navbar />
       {/* Animated Gradient Backgrounds */}
@@ -1242,6 +1292,7 @@ const TeacherDashboard = () => {
           {[
             { id: "dashboard", label: "Dashboard", icon: BarChart3 },
             { id: "curriculum", label: "Curriculum", icon: BookOpen },
+            { id: "achievements", label: "Achievements", icon: Award },
             { id: "analytics", label: "Analytics", icon: TrendingUp },
             { id: "schedule", label: "Schedule", icon: Calendar },
           ].map((tab) => (
@@ -1282,6 +1333,7 @@ const TeacherDashboard = () => {
       <div className="relative z-10 container mx-auto px-6 py-8">
         {activeTab === "dashboard" && renderDashboard()}
         {activeTab === "curriculum" && <CurriculumBuilder />}
+        {activeTab === "achievements" && <TeacherAchievementPanel />}
         {activeTab === "analytics" && renderAnalytics()}
         {activeTab === "schedule" && renderSchedule()}
       </div>

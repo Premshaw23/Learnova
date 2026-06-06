@@ -21,6 +21,13 @@ export default function ComplaintForm({ onClose, onSubmitComplaint }) {
     priority: "Medium",
     description: "",
   });
+  
+  const MAX_LENGTH = 100;
+  const getCounterColor = (length) => {
+    if (length >= MAX_LENGTH) return "text-red-500 font-semibold";     // error-red
+    if (length >= MAX_LENGTH - 15) return "text-amber-500 font-medium"; // warning-amber
+    return "text-neutral-400";                                         // default subtle
+  };
 
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [attachment, setAttachment] = useState(null);
@@ -264,6 +271,101 @@ export default function ComplaintForm({ onClose, onSubmitComplaint }) {
               </div>
             </div>
 
+        {/* FORM */}
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6"
+        >
+
+          <input
+            required
+            placeholder="Student Name"
+            value={form.student}
+            onChange={(e) =>
+              setForm({ ...form, student: e.target.value })
+            }
+            className="px-4 py-3 rounded-2xl border border-border bg-background outline-none"
+          />
+
+          <input
+            required
+            placeholder="Roll Number"
+            value={form.roll}
+            onChange={(e) =>
+              setForm({ ...form, roll: e.target.value })
+            }
+            className="px-4 py-3 rounded-2xl border border-border bg-background outline-none"
+          />
+
+          <input
+            required
+            placeholder="Department"
+            value={form.department}
+            onChange={(e) =>
+              setForm({ ...form, department: e.target.value })
+            }
+            className="px-4 py-3 rounded-2xl border border-border bg-background outline-none"
+          />
+
+          <select
+            value={form.category}
+            onChange={(e) =>
+              setForm({ ...form, category: e.target.value })
+            }
+            className="px-4 py-3 rounded-2xl border border-border bg-background outline-none"
+          >
+            <option>Academic</option>
+            <option>Technical</option>
+            <option>Hostel</option>
+            <option>Other</option>
+          </select>
+
+          {/* DYNAMIC TITLE FIELD WITH CHARACTER COUNTER */}
+          <div className="md:col-span-2 relative flex items-center">
+            <input
+              required
+              placeholder="Complaint Title"
+              value={form.title}
+              maxLength={MAX_LENGTH}
+              onChange={(e) =>
+                setForm({ ...form, title: e.target.value })
+            }
+            className="w-full px-4 py-3 pr-20 rounded-2xl border border-border bg-background outline-none"
+         />
+          <span className={`absolute right-4 text-xs select-none ${getCounterColor(form.title.length)}`}>
+            {form.title.length}/{MAX_LENGTH}
+          </span>
+        </div>
+
+          <select
+            value={form.priority}
+            onChange={(e) =>
+              setForm({ ...form, priority: e.target.value })
+            }
+            className="md:col-span-2 px-4 py-3 rounded-2xl border border-border bg-background outline-none"
+          >
+            <option>High</option>
+            <option>Medium</option>
+            <option>Low</option>
+          </select>
+
+          <textarea
+            rows={6}
+            required
+            placeholder="Describe your issue..."
+            value={form.description}
+            onChange={(e) =>
+              setForm({ ...form, description: e.target.value })
+            }
+            className="md:col-span-2 px-4 py-3 rounded-2xl border border-border bg-background outline-none resize-none"
+          />
+
+          <button
+            type="submit"
+            className="md:col-span-2 py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600 text-white font-semibold hover:scale-[1.01] transition-all shadow-xl"
+          >
+            Submit Complaint
+          </button>
             <div className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10">
               <div>
                 <span className="text-xs font-bold block text-slate-700 dark:text-slate-300">

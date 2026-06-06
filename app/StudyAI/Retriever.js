@@ -58,8 +58,6 @@ export async function retrieve(query, sessionId) {
     }),
   });
 
-  console.log("Retrieve status:", response.status);
-
   const data = await response.json();
 
   if (!response.ok) {

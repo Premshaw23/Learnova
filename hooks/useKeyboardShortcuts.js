@@ -16,6 +16,7 @@ function isUserTyping(target) {
  *   Ctrl/Cmd + /   -> onHelp
  *   Escape         -> onEscape
  */
+// AFTER (fixed)
 export function useKeyboardShortcuts({
   onSearch,
   onHelp,
@@ -61,7 +62,7 @@ export function useKeyboardShortcuts({
         onEscape?.();
       }
     },
-    [onSearch, onHelp, onEscape]
+    [onSearch, onHelp, onEscape, onTheme, onHome, onLeaderboard, onNotifications]
   );
 
   useEffect(() => {

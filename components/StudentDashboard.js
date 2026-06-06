@@ -22,6 +22,7 @@ import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 
 import { Navbar } from "./Navbar";
+import { dashboardContentOffsetClass } from "@/components/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
@@ -31,6 +32,11 @@ const AchievementSection = dynamic(() => import("./AchievementSection"), {
   ssr: false,
   loading: () => <DashboardSkeleton />,
 });
+
+const StudentAchievementsPanel = dynamic(
+  () => import("./achievements/StudentAchievementsPanel"),
+  { ssr: false, loading: () => <DashboardSkeleton /> }
+);
 
 const AttendanceChart = dynamic(() => import("./AttendanceChart"), {
   ssr: false,
@@ -234,6 +240,8 @@ const StudentDashboard = () => {
 
   const [viewMode, setViewMode] = useState("heatmap");
   const [showComplaint, setShowComplaint] = useState(false);
+  const [skillPath, setSkillPath] = useState("standard");
+  const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(false);
   const lastScheduleTickRef = useRef(getScheduleTickKey(new Date()));
 
   const attendanceStats = useMemo(() => {
@@ -373,7 +381,7 @@ const StudentDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden">
+    <div className={`min-h-screen bg-background relative overflow-x-hidden ${dashboardContentOffsetClass}`}>
       <Navbar />
 
       {/* Diagnostic Quiz Section */}
@@ -442,6 +450,11 @@ const StudentDashboard = () => {
           <ExportDropdown onExport={handleExportAttendance} />
         </div>
         <AttendanceInsights recentActivity={recentActivity} />
+      </div>
+
+      {/* Digital Certificates & Achievements */}
+      <div className="max-w-7xl mx-auto mt-8 px-6">
+        <StudentAchievementsPanel />
       </div>
 
       {/* Adaptive Content Sections */}

@@ -251,7 +251,7 @@ async function handleSync(request) {
               attendanceHour: record.queuedAt
                 ? new Date(record.queuedAt).getHours()
                 : new Date().getHours(),
-              attendanceDate: recordDate,
+              attendanceDate: new Date(record.queuedAt),
             });
           },
           compensate: null, // XP is a side-effect; failure doesn't block attendance

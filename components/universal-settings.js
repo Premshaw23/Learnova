@@ -37,6 +37,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
+import { safeLocalStorageRemove } from "@/lib/storage";
 import i18n from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/apiClient";
@@ -147,7 +148,6 @@ export default function UniversalSettings() {
                     await updateDoc(doc(db, "users", user.uid), {
                       fcmToken: token,
                     });
-                    console.log("FCM Token saved successfully");
                   }
                 } catch (tokenErr) {
                   console.error("Error getting FCM token:", tokenErr);
@@ -512,11 +512,9 @@ export default function UniversalSettings() {
   const handleResetToDefaults = async () => {
     try {
       // 1. Clear settings-related keys in localStorage safely
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.removeItem("theme");
-        window.localStorage.removeItem("settings");
-        window.localStorage.removeItem("learnova_settings");
-      }
+      safeLocalStorageRemove("theme");
+      safeLocalStorageRemove("settings");
+      safeLocalStorageRemove("learnova_settings");
 
       // 2. Revert theme in next-themes provider to default 'dark'
       setTheme("dark");

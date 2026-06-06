@@ -82,7 +82,16 @@ export async function POST(req) {
     try {
       getUsersResult = await admin.auth().getUsers(authIdentifiers);
       existingAuthUsers.push(...getUsersResult.users.map((u) => u.email));
-    } catch {}
+    } catch (authLookupErr) {
+      const errMsg = authLookupErr instanceof Error ? authLookupErr.message : String(authLookupErr);
+      console.error(
+        `[bulk-import] Firebase Auth lookup failed for ${authIdentifiers.length} emails: ${errMsg}`
+      );
+      throw new AppError(
+        `Failed to look up existing Auth users. Aborting import to prevent duplicate creation.`,
+        503
+      );
+    }
 
     // Batch phase 2: Create non-existing Firebase Auth users in bulk
     const usersToCreate = students.filter(
