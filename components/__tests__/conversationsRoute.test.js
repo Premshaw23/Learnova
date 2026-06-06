@@ -1,15 +1,16 @@
 import { POST, GET } from "@/app/api/conversations/route";
 import { connectDb } from "@/lib/mongodb";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 
+// =========================================================================
+// FIXED: Simplified NextResponse layout to act as a clean, transparent data wrapper
+// =========================================================================
 vi.mock("next/server", () => ({
   NextResponse: {
-    json: vi.fn().mockImplementation((body, init) => {
-      return {
-        status: init?.status || 200,
-        json: async () => body,
-        headers: new Map(),
-      };
+    json: (body, init = {}) => ({
+      status: init.status ?? 200,
+      json: async () => body,
     }),
   },
 }));
@@ -117,7 +118,6 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const mockDecodedToken = { uid: "user-123", email: "user@example.com" };
     verifyFirebaseToken.mockResolvedValue(mockDecodedToken);
 
-    // Create a 1.1MB large string
     const largeMessage = "a".repeat(1.1 * 1024 * 1024);
     const req = createMockRequest(
       { authorization: "Bearer valid-token", "content-length": String(largeMessage.length) },
@@ -157,7 +157,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
     const req = createMockRequest(
       { authorization: "Bearer valid-token" },
       {
-        userMessage: 12345, // Number instead of string
+        userMessage: 12345,
         botMessage: "Hi",
       }
     );
@@ -178,7 +178,6 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
       { authorization: "Bearer valid-token" },
       {
         userMessage: "Hello",
-        // botMessage is missing
       }
     );
 
@@ -208,7 +207,7 @@ describe("POST /api/conversations - Authentication and Validation Security Tests
 
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.data.userMessage).toBe("Hello World"); // <script> tag stripped
+    expect(body.data.userMessage).toBe("Hello World");
     expect(mockInsertOne).toHaveBeenCalledWith(
       expect.objectContaining({
         userMessage: "Hello World",

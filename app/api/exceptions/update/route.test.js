@@ -7,52 +7,53 @@ import { getUserProfileByEmail } from "@/lib/firebase-admin";
 import { ObjectId } from "mongodb";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 
+// Mock Role-Based Access Control
 vi.mock("@/lib/rbac", () => ({
   requireRole: vi.fn(),
 }));
 
+// Mock API Rate Limiter
 vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
+// Mock Firebase Admin Services
 vi.mock("@/lib/firebase-admin", () => ({
   getUserProfileByEmail: vi.fn(),
 }));
 
+// =========================================================================
+// FIXED: Extracted shared mock instances to root for predictable cross-scope evaluation
+// =========================================================================
+const mockSharedCollection = {
+  findOne: vi.fn(),
+  updateOne: vi.fn(),
+};
+const mockSharedDb = {
+  collection: vi.fn(() => mockSharedCollection),
+};
+
 vi.mock("@/lib/mongodb", () => {
-  const mockCollection = {
-    findOne: vi.fn(),
-    updateOne: vi.fn(),
-  };
-  const mockDb = {
-    collection: vi.fn(() => mockCollection),
-  };
   return {
-    connectDb: vi.fn(() => Promise.resolve(mockDb)),
-    _mockCollection: mockCollection,
-    _mockDb: mockDb,
+    connectDb: vi.fn(() => Promise.resolve(mockSharedDb)),
   };
 });
 
+// Mock Error Handler with decoupled mock definitions to bypass hoisting crashes
 vi.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
   return {
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
-            return {
-              status: error.statusCode,
-              json: async () => ({ error: payload }),
-            };
-          }
+          const statusCode = error.statusCode || error.status || 500;
+          const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
           return {
-            status: 500,
-            json: async () => ({ error: error.message || "Internal server error" }),
+            status: statusCode,
+            json: async () => ({ error: payload || "Internal server error" }),
           };
         }
       };
@@ -61,6 +62,7 @@ vi.mock("@/lib/error-handler", () => {
   };
 });
 
+// Mock Next.js Server primitives
 vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
@@ -71,7 +73,6 @@ vi.mock("next/server", () => ({
 }));
 
 describe("exceptions update route", () => {
-  let mockCollection;
   let originalConsoleLog;
   let consoleLogMock;
 
@@ -79,8 +80,7 @@ describe("exceptions update route", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("@/lib/mongodb")._mockCollection;
+    checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 }),
 
     originalConsoleLog = console.log;
     consoleLogMock = vi.fn();
@@ -112,20 +112,20 @@ describe("exceptions update route", () => {
       comments: "Take care",
     });
 
-    mockCollection.findOne.mockResolvedValue({
+    mockSharedCollection.findOne.mockResolvedValue({
       _id: new ObjectId(validObjectId),
       studentEmail: "student@example.com",
       class: "CS101",
     });
 
-    mockCollection.updateOne.mockResolvedValue({ matchedCount: 1 });
+    mockSharedCollection.updateOne.mockResolvedValue({ matchedCount: 1 });
 
     const response = await PUT(createMockRequest());
 
     const body = await assertApiSuccess(response, 200);
     expect(body).toEqual({ message: "Exception updated successfully" });
 
-    expect(mockCollection.updateOne).toHaveBeenCalledWith(
+    expect(mockSharedCollection.updateOne).toHaveBeenCalledWith(
       { _id: new ObjectId(validObjectId) },
       expect.objectContaining({
         $set: expect.objectContaining({
@@ -149,13 +149,13 @@ describe("exceptions update route", () => {
       status: "rejected",
     });
 
-    mockCollection.findOne.mockResolvedValue({
+    mockSharedCollection.findOne.mockResolvedValue({
       _id: new ObjectId(validObjectId),
       studentEmail: "student@example.com",
-      class: "CS101", // Match subject
+      class: "CS101",
     });
 
-    mockCollection.updateOne.mockResolvedValue({ matchedCount: 1 });
+    mockSharedCollection.updateOne.mockResolvedValue({ matchedCount: 1 });
 
     const response = await PUT(createMockRequest());
 
@@ -166,7 +166,7 @@ describe("exceptions update route", () => {
   test("rejects request from teacher with 403 Forbidden if there is no class/subject overlap", async () => {
     requireRole.mockResolvedValue({
       payload: { uid: "teacher-123", email: "teacher@example.com" },
-      profile: { role: "teacher", subjects: ["MATH101"] }, // No overlap
+      profile: { role: "teacher", subjects: ["MATH101"] },
     });
 
     parseJSON.mockResolvedValue({
@@ -174,14 +174,14 @@ describe("exceptions update route", () => {
       status: "approved",
     });
 
-    mockCollection.findOne.mockResolvedValue({
+    mockSharedCollection.findOne.mockResolvedValue({
       _id: new ObjectId(validObjectId),
       studentEmail: "student@example.com",
       class: "CS101",
     });
 
     getUserProfileByEmail.mockResolvedValue({
-      subjects: ["CS101"], // No overlap with teacher's MATH101
+      subjects: ["CS101"],
     });
 
     const response = await PUT(createMockRequest());
@@ -199,7 +199,6 @@ describe("exceptions update route", () => {
       profile: { role: "admin" },
     });
 
-    // Invalid ObjectId format
     parseJSON.mockResolvedValue({
       exceptionId: "invalid-id",
       status: "approved",
@@ -208,10 +207,9 @@ describe("exceptions update route", () => {
     let response = await PUT(createMockRequest());
     await assertApiError(response, 400, "Invalid exception ID");
 
-    // Invalid status enum
     parseJSON.mockResolvedValue({
       exceptionId: validObjectId,
-      status: "pending", // must be approved or rejected
+      status: "pending",
     });
 
     response = await PUT(createMockRequest());
@@ -229,7 +227,7 @@ describe("exceptions update route", () => {
       status: "approved",
     });
 
-    mockCollection.findOne.mockResolvedValue(null);
+    mockSharedCollection.findOne.mockResolvedValue(null);
 
     const response = await PUT(createMockRequest());
 
@@ -237,16 +235,18 @@ describe("exceptions update route", () => {
   });
 
   test("rejects request with 401 Unauthorized if token is missing or invalid", async () => {
-    const { UnauthorizedError } = require("@/lib/errors");
-    requireRole.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+    const mockUnauthError = new Error("Unauthorized");
+    mockUnauthError.statusCode = 401;
+    requireRole.mockRejectedValue(mockUnauthError);
 
     const response = await PUT(createMockRequest());
     await assertApiError(response, 401, "Unauthorized");
   });
 
   test("rejects request with 403 Forbidden if role is not allowed", async () => {
-    const { ForbiddenError } = require("@/lib/errors");
-    requireRole.mockRejectedValue(new ForbiddenError("Forbidden: Requires admin or teacher"));
+    const mockForbiddenError = new Error("Forbidden: Requires admin or teacher");
+    mockForbiddenError.statusCode = 403;
+    requireRole.mockRejectedValue(mockForbiddenError);
 
     const response = await PUT(createMockRequest());
     await assertApiError(response, 403, "Forbidden: Requires admin or teacher");

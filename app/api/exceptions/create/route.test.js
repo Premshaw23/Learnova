@@ -5,6 +5,7 @@ import { connectDb } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/rbac", () => ({
   requireStudent: vi.fn(),
@@ -14,13 +15,17 @@ vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
+// =========================================================================
+// FIXED: Prefixed hoisting identifiers with 'mock' to adhere to compiler requirements
+// =========================================================================
+const mockCollection = {
+  insertOne: vi.fn(),
+};
+const mockDb = {
+  collection: vi.fn(() => mockCollection),
+};
+
 vi.mock("@/lib/mongodb", () => {
-  const mockCollection = {
-    insertOne: vi.fn(),
-  };
-  const mockDb = {
-    collection: vi.fn(() => mockCollection),
-  };
   return {
     connectDb: vi.fn(() => Promise.resolve(mockDb)),
     _mockCollection: mockCollection,
@@ -28,24 +33,21 @@ vi.mock("@/lib/mongodb", () => {
   };
 });
 
+// =========================================================================
+// FIXED: Removed runtime require() definitions to prevent unhoisted error drops
+// =========================================================================
 vi.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
   return {
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
-            return {
-              status: error.statusCode,
-              json: async () => ({ error: payload }),
-            };
-          }
+          const statusCode = error.statusCode || error.status || 500;
+          const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
           return {
-            status: 500,
-            json: async () => ({ error: error.message || "Internal server error" }),
+            status: statusCode,
+            json: async () => ({ error: payload || "Internal server error" }),
           };
         }
       };
@@ -64,12 +66,12 @@ vi.mock("next/server", () => ({
 }));
 
 describe("exceptions create route", () => {
-  let mockCollection;
+  let targetCollection;
 
   beforeEach(() => {
     vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("@/lib/mongodb")._mockCollection;
+    targetCollection = require("@/lib/mongodb")._mockCollection;
   });
 
   const createMockRequest = (headers = {}) => {
@@ -93,7 +95,7 @@ describe("exceptions create route", () => {
       date: "2026-05-28",
     });
 
-    mockCollection.insertOne.mockResolvedValue({ insertedId: "exception-id-123" });
+    targetCollection.insertOne.mockResolvedValue({ insertedId: "exception-id-123" });
 
     const response = await POST(createMockRequest());
 
@@ -103,7 +105,7 @@ describe("exceptions create route", () => {
       message: "Exception request created successfully",
     });
 
-    expect(mockCollection.insertOne).toHaveBeenCalledWith(
+    expect(targetCollection.insertOne).toHaveBeenCalledWith(
       expect.objectContaining({
         reason: "Sick Leave",
         details: "Feeling unwell, high fever.",
@@ -143,16 +145,18 @@ describe("exceptions create route", () => {
   });
 
   test("rejects request with 401 Unauthorized if token is missing or invalid", async () => {
-    const { UnauthorizedError } = require("@/lib/errors");
-    requireStudent.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+    const mockAuthError = new Error("Unauthorized");
+    mockAuthError.statusCode = 401;
+    requireStudent.mockRejectedValue(mockAuthError);
 
     const response = await POST(createMockRequest());
     await assertApiError(response, 401, "Unauthorized");
   });
 
   test("rejects request with 403 Forbidden if user is not a student", async () => {
-    const { ForbiddenError } = require("@/lib/errors");
-    requireStudent.mockRejectedValue(new ForbiddenError("Forbidden: Requires student role"));
+    const mockForbiddenError = new Error("Forbidden: Requires student role");
+    mockForbiddenError.statusCode = 403;
+    requireStudent.mockRejectedValue(mockForbiddenError);
 
     const response = await POST(createMockRequest());
     await assertApiError(response, 403, "Forbidden: Requires student role");

@@ -6,6 +6,7 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/rbac", () => ({
   requireAuth: vi.fn(),
@@ -40,24 +41,21 @@ vi.mock("next/server", () => ({
   },
 }));
 
+// =========================================================================
+// FIXED: Removed runtime require() dependencies to safeguard compilation hoisting
+// =========================================================================
 vi.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
   return {
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
-            return {
-              status: error.statusCode,
-              json: async () => ({ error: payload }),
-            };
-          }
+          const statusCode = error.statusCode || error.status || 500;
+          const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
           return {
-            status: 500,
-            json: async () => ({ error: error.message || "Internal server error" }),
+            status: statusCode,
+            json: async () => ({ error: payload || "Internal server error" }),
           };
         }
       };
@@ -212,14 +210,14 @@ describe("attendance sync route", () => {
       records: [
         {
           id: 10,
-          userId: "other-user-456", // Mismatched userId
+          userId: "other-user-456",
           confidenceScore: 0.85,
           queuedAt: Date.now(),
         },
         {
           id: 11,
           userId: "user-123",
-          confidenceScore: 0.15, // Too low confidence score
+          confidenceScore: 0.15,
           queuedAt: Date.now(),
         },
       ],
@@ -307,12 +305,10 @@ describe("attendance sync route", () => {
   });
 
   test("normalizes confidence scores into the valid range", () => {
-    // Values below the 60% minimum threshold are rejected
     expect(normalizeConfidenceScore(-2)).toBeNull();
     expect(normalizeConfidenceScore(0.42)).toBeNull();
     expect(normalizeConfidenceScore(Number.NaN)).toBeNull();
 
-    // Valid scores above threshold
     expect(normalizeConfidenceScore(75)).toBe(0.75);
     expect(normalizeConfidenceScore(150)).toBe(1);
     expect(normalizeConfidenceScore(0.85)).toBe(0.85);

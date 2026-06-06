@@ -27,6 +27,7 @@
     "@ducanh2912/next-pwa": "^10.2.9",
     "@emailjs/browser": "^4.4.1",
     "@eslint/eslintrc": "^3.3.5",
+    "@fingerprintjs/fingerprintjs": "^5.2.0",
     "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-slot": "^1.2.3",

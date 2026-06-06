@@ -1,9 +1,21 @@
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { GET, PATCH } from "./route";
 import { authenticateRequest, parseJSON } from "../../../lib/error-handler";
 import { checkRateLimit } from "../../../lib/rateLimit";
-import clientPromise from "../../../lib/mongodb";
 import { assertApiSuccess } from "../../../testUtils/assertApiSuccess";
 import { assertApiError } from "../../../testUtils/assertApiError";
+
+// Create local tracking objects to bypass cache-invalidation issues
+const sharedMockCursor = {
+  sort: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  toArray: vi.fn().mockResolvedValue([]),
+};
+
+const sharedMockCollection = {
+  find: vi.fn(() => sharedMockCursor),
+  updateMany: vi.fn().mockResolvedValue({ modifiedCount: 1 }),
+};
 
 vi.mock("../../../lib/error-handler", () => {
   const { AppError } = require("../../../lib/errors");
@@ -22,7 +34,7 @@ vi.mock("../../../lib/error-handler", () => {
             };
           }
           return {
-            status: 500,
+            status: error.statusCode || 500,
             json: async () => ({ error: error.message || "Internal server error" }),
           };
         }
@@ -37,17 +49,8 @@ vi.mock("../../../lib/rateLimit", () => ({
 }));
 
 vi.mock("../../../lib/mongodb", () => {
-  const mockCursor = {
-    sort: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    toArray: vi.fn().mockResolvedValue([]),
-  };
-  const mockCollection = {
-    find: vi.fn(() => mockCursor),
-    updateMany: vi.fn().mockResolvedValue({ modifiedCount: 1 }),
-  };
   const mockDb = {
-    collection: vi.fn(() => mockCollection),
+    collection: vi.fn(() => sharedMockCollection),
   };
   const mockClient = {
     db: vi.fn(() => mockDb),
@@ -55,8 +58,6 @@ vi.mock("../../../lib/mongodb", () => {
   return {
     __esModule: true,
     default: Promise.resolve(mockClient),
-    _mockCollection: mockCollection,
-    _mockCursor: mockCursor,
   };
 });
 
@@ -70,14 +71,16 @@ vi.mock("next/server", () => ({
 }));
 
 describe("notifications route", () => {
-  let mockCollection;
-  let mockCursor;
-
   beforeEach(() => {
     vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("../../../lib/mongodb")._mockCollection;
-    mockCursor = require("../../../lib/mongodb")._mockCursor;
+    
+    // Reset our direct trackable collection variables
+    sharedMockCursor.sort.mockReturnThis();
+    sharedMockCursor.limit.mockReturnThis();
+    sharedMockCursor.toArray.mockResolvedValue([]);
+    sharedMockCollection.find.mockReturnValue(sharedMockCursor);
+    sharedMockCollection.updateMany.mockResolvedValue({ modifiedCount: 1 });
   });
 
   const createMockRequest = (url = "http://localhost/api/notifications", headers = {}) => {
@@ -97,7 +100,7 @@ describe("notifications route", () => {
       const mockNotifications = [
         { _id: "notif-1", userId: "user-123", message: "Notice posted", read: false },
       ];
-      mockCursor.toArray.mockResolvedValue(mockNotifications);
+      sharedMockCursor.toArray.mockResolvedValue(mockNotifications);
 
       const response = await GET(createMockRequest("http://localhost/api/notifications?userId=user-123"));
 
@@ -106,9 +109,9 @@ describe("notifications route", () => {
         { _id: "notif-1", userId: "user-123", message: "Notice posted", read: false },
       ]);
 
-      expect(mockCollection.find).toHaveBeenCalledWith({ userId: "user-123" });
-      expect(mockCursor.sort).toHaveBeenCalledWith({ createdAt: -1 });
-      expect(mockCursor.limit).toHaveBeenCalledWith(10);
+      expect(sharedMockCollection.find).toHaveBeenCalledWith({ userId: "user-123" });
+      expect(sharedMockCursor.sort).toHaveBeenCalledWith({ createdAt: -1 });
+      expect(sharedMockCursor.limit).toHaveBeenCalledWith(10);
     });
 
     test("returns empty list if userId query param is missing", async () => {
@@ -118,7 +121,7 @@ describe("notifications route", () => {
 
       const body = await assertApiSuccess(response, 200);
       expect(body.data.notifications).toEqual([]);
-      expect(mockCollection.find).not.toHaveBeenCalled();
+      expect(sharedMockCollection.find).not.toHaveBeenCalled();
     });
 
     test("rejects request with 403 Forbidden if trying to get notifications of another user", async () => {
@@ -158,7 +161,7 @@ describe("notifications route", () => {
       const body = await assertApiSuccess(response, 200);
       expect(body.success).toBe(true);
 
-      expect(mockCollection.updateMany).toHaveBeenCalledWith(
+      expect(sharedMockCollection.updateMany).toHaveBeenCalledWith(
         { userId: "user-123", read: false },
         { $set: { read: true } }
       );
@@ -171,7 +174,7 @@ describe("notifications route", () => {
       const response = await PATCH(createMockRequest());
 
       await assertApiError(response, 400, "userId is required");
-      expect(mockCollection.updateMany).not.toHaveBeenCalled();
+      expect(sharedMockCollection.updateMany).not.toHaveBeenCalled();
     });
 
     test("rejects request with 403 Forbidden if trying to mark read for another user", async () => {
@@ -184,7 +187,7 @@ describe("notifications route", () => {
     });
 
     test("rejects request with 401 if unauthorized", async () => {
-      const { UnauthorizedError } = require("@/lib/errors");
+      const { UnauthorizedError } = require("../../../lib/errors");
       authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
       const response = await PATCH(createMockRequest());

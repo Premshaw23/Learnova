@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import StreakTracker from "../ui/StreakTracker";
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -22,9 +23,13 @@ Object.defineProperty(window, "localStorage", {
 });
 
 describe("StreakTracker Component", () => {
+  // Pin down a static date anchor for testing date intervals (e.g., May 28, 2026)
+  const baseMockDate = new Date(2026, 4, 28, 10, 0, 0);
+
   beforeEach(() => {
     window.localStorage.clear();
     vi.useFakeTimers();
+    vi.setSystemTime(baseMockDate);
   });
 
   afterEach(() => {
@@ -49,8 +54,8 @@ describe("StreakTracker Component", () => {
   });
 
   test("should increment streak if lastActiveDate was yesterday", () => {
-    // Set yesterday's date
-    const yesterday = new Date();
+    // Set yesterday's date relative to our fixed system time
+    const yesterday = new Date(baseMockDate);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayMidnight = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
 
@@ -70,7 +75,7 @@ describe("StreakTracker Component", () => {
   });
 
   test("should keep streak the same if lastActiveDate is today", () => {
-    const today = new Date();
+    const today = new Date(baseMockDate);
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     window.localStorage.setItem("currentStreak", "5");
@@ -89,7 +94,7 @@ describe("StreakTracker Component", () => {
   });
 
   test("should reset streak to 1 if lastActiveDate was more than 1 day ago", () => {
-    const threeDaysAgo = new Date();
+    const threeDaysAgo = new Date(baseMockDate);
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
     const threeDaysAgoMidnight = new Date(threeDaysAgo.getFullYear(), threeDaysAgo.getMonth(), threeDaysAgo.getDate());
 

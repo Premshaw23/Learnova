@@ -34,10 +34,12 @@ const exceptionUpdateSchema = z.object({
 export const PUT = withErrorHandler(async (request) => {
   const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher"]);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  
   const rateLimitResult = await checkRateLimit(`exceptions_update_${ip}_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
+
   const body = await parseJSON(request, 1024 * 10);
   
   const validation = exceptionUpdateSchema.safeParse(body);
@@ -56,78 +58,86 @@ export const PUT = withErrorHandler(async (request) => {
   }
   
   const { exceptionId, status, comments } = validation.data;
-
   const db = await connectDb();
 
-    // Fetch the exception to perform ownership/relationship checks to prevent IDOR
-    const exception = await db.collection("exceptions").findOne({ _id: new ObjectId(exceptionId) });
+  // Fetch the exception to perform ownership checks to prevent IDOR vulnerabilities
+  const exception = await db.collection("exceptions").findOne({ _id: new ObjectId(exceptionId) });
 
-    if (!exception) {
-      throw new NotFoundError("Exception not found");
-    }
-
-    // Perform teacher-specific assignment validation (CWE-639 resolution)
-    if (profile.role === "teacher") {
-      const teacherSubjects = profile.subjects || [];
-      const exceptionClass = exception.className || exception.class;
-      let isAuthorized = false;
-
-      // 1. Check if the teacher teaches the class of the exception
-      if (exceptionClass && teacherSubjects.includes(exceptionClass)) {
-        isAuthorized = true;
-      }
-
-      // 2. Fallback: Check student-teacher subject assignment overlap
-      if (!isAuthorized && exception.studentEmail) {
-        const studentProfile = await getUserProfileByEmail(exception.studentEmail);
-        if (studentProfile) {
-          const studentSubjects = studentProfile.subjects || studentProfile.classes || [];
-          const hasOverlap = studentSubjects.some((subject) => teacherSubjects.includes(subject));
-          if (hasOverlap) {
-            isAuthorized = true;
-          }
-        }
-      }
-
-      if (!isAuthorized) {
-        throw new ForbiddenError("Forbidden: You are not authorized to update exception requests for this class/student.");
-      }
-    }
-
-     let result;
-  try {
-      const updateFields = {
-        status: status,
-        reviewedBy: decodedToken.email,
-        approverId: decodedToken.uid,
-        reviewedAt: new Date(),
-        updatedAt: new Date(),
-      };
-      if (comments !== undefined) {
-        updateFields.comments = comments;
-      }
-
-      result = await db.collection("exceptions").updateOne(
-        { _id: new ObjectId(exceptionId) },
-        {
-          $set: updateFields,
-        }
-      );
-  } catch (error) {
-    throw new AppError("Internal server error", 500);
+  if (!exception) {
+    throw new NotFoundError("Exception not found");
   }
 
-  if (result.matchedCount === 0) throw new NotFoundError("Exception not found");
+  // Perform teacher-specific assignment validation (CWE-639 resolution)
+  if (profile.role === "teacher") {
+    // Check both subjects and classes arrays for structural resilience
+    const teacherSubjects = profile.subjects || profile.classes || [];
+    const exceptionClass = exception.className || exception.class;
+    let isAuthorized = false;
 
-  await db.collection("audit_logs").insertOne({
-    timestamp: new Date(),
-    approverUid: decodedToken.uid,
-    approverEmail: decodedToken.email,
-    role: profile.role,
-    exceptionId: new ObjectId(exceptionId),
-    action: status,
-    module: "exceptions",
-  });
+    // 1. Check if the teacher teaches the class of the exception
+    if (exceptionClass && teacherSubjects.includes(exceptionClass)) {
+      isAuthorized = true;
+    }
+
+    // 2. Fallback: Check student-teacher subject assignment overlap
+    if (!isAuthorized && exception.studentEmail) {
+      const studentProfile = await getUserProfileByEmail(exception.studentEmail);
+      if (studentProfile) {
+        const studentSubjects = studentProfile.subjects || studentProfile.classes || [];
+        const hasOverlap = studentSubjects.some((subject) => teacherSubjects.includes(subject));
+        if (hasOverlap) {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      throw new ForbiddenError("Forbidden: You are not authorized to update exception requests for this class/student.");
+    }
+  }
+
+  const updateFields = {
+    status: status,
+    reviewedBy: decodedToken.email,
+    approverId: decodedToken.uid,
+    reviewedAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  if (comments !== undefined) {
+    updateFields.comments = comments;
+  }
+
+  let result;
+  try {
+    result = await db.collection("exceptions").updateOne(
+      { _id: new ObjectId(exceptionId) },
+      { $set: updateFields }
+    );
+  } catch (error) {
+    // Preserve internal debugging info if database calls crash entirely
+    throw new AppError(`Database operation failed: ${error.message}`, 500);
+  }
+
+  // Check matchedCount safely outside the transaction boundary blocks
+  if (!result || result.matchedCount === 0) {
+    throw new NotFoundError("Exception not found");
+  }
+
+  try {
+    await db.collection("audit_logs").insertOne({
+      timestamp: new Date(),
+      approverUid: decodedToken.uid,
+      approverEmail: decodedToken.email,
+      role: profile.role,
+      exceptionId: new ObjectId(exceptionId),
+      action: status,
+      module: "exceptions",
+    });
+  } catch (auditError) {
+    console.error("Audit logging failed:", auditError);
+    // Do not crash the entire response stream if only the background logging element fails
+  }
 
   return NextResponse.json({ message: "Exception updated successfully" });
 });

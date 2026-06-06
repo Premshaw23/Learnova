@@ -1,15 +1,16 @@
 import { POST } from "@/app/api/groq/route";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { describe, test, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
 
+// =========================================================================
+// FIXED: Simplified NextResponse layout to act as a clean, transparent data wrapper
+// =========================================================================
 vi.mock("next/server", () => ({
   NextResponse: {
-    json: vi.fn().mockImplementation((body, init) => {
-      return {
-        status: init?.status || 200,
-        json: async () => body,
-        headers: new Map(),
-      };
+    json: (body, init = {}) => ({
+      status: init.status ?? 200,
+      json: async () => body,
     }),
   },
 }));
@@ -43,7 +44,6 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     process.env.GROQ_API_KEY = "mock-groq-key";
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
   });
-
 
   const createMockRequest = (headers, bodyData) => {
     return {

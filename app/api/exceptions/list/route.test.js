@@ -4,6 +4,7 @@ import { connectDb } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/rbac", () => ({
   requireRole: vi.fn(),
@@ -13,20 +14,24 @@ vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
+// =========================================================================
+// FIXED: Prefixed hoisting identifiers with 'mock' to adhere to compiler requirements
+// =========================================================================
+const mockCursor = {
+  sort: vi.fn().mockReturnThis(),
+  skip: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  toArray: vi.fn().mockResolvedValue([]),
+};
+const mockCollection = {
+  countDocuments: vi.fn().mockResolvedValue(0),
+  find: vi.fn(() => mockCursor),
+};
+const mockDb = {
+  collection: vi.fn(() => mockCollection),
+};
+
 vi.mock("@/lib/mongodb", () => {
-  const mockCursor = {
-    sort: vi.fn().mockReturnThis(),
-    skip: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    toArray: vi.fn().mockResolvedValue([]),
-  };
-  const mockCollection = {
-    countDocuments: vi.fn().mockResolvedValue(0),
-    find: vi.fn(() => mockCursor),
-  };
-  const mockDb = {
-    collection: vi.fn(() => mockCollection),
-  };
   return {
     connectDb: vi.fn(() => Promise.resolve(mockDb)),
     _mockCollection: mockCollection,
@@ -35,24 +40,21 @@ vi.mock("@/lib/mongodb", () => {
   };
 });
 
+// =========================================================================
+// FIXED: Removed runtime require() definitions to prevent unhoisted error drops
+// =========================================================================
 vi.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
   return {
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
-            return {
-              status: error.statusCode,
-              json: async () => ({ error: payload }),
-            };
-          }
+          const statusCode = error.statusCode || error.status || 500;
+          const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
           return {
-            status: 500,
-            json: async () => ({ error: error.message || "Internal server error" }),
+            status: statusCode,
+            json: async () => ({ error: payload || "Internal server error" }),
           };
         }
       };
@@ -70,14 +72,14 @@ vi.mock("next/server", () => ({
 }));
 
 describe("exceptions list route", () => {
-  let mockCollection;
-  let mockCursor;
+  let targetCollection;
+  let targetCursor;
 
   beforeEach(() => {
     vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("@/lib/mongodb")._mockCollection;
-    mockCursor = require("@/lib/mongodb")._mockCursor;
+    targetCollection = require("@/lib/mongodb")._mockCollection;
+    targetCursor = require("@/lib/mongodb")._mockCursor;
   });
 
   const createMockRequest = (url = "http://localhost/api/exceptions/list", headers = {}) => {
@@ -96,8 +98,8 @@ describe("exceptions list route", () => {
       profile: { role: "student" },
     });
 
-    mockCollection.countDocuments.mockResolvedValue(1);
-    mockCursor.toArray.mockResolvedValue([
+    targetCollection.countDocuments.mockResolvedValue(1);
+    targetCursor.toArray.mockResolvedValue([
       { reason: "Flu", studentEmail: "student@example.com", status: "pending" },
     ]);
 
@@ -106,7 +108,7 @@ describe("exceptions list route", () => {
     const body = await assertApiSuccess(response, 200);
     expect(body.data.exceptions.length).toBe(1);
 
-    expect(mockCollection.find).toHaveBeenCalledWith(
+    expect(targetCollection.find).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "pending",
         studentEmail: "student@example.com",
@@ -120,8 +122,8 @@ describe("exceptions list route", () => {
       profile: { role: "admin" },
     });
 
-    mockCollection.countDocuments.mockResolvedValue(2);
-    mockCursor.toArray.mockResolvedValue([
+    targetCollection.countDocuments.mockResolvedValue(2);
+    targetCursor.toArray.mockResolvedValue([
       { reason: "Flu", studentEmail: "student@example.com", status: "pending" },
       { reason: "Trip", studentEmail: "other@example.com", status: "pending" },
     ]);
@@ -131,7 +133,7 @@ describe("exceptions list route", () => {
     const body = await assertApiSuccess(response, 200);
     expect(body.data.exceptions.length).toBe(2);
 
-    expect(mockCollection.find).toHaveBeenCalledWith({
+    expect(targetCollection.find).toHaveBeenCalledWith({
       status: "pending",
     });
   });
@@ -147,16 +149,18 @@ describe("exceptions list route", () => {
   });
 
   test("rejects request with 401 Unauthorized if token is missing or invalid", async () => {
-    const { UnauthorizedError } = require("@/lib/errors");
-    requireRole.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+    const mockAuthError = new Error("Unauthorized");
+    mockAuthError.statusCode = 401;
+    requireRole.mockRejectedValue(mockAuthError);
 
     const response = await GET(createMockRequest());
     await assertApiError(response, 401, "Unauthorized");
   });
 
   test("rejects request with 403 Forbidden if role is not allowed", async () => {
-    const { ForbiddenError } = require("@/lib/errors");
-    requireRole.mockRejectedValue(new ForbiddenError("Forbidden"));
+    const mockForbiddenError = new Error("Forbidden");
+    mockForbiddenError.statusCode = 403;
+    requireRole.mockRejectedValue(mockForbiddenError);
 
     const response = await GET(createMockRequest());
     await assertApiError(response, 403, "Forbidden");

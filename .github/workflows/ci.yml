@@ -59,4 +59,5 @@ jobs:
           GROQ_API_KEY: dummy
 
       - name: ✅ Build successful
-        run: echo "✨ Build completed successfully!"
+        run: echo "✨ Build completed successfully!"rm frontend/src/pages/Dashboard.tsx
+rm frontend/src/pages/Dashboard.module.css

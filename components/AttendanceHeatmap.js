@@ -10,6 +10,7 @@ const STATUS_CONFIG = {
   absent: { color: "bg-red-500", label: "Absent", dot: "🔴" },
   late: { color: "bg-yellow-400", label: "Late", dot: "🟡" },
   holiday: { color: "bg-gray-300", label: "Holiday", dot: "⬜" },
+  pending_review: { color: "bg-orange-500", label: "Pending Review", dot: "🟠" },
   none: {
     color: "bg-gray-100 dark:bg-gray-800",
     label: "No class",
@@ -43,6 +44,7 @@ export default function AttendanceHeatmap() {
   const monthKey = `${currentDate.getFullYear()}-${String(
     currentDate.getMonth() + 1
   ).padStart(2, "0")}`;
+
   const fetchAttendance = useCallback(async () => {
     if (!user?.uid) return;
     setIsLoading(true);
@@ -95,11 +97,11 @@ export default function AttendanceHeatmap() {
     calendarCells.push(d);
   }
 
-  const stats = { present: 0, absent: 0, late: 0, holiday: 0 };
+  const stats = { present: 0, absent: 0, late: 0, holiday: 0, pending_review: 0 };
   Object.values(attendanceMap).forEach((r) => {
     if (stats[r.status] !== undefined) stats[r.status]++;
   });
-  const total = stats.present + stats.absent + stats.late;
+  const total = stats.present + stats.absent + stats.late + stats.pending_review;
   const attendancePct =
     total > 0 ? ((stats.present / total) * 100).toFixed(1) : "0.0";
 
@@ -121,8 +123,9 @@ export default function AttendanceHeatmap() {
             date: dateKey,
             status: record?.status || "none",
             subject: record?.subject || "—",
-            markedAt: record?.markedAt
-              ? new Date(record.markedAt).toLocaleTimeString([], {
+            flagReason: record?.flagReason || null,
+            markedAt: record?.markedAt || record?.timestamp
+              ? new Date(record.markedAt || record.timestamp).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                 })
@@ -185,7 +188,7 @@ export default function AttendanceHeatmap() {
               <div
                 key={d}
                 className="text-center text-xs font-medium 
-                                      text-gray-400 dark:text-gray-500 py-1"
+                           text-gray-400 dark:text-gray-500 py-1"
               >
                 {d}
               </div>
@@ -257,6 +260,11 @@ export default function AttendanceHeatmap() {
                 Marked at:{" "}
                 <span className="font-medium">{tooltip.markedAt}</span>
               </p>
+              {tooltip.flagReason && tooltip.flagReason !== "NONE" && (
+                <p className="text-red-500 font-medium mt-1">
+                  Reason: {tooltip.flagReason.replace(/_/g, " ")}
+                </p>
+              )}
             </motion.div>
           )}
 
@@ -278,9 +286,9 @@ export default function AttendanceHeatmap() {
               {[
                 { label: "Present", value: stats.present, color: "text-green-600" },
                 { label: "Absent", value: stats.absent, color: "text-red-500" },
-                { label: "Late", value: stats.late, color: "text-yellow-500" },
+                { label: "Pending Review", value: stats.pending_review, color: "text-orange-500" },
                 {
-                  label: "Attendance",
+                  label: "Attendance Rate",
                   value: `${attendancePct}%`,
                   color: "text-indigo-600",
                 },
