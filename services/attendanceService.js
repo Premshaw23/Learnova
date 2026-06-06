@@ -10,8 +10,6 @@ import {
 } from "firebase/firestore";
 
 import { auth, db } from "@/lib/firebaseConfig";
-import fpPromise from "@fingerprintjs/fingerprintjs";
-
 import { recalculateAttendanceRate } from "./statsService";
 import { saveToOutbox } from "@/lib/offlineStore";
 import { registerBackgroundSync } from "@/lib/syncService";
@@ -19,51 +17,6 @@ import { getTodayKeyLocal } from "@/lib/dateUtils";
 
 function getTodayKey() {
   return getTodayKeyLocal();
-}
-
-/**
- * Utility helper to securely grab high-accuracy GPS coordinates from the browser.
- */
-function getBrowserCoordinates() {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      return reject(new Error("Geolocation is not supported by this browser."));
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      (error) => {
-        let msg = "Location access denied. Please enable GPS permissions to mark attendance.";
-        if (error.code === error.TIMEOUT) msg = "Location request timed out. Try again.";
-        if (error.code === error.POSITION_UNAVAILABLE) msg = "Location information is unavailable.";
-        reject(new Error(msg));
-      },
-      {
-        enableHighAccuracy: true, // Force hardware GPS tracking
-        timeout: 7000,
-        maximumAge: 0,
-      }
-    );
-  });
-}
-
-/**
- * Utility helper to fetch a unique hardware/browser fingerprint hash string.
- */
-async function getDeviceHash() {
-  try {
-    const fp = await fpPromise.load();
-    const result = await fp.get();
-    return result.visitorId;
-  } catch (error) {
-    console.error("Fingerprinting failed, generating fallback hash string", error);
-    return `fallback_hash_${navigator.userAgent.replace(/\s+/g, '')}_${screen.width}x${screen.height}`;
-  }
 }
 
 /**
@@ -117,12 +70,15 @@ export async function hasCheckedInToday(userId) {
 
 /**
  * Records attendance securely through backend API, incorporating Geofencing and Fingerprinting.
+ * Fortified to intercept verified tokens passed directly down from the active scanner layer.
  */
 export async function recordAttendance({
   userId,
   studentName,
   email,
   confidenceScore,
+  deviceId,        // 🚀 Intercepting real-time device fingerprint hash token
+  studentCoords,   // 🚀 Intercepting real-time GPS coordinate metrics object
 }) {
   if (!userId || !db) {
     throw new Error("Attendance cannot be saved without a signed-in user.");
@@ -142,18 +98,10 @@ export async function recordAttendance({
     throw new Error("No active attendance sessions found for your institution. Ask your instructor to open attendance.");
   }
 
-  // 2. Fetch Client Device Fingerprint Hash String
-  const deviceFingerprint = await getDeviceHash();
-
-  // 3. Collect Location Metrics (Only if browser reports online context status state)
-  let coordinates = { latitude: undefined, longitude: undefined };
-  if (typeof window !== "undefined" && navigator.onLine) {
-    try {
-      coordinates = await getBrowserCoordinates();
-    } catch (geoError) {
-      throw new Error(geoError.message);
-    }
-  }
+  // 2. Use passed fingerprint token or fallback to a string generation
+  const finalDeviceFingerprint = deviceId || (typeof navigator !== "undefined" 
+    ? `fallback_hash_${navigator.userAgent.replace(/\s+/g, '')}_${screen.width}x${screen.height}`
+    : "unknown_hardware_node");
 
   // OFFLINE MODE COMPLIANCE LAYER
   if (typeof window !== "undefined" && !navigator.onLine) {
@@ -165,9 +113,12 @@ export async function recordAttendance({
       email,
       confidenceScore: confidenceScore ?? 0,
       date: todayKey,
-      deviceFingerprint,
+      deviceFingerprint: finalDeviceFingerprint,
       sessionId,
-      // Note: Coordinates are omitted or kept undefined to protect data mapping constraints offline
+      // 🎯 FIX: Persist cached coordinates when offline to allow back-end verification on delayed sync
+      latitude: studentCoords?.latitude,
+      longitude: studentCoords?.longitude,
+      accuracy: studentCoords?.accuracy
     });
 
     await registerBackgroundSync();
@@ -207,21 +158,23 @@ export async function recordAttendance({
       confidenceScore: confidenceScore ?? 0,
       date: todayKey,
       sessionId,
-      deviceFingerprint,
-      latitude: coordinates.latitude,
-      longitude: coordinates.longitude,
+      deviceFingerprint: finalDeviceFingerprint,
+      // 🎯 FIX: Explicitly passing real-time verified location down to server router parameters
+      latitude: studentCoords?.latitude,
+      longitude: studentCoords?.longitude,
+      accuracy: studentCoords?.accuracy
     }),
   });
 
   if (!response.ok) {
-    let errorMessage =
-      "Failed to record attendance securely on the server.";
+    let errorMessage = "Failed to record attendance securely on the server.";
 
     try {
       const errorData = await response.json();
-
       if (errorData?.message) {
         errorMessage = errorData.message;
+      } else if (errorData?.error) {
+        errorMessage = errorData.error;
       }
     } catch {
       // Ignore invalid JSON responses

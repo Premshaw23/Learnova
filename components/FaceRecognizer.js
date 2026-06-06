@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import FingerprintJS from "@fingerprintjs/fingerprintjs";
 
 import { Button } from "@/components/ui/button";
 import useLabels from "@/components/useLabels";
@@ -19,7 +20,8 @@ const PROCESSING_INTERVAL_MS = 100; // ~10 FPS
  * FaceRecognizer Component
  *
  * Performs real-time camera stream capturing, TinyFaceDetector identification,
- * and liveness detection (blink checks) to record user attendance securely.
+ * liveness detection (blink checks) to record user attendance securely.
+ * Now fortified with Geofencing and Device Fingerprinting verification.
  *
  * @param {Object} props - Component properties.
  * @param {Object} props.authUser - The currently authenticated Firebase user.
@@ -492,8 +494,6 @@ export default function FaceRecognizer({ authUser }) {
     }
 
     if (isMounted.current && !finished && !abortControllerRef.current?.signal.aborted) {
-      // Loop execution only if not finished
-      // To prevent race conditions, check if we just transitioned to AUTHENTICATED
       setLivenessState((currentLiveness) => {
         if (currentLiveness !== "AUTHENTICATED" && isMounted.current) {
           animationFrameId.current = requestAnimationFrame(processVideo);
@@ -546,15 +546,55 @@ export default function FaceRecognizer({ authUser }) {
         setMessage("Face does not match signed-in account.");
         return;
       }
+      
       isSubmittingRef.current = true;
       setAttendanceState("saving");
+      setMessage("Acquiring hardware tokens and secure geofence coordinates...");
 
       try {
+        // --- ANTI-PROXY COUNTERMEASURES PROTOCOL (#3375) ---
+        
+        // 1. Gather Unique Browser Hardware Fingerprint
+        let deviceId = "unknown_hardware_node";
+        try {
+          const fp = await FingerprintJS.load();
+          const fpResult = await fp.get();
+          deviceId = fpResult.visitorId;
+        } catch (fpError) {
+          console.warn("Hardware fingerprinting initialization error:", fpError);
+        }
+
+        // 2. Fetch High-Accuracy GPS Coordinates
+        let coords = null;
+        try {
+          coords = await new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+              reject(new Error("Geolocation interface unmounted or missing."));
+              return;
+            }
+            navigator.geolocation.getCurrentPosition(
+              (pos) => resolve({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy
+              }),
+              (err) => reject(err),
+              { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
+            );
+          });
+        } catch (geoError) {
+          console.error("Geofence acquisition checkpoint bypassed or failed:", geoError);
+          throw new Error("Location permission is required to verify classroom attendance eligibility.");
+        }
+
+        // Dispatch enhanced anti-spoof transaction payload down to service layer
         const result = await recordAttendance({
           userId: authUser.uid,
           studentName: detectedPerson.name,
           email: detectedPerson.email || authUser.email,
           confidenceScore: confidence,
+          deviceId: deviceId,    // Device Fingerprint string tag
+          studentCoords: coords, // { latitude, longitude, accuracy } Object
         });
 
         if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
@@ -568,9 +608,11 @@ export default function FaceRecognizer({ authUser }) {
           setAttendanceState(
             result.alreadyRecorded ? "already-recorded" : "saved",
           );
+          setMessage(result.alreadyRecorded ? "Check-in already logged today." : "Attendance validated and logged! ✅");
         }
       } catch (err) {
         if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
+        isSubmittingRef.current = false;
         setAttendanceState("error");
         setMessage(err.message || "Could not save attendance.");
       }
