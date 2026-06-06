@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { POST } from "@/app/api/notices/route";
+import { POST, GET as getNotices } from "@/app/api/notices/route";
 import { GET, publishNoticeToRedis } from "@/app/api/notices/stream/route";
 import {
   getAdminDb,
@@ -52,9 +52,12 @@ vi.mock("@/lib/firebase-admin", () => ({
 
 // Mock MongoDB
 const mockMongoInsert = vi.fn();
+const mockMongoCount = vi.fn();
+const mockMongoDistinct = vi.fn();
 const mockMongoFindToArray = vi.fn();
 const mockMongoFind = vi.fn().mockReturnValue({
   sort: vi.fn().mockReturnThis(),
+  skip: vi.fn().mockReturnThis(),
   limit: vi.fn().mockReturnThis(),
   toArray: mockMongoFindToArray,
 });
@@ -113,9 +116,14 @@ describe("Notice Board Isolation & Security Tests", () => {
       }),
     });
 
+    mockMongoCount.mockResolvedValue(5);
+    mockMongoDistinct.mockResolvedValue(["exams", "holiday"]);
     connectDb.mockResolvedValue({
       collection: vi.fn().mockReturnValue({
         insertOne: mockMongoInsert,
+        countDocuments: mockMongoCount,
+        distinct: mockMongoDistinct,
+        find: mockMongoFind,
       }),
     });
 
@@ -400,6 +408,94 @@ describe("Notice Board Isolation & Security Tests", () => {
         expect.objectContaining({
           targetAudience: "student",
           instituteId: "student-456",
+        })
+      );
+    });
+  });
+
+  describe("GET /api/notices - Paginated & Full-Text Search notices", () => {
+    test("retrieves notices from MongoDB with filters and pagination", async () => {
+      verifyFirebaseToken.mockResolvedValue({
+        valid: true,
+        decodedToken: {
+          uid: "student-123",
+          email: "student@domain.com",
+          email_verified: true,
+          role: "student",
+        },
+      });
+      getUserProfile.mockResolvedValue({
+        role: "student",
+        instituteId: "institute_A",
+      });
+
+      mockMongoFindToArray.mockResolvedValue([
+        {
+          _id: "notice-1",
+          title: "Exam Schedule",
+          category: "academic",
+          priority: "high",
+          targetAudience: ["student"],
+          instituteId: "institute_A",
+          createdAt: new Date(),
+        }
+      ]);
+
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        {},
+        "http://localhost/api/notices?page=1&limit=10&search=Exam&category=academic"
+      );
+      const response = await getNotices(req);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(body.data.notices).toHaveLength(1);
+      expect(body.data.notices[0].title).toBe("Exam Schedule");
+      expect(body.data.totalCount).toBe(5);
+      expect(body.data.tags).toContain("exams");
+
+      // Verify that find was called with appropriate filters
+      expect(mockMongoFind).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetAudience: "student",
+          instituteId: "institute_A",
+          category: "academic",
+        })
+      );
+    });
+
+    test("performs regex search on title, content, category, tags when Atlas search fallback triggers", async () => {
+      verifyFirebaseToken.mockResolvedValue({
+        valid: true,
+        decodedToken: {
+          uid: "student-123",
+          email: "student@domain.com",
+          email_verified: true,
+          role: "student",
+        },
+      });
+      getUserProfile.mockResolvedValue({
+        role: "student",
+        instituteId: "institute_A",
+      });
+
+      mockMongoFindToArray.mockResolvedValue([]);
+
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        {},
+        "http://localhost/api/notices?search=Alert"
+      );
+      await getNotices(req);
+
+      expect(mockMongoFind).toHaveBeenCalledWith(
+        expect.objectContaining({
+          $or: expect.arrayContaining([
+            expect.objectContaining({ title: expect.any(RegExp) }),
+            expect.objectContaining({ content: expect.any(RegExp) }),
+          ]),
         })
       );
     });

@@ -76,14 +76,6 @@ const SmartNoticeBoard = () => {
     }
   };
 
-  // ── Consume the shared pooled subscription from FirestoreContext ──────────
-  // No local onSnapshot — notices arrive from the global singleton listener.
-  const {
-    notices: rawNotices,
-    loading: noticesLoading,
-    error: noticesError,
-  } = useNotices();
-
   const [searchQuery, setSearchQuery] = useState("");
 
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -108,10 +100,6 @@ const SmartNoticeBoard = () => {
 
   const [showOnlyUnread, setShowOnlyUnread] = useState(false);
 
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const itemsPerPage = 5;
-
   const [readNotices, setReadNotices] = useState(new Set());
 
   const [activeTab, setActiveTab] = useState("notices");
@@ -120,30 +108,120 @@ const SmartNoticeBoard = () => {
 
   const userId = user?.uid || user?.id || "anonymous";
 
-  // Normalise createdAt to a JS Date so downstream components can safely call
-  // getRelativeTime() regardless of whether it arrived as a Firestore Timestamp
-  // or was already converted by firestorePool's snapshot mapper.
-  const notices = useMemo(
-    () =>
-      rawNotices.map((n) => ({
-        ...n,
-        createdAt:
-          n.createdAt instanceof Date
-            ? n.createdAt
-            : n.createdAt?.toDate
-              ? n.createdAt.toDate()
-              : new Date(n.createdAt || Date.now()),
-      })),
-    [rawNotices]
-  );
+  // State for paginated notices and metadata from backend
+  const [loadedNotices, setLoadedNotices] = useState([]);
+  const [isFetching, setIsFetching] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [searchOptions, setSearchOptions] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    unread: 0,
+    pinned: 0,
+    high: 0,
+  });
 
-  // Derived activity
+  const readNoticesRef = useRef(readNotices);
+  useEffect(() => {
+    readNoticesRef.current = readNotices;
+  }, [readNotices]);
+
+  const fetchNotices = useCallback(async (pageToFetch, append = false) => {
+    if (!user) return;
+    setIsFetching(true);
+    try {
+      const token = await user.getIdToken();
+      const queryParams = new URLSearchParams({
+        page: pageToFetch,
+        limit: 10,
+        search: debouncedQuery,
+        category: selectedCategory,
+        priority: selectedPriority,
+        tags: selectedTags.join(","),
+        dateRange: dateRange,
+        sort: sortOrder,
+        unreadOnly: showOnlyUnread ? "true" : "false",
+        readNotices: Array.from(readNoticesRef.current).join(","),
+      });
+
+      const response = await fetch(`/api/notices?${queryParams}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch notices");
+      }
+      const result = await response.json();
+      if (result.success) {
+        const newNotices = result.data.notices.map((n) => ({
+          ...n,
+          createdAt: new Date(n.createdAt),
+        }));
+
+        if (append) {
+          setLoadedNotices((prev) => [...prev, ...newNotices]);
+        } else {
+          setLoadedNotices(newNotices);
+        }
+        setTotalCount(result.data.totalCount);
+        setTotalPages(result.data.totalPages);
+        setHasMore(pageToFetch < result.data.totalPages);
+        setAvailableTags(result.data.tags || []);
+        setSearchOptions(result.data.suggestions || []);
+        setStats(result.data.stats || { total: 0, unread: 0, pinned: 0, high: 0 });
+        setFetchError(null);
+      } else {
+        toast.error(result.error || "Failed to fetch notices");
+        setFetchError(result.error || "Failed to fetch notices");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error fetching notices");
+      setFetchError("Error fetching notices");
+    } finally {
+      setIsFetching(false);
+    }
+  }, [
+    user,
+    debouncedQuery,
+    selectedCategory,
+    selectedPriority,
+    selectedTags,
+    dateRange,
+    sortOrder,
+    showOnlyUnread,
+  ]);
+
+  // Trigger fetch when filters or user changes
+  useEffect(() => {
+    if (authLoading || !user) return;
+    setPage(1);
+    fetchNotices(1, false);
+  }, [
+    debouncedQuery,
+    selectedCategory,
+    selectedPriority,
+    selectedTags,
+    dateRange,
+    sortOrder,
+    showOnlyUnread,
+    user,
+    authLoading,
+    fetchNotices,
+  ]);
+
+  // Derived activity from loaded notices
   const derivedActivity = useMemo(() => {
     if (activity?.length > 0) {
       return activity;
     }
 
-    return (notices || []).slice(0, 5).map((notice, idx) => ({
+    return (loadedNotices || []).slice(0, 5).map((notice, idx) => ({
       id: notice?.id || idx,
       title: notice?.title || "Untitled",
       timestamp: notice?.createdAt || new Date(),
@@ -154,16 +232,16 @@ const SmartNoticeBoard = () => {
           ? "urgent"
           : "create",
     }));
-  }, [activity, notices]);
+  }, [activity, loadedNotices]);
 
-  const loading = authLoading || noticesLoading;
+  const loading = authLoading || (isFetching && loadedNotices.length === 0);
 
-  // Show toast once if the pool reports an error
+  // Show toast once if fetching reports an error
   useEffect(() => {
-    if (noticesError) {
-      toast.error("Failed to load notices");
+    if (fetchError) {
+      toast.error(fetchError);
     }
-  }, [noticesError]);
+  }, [fetchError]);
 
   // Load read notices from user profile or local storage fallback
   useEffect(() => {
@@ -223,10 +301,19 @@ const SmartNoticeBoard = () => {
 
         saveReadState(next);
 
+        // Optimistically update local stats and loaded list
+        setStats((prev) => ({
+          ...prev,
+          unread: Math.max(0, prev.unread - 1),
+        }));
+        if (showOnlyUnread) {
+          setLoadedNotices((prev) => prev.filter((n) => n.id !== noticeId));
+        }
+
         return next;
       });
     },
-    [saveReadState]
+    [saveReadState, showOnlyUnread]
   );
 
   // Mark as unread
@@ -238,6 +325,12 @@ const SmartNoticeBoard = () => {
         next.delete(noticeId);
 
         saveReadState(next);
+
+        // Optimistically update local stats
+        setStats((prev) => ({
+          ...prev,
+          unread: prev.unread + 1,
+        }));
 
         return next;
       });
@@ -276,18 +369,6 @@ const SmartNoticeBoard = () => {
     return new Date(date).toLocaleDateString();
   }, []);
 
-  // Available tags
-  const availableTags = useMemo(() => {
-    const tags = notices.flatMap((notice) => notice?.tags || []);
-
-    return [...new Set(tags)];
-  }, [notices]);
-
-  // Suggestions
-  const searchOptions = useMemo(() => {
-    return notices.map((notice) => notice?.title || "");
-  }, [notices]);
-
   // Active filters count
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -311,133 +392,13 @@ const SmartNoticeBoard = () => {
     showOnlyUnread,
   ]);
 
-  // Reset page on filter change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    searchQuery,
-    selectedCategory,
-    selectedPriority,
-    selectedTags,
-    dateRange,
-    showOnlyUnread,
-    sortOrder,
-  ]);
-
-  // Filter notices
-  const filteredNotices = useMemo(() => {
-    const queryText = debouncedQuery.trim().toLowerCase();
-
-    const now = Date.now();
-
-    return notices
-      .filter((notice) => {
-        const haystack = `
-          ${notice?.title || ""}
-          ${notice?.content || ""}
-          ${notice?.category || ""}
-          ${(notice?.tags || []).join(" ")}
-        `.toLowerCase();
-
-        // Search
-        if (queryText && !haystack.includes(queryText)) {
-          return false;
-        }
-
-        // Category
-        if (
-          selectedCategory !== "all" &&
-          notice?.category !== selectedCategory
-        ) {
-          return false;
-        }
-
-        // Priority
-        if (
-          selectedPriority !== "all" &&
-          notice?.priority !== selectedPriority
-        ) {
-          return false;
-        }
-
-        // Tags
-        if (
-          selectedTags.length > 0 &&
-          !selectedTags.every((tag) => notice?.tags?.includes(tag))
-        ) {
-          return false;
-        }
-
-        // Unread
-        if (showOnlyUnread && readNotices.has(notice.id)) {
-          return false;
-        }
-
-        // Date range
-        const noticeTime = new Date(notice?.createdAt).getTime();
-
-        if (dateRange === "today") {
-          return now - noticeTime <= 24 * 60 * 60 * 1000;
-        }
-
-        if (dateRange === "7d") {
-          return now - noticeTime <= 7 * 24 * 60 * 60 * 1000;
-        }
-
-        if (dateRange === "30d") {
-          return now - noticeTime <= 30 * 24 * 60 * 60 * 1000;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        // Pinned first
-        if (a.isPinned !== b.isPinned) {
-          return a.isPinned ? -1 : 1;
-        }
-
-        // Sort order
-        if (sortOrder === "oldest") {
-          return (
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
-        }
-
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      });
-  }, [
-    notices,
-    debouncedQuery,
-    selectedCategory,
-    selectedPriority,
-    selectedTags,
-    dateRange,
-    sortOrder,
-    showOnlyUnread,
-    readNotices,
-  ]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredNotices.length / itemsPerPage);
-
-  const safeCurrentPage =
-    currentPage > totalPages && totalPages > 0 ? totalPages : currentPage;
-
-  const indexOfLastItem = safeCurrentPage * itemsPerPage;
-
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-
-  const paginatedNotices = filteredNotices.slice(
-    indexOfFirstItem,
-    indexOfLastItem
-  );
-
-  // Unread count
-  const unreadCount = useMemo(() => {
-    return notices.filter((notice) => !readNotices.has(notice.id)).length;
-  }, [notices, readNotices]);
+  // Load More handler
+  const handleLoadMore = useCallback(() => {
+    if (isFetching || !hasMore) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchNotices(nextPage, true);
+  }, [page, isFetching, hasMore, fetchNotices]);
 
   // Clear filters
   const handleClearFilters = useCallback(() => {
@@ -448,7 +409,7 @@ const SmartNoticeBoard = () => {
     setDateRange("all");
     setSortOrder("newest");
     setShowOnlyUnread(false);
-    setCurrentPage(1);
+    setPage(1);
   }, []);
 
   // Toggle tags
@@ -500,7 +461,7 @@ const SmartNoticeBoard = () => {
               </p>
             </div>
             {/* ── CREATE NOTICE BUTTON ────────── */}
-            <div className="fixed bottom-8 right-8">
+            <div className="fixed bottom-8 right-8 text-black">
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-full font-bold shadow-xl transition-all"
@@ -516,7 +477,7 @@ const SmartNoticeBoard = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 text-white"
                 >
                   <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-4">
                     <h3 className="text-xl font-bold text-white">
@@ -570,22 +531,22 @@ const SmartNoticeBoard = () => {
               {[
                 {
                   label: "Total",
-                  value: notices.length,
+                  value: stats.total,
                   color: "text-white",
                 },
                 {
                   label: "Unread",
-                  value: unreadCount,
+                  value: stats.unread,
                   color: "text-emerald-400",
                 },
                 {
                   label: "Pinned",
-                  value: notices.filter((n) => n.isPinned).length,
+                  value: stats.pinned,
                   color: "text-yellow-400",
                 },
                 {
                   label: "High",
-                  value: notices.filter((n) => n.priority === "high").length,
+                  value: stats.high,
                   color: "text-red-400",
                 },
               ].map((stat) => (
@@ -598,7 +559,7 @@ const SmartNoticeBoard = () => {
                   </p>
 
                   <p className="mt-2 text-xs uppercase tracking-widest text-slate-400">
-                    {stat.label}
+                     {stat.label}
                   </p>
                 </div>
               ))}
@@ -691,7 +652,7 @@ const SmartNoticeBoard = () => {
                 value={searchQuery}
                 onSearchChange={setSearchQuery}
                 onClearFilters={handleClearFilters}
-                resultsCount={filteredNotices.length}
+                resultsCount={totalCount}
                 activeFilterCount={activeFilterCount}
                 suggestions={searchOptions}
                 onSuggestionSelect={handleSuggestionSelect}
@@ -717,7 +678,7 @@ const SmartNoticeBoard = () => {
 
             {/* Notices */}
             <main>
-              {filteredNotices.length === 0 ? (
+              {loadedNotices.length === 0 ? (
                 <EmptyNoticeState
                   query={searchQuery}
                   onResetFilters={handleClearFilters}
@@ -726,7 +687,7 @@ const SmartNoticeBoard = () => {
                 <>
                   <motion.div layout className="grid gap-5 lg:grid-cols-2">
                     <AnimatePresence>
-                      {paginatedNotices.map((notice) => {
+                      {loadedNotices.map((notice) => {
                         const isRead = readNotices.has(notice.id);
 
                         return (
@@ -766,48 +727,32 @@ const SmartNoticeBoard = () => {
                     </AnimatePresence>
                   </motion.div>
 
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="mt-8 flex items-center justify-between border-t border-slate-800 pt-6">
-                      <p className="text-sm text-slate-400">
-                        Showing{" "}
-                        <span className="font-semibold text-white">
-                          {indexOfFirstItem + 1}
-                        </span>{" "}
-                        to{" "}
-                        <span className="font-semibold text-white">
-                          {Math.min(indexOfLastItem, filteredNotices.length)}
-                        </span>{" "}
-                        of{" "}
-                        <span className="font-semibold text-white">
-                          {filteredNotices.length}
-                        </span>{" "}
-                        notices
-                      </p>
+                  {/* Pagination / Showing Status */}
+                  <div className="mt-8 flex flex-col items-center justify-between border-t border-slate-800 pt-6 sm:flex-row gap-4">
+                    <p className="text-sm text-slate-400">
+                      Showing{" "}
+                      <span className="font-semibold text-white">
+                        {loadedNotices.length}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-semibold text-white">
+                        {totalCount}
+                      </span>{" "}
+                      notices
+                    </p>
 
+                    {hasMore && (
                       <div className="flex gap-3">
                         <button
-                          onClick={() =>
-                            setCurrentPage((p) => Math.max(p - 1, 1))
-                          }
-                          disabled={safeCurrentPage === 1}
-                          className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm font-medium transition-all hover:bg-slate-800 disabled:opacity-40"
+                          onClick={handleLoadMore}
+                          disabled={isFetching}
+                          className="rounded-xl border border-slate-700 bg-slate-800/50 px-6 py-3 text-sm font-medium transition-all hover:bg-slate-800 disabled:opacity-40"
                         >
-                          Previous
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            setCurrentPage((p) => Math.min(p + 1, totalPages))
-                          }
-                          disabled={safeCurrentPage === totalPages}
-                          className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm font-medium transition-all hover:bg-slate-800 disabled:opacity-40"
-                        >
-                          Next
+                          {isFetching ? "Loading..." : "Load More"}
                         </button>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </>
               )}
             </main>

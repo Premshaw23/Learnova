@@ -99,27 +99,51 @@ export function FirestoreProvider({ children }) {
   const isReady = !authLoading && !!uid;
 
   const instituteId = userProfile?.instituteId ?? null;
-  const noticesKey = `notices:role:${userRole}:institute:${instituteId}`;
-  const noticesQuery = useCallback(() => {
-    if (!isReady || !db || !userProfile || !instituteId) return null;
-    try {
-      return query(
-        collection(db, "notices"),
-        where("targetAudience", "array-contains", userRole),
-        where("instituteId", "==", instituteId),
-        orderBy("createdAt", "desc"),
-        limit(100)
-      );
-    } catch {
-      return null;
-    }
-  }, [isReady, userRole, userProfile, instituteId]);
 
-  const {
-    data: notices,
-    loading: noticesLoading,
-    error: noticesError,
-  } = usePooledCollection(noticesKey, noticesQuery, isReady);
+  const [notices, setNotices] = useState([]);
+  const [noticesLoading, setNoticesLoading] = useState(isReady);
+  const [noticesError, setNoticesError] = useState(null);
+
+  useEffect(() => {
+    if (!isReady || !user || !instituteId) {
+      setNoticesLoading(false);
+      return;
+    }
+
+    let active = true;
+    const loadNotices = async () => {
+      try {
+        setNoticesLoading(true);
+        const token = await user.getIdToken();
+        const response = await fetch(`/api/notices?limit=100`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch notices");
+        }
+        const resData = await response.json();
+        if (active && resData.success) {
+          setNotices(resData.data.notices);
+          setNoticesError(null);
+        }
+      } catch (err) {
+        if (active) {
+          setNoticesError(err);
+        }
+      } finally {
+        if (active) {
+          setNoticesLoading(false);
+        }
+      }
+    };
+
+    loadNotices();
+    return () => {
+      active = false;
+    };
+  }, [isReady, user, userRole, instituteId]);
 
   // ── Attendance ────────────────────────────────────────────────────────────────
   const attendanceKey = `attendance:uid:${uid}`;
