@@ -1,33 +1,10 @@
-import { z } from "zod";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { checkRateLimit } from "@/lib/rateLimit";
-
-const ALLOWED_TYPES = ["course", "quiz", "assignment"];
-
-const activitySchema = z.object({
-  title: z
-    .string({ required_error: "title is required" })
-    .min(1, "title cannot be empty")
-    .max(200, "title must be 200 characters or fewer")
-    .trim(),
-  type: z
-    .enum(ALLOWED_TYPES, {
-      errorMap: () => ({
-        message: `type must be one of: ${ALLOWED_TYPES.join(", ")}`,
-      }),
-    })
-    .default("course"),
-  progress: z
-    .number({ invalid_type_error: "progress must be a number" })
-    .int("progress must be an integer")
-    .min(0, "progress must be at least 0")
-    .max(100, "progress must be at most 100")
-    .default(0),
-});
+import { activitySchema, validateOrThrow } from "@/lib/validations";
 
 export const GET = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
@@ -60,15 +37,7 @@ export const POST = withErrorHandler(async (request) => {
     return jsonError("Too many requests. Please slow down.", 429);
   }
 
-  const body = await parseJSON(request, 1024);
-
-  const parsed = activitySchema.safeParse(body);
-  if (!parsed.success) {
-    const message = parsed.error.errors.map((e) => e.message).join("; ");
-    return jsonError(message, 400);
-  }
-
-  const { title, type, progress } = parsed.data;
+  const { title, type, progress } = await validateOrThrow(request, activitySchema, 1024);
 
   initFirebaseAdmin();
   const db = getFirestore();

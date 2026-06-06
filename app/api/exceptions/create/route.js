@@ -1,44 +1,12 @@
 import { connectDb } from "@/lib/mongodb";
 import { requireStudent } from "@/lib/rbac";
-import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
-import { ValidationError, AppError, ForbiddenError } from "@/lib/errors";
+import { AppError, ForbiddenError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { z } from "zod";
+import { exceptionCreateSchema, validateOrThrow } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
-
-const exceptionCreateSchema = z.object({
-  reason: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? "Reason is required"
-          : "Reason must be a string",
-    })
-    .trim()
-    .min(1, "Reason is required")
-    .max(200, "Reason must be under 200 characters"),
-  details: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? "Details are required"
-          : "Details must be a string",
-    })
-    .trim()
-    .min(1, "Details are required")
-    .max(1000, "Details must be under 1000 characters"),
-  date: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? "Date is required"
-          : "Date must be a string",
-    })
-    .trim()
-    .min(1, "Date is required"),
-});
 
 export const POST = withErrorHandler(async (request) => {
   const { payload: decodedToken, profile } = await requireStudent(request);
@@ -57,16 +25,7 @@ export const POST = withErrorHandler(async (request) => {
   }
   const userInstituteId = profile.instituteId;
 
-  const body = await parseJSON(request, 1024 * 10);
-
-  const validation = exceptionCreateSchema.safeParse(body);
-  if (!validation.success) {
-    const firstError =
-      validation.error.issues?.[0]?.message || "Invalid request payload";
-    throw new ValidationError(firstError);
-  }
-
-  const { reason, details, date } = validation.data;
+  const { reason, details, date } = await validateOrThrow(request, exceptionCreateSchema, 1024 * 10);
 
   const db = await connectDb();
 

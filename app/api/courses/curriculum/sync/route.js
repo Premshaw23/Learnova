@@ -1,32 +1,11 @@
-import { z } from "zod";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
-import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
-import { ValidationError, ForbiddenError } from "@/lib/errors";
+import { ForbiddenError } from "@/lib/errors";
+import { curriculumSyncSchema, validateOrThrow } from "@/lib/validations";
 
 const MAX_PAYLOAD_BYTES = 1024 * 500;
-
-const lessonSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(1, "Lesson title is required").max(200),
-  duration: z.string().max(50).optional(),
-  type: z.string().max(50).optional(),
-  completed: z.boolean().optional(),
-});
-
-const moduleSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(1, "Module title is required").max(200),
-  lessons: z.array(lessonSchema).max(100).optional().default([]),
-});
-
-const curriculumSyncSchema = z
-  .object({
-    courseId: z.string().min(1, "Course ID is required").max(100),
-    modules: z.array(moduleSchema).max(50, "Too many modules (max 50)"),
-  })
-  .strict();
 
 /**
  * POST /api/courses/curriculum/sync — persists a validated curriculum structure to MongoDB.
@@ -34,15 +13,7 @@ const curriculumSyncSchema = z
 export const POST = withErrorHandler(async (request) => {
   const { payload, profile } = await requireRole(request, ["teacher", "admin"]);
 
-  const body = await parseJSON(request, MAX_PAYLOAD_BYTES);
-  const parsed = curriculumSyncSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ValidationError(
-      parsed.error.issues[0]?.message || "Invalid curriculum payload"
-    );
-  }
-
-  const { courseId, modules } = parsed.data;
+  const { courseId, modules } = await validateOrThrow(request, curriculumSyncSchema, MAX_PAYLOAD_BYTES);
 
   let isDbPersisted = false;
 

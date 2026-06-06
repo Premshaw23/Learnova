@@ -1,26 +1,15 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
-import { parseJSON, withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { z } from "zod";
+import { sessionSchema, validateOrThrow } from "@/lib/validations";
 
 const DEFAULT_DAYS_BACK = 7;
 const MAX_DAYS_BACK = 90;
 const MAX_SESSION_PAYLOAD_BYTES = 1024 * 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-const sessionSchema = z.object({
-  duration: z
-    .number({ message: "duration must be a number" })
-    .int("duration must be an integer")
-    .min(1, "duration must be at least 1 minute")
-    .max(480, "duration cannot exceed 8 hours"),
-  type: z.enum(["focus", "break"], {
-    message: "type must be either 'focus' or 'break'",
-  }),
-});
 
 function parseDateParam(value, fieldName) {
   const parsedDate = new Date(value);
@@ -83,16 +72,7 @@ export const POST = withErrorHandler(async (request) => {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  const body = await parseJSON(request, MAX_SESSION_PAYLOAD_BYTES);
-
-  const validation = sessionSchema.safeParse(body);
-  if (!validation.success) {
-    const firstError =
-      validation.error.issues?.[0]?.message || "Invalid request payload";
-    throw new ValidationError(firstError);
-  }
-
-  const { duration, type } = validation.data;
+  const { duration, type } = await validateOrThrow(request, sessionSchema, MAX_SESSION_PAYLOAD_BYTES);
   const now = new Date().toISOString();
 
   const db = await connectDb();

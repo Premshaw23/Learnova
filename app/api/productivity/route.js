@@ -1,46 +1,12 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
-import { parseJSON, withErrorHandler } from "@/lib/error-handler";
-import { ValidationError, AppError } from "@/lib/errors";
+import { withErrorHandler } from "@/lib/error-handler";
+import { AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { z } from "zod";
+import { productivityPostSchema, validateOrThrow } from "@/lib/validations";
 
-const MAX_ITEMS = 500;
-const MAX_AGENDA_DAYS = 60;
 const MAX_PRODUCTIVITY_PAYLOAD_BYTES = 1024 * 100;
-
-const taskSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  text: z.string().min(1),
-  done: z.boolean(),
-  priority: z.string().optional(),
-  createdAt: z.string().optional(),
-});
-
-const agendaItemSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  text: z.string().min(1),
-  label: z.string().optional(),
-  time: z.string().optional(),
-  timeMinutes: z.number().optional(),
-});
-
-const postSchema = z.object({
-  tasks: z
-    .array(taskSchema)
-    .max(MAX_ITEMS, `Tasks cannot exceed ${MAX_ITEMS} items`),
-  agendaItems: z
-    .record(
-      z.string(),
-      z
-        .array(agendaItemSchema)
-        .max(MAX_ITEMS, `Agenda items per day cannot exceed ${MAX_ITEMS}`)
-    )
-    .refine((record) => Object.keys(record).length <= MAX_AGENDA_DAYS, {
-      message: `Cannot sync more than ${MAX_AGENDA_DAYS} days of agenda items`,
-    }),
-});
 
 /**
  * GET /api/productivity
@@ -104,16 +70,7 @@ export const POST = withErrorHandler(async (request) => {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  const body = await parseJSON(request, MAX_PRODUCTIVITY_PAYLOAD_BYTES);
-
-  const validation = postSchema.safeParse(body);
-  if (!validation.success) {
-    const firstError =
-      validation.error.issues?.[0]?.message || "Invalid request payload";
-    throw new ValidationError(firstError);
-  }
-
-  const { tasks, agendaItems } = validation.data;
+  const { tasks, agendaItems } = await validateOrThrow(request, productivityPostSchema, MAX_PRODUCTIVITY_PAYLOAD_BYTES);
   const now = new Date().toISOString();
 
   const db = await connectDb();

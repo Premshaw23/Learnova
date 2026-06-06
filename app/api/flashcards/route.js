@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { requireRole } from "@/lib/rbac";
 import * as FlashcardModel from "@/lib/models/flashcardModel";
 import { checkRateLimit } from "@/lib/rateLimit";
-
-const createSchema = z.object({
-  front: z.string().min(1),
-  back: z.string().min(1),
-  origin: z.string().optional(),
-  courseId: z.string().optional(),
-  tags: z.array(z.string()).max(50).optional(),
-});
+import { createFlashcardSchema, validateOrThrow } from "@/lib/validations";
 
 export const GET = withErrorHandler(async (request) => {
   const { payload } = await requireRole(request, [
@@ -54,21 +46,15 @@ export const POST = withErrorHandler(async (request) => {
     );
   }
 
-  const body = await parseJSON(request, 1024 * 10);
-
-  const parsed = createSchema.safeParse(body);
-  if (!parsed.success) {
-    const first = parsed.error.issues?.[0]?.message || "Invalid payload";
-    throw new Error(first);
-  }
+  const data = await validateOrThrow(request, createFlashcardSchema, 1024 * 10);
 
   const card = {
     firebaseUid: payload.uid,
-    front: parsed.data.front,
-    back: parsed.data.back,
-    origin: parsed.data.origin || null,
-    courseId: parsed.data.courseId || null,
-    tags: parsed.data.tags || [],
+    front: data.front,
+    back: data.back,
+    origin: data.origin || null,
+    courseId: data.courseId || null,
+    tags: data.tags || [],
   };
 
   const created = await FlashcardModel.createFlashcard(card);

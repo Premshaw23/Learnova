@@ -2,33 +2,16 @@ import { NextResponse } from "next/server";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
-import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { withErrorHandler } from "@/lib/error-handler";
 import { getLocalDateKey } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { awardXp } from "@/lib/gamification-service";
 import { executeSaga } from "@/lib/transactionCoordinator";
 import { connectDb } from "@/lib/mongodb";
-import { z } from "zod";
+import { syncSchema, validateOrThrow } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
-
-const syncSchema = z.object({
-  records: z
-    .array(
-      z.object({
-        id: z.number().optional(), // IDB key
-        userId: z.string(),
-        studentName: z.string().optional(),
-        email: z.string().optional(),
-        confidenceScore: z.number().optional(),
-        queuedAt: z.number(),
-        date: z.string().optional(),
-      })
-    )
-    .min(1)
-    .max(100, "Too many records in a single sync batch"),
-});
 
 // Minimum face-match confidence required to record attendance.
 // Must stay in sync with the threshold enforced in app/api/attendance/record/route.js.
@@ -84,8 +67,7 @@ async function handleSync(request) {
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
-  const body = await parseJSON(request, 1024 * 100);
-  const { records } = syncSchema.parse(body);
+  const { records } = await validateOrThrow(request, syncSchema, 1024 * 100);
 
   initFirebaseAdmin();
   const db = getFirestore();
