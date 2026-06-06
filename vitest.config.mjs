@@ -16,6 +16,10 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.js"],
+    deps: {
+      interopDefault: true,
+      inline: ["bson", "mongodb", "undici"],
+    },
     coverage: {
       reporter: ["text", "json", "html"],
       exclude: [
@@ -37,3 +41,4 @@ export default defineConfig({
     },
   },
 });
+

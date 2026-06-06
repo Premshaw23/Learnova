@@ -31,6 +31,7 @@ import {
   History,
 } from "lucide-react";
 import { Navbar } from "./Navbar";
+import { dashboardContentOffsetClass } from "@/components/navigation";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
@@ -55,6 +56,11 @@ const AttendanceTrendsChart = dynamic(
 const EngagementChart = dynamic(
   () => import("@/components/charts/EngagementChart"),
   { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> }
+);
+
+const AdminAchievementDashboard = dynamic(
+  () => import("@/components/achievements/AdminAchievementDashboard"),
+  { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 
 const SuperAdminDashboard = () => {
@@ -1533,7 +1539,7 @@ const SuperAdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen p-6 space-y-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-16">
+    <div className={`min-h-screen p-6 space-y-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-16 ${dashboardContentOffsetClass}`}>
       {/* Premium Glassy Top Bar */}
       <Navbar />
       <div className="bg-gradient-to-r from-gray-900/80 via-blue-900/70 to-purple-900/80 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl px-6 py-4 mb-4">
@@ -1593,6 +1599,7 @@ const SuperAdminDashboard = () => {
         {[
           "overview",
           "institutes",
+          "achievements",
           "monitoring",
           "security",
           "sync reconciliation",
@@ -1617,6 +1624,7 @@ const SuperAdminDashboard = () => {
         <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
           {activeTab === "overview" && renderOverview()}
           {activeTab === "institutes" && renderInstitutes()}
+          {activeTab === "achievements" && <AdminAchievementDashboard />}
           {activeTab === "monitoring" && renderSystemMonitoring()}
           {activeTab === "security" && renderSecurityCenter()}
           {activeTab === "sync reconciliation" && renderSyncInspector()}

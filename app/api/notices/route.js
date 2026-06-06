@@ -52,9 +52,12 @@ async function publishNotice(request, validData) {
     console.error("Failed to sync notice to MongoDB:", mongoError);
   }
 
-  // Publish to Redis for SSE real-time stream
+  // Publish to Redis for real-time SSE delivery
   try {
-    await publishNoticeToRedis({ ...newNotice, _id: result.id });
+    await publishNoticeToRedis({
+      ...newNotice,
+      _id: result.id,
+    });
   } catch (redisError) {
     console.error("Failed to publish notice to Redis:", redisError);
   }

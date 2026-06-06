@@ -46,6 +46,9 @@ export default function RoleSelection({ onRoleSelect }) {
           <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
             Get started
           </span>
+          <span className="inline-flex items-center rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-600 dark:text-red-400">
+            Required
+          </span>
         </div>
         <h1 className="bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-600 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent dark:from-indigo-400 dark:via-violet-400 dark:to-pink-400 sm:text-5xl">
           Choose Your Role
@@ -53,6 +56,9 @@ export default function RoleSelection({ onRoleSelect }) {
         <p className="mx-auto mt-3 max-w-lg text-base text-muted-foreground">
           Select your portal to unlock your personalised Learnova dashboard and
           features.
+        </p>
+        <p className="mx-auto mt-2 max-w-lg text-sm font-medium text-muted-foreground">
+          Role selection is required before you can sign in or create an account.
         </p>
       </div>
 
