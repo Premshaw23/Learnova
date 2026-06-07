@@ -7,6 +7,7 @@ import { AppError } from "@/lib/errors";
 import { connectDb } from "@/lib/mongodb";
 import { publishNoticeToRedis } from "@/app/api/notices/stream/route";
 import { createNoticeSchema, withValidation } from "@/lib/validations";
+import { dispatchEvent } from "@/lib/webhook/dispatcher";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -58,6 +59,13 @@ async function publishNotice(request, validData) {
   } catch (redisError) {
     console.error("Failed to publish notice to Redis:", redisError);
   }
+
+  // Emit webhook event
+  await dispatchEvent("notice.posted", {
+    ...newNotice,
+    _id: result.id,
+    timestamp: new Date().toISOString()
+  });
 
   return NextResponse.json({
     success: true,

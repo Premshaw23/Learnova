@@ -4,6 +4,7 @@ import { authorizeCronRequest } from "@/lib/cronAuth";
 import { connectDb } from "@/lib/mongodb";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import { evaluateStudentAttendance } from "@/lib/attendanceUtils";
+import { dispatchEvent } from "@/lib/webhook/dispatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -150,6 +151,7 @@ export async function GET(request) {
 
     let notificationsToInsert = [];
     let warningLogsToInsert = [];
+    let webhookEventsToEmit = [];
     const emailsToSend = [];
     let totalWarnings = 0;
 
@@ -157,8 +159,15 @@ export async function GET(request) {
       if (notificationsToInsert.length === 0) return;
       await db.collection("notifications").insertMany(notificationsToInsert);
       await db.collection("warning_logs").insertMany(warningLogsToInsert);
+      
+      // Dispatch webhook events
+      for (const eventData of webhookEventsToEmit) {
+         dispatchEvent("warning.issued", eventData).catch(err => console.error("[Webhook Dispatcher] Non-blocking warning event error", err));
+      }
+
       notificationsToInsert = [];
       warningLogsToInsert = [];
+      webhookEventsToEmit = [];
     }
 
     // Fetch all students with an instituteId once
@@ -267,6 +276,15 @@ export async function GET(request) {
               });
             }
 
+            webhookEventsToEmit.push({
+              userId: uid,
+              name,
+              email,
+              percentage: evaluation.percentage,
+              threshold,
+              timestamp: now.toISOString()
+            });
+
             totalWarnings++;
           }
         }
@@ -278,8 +296,7 @@ export async function GET(request) {
     }
 
     if (notificationsToInsert.length > 0) {
-      await db.collection("notifications").insertMany(notificationsToInsert);
-      await db.collection("warning_logs").insertMany(warningLogsToInsert);
+      await flushNotifications();
     }
 
     await sendWarningEmails(emailsToSend);

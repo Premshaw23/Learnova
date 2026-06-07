@@ -15,6 +15,7 @@ import {
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import crypto from "crypto";
+import { dispatchEvent } from "@/lib/webhook/dispatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -335,6 +336,15 @@ export async function POST(req) {
     if (idempotencyKey) {
       await markIdempotent(idempotencyKey, resultPayload);
     }
+
+    // Emit webhook event
+    await dispatchEvent("import.completed", {
+      instituteId,
+      successfulImports,
+      failedImports: failedImports.length,
+      totalProcessed: students.length,
+      timestamp: new Date().toISOString()
+    });
 
     return NextResponse.json(resultPayload, { status: 200 });
   } catch (error) {

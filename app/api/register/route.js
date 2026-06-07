@@ -13,6 +13,7 @@ import {
   markIdempotent,
 } from "@/lib/transactionCoordinator";
 import { validateFaceDescriptor } from "@/lib/images/imagesService";
+import { dispatchEvent } from "@/lib/webhook/dispatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -337,6 +338,15 @@ export const POST = withErrorHandler(async (req) => {
   if (idempotencyKey) {
     await markIdempotent(idempotencyKey, resultPayload);
   }
+
+  // Emit webhook event
+  await dispatchEvent("user.created", {
+    userId: decodedToken.uid,
+    name: sanitizedName,
+    email,
+    rollNo: sanitizedRollNo,
+    timestamp: new Date().toISOString()
+  });
 
   return jsonSuccess(resultPayload, 201);
 });
