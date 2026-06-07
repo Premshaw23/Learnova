@@ -24,7 +24,6 @@ const CATEGORIES = [
   { id: "general", label: "General" },
   { id: "technical", label: "Technical" },
 ];
-
 // --- ADDED: MEMOIZATION WRAPPER ---
 const areEqual = (prevProps, nextProps) => {
   return (
@@ -51,7 +50,6 @@ const MemoizedNoticeCard = React.memo(({ notice, isRead, onToggleRead, onToggleP
   );
 }, areEqual);
 MemoizedNoticeCard.displayName = "MemoizedNoticeCard";
-// ----------------------------------
 
 const SmartNoticeBoard = () => {
   const { user, userProfile, loading: authLoading } = useAuth();
@@ -771,8 +769,6 @@ const SmartNoticeBoard = () => {
                   <motion.div
                     layout
                     className="grid gap-5 lg:grid-cols-2"
-                    // --- ADDED: VIRTUALIZATION BOUNDARY ---
-                    style={{ minHeight: `${Math.min(paginatedNotices.length * 180, 800)}px` }}
                   >
                     <AnimatePresence>
                       {paginatedNotices.map(
@@ -804,7 +800,7 @@ const SmartNoticeBoard = () => {
                                 duration: 0.3,
                               }}
                             >
-                              <NoticeCard
+                              <MemoizedNoticeCard
                                 notice={
                                   notice
                                 }
@@ -820,7 +816,6 @@ const SmartNoticeBoard = () => {
                                         notice.id
                                       )
                                 }
-                                onTogglePin={() => handleTogglePin(notice.id, notice.isPinned)}
                                 searchQuery={
                                   searchQuery
                                 }
