@@ -422,6 +422,14 @@ const ParentDashboard = () => {
     return "text-rose-500";
   };
 
+  const tabs = [
+    { id: "overview", label: "Overview", icon: Activity },
+    { id: "attendance", label: "Attendance", icon: Calendar },
+    { id: "academics", label: "Academics", icon: BookOpen },
+    { id: "achievements", label: "Achievements", icon: Award },
+    { id: "notices", label: "Notices", icon: Bell },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200">
       <Navbar />
@@ -561,7 +569,7 @@ const ParentDashboard = () => {
       {/* ── Tab Switcher Menu ── */}
       <div className="max-w-7xl mx-auto px-6 mb-8">
         <div className="flex items-center gap-2 border-b border-white/10 pb-2 flex-wrap">
-
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
