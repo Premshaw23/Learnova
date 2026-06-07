@@ -804,8 +804,7 @@ const SmartNoticeBoard = () => {
                                 duration: 0.3,
                               }}
                             >
-                              {/* --- CHANGED: SWAPPED COMPONENT --- */}
-                              <MemoizedNoticeCard
+                              <NoticeCard
                                 notice={
                                   notice
                                 }
