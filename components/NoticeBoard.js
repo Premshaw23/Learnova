@@ -800,7 +800,7 @@ const SmartNoticeBoard = () => {
                                 duration: 0.3,
                               }}
                             >
-                              <MemoizedNoticeCard
+                              <NoticeCard
                                 notice={
                                   notice
                                 }
