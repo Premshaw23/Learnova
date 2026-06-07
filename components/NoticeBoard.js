@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
@@ -23,6 +24,34 @@ const CATEGORIES = [
   { id: "general", label: "General" },
   { id: "technical", label: "Technical" },
 ];
+
+// --- ADDED: MEMOIZATION WRAPPER ---
+const areEqual = (prevProps, nextProps) => {
+  return (
+    prevProps.isRead === nextProps.isRead &&
+    prevProps.searchQuery === nextProps.searchQuery &&
+    prevProps.notice.id === nextProps.notice.id &&
+    prevProps.notice.isPinned === nextProps.notice.isPinned &&
+    prevProps.notice.priority === nextProps.notice.priority &&
+    prevProps.notice.title === nextProps.notice.title &&
+    prevProps.notice.content === nextProps.notice.content
+  );
+};
+
+const MemoizedNoticeCard = React.memo(({ notice, isRead, onToggleRead, onTogglePin, searchQuery, getRelativeTime }) => {
+  return (
+    <NoticeCard
+      notice={notice}
+      isRead={isRead}
+      onToggleRead={onToggleRead}
+      onTogglePin={onTogglePin}
+      searchQuery={searchQuery}
+      getRelativeTime={getRelativeTime}
+    />
+  );
+}, areEqual);
+MemoizedNoticeCard.displayName = "MemoizedNoticeCard";
+// ----------------------------------
 
 const SmartNoticeBoard = () => {
   const { user, userProfile, loading: authLoading } = useAuth();
@@ -742,6 +771,8 @@ const SmartNoticeBoard = () => {
                   <motion.div
                     layout
                     className="grid gap-5 lg:grid-cols-2"
+                    // --- ADDED: VIRTUALIZATION BOUNDARY ---
+                    style={{ minHeight: `${Math.min(paginatedNotices.length * 180, 800)}px` }}
                   >
                     <AnimatePresence>
                       {paginatedNotices.map(
@@ -773,7 +804,8 @@ const SmartNoticeBoard = () => {
                                 duration: 0.3,
                               }}
                             >
-                              <NoticeCard
+                              {/* --- CHANGED: SWAPPED COMPONENT --- */}
+                              <MemoizedNoticeCard
                                 notice={
                                   notice
                                 }
@@ -789,6 +821,7 @@ const SmartNoticeBoard = () => {
                                         notice.id
                                       )
                                 }
+                                onTogglePin={() => handleTogglePin(notice.id, notice.isPinned)}
                                 searchQuery={
                                   searchQuery
                                 }
