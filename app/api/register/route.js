@@ -13,6 +13,7 @@ import {
   markIdempotent,
 } from "@/lib/transactionCoordinator";
 import { validateFaceDescriptor } from "@/lib/images/imagesService";
+import { logAudit } from "@/lib/auditLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -337,6 +338,15 @@ export const POST = withErrorHandler(async (req) => {
   if (idempotencyKey) {
     await markIdempotent(idempotencyKey, resultPayload);
   }
+
+  await logAudit({
+    req,
+    actor: { uid: decodedToken.uid, email: decodedToken.email || 'unknown', role: decodedToken.role || 'student' },
+    action: "user.register",
+    target: { type: "user", id: decodedToken.uid },
+    details: { name: sanitizedName, email, rollNo: sanitizedRollNo },
+    success: true
+  });
 
   return jsonSuccess(resultPayload, 201);
 });

@@ -15,6 +15,7 @@ import {
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import crypto from "crypto";
+import { logAudit } from "@/lib/auditLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -335,6 +336,15 @@ export async function POST(req) {
     if (idempotencyKey) {
       await markIdempotent(idempotencyKey, resultPayload);
     }
+
+    await logAudit({
+      req,
+      actor: { uid: decodedToken.uid, email: decodedToken.email || 'unknown', role: decodedToken.role || 'institute' },
+      action: "user.bulk_import",
+      target: { type: "institute", id: instituteId },
+      details: { successfulImports, failedImportsCount: failedImports.length, totalProcessed: students.length },
+      success: true
+    });
 
     return NextResponse.json(resultPayload, { status: 200 });
   } catch (error) {

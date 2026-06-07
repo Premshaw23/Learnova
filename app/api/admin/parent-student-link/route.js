@@ -9,6 +9,7 @@ import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
 
 import { parentStudentLinkSchema, deleteParentStudentLinkSchema, withValidation } from "@/lib/validations";
+import { logAudit } from "@/lib/auditLogger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -192,6 +193,15 @@ export const POST = withErrorHandler(
       );
     }
 
+    await logAudit({
+      req: request,
+      actor: { uid: payload.uid, email: payload.email || 'unknown', role: payload.role || 'admin' },
+      action: "parent_student_link.create",
+      target: { type: "user", id: studentId },
+      details: { parentId, parentEmail, studentEmail, linkId },
+      success: true
+    });
+
     return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
   })
 );
@@ -270,6 +280,15 @@ export const DELETE = withErrorHandler(async (request) => {
       500
     );
   }
+
+  await logAudit({
+    req: request,
+    actor: { uid: payload.uid, email: payload.email || 'unknown', role: payload.role || 'admin' },
+    action: "parent_student_link.delete",
+    target: { type: "user", id: studentId },
+    details: { parentId, linkId },
+    success: true
+  });
 
   return jsonSuccess({ success: true }, 200);
 });
