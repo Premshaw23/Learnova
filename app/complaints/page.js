@@ -470,11 +470,13 @@ export default function ComplaintsPage() {
   return (
     <>
       {/* PERFECT CHROMATIC CANVAS WRAPPER ARCHITECTURE SYNCED WITH WELLNESS/FOCUS SUITE */}
-      <div className="fixed inset-0 -z-10 bg-slate-50 dark:bg-[#070913]">
-        <DarkVeil />
-        <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] bg-purple-500/10 dark:bg-purple-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+      <div className="fixed inset-0 -z-10 bg-white dark:bg-[#070913]">
+        <div className="hidden dark:block w-full h-full">
+          <DarkVeil />
+        </div>
+        <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] dark:bg-purple-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div
-          className="absolute bottom-[100px] right-[-100px] w-[600px] h-[600px] bg-blue-500/10 dark:bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none animate-pulse"
+          className="absolute bottom-[100px] right-[-100px] w-[600px] h-[600px] dark:bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none animate-pulse"
           style={{ animationDelay: "2s" }}
         />
       </div>
