@@ -235,7 +235,7 @@ function FAQAccordionItem({ question, answer, isOpen, onToggle }) {
       <button
         onClick={onToggle}
         className="w-full flex justify-between items-center p-5 md:p-6 text-left font-semibold text-black dark:text-zinc-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none"
-       aria-label="Action button">
+       aria-label={isOpen ? "Collapse FAQ answer" : "Expand FAQ answer"}>
         <span className="text-sm md:text-base leading-relaxed">{question}</span>
         <ChevronDown
           className={`w-5 h-5 text-purple-500 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}

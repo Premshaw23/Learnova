@@ -805,7 +805,7 @@ export default function Timetable({ role = "student" }) {
                 <button
                   onClick={handleCloseModal}
                   className="rounded-lg p-1.5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
-                 aria-label="Action button">
+                 aria-label="Close schedule modal">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -940,13 +940,13 @@ export default function Timetable({ role = "student" }) {
                     type="button"
                     onClick={handleCloseModal}
                     className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white hover:bg-white/10 transition cursor-pointer"
-                   aria-label="Action button">
+                   aria-label="Cancel schedule changes">
                     Cancel
                   </button>
                   <button
                     type="submit"
                     className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:brightness-110 text-sm font-semibold text-white shadow-lg transition flex items-center gap-1.5 cursor-pointer"
-                   aria-label="Action button">
+                   aria-label={modalMode === "add" ? "Add class to schedule" : "Save schedule settings"}>
                     <Check className="w-4 h-4" />
                     {modalMode === "add" ? "Add to Schedule" : "Save Settings"}
                   </button>
@@ -1016,7 +1016,7 @@ export default function Timetable({ role = "student" }) {
                   type="button"
                   onClick={confirmDeleteClass}
                   className="px-5 py-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:brightness-110 text-sm font-semibold text-white shadow-lg transition cursor-pointer"
-                 aria-label="Action button">
+                 aria-label="Confirm delete class">
                   Confirm Delete
                 </button>
               </div>

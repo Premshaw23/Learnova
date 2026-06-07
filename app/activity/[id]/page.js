@@ -565,7 +565,7 @@ export default function ActivityGame() {
                 onClick={handleRetry}
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 border border-zinc-700/50 text-zinc-100 font-bold transition-all duration-200"
-               aria-label="Action button">
+               aria-label="Retry quiz">
                 <RotateCcw className="w-4 h-4" />
                 Retry Quiz
               </button>

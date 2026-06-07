@@ -267,7 +267,7 @@ export default function AuthForm({
                 type="button"
                 onClick={onForgotPassword}
                 className="text-sm text-indigo-400 hover:text-indigo-300 font-medium"
-               aria-label="Action button">
+               aria-label="Request password reset">
                 Forgot password?
               </button>
             </div>
@@ -339,7 +339,7 @@ export default function AuthForm({
             <button
               onClick={onToggleLogin}
               className="text-indigo-400 hover:text-indigo-300 font-semibold"
-             aria-label="Action button">
+             aria-label={isLogin ? "Switch to sign up" : "Switch to sign in"}>
               {isLogin ? "Sign Up" : "Sign In"}
             </button>
           </p>

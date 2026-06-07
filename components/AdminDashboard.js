@@ -753,11 +753,11 @@ const SuperAdminDashboard = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Institute Management</h2>
         <div className="flex gap-3">
-          <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center gap-2 shadow-lg transition-all duration-300" aria-label="Action button">
+          <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center gap-2 shadow-lg transition-all duration-300" aria-label="Add new institute">
             <Building2 className="w-4 h-4" />
             Add New Institute
           </button>
-          <button className="px-4 py-2 bg-gray-800/60 text-gray-300 rounded-xl hover:bg-gray-700/60 flex items-center gap-2 border border-gray-600/40 transition-all duration-300" aria-label="Action button">
+          <button className="px-4 py-2 bg-gray-800/60 text-gray-300 rounded-xl hover:bg-gray-700/60 flex items-center gap-2 border border-gray-600/40 transition-all duration-300" aria-label="Export report">
             <Download className="w-4 h-4" />
             Export Report
           </button>
@@ -1132,7 +1132,7 @@ const SuperAdminDashboard = () => {
                 15 attempts outside geofence radius
               </div>
             </div>
-            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors" aria-label="Action button">
+            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors" aria-label="Investigate Delhi Institute">
               Investigate
             </button>
           </div>
@@ -1145,7 +1145,7 @@ const SuperAdminDashboard = () => {
                 GPS spoofing detected - 3 devices
               </div>
             </div>
-            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors" aria-label="Action button">
+            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors" aria-label="Investigate Mumbai Institute">
               Investigate
             </button>
           </div>
@@ -1192,7 +1192,7 @@ const SuperAdminDashboard = () => {
                 </td>
                 <td className="px-4 py-2 text-gray-300">2025-09-20</td>
                 <td className="px-4 py-2">
-                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors" aria-label="Action button">
+                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors" aria-label="View compliance report for AUD-1024">
                     View Report
                   </button>
                 </td>
@@ -1207,7 +1207,7 @@ const SuperAdminDashboard = () => {
                 </td>
                 <td className="px-4 py-2 text-gray-300">2025-09-21</td>
                 <td className="px-4 py-2">
-                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors" aria-label="Action button">
+                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors" aria-label="View compliance report for AUD-1025">
                     View Report
                   </button>
                 </td>
@@ -1291,14 +1291,14 @@ const SuperAdminDashboard = () => {
             <button
               onClick={handleForceSync}
               className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2 shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all duration-300"
-             aria-label="Action button">
+             aria-label="Sync now">
               <Play className="w-4 h-4" />
               Sync Now
             </button>
             <button
               onClick={handleClearOutbox}
               className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 flex items-center gap-2 border border-red-500/30 transition-all duration-300"
-             aria-label="Action button">
+             aria-label="Clear sync queue">
               <Trash2 className="w-4 h-4" />
               Clear Queue
             </button>
