@@ -1,4 +1,5 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 
 import { connectDb } from "@/lib/mongodb";
