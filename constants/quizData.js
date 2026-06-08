@@ -153,7 +153,8 @@ export const quizDatabase = {
         ],
         answer: 2, // She has a cat.
       },
-    ], 
+    ],
+  },
 };
 
 /**
