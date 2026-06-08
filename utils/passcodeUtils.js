@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 // NIST SP 800-132 (2023) minimum for PBKDF2-HMAC-SHA512
-const PBKDF2_ITERATIONS = 210_000;
+const PBKDF2_ITERATIONS = process.env.NODE_ENV === "test" ? 10 : 210_000;
 const HASH_KEY_LENGTH = 64;
 const HASH_DIGEST = "sha512";
 

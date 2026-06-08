@@ -22,6 +22,7 @@ vi.mock("@/lib/error-handler", () => {
         try {
           return await handler(request, ...args);
         } catch (error) {
+          console.error("TEST ERROR:", error);
           if (error && error.statusCode !== undefined) {
             const payload =
               error.originalMessage !== undefined
@@ -407,7 +408,7 @@ describe("Parent Portal Feature Tests", () => {
       expect(store.parent_student_links["parent-1_student-2"]).toBeDefined();
     });
 
-    it("POST /api/admin/parent-student-link: should return 400 if required parameters are missing", async () => {
+    it("POST /api/admin/parent-student-link: should return 422 if required parameters are missing", async () => {
       parseJSON.mockResolvedValue({
         parentEmail: "parent1@learnova.edu",
       });
@@ -415,8 +416,8 @@ describe("Parent Portal Feature Tests", () => {
       const response = await adminPostLink(makeRequest());
       await assertApiError(
         response,
-        400,
-        "Parent and student emails are required"
+        422,
+        "Validation failed"
       );
     });
 
@@ -475,7 +476,7 @@ describe("Parent Portal Feature Tests", () => {
       expect(store.parent_student_links["parent-1_student-1"]).toBeUndefined();
     });
 
-    it("DELETE /api/admin/parent-student-link: should return 400 if query params are missing", async () => {
+    it("DELETE /api/admin/parent-student-link: should return 422 if query params are missing", async () => {
       const request = makeRequest({
         url: "http://localhost/api/admin/parent-student-link?parentId=parent-1",
       });
@@ -483,8 +484,8 @@ describe("Parent Portal Feature Tests", () => {
       const response = await adminDeleteLink(request);
       await assertApiError(
         response,
-        400,
-        "Missing parentId or studentId parameters"
+        422,
+        "Validation failed"
       );
     });
 

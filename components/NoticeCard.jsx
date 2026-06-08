@@ -13,6 +13,7 @@ import {
 import { jsPDF } from "jspdf";
 import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 
 const priorityStyles = {
   high: "bg-red-500/10 text-red-200 border border-red-500/30",
@@ -124,8 +125,6 @@ const createPdfDownload = (notice) => {
   doc.setTextColor(100, 116, 139); // Slate-500
 
   const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
-  const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-  const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const dateStr = createdAt.toLocaleDateString([], {
     month: "short",
     day: "numeric",

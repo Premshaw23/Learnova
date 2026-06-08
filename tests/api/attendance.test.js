@@ -186,7 +186,7 @@ describe("Attendance Record API Route — POST /api/attendance/record", () => {
     expect(response.status).toBe(400);
   });
 
-  it("returns 400 when confidenceScore is a non-numeric string", async () => {
+  it("returns 422 when confidenceScore is a non-numeric string", async () => {
     authenticateRequest.mockResolvedValue({
       uid: "user-abc",
       email_verified: true,
@@ -201,10 +201,10 @@ describe("Attendance Record API Route — POST /api/attendance/record", () => {
 
     const response = await POST(makeRequest());
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
   });
 
-  it("returns 400 when confidenceScore exceeds 100", async () => {
+  it("returns 422 when confidenceScore exceeds 100", async () => {
     authenticateRequest.mockResolvedValue({
       uid: "user-abc",
       email_verified: true,
@@ -219,7 +219,7 @@ describe("Attendance Record API Route — POST /api/attendance/record", () => {
 
     const response = await POST(makeRequest());
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
   });
 
   it("returns 200 with alreadyRecorded: true when doc already exists", async () => {

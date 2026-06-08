@@ -48,7 +48,7 @@ describe("MoodTracker Component", () => {
 
     // By default, "happy" is the active mood.
     // Let's verify that the "Selected mood" badge is rendered exactly once.
-    const badges = screen.getAllByText("Selected mood");
+    const badges = screen.getAllByText("Selected");
     expect(badges).toHaveLength(1);
   });
 
@@ -60,7 +60,7 @@ describe("MoodTracker Component", () => {
     fireEvent.click(calmButton);
 
     // Verify that the "Selected mood" badge is still rendered exactly once on the page
-    const badges = screen.getAllByText("Selected mood");
+    const badges = screen.getAllByText("Selected");
     expect(badges).toHaveLength(1);
   });
 });

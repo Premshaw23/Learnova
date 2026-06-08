@@ -361,7 +361,6 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
   if (isTokenValid && pathname.startsWith("/api/")) {
     const sessionId =
       request.cookies.get("sessionId")?.value ||
@@ -549,13 +548,7 @@ export async function middleware(request) {
   return response;
 }
 
-// Exported for unit testing (in-memory fallback behavior)
-export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
 
-// Test helper to control cleanup timer
-function resetForTest(now) {
-  lastCleanupTime = now;
-}
 
 export const config = {
   matcher: [

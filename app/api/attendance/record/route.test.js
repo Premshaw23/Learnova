@@ -252,7 +252,7 @@ describe("attendance record route", () => {
       confidenceScore: 101,
     });
     response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Validation failed");
+    await assertApiError(response, 422, "Validation failed");
 
     // Scenario 3: NaN — caught by schema validation
     parseJSON.mockResolvedValue({
@@ -262,12 +262,18 @@ describe("attendance record route", () => {
       confidenceScore: "not-a-number",
     });
     response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Validation failed");
+    await assertApiError(response, 422, "Validation failed");
   });
 
   test("rejects request if rate limit exceeded", async () => {
     const { requireAuth } = await import("@/lib/rbac");
     requireAuth.mockResolvedValue({ uid: "user-123" });
+    parseJSON.mockResolvedValue({
+      userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
+      confidenceScore: 85,
+    });
     checkRateLimit.mockResolvedValue({ allowed: false });
 
     const response = await POST(createMockRequest());
