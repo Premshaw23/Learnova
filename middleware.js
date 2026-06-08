@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { Redis } from "@upstash/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
+import getApiRouteRule from "@/lib/rbac-policy";
 
 let redisClient;
 
@@ -60,12 +61,95 @@ const AUTH_RATE_LIMITED_PATHS = [
   "/api/auth/verify-otp",
 ];
 
-const PUBLIC_API_PATHS = [
-  "/api/auth/csrf",
-  "/api/auth/reset-password",
-  "/api/health",
-];
 const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
+
+function isAuthRoute(pathname) {
+  return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
+}
+
+async function rateLimit(ip, pathname, request) {
+  const cookies = typeof request.cookies?.get === "function" ? request.cookies : { get: () => undefined };
+  const sessionFingerprint = cookies.get("__Secure-next-auth.session-token")?.value
+    || cookies.get("next-auth.session-token")?.value
+    || cookies.get("authToken")?.value
+    || "";
+  const key = `ratelimit:auth:${ip}_${pathname}_${sessionFingerprint.slice(0, 16)}`;
+  const limit = RATE_LIMIT_MAX;
+  const windowMs = RATE_LIMIT_WINDOW_MS;
+
+  const hasRedis =
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (hasRedis) {
+    try {
+      const redis = getRedis();
+      const now = Date.now();
+      const windowStart = now - windowMs;
+
+      const multi = redis.multi();
+      multi.zremrangebyscore(key, 0, windowStart);
+      multi.zadd(key, { score: now, member: `${now}-${Math.random()}` });
+      multi.zcard(key);
+      multi.expire(key, Math.ceil(windowMs / 1000));
+      const [, , count] = await multi.exec();
+
+      const current = Number(count);
+      if (current > limit) {
+        const oldest = await redis.zrange(key, 0, 0, { withScores: true });
+        const resetTime = oldest.length >= 2 ? Number(oldest[1]) + windowMs : now + windowMs;
+        const retryAfter = Math.ceil((resetTime - now) / 1000);
+        return { allowed: false, remaining: 0, retryAfter };
+      }
+
+      return { allowed: true, remaining: limit - current };
+    } catch (err) {
+      console.error("[rate-limit] Upstash Redis error — denying request:", err);
+      return { allowed: false, remaining: 0, retryAfter: Math.ceil(windowMs / 1000) };
+    }
+  }
+
+  // Development-only in-memory fallback
+  const entry = devRateLimitMap.get(key);
+  const now = Date.now();
+
+  if (!entry || now > entry.resetTime) {
+    devRateLimitMap.set(key, { count: 1, resetTime: now + windowMs });
+    return { allowed: true, remaining: limit - 1 };
+  }
+
+  if (entry.count >= limit) {
+    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
+    return { allowed: false, remaining: 0, retryAfter };
+  }
+
+  entry.count += 1;
+  return { allowed: true, remaining: limit - entry.count };
+}
+
+// Periodically clean up expired entries to prevent unbounded memory growth
+// This runs on every middleware invocation but only cleans every 5 minutes
+let lastCleanupTime = 0;
+
+function cleanupRateLimitMap() {
+  try {
+    const now = Date.now();
+
+    if (now - lastCleanupTime < 5 * 60 * 1000) return;
+
+    lastCleanupTime = now;
+
+    if (devRateLimitMap.size === 0) return;
+
+    for (const [key, entry] of devRateLimitMap.entries()) {
+      if (now > entry.resetTime) {
+        devRateLimitMap.delete(key);
+      }
+    }
+  } catch {
+    // Cleanup failure must never crash the middleware
+  }
+}
+
 // ─── CSP ──────────────────────────────────────────────────────────────────────
 
 function buildPageCsp() {
@@ -284,6 +368,40 @@ async function verifyIdToken(token) {
   }
 }
 
+// ─── RBAC enforcement ────────────────────────────────────────────────────────
+
+function enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole) {
+  const rule = getApiRouteRule(pathname);
+
+  if (!rule) {
+    // Not an API route — no RBAC enforcement
+    return null;
+  }
+
+  if (rule.public) {
+    return null;
+  }
+
+  if (!isTokenValid) {
+    return { error: "Unauthorized", status: 401 };
+  }
+
+  if (!isEmailVerified) {
+    return { error: "Forbidden: Email not verified", status: 403 };
+  }
+
+  if (rule.roles && rule.roles.length > 0) {
+    if (!userRole) {
+      return { error: "Forbidden: No role assigned", status: 403 };
+    }
+    if (!rule.roles.includes(userRole)) {
+      return { error: "Forbidden: Role mismatch", status: 403 };
+    }
+  }
+
+  return null;
+}
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export async function middleware(request) {
@@ -383,16 +501,18 @@ export async function middleware(request) {
     }
   }
 
-  const tokenFromCookie = request.cookies.get("authToken")?.value || null;
-  if (pathname.startsWith("/api/") && isUnsafeMethod && tokenFromCookie) {
-    try {
-      validateCsrfOriginAndReferer(request);
-      validateCsrfRequest(request);
-    } catch (error) {
-      return NextResponse.json(
-        { error: error.message || "Forbidden: invalid CSRF request" },
-        { status: error.statusCode || 403 }
-      );
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
+    const tokenFromCookie = request.cookies.get("authToken")?.value || null;
+    if (tokenFromCookie) {
+      try {
+        validateCsrfOriginAndReferer(request);
+        validateCsrfRequest(request);
+      } catch (error) {
+        return NextResponse.json(
+          { error: error.message || "Forbidden: invalid CSRF request" },
+          { status: error.statusCode || 403 }
+        );
+      }
     }
   }
 
@@ -435,21 +555,17 @@ export async function middleware(request) {
       (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
   );
 
-  if (
-    pathname.startsWith("/api/") &&
-    pathname !== "/api/check-groq-config" &&
-    !PUBLIC_API_PATHS.some((path) => pathname.startsWith(path))
-  ) {
-    if (!matchedDashboard) {
-      if (!isTokenValid) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (!isEmailVerified) {
-        return NextResponse.json(
-          { error: "Forbidden: Email not verified" },
-          { status: 403 }
-        );
-      }
+  // ── 2. RBAC enforcement for all API routes ──
+  // This runs before handler execution, enforcing the centralized policy
+  // defined in API_ROUTE_RULES. Fail-closed: unmatched paths default to
+  // authenticated access.
+  if (pathname.startsWith("/api/") && !matchedDashboard) {
+    const rbacResult = enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole);
+    if (rbacResult) {
+      return NextResponse.json(
+        { error: rbacResult.error },
+        { status: rbacResult.status }
+      );
     }
   }
 

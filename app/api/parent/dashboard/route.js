@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireParent } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireParent(request);
+  const decodedToken = await requireAuth(request);
   const parentId = decodedToken.uid;
 
   initFirebaseAdmin();

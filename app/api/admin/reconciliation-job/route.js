@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireAdmin } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { initializeFirebase, getAdminDb } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
  * Should be triggered by a cron job or manual admin action.
  */
 export const POST = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireAdmin(request);
+  const decodedToken = await requireAuth(request);
 
   initializeFirebase();
   const db = admin.firestore();

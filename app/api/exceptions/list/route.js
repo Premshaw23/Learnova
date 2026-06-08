@@ -1,7 +1,8 @@
 // app/api/exceptions/list/route.js
 
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
+import { getUserProfile } from "@/lib/firebase-admin";
 import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { AppError, ForbiddenError } from "@/lib/errors";
@@ -21,11 +22,8 @@ const ALLOWED_SORT_FIELDS = new Set([
 ]);
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken, profile } = await requireRole(request, [
-    "admin",
-    "teacher",
-    "student",
-  ]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `exceptions_list_${ip}_${decodedToken.uid}`

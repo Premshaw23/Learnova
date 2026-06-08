@@ -369,7 +369,11 @@ export default function ActivityPage() {
     try {
       // 2. Asynchronous Persistence
       const dbId = await logActivity(user.uid, newActivity);
-      await updateUserStat(user.uid, "Courses Enrolled", 1);
+      // Best-effort stats update; do not fail enrollment on stats errors
+      const statResult = await updateUserStat(user.uid, "Courses Enrolled", 1);
+      if (statResult?.success === false) {
+        console.warn("Stats update failed:", statResult.error);
+      }
 
       // 3. Seamless Reconciliation
       setActivities((prev) => [

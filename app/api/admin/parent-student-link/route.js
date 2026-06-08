@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireAdmin } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { connectDb } from "@/lib/mongodb";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const GET = withErrorHandler(async (request) => {
-  await requireAdmin(request);
+  await requireAuth(request);
   initFirebaseAdmin();
   const db = getFirestore();
 
@@ -75,7 +75,7 @@ export const GET = withErrorHandler(async (request) => {
 
 export const POST = withErrorHandler(
   withValidation(parentStudentLinkSchema, async (request, validatedData) => {
-    const { payload } = await requireAdmin(request);
+    const payload = await requireAuth(request);
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const rateLimitResult = await checkRateLimit(
       `link_creation_${ip}_${payload.uid}`
@@ -197,7 +197,7 @@ export const POST = withErrorHandler(
 );
 
 export const DELETE = withErrorHandler(async (request) => {
-  const { payload } = await requireAdmin(request);
+  const payload = await requireAuth(request);
   const url = new URL(request.url);
   
   const queryParams = {

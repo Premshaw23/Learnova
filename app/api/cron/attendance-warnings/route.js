@@ -66,7 +66,7 @@ async function sendWarningEmails(emailsToSend) {
 
   const sendEmail = async (emailData) => {
     try {
-      await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -78,8 +78,26 @@ async function sendWarningEmails(emailsToSend) {
           template_params: emailData,
         }),
       });
+
+      if (!response.ok) {
+        let responseBody = "";
+        try {
+          responseBody = await response.text();
+        } catch {
+          // Ignore body parse failures and log status-based diagnostics.
+        }
+
+        console.error(
+          `[attendance-warnings] EmailJS request failed for ${emailData.to_email} with status ${response.status} ${response.statusText}${
+            responseBody ? `: ${responseBody}` : ""
+          }`
+        );
+      }
     } catch (error) {
-      console.error(`Failed to send email to ${emailData.to_email}:`, error);
+      console.error(
+        `[attendance-warnings] Failed to send email to ${emailData.to_email}:`,
+        error
+      );
     }
   };
 

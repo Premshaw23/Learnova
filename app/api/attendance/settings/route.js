@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireAuth, requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { ValidationError, AppError } from "@/lib/errors";
-import { initializeFirebase } from "@/lib/firebase-admin";
+import { initializeFirebase, getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import admin from "firebase-admin";
 import { z } from "zod";
@@ -23,7 +23,8 @@ const postSchema = z.object({
 });
 
 export const GET = withErrorHandler(async (request) => {
-  const { profile } = await requireRole(request, ["teacher", "admin"]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
 
   initializeFirebase();
 
@@ -58,7 +59,8 @@ export const GET = withErrorHandler(async (request) => {
 });
 
 export const POST = withErrorHandler(async (request) => {
-  const { profile } = await requireRole(request, ["teacher", "admin"]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `attendance_settings_${ip}_${profile.uid}`
@@ -107,7 +109,8 @@ export const POST = withErrorHandler(async (request) => {
 });
 
 export const DELETE = withErrorHandler(async (request) => {
-  const { profile } = await requireRole(request, ["teacher", "admin"]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `attendance_settings_delete_${ip}_${profile.uid}`

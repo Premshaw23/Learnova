@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import * as FlashcardModel from "@/lib/models/flashcardModel";
 import { checkRateLimit } from "@/lib/rateLimit";
 
@@ -14,11 +14,7 @@ const createSchema = z.object({
 });
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload } = await requireRole(request, [
-    "student",
-    "teacher",
-    "admin",
-  ]);
+  const payload = await requireAuth(request);
   const url = new URL(request.url);
   const courseId = url.searchParams.get("courseId") || undefined;
   const cursor = url.searchParams.get("cursor") || undefined;
@@ -39,11 +35,7 @@ export const GET = withErrorHandler(async (request) => {
 });
 
 export const POST = withErrorHandler(async (request) => {
-  const { payload } = await requireRole(request, [
-    "student",
-    "teacher",
-    "admin",
-  ]);
+  const payload = await requireAuth(request);
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const limited = await checkRateLimit(`flashcards_post_${ip}_${payload.uid}`);

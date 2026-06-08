@@ -6,6 +6,7 @@ vi.mock("@/lib/error-handler", () => ({
 
 vi.mock("@/lib/rbac", () => ({
   requireAdmin: vi.fn(),
+  requireAuth: vi.fn(),
 }));
 
 vi.mock("@/lib/firebase-admin", () => ({
@@ -77,7 +78,7 @@ vi.mock("next/server", () => ({
 }));
 
 import { POST } from "../route";
-import { requireAdmin } from "@/lib/rbac";
+import { requireAdmin, requireAuth } from "@/lib/rbac";
 import { connectDb } from "@/lib/mongodb";
 import admin from "firebase-admin";
 
@@ -87,6 +88,7 @@ describe("POST /api/admin/reconcile", () => {
     requireAdmin.mockResolvedValue({
       payload: { role: "admin", uid: "admin-1" },
     });
+    requireAuth.mockResolvedValue({ uid: "admin-1", role: "admin" });
   });
 
   const createMockRequest = (body) => {

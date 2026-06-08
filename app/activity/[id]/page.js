@@ -314,8 +314,11 @@ export default function ActivityGame() {
       try {
         // Update database progress to 100%
         await updateActivityProgress(activityData.id, 100);
-        // Increment the student's Assignments Done stat by 1
-        await updateUserStat(user.uid, "Assignments Done", 1);
+        // Increment the student's Assignments Done stat by 1 (best-effort)
+        const statResult = await updateUserStat(user.uid, "Assignments Done", 1);
+        if (statResult?.success === false) {
+          console.warn("Stats update failed:", statResult.error);
+        }
         toast.success("Outstanding job! Activity completed successfully.");
       } catch (err) {
         console.error("Failed to sync progress to database:", err);

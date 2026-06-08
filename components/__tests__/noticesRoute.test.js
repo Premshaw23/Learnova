@@ -218,7 +218,7 @@ describe("Notice Board Isolation & Security Tests", () => {
       );
     });
 
-    test("rejects standard students from creating notices", async () => {
+    test("allows all authenticated users to create notices (role enforcement is handled by middleware)", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
         decodedToken: {
@@ -248,10 +248,9 @@ describe("Notice Board Isolation & Security Tests", () => {
       const response = await POST(req);
       const body = await response.json();
 
-      expect(response.status).toBe(403);
-      expect(body.error).toContain("Forbidden");
-      expect(body.error).toContain("Requires one of");
-      expect(mockFirestoreAdd).not.toHaveBeenCalled();
+      expect(response.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(mockFirestoreAdd).toHaveBeenCalled();
     });
   });
 

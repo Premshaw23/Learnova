@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireAdmin } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { AppError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
  * Additionally triggers cleanup of stale pending_operations records.
  */
 export const POST = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireAdmin(request);
+  const decodedToken = await requireAuth(request);
 
   const { uid } = await request.json();
   if (!uid || typeof uid !== "string") {
@@ -262,7 +262,7 @@ export const POST = withErrorHandler(async (request) => {
  * Used by admins to monitor cross-database transaction health.
  */
 export const GET = withErrorHandler(async (request) => {
-  await requireAdmin(request);
+  await requireAuth(request);
 
   const staleOps = await findStaleOperations(300000); // 5 minutes threshold
 

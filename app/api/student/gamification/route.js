@@ -1,5 +1,5 @@
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { NotFoundError, AppError } from "@/lib/errors";
 import { calculateLevel, calculateNextLevelXp } from "@/utils/gamification";
@@ -14,10 +14,7 @@ import { success } from "@/lib/api-response";
  * frontend never receives nulls.
  */
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, [
-    "student",
-    "admin",
-  ]);
+  const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `gamification_get_${ip}_${decodedToken.uid}`

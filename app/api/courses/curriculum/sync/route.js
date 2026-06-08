@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
+import { getUserProfile } from "@/lib/firebase-admin";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { ValidationError, ForbiddenError } from "@/lib/errors";
@@ -32,7 +33,8 @@ const curriculumSyncSchema = z
  * POST /api/courses/curriculum/sync — persists a validated curriculum structure to MongoDB.
  */
 export const POST = withErrorHandler(async (request) => {
-  const { payload, profile } = await requireRole(request, ["teacher", "admin"]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
 
   const body = await parseJSON(request, MAX_PAYLOAD_BYTES);
   const parsed = curriculumSyncSchema.safeParse(body);
@@ -53,7 +55,7 @@ export const POST = withErrorHandler(async (request) => {
       const existing = await db
         .collection("course_curriculums")
         .findOne({ courseId }, { projection: { ownerId: 1 } });
-      if (existing && existing.ownerId !== payload.uid) {
+      if (existing && existing.ownerId !== decodedToken.uid) {
         throw new ForbiddenError(
           "Forbidden: You do not own this course curriculum"
         );
@@ -82,7 +84,7 @@ export const POST = withErrorHandler(async (request) => {
           updatedAt: new Date(),
         },
         $setOnInsert: {
-          ownerId: payload.uid,
+          ownerId: decodedToken.uid,
           createdAt: new Date(),
         },
       },

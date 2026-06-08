@@ -125,11 +125,11 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
     );
   }
 
-  // Initialize their empty dashboard stats
-  try {
-    await initializeUserStats(user.uid);
-  } catch (error) {
-    console.log("Stats init failed", error);
+  // Initialize their empty dashboard stats (best-effort). Log failures
+  // instead of throwing so signup/profile creation remains smooth.
+  const initResult = await initializeUserStats(user.uid);
+  if (initResult?.success === false) {
+    console.warn("Stats init failed:", initResult.error);
   }
 
   return data.data.userProfile;
