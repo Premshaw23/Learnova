@@ -29,7 +29,9 @@ export default function ForgotPasswordModal({
   // Close on Escape
   useEffect(() => {
     if (!show) return;
-    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    const handler = (e) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [show, onClose]);
@@ -52,7 +54,9 @@ export default function ForgotPasswordModal({
       aria-modal="true"
       aria-labelledby="forgot-password-title"
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
-        show ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        show
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
       }`}
     >
       {/* Backdrop */}
@@ -67,7 +71,9 @@ export default function ForgotPasswordModal({
       {/* Modal */}
       <div
         className={`relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-black/10 dark:shadow-black/40 transition-all duration-300 ${
-          show ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"
+          show
+            ? "opacity-100 scale-100 translate-y-0"
+            : "opacity-0 scale-95 translate-y-4"
         }`}
       >
         {/* Subtle top accent */}
@@ -124,7 +130,7 @@ export default function ForgotPasswordModal({
                   setEmail(e.target.value);
                   setLocalError("");
                 }}
-                className={`w-full rounded-xl border bg-background py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 dark:focus:ring-indigo-400/30 dark:focus:border-indigo-400 ${
+                className={`w-full rounded-xl border bg-background py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400 ${
                   displayError
                     ? "border-destructive focus:ring-destructive/30 focus:border-destructive"
                     : "border-border"

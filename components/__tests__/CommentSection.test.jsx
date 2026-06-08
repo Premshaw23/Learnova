@@ -36,20 +36,22 @@ describe("CommentSection", () => {
     const { unmount } = render(React.createElement(CommentSection));
 
     await waitFor(() =>
-      expect(window.localStorage.getItem("comments_homepage")).toBeTruthy(),
+      expect(window.localStorage.getItem("comments_homepage")).toBeTruthy()
     );
 
-    const input = screen.getByPlaceholderText(/write a comment or share feedback/i);
+    const input = screen.getByPlaceholderText(
+      /write a comment or share feedback/i
+    );
     await user.type(input, "This should persist");
     fireEvent.submit(input.closest("form"));
 
     await waitFor(() => {
       expect(
-        JSON.parse(window.localStorage.getItem("comments_homepage")),
+        JSON.parse(window.localStorage.getItem("comments_homepage"))
       ).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ text: "This should persist" }),
-        ]),
+        ])
       );
     });
     expect(window.localStorage.getItem("comments_undefined")).toBeNull();

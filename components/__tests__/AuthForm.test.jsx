@@ -27,14 +27,18 @@ describe("AuthForm", () => {
   test("renders login form with correct heading", () => {
     render(<AuthForm {...defaultProps} />);
 
-    expect(screen.getByRole("heading", { name: "Welcome Back" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Welcome Back" })
+    ).toBeInTheDocument();
     expect(screen.getByText(/sign in to your student/i)).toBeInTheDocument();
   });
 
   test("renders signup form when isLogin is false", () => {
     render(<AuthForm {...defaultProps} isLogin={false} />);
 
-    expect(screen.getByRole("heading", { name: "Create Account" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Create Account" })
+    ).toBeInTheDocument();
     expect(screen.getByText(/create your student/i)).toBeInTheDocument();
   });
 
@@ -49,7 +53,9 @@ describe("AuthForm", () => {
   });
 
   test("shows institute name field when role is institute on signup", () => {
-    render(<AuthForm {...defaultProps} isLogin={false} selectedRole="institute" />);
+    render(
+      <AuthForm {...defaultProps} isLogin={false} selectedRole="institute" />
+    );
 
     expect(screen.getByText("Institute Name")).toBeInTheDocument();
   });
@@ -60,6 +66,12 @@ describe("AuthForm", () => {
 
     render(<AuthForm {...defaultProps} onSubmit={handleSubmit} />);
 
+    const emailInput = screen.getByPlaceholderText(/enter your email/i);
+    const passwordInput = screen.getByPlaceholderText(/enter your password/i);
+
+    await user.type(emailInput, "test@example.com");
+    await user.type(passwordInput, "Password123!");
+
     const submitBtn = screen.getByRole("button", { name: /sign in/i });
     await user.click(submitBtn);
 
@@ -69,14 +81,16 @@ describe("AuthForm", () => {
   test("shows loading state when isLoading is true", () => {
     render(<AuthForm {...defaultProps} isLoading={true} />);
 
-    expect(screen.getByText("Processing...")).toBeInTheDocument();
+    expect(screen.getByText("Logging in...")).toBeInTheDocument();
 
-    const submitBtn = screen.getByRole("button", { name: /processing/i });
+    const submitBtn = screen.getByRole("button", { name: /logging in/i });
     expect(submitBtn).toBeDisabled();
   });
 
   test("displays submit error when present in errors object", () => {
-    render(<AuthForm {...defaultProps} errors={{ submit: "Invalid credentials" }} />);
+    render(
+      <AuthForm {...defaultProps} errors={{ submit: "Invalid credentials" }} />
+    );
 
     expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
   });
@@ -105,7 +119,9 @@ describe("AuthForm", () => {
     const user = userEvent.setup();
     render(<AuthForm {...defaultProps} />);
 
-    const googleBtn = screen.getByRole("button", { name: /continue with google/i });
+    const googleBtn = screen.getByRole("button", {
+      name: /continue with google/i,
+    });
     await user.click(googleBtn);
 
     expect(defaultProps.onGoogleLogin).toHaveBeenCalledTimes(1);

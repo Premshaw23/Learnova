@@ -6,6 +6,10 @@ on:
   push:
     branches: [main, master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -14,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         node-version: [20.x, 22.x]
 
@@ -30,13 +35,57 @@ jobs:
       - name: 📚 Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: 🎨 Run Prettier Code Formatting Check
+        run: npm run format:check
+
+      - name: 🔧 Fix native bindings for Linux CI
+        run: |
+          set -euo pipefail
+          fix_native() {
+            local pkg="$1" dir="$2"
+            mkdir -p "$dir"
+            echo "Installing $pkg..."
+            TAR=$(npm pack "$pkg")
+            tar -xzf "$TAR" -C "$dir" --strip-components=1
+            rm -f "$TAR"
+          }
+
+          # Rollup
+          RV=$(node -p "require('./node_modules/rollup/package.json').version")
+          fix_native "@rollup/rollup-linux-x64-gnu@$RV" node_modules/@rollup/rollup-linux-x64-gnu
+
+          # Parcel Watcher
+          PV=$(node -p "require('./node_modules/@parcel/watcher/package.json').version")
+          fix_native "@parcel/watcher-linux-x64-glibc@$PV" node_modules/@parcel/watcher-linux-x64-glibc
+
+          # Lightning CSS (needed by next/font)
+          LV=$(node -p "require('./node_modules/lightningcss/package.json').version")
+          fix_native "lightningcss-linux-x64-gnu@$LV" node_modules/lightningcss-linux-x64-gnu
+          cp node_modules/lightningcss-linux-x64-gnu/*.node node_modules/lightningcss/
+
+          # Tailwind CSS Oxide
+          OV=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
+          fix_native "@tailwindcss/oxide-linux-x64-gnu@$OV" node_modules/@tailwindcss/oxide-linux-x64-gnu
+
+      - name: 🔍 Verify native bindings
+        run: |
+          missing=0
+          for dir in \
+            node_modules/@rollup/rollup-linux-x64-gnu \
+            node_modules/@parcel/watcher-linux-x64-glibc \
+            node_modules/lightningcss-linux-x64-gnu \
+            node_modules/@tailwindcss/oxide-linux-x64-gnu; do
+            if [ ! -d "$dir" ] || [ -z "$(ls "$dir"/*.node 2>/dev/null)" ]; then
+              echo "❌ Missing native binding: $dir"
+              missing=1
+            else
+              echo "  ✓ $(basename "$dir")"
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+
       - name: 🧪 Run unit tests
         run: npm test
-
-      - name: 🔧 Fix Tailwind CSS native binding
-        run: |
-          OXIDE_VER=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
-          npm install --no-save "@tailwindcss/oxide-linux-x64-gnu@${OXIDE_VER}"
 
       - name: ⚡ Cache Next.js build
         uses: actions/cache@v4

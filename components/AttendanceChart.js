@@ -56,28 +56,24 @@ export default function AttendanceChart() {
             overallAttendance >= 75
               ? "border-green-500"
               : overallAttendance >= 60
-              ? "border-yellow-500"
-              : "border-red-500"
+                ? "border-yellow-500"
+                : "border-red-500"
           }`}
         >
           {overallAttendance}%
         </div>
 
         <div>
-          <p className="text-white font-medium">
-            Overall Attendance
-          </p>
+          <p className="text-white font-medium">Overall Attendance</p>
 
           <p
-            className={`text-sm font-medium ${getTextColor(
-              overallAttendance
-            )}`}
+            className={`text-sm font-medium ${getTextColor(overallAttendance)}`}
           >
             {overallAttendance >= 75
               ? "✅ Good Standing"
               : overallAttendance >= 60
-              ? "⚠️ At Risk"
-              : "🔴 Critical"}
+                ? "⚠️ At Risk"
+                : "🔴 Critical"}
           </p>
         </div>
       </div>
@@ -103,10 +99,7 @@ export default function AttendanceChart() {
       {activeTab === "weekly" && (
         <div className="flex items-end justify-between gap-3 h-56">
           {weeklyData.map((item, index) => (
-            <div
-              key={index}
-              className="flex flex-col items-center flex-1"
-            >
+            <div key={index} className="flex flex-col items-center flex-1">
               <div className="relative w-full flex items-end h-44">
                 <div
                   className={`w-full rounded-t-xl transition-all duration-500 hover:scale-105 ${getColor(
@@ -118,9 +111,7 @@ export default function AttendanceChart() {
                 />
               </div>
 
-              <div className="mt-2 text-xs text-gray-400">
-                {item.day}
-              </div>
+              <div className="mt-2 text-xs text-gray-400">{item.day}</div>
 
               <div className="text-sm font-semibold text-white mt-1">
                 {item.attendance}%
@@ -136,13 +127,9 @@ export default function AttendanceChart() {
           {monthlyData.map((item, index) => (
             <div key={index}>
               <div className="flex justify-between mb-1">
-                <span className="text-white text-sm">
-                  {item.month}
-                </span>
+                <span className="text-white text-sm">{item.month}</span>
 
-                <span className="text-white text-sm">
-                  {item.attendance}%
-                </span>
+                <span className="text-white text-sm">{item.attendance}%</span>
               </div>
 
               <div className="w-full bg-white/10 rounded-full h-3">
@@ -164,13 +151,8 @@ export default function AttendanceChart() {
       {activeTab === "subjects" && (
         <div className="space-y-3">
           {subjectData.map((item) => (
-            <div
-              key={item.subject}
-              className="flex items-center space-x-3"
-            >
-              <p className="text-white/80 text-sm w-20">
-                {item.subject}
-              </p>
+            <div key={item.subject} className="flex items-center space-x-3">
+              <p className="text-white/80 text-sm w-20">{item.subject}</p>
 
               <div className="flex-1 bg-white/10 rounded-full h-3">
                 <div

@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireParent } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const GET = withErrorHandler(async (request, context) => {
-  const { payload: decodedToken } = await requireParent(request);
+  const decodedToken = await requireAuth(request);
   const parentId = decodedToken.uid;
   const { studentId } = context.params;
 
@@ -19,7 +19,10 @@ export const GET = withErrorHandler(async (request, context) => {
   const linkId = `${parentId}_${studentId}`;
   const linkDoc = await db.collection("parent_student_links").doc(linkId).get();
   if (!linkDoc.exists) {
-    return jsonError("Access Denied: You are not authorized to view this student's records.", 403);
+    return jsonError(
+      "Access Denied: You are not authorized to view this student's records.",
+      403
+    );
   }
 
   // 2. Fetch student profile to get instituteId

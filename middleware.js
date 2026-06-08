@@ -1,7 +1,24 @@
 import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { Redis } from "@upstash/redis";
-import { validateCsrfRequest } from "@/lib/csrf";
+import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
+import getApiRouteRule from "@/lib/rbac-policy";
+
+let redisClient;
+
+function getRedisClient() {
+  if (
+    !redisClient &&
+    process.env.UPSTASH_REDIS_REST_URL &&
+    process.env.UPSTASH_REDIS_REST_TOKEN
+  ) {
+    redisClient = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return redisClient;
+}
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -21,8 +38,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-let redisClient;
-
 function getRedis() {
   if (!redisClient) {
     redisClient = new Redis({
@@ -38,30 +53,25 @@ const devRateLimitMap = new Map();
 
 const AUTH_RATE_LIMITED_PATHS = [
   "/api/auth/login",
-  "/api/signup",
   "/api/auth/signup",
   "/api/auth/logout",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   "/api/auth/verify-email",
   "/api/auth/verify-otp",
-  "/api/auth/verify-email",
-  "/api/auth/logout",
 ];
 
-const PUBLIC_API_PATHS = [
-  "/api/auth/csrf",
-  "/api/auth/reset-password",
-];
+const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
 
 function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
 }
 
 async function rateLimit(ip, pathname, request) {
-  const sessionFingerprint = request.cookies.get("__Secure-next-auth.session-token")?.value
-    || request.cookies.get("next-auth.session-token")?.value
-    || request.cookies.get("authToken")?.value
+  const cookies = typeof request.cookies?.get === "function" ? request.cookies : { get: () => undefined };
+  const sessionFingerprint = cookies.get("__Secure-next-auth.session-token")?.value
+    || cookies.get("next-auth.session-token")?.value
+    || cookies.get("authToken")?.value
     || "";
   const key = `ratelimit:auth:${ip}_${pathname}_${sessionFingerprint.slice(0, 16)}`;
   const limit = RATE_LIMIT_MAX;
@@ -157,12 +167,12 @@ function buildPageCsp() {
   const cspDirectives = [
     "default-src 'self'",
     process.env.NODE_ENV === "development"
-  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com"
-  : "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com",
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com"
+      : "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com https://www.google-analytics.com",
-    "connect-src 'self' blob: https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.public.blob.vercel-storage.com https://api.emailjs.com",
+    "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com https://www.google-analytics.com https://avatars.githubusercontent.com",
+    "connect-src 'self' blob: https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.public.blob.vercel-storage.com https://api.emailjs.com https://api.github.com",
     "media-src 'self' blob:",
     "worker-src 'self' blob:",
     `frame-src ${Array.from(new Set(frameSrc)).join(" ")}`,
@@ -181,20 +191,13 @@ function buildPageCsp() {
 }
 
 // ─── Firebase Token Verification via jose ────────────────────────────────────
-// Uses the jose library for local JWT signature verification instead of
-// calling the external identitytoolkit REST API on every request.
-// This eliminates 100-300ms latency per request and removes the dependency
-// on Google's API availability.
+// Uses jose to verify Firebase ID tokens locally and falls back to
+// identitytoolkit REST lookup when needed.
 
 let cachedPublicKey = null;
 let publicKeyFetchTime = 0;
 const PUBLIC_KEY_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-/**
- * Fetches the Firebase public keys for JWT verification.
- * Caches the keys for 1 hour to avoid repeated HTTP calls.
- * Falls back to the identitytoolkit endpoint if key fetching fails.
- */
 async function getFirebasePublicKeys() {
   const now = Date.now();
   if (cachedPublicKey && now - publicKeyFetchTime < PUBLIC_KEY_CACHE_TTL_MS) {
@@ -203,15 +206,42 @@ async function getFirebasePublicKeys() {
 
   try {
     const response = await fetch(
-      "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+      "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
+      { next: { revalidate: 3600 } } // Cache for 1 hour using Next.js Data Cache
     );
-    if (!response.ok) throw new Error("Failed to fetch public keys");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch public keys");
+    }
+
     const data = await response.json();
     cachedPublicKey = data;
     publicKeyFetchTime = now;
     return data;
+  } catch (error) {
+    console.error("Failed to fetch Firebase public keys:", error);
+    return cachedPublicKey || {};
+  }
+}
+
+async function fetchUserRoleFromFirestore(uid, token) {
+  if (!FIREBASE_PROJECT_ID || !uid || !token) return null;
+
+  try {
+    const response = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${uid}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.fields?.role?.stringValue || null;
   } catch {
-    return cachedPublicKey;
+    return null;
   }
 }
 
@@ -221,23 +251,21 @@ async function getFirebasePublicKeys() {
  */
 async function verifyIdToken(token) {
   try {
-    // Quick expiry check based on the token's `exp` claim
     const getJwtExp = (t) => {
       try {
         const parts = t.split(".");
         if (parts.length < 2) return null;
         let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
         while (payload.length % 4) payload += "=";
-        let jsonStr;
-        if (typeof atob === "function") {
-          jsonStr = atob(payload);
-        } else if (typeof Buffer !== "undefined") {
-          jsonStr = Buffer.from(payload, "base64").toString("utf8");
-        } else {
-          return null;
-        }
-        const parsed = JSON.parse(jsonStr);
-        return { exp: typeof parsed.exp === "number" ? parsed.exp : null, kid: parsed.kid || null };
+        const decoded =
+          typeof atob === "function"
+            ? atob(payload)
+            : Buffer.from(payload, "base64").toString("utf8");
+        const parsed = JSON.parse(decoded);
+        return {
+          exp: typeof parsed.exp === "number" ? parsed.exp : null,
+          kid: parsed.kid || null,
+        };
       } catch {
         return null;
       }
@@ -253,21 +281,19 @@ async function verifyIdToken(token) {
 
     if (!FIREBASE_PROJECT_ID) return null;
 
-    // Try local verification with jose
     const publicKeys = await getFirebasePublicKeys();
     if (publicKeys && Object.keys(publicKeys).length > 0) {
       try {
-        // Decode header to get kid
         const headerParts = token.split(".");
         if (headerParts.length >= 1) {
-          let headerPayload = headerParts[0].replace(/-/g, "+").replace(/_/g, "/");
+          let headerPayload = headerParts[0]
+            .replace(/-/g, "+")
+            .replace(/_/g, "/");
           while (headerPayload.length % 4) headerPayload += "=";
-          let headerJson;
-          if (typeof atob === "function") {
-            headerJson = atob(headerPayload);
-          } else {
-            headerJson = Buffer.from(headerPayload, "base64").toString("utf8");
-          }
+          const headerJson =
+            typeof atob === "function"
+              ? atob(headerPayload)
+              : Buffer.from(headerPayload, "base64").toString("utf8");
           const header = JSON.parse(headerJson);
           const kid = header.kid;
 
@@ -279,12 +305,17 @@ async function verifyIdToken(token) {
               clockTolerance: CLOCK_TOLERANCE_SECONDS,
             });
 
+            let role = payload.role || null;
+            if (!role && payload.sub) {
+              role = await fetchUserRoleFromFirestore(payload.sub, token);
+            }
+
             return {
               sub: payload.sub,
               uid: payload.sub,
               email: payload.email,
               email_verified: payload.email_verified === true,
-              role: payload.role || null,
+              role,
               iat: payload.iat,
             };
           }
@@ -294,7 +325,6 @@ async function verifyIdToken(token) {
       }
     }
 
-    // Fallback: identitytoolkit REST API (only if local verification fails)
     if (!FIREBASE_API_KEY) return null;
 
     const response = await fetch(
@@ -330,7 +360,7 @@ async function verifyIdToken(token) {
       uid: user.localId,
       email: user.email,
       email_verified: user.emailVerified === true,
-      role: parsedCustomClaims?.role,
+      role: parsedCustomClaims?.role || null,
       iat: authTimeSeconds,
     };
   } catch {
@@ -338,10 +368,47 @@ async function verifyIdToken(token) {
   }
 }
 
+// ─── RBAC enforcement ────────────────────────────────────────────────────────
+
+function enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole) {
+  const rule = getApiRouteRule(pathname);
+
+  if (!rule) {
+    // Not an API route — no RBAC enforcement
+    return null;
+  }
+
+  if (rule.public) {
+    return null;
+  }
+
+  if (!isTokenValid) {
+    return { error: "Unauthorized", status: 401 };
+  }
+
+  if (!isEmailVerified) {
+    return { error: "Forbidden: Email not verified", status: 403 };
+  }
+
+  if (rule.roles && rule.roles.length > 0) {
+    if (!userRole) {
+      return { error: "Forbidden: No role assigned", status: 403 };
+    }
+    if (!rule.roles.includes(userRole)) {
+      return { error: "Forbidden: Role mismatch", status: 403 };
+    }
+  }
+
+  return null;
+}
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+  if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+    return NextResponse.next();
+  }
   const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
 
   // Clean up expired rate limit entries periodically
@@ -350,6 +417,16 @@ export async function middleware(request) {
   // NOTE: CSRF validation applies only for cookie-authenticated requests.
   // Requests authenticated via Authorization: Bearer <token> are not CSRF-vulnerable.
   // Defer CSRF validation until after token extraction/verification below.
+
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
+    const contentLength = Number(request.headers.get("content-length"));
+    if (!Number.isNaN(contentLength) && contentLength > 1024 * 1024) {
+      return NextResponse.json(
+        { error: "Payload too large (limit 1MB)" },
+        { status: 413 }
+      );
+    }
+  }
 
   // ── 1. Rate limiting for auth API routes ──
   if (isAuthRoute(pathname)) {
@@ -378,15 +455,8 @@ export async function middleware(request) {
     }
   }
 
-  // ── 2. CSP: only for HTML pages, not assets or APIs ──
-  const isPage =
-    !pathname.startsWith("/_next") &&
-    !pathname.startsWith("/api") &&
-    !pathname.match(/\.(?:png|jpg|jpeg|gif|svg|ico|css|js|woff2?|json)$/);
-
   const requestHeaders = new Headers(request.headers);
 
-  // ── 3. Token extraction ──
   let authToken = null;
   const authorization = request.headers.get("authorization");
   if (authorization?.startsWith("Bearer ")) {
@@ -396,7 +466,6 @@ export async function middleware(request) {
     authToken = request.cookies.get("authToken")?.value;
   }
 
-  // Cryptographically verify the token — decoding alone is not sufficient
   let isTokenValid = false;
   let isEmailVerified = false;
   let userRole = null;
@@ -410,46 +479,93 @@ export async function middleware(request) {
     }
   }
 
-  // Enforce CSRF only for unsafe API methods when the request is authenticated via cookie.
-  const tokenFromCookie = request.cookies.get("authToken")?.value || null;
-  if (pathname.startsWith("/api/") && isUnsafeMethod && tokenFromCookie) {
-    try {
-      validateCsrfRequest(request);
-    } catch (error) {
-      return NextResponse.json(
-        { error: error.message || "Forbidden: invalid CSRF token" },
-        { status: error.statusCode || 403 }
-      );
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
+    if (isTokenValid && pathname.startsWith("/api/")) {
+      const sessionId =
+        request.cookies.get("sessionId")?.value ||
+        request.headers.get("x-session-id");
+      if (sessionId) {
+        try {
+          const redis = getRedisClient();
+          if (redis) {
+            const exists = await redis.exists(`session:${sessionId}`);
+            if (exists !== 1) {
+              return NextResponse.json(
+                { error: "Session expired or terminated concurrently" },
+                { status: 401 }
+              );
+            }
+          }
+        } catch {
+          // Redis unavailable — continue without session validation
+        }
+      }
+    }
+
+    const tokenFromCookie = request.cookies.get("authToken")?.value || null;
+    if (tokenFromCookie) {
+      try {
+        validateCsrfOriginAndReferer(request);
+        validateCsrfRequest(request);
+      } catch (error) {
+        return NextResponse.json(
+          { error: error.message || "Forbidden: invalid CSRF request" },
+          { status: error.statusCode || 403 }
+        );
+      }
     }
   }
 
-  // ── 5. Role-protected dashboard routes ──
   const protectedDashboards = [
-    { prefix: "/student", apiPrefix: "/api/student", role: "student", defaultPath: "/student/dashboard" },
-    { prefix: "/teacher", apiPrefix: "/api/teacher", role: "teacher", defaultPath: "/teacher/dashboard" },
-    { prefix: "/admin", apiPrefix: "/api/admin", role: "admin", defaultPath: "/admin/dashboard" },
-    { prefix: "/institute", apiPrefix: "/api/institute", role: "institute", defaultPath: "/institute/dashboard" },
-    { prefix: "/parent", apiPrefix: "/api/parent", role: "parent", defaultPath: "/parent/dashboard" },
+    {
+      prefix: "/student",
+      apiPrefix: "/api/student",
+      role: "student",
+      defaultPath: "/student/dashboard",
+    },
+    {
+      prefix: "/teacher",
+      apiPrefix: "/api/teacher",
+      role: "teacher",
+      defaultPath: "/teacher/dashboard",
+    },
+    {
+      prefix: "/admin",
+      apiPrefix: "/api/admin",
+      role: "admin",
+      defaultPath: "/admin/dashboard",
+    },
+    {
+      prefix: "/institute",
+      apiPrefix: "/api/institute",
+      role: "institute",
+      defaultPath: "/institute/dashboard",
+    },
+    {
+      prefix: "/parent",
+      apiPrefix: "/api/parent",
+      role: "parent",
+      defaultPath: "/parent/dashboard",
+    },
   ];
 
-  const matchedDashboard = protectedDashboards.find((dashboard) =>
-    pathname.startsWith(dashboard.prefix) ||
-    (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
+  const matchedDashboard = protectedDashboards.find(
+    (dashboard) =>
+      pathname.startsWith(dashboard.prefix) ||
+      (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
   );
 
-  // General API route protection (non-dashboard routes under /api/)
-  if (
-    pathname.startsWith("/api/") &&
-    pathname !== "/api/check-groq-config" &&
-    !isAuthRoute(pathname)
-  ) {
-    if (!matchedDashboard) {
-      if (!isTokenValid) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (!isEmailVerified) {
-        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
-      }
+  // ── 2. RBAC enforcement for all API routes ──
+  // This runs before handler execution, enforcing the centralized policy
+  // defined in API_ROUTE_RULES. Fail-closed: unmatched paths default to
+  // authenticated access.
+  if (pathname.startsWith("/api/") && !matchedDashboard) {
+    const rbacResult = enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole);
+    if (rbacResult) {
+      return NextResponse.json(
+        { error: rbacResult.error },
+        { status: rbacResult.status }
+      );
     }
   }
 
@@ -462,21 +578,30 @@ export async function middleware(request) {
     }
     if (!isEmailVerified) {
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Forbidden: Email not verified" },
+          { status: 403 }
+        );
       }
       return NextResponse.redirect(new URL("/verify", request.url));
     }
     if (userRole !== matchedDashboard.role) {
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Forbidden: Role mismatch" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Forbidden: Role mismatch" },
+          { status: 403 }
+        );
       }
-      const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
-      const redirectTarget = correctDashboard ? correctDashboard.defaultPath : "/profile";
+      const correctDashboard = protectedDashboards.find(
+        (d) => d.role === userRole
+      );
+      const redirectTarget = correctDashboard
+        ? correctDashboard.defaultPath
+        : "/profile";
       return NextResponse.redirect(new URL(redirectTarget, request.url));
     }
   }
 
-  // ── 6. General protected routes ──
   const generalProtectedRoutes = ["/profile", "/settings"];
   const isGeneralProtected = generalProtectedRoutes.some((route) =>
     pathname.startsWith(route)
@@ -491,27 +616,37 @@ export async function middleware(request) {
     }
   }
 
-  // ── 7. Email verification page ──
   if (pathname.startsWith("/verify")) {
     if (!isTokenValid) {
       return NextResponse.redirect(new URL("/auth", request.url));
     }
     if (isEmailVerified) {
-      const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
-      const redirectTarget = correctDashboard ? correctDashboard.defaultPath : "/profile";
+      const correctDashboard = protectedDashboards.find(
+        (d) => d.role === userRole
+      );
+      const redirectTarget = correctDashboard
+        ? correctDashboard.defaultPath
+        : "/profile";
       return NextResponse.redirect(new URL(redirectTarget, request.url));
     }
   }
 
-  // ── 8. Redirect logged-in users away from /auth ──
   if (pathname === "/auth" && isTokenValid && isEmailVerified && userRole) {
-    const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
+    const correctDashboard = protectedDashboards.find(
+      (d) => d.role === userRole
+    );
     if (correctDashboard) {
-      return NextResponse.redirect(new URL(correctDashboard.defaultPath, request.url));
+      return NextResponse.redirect(
+        new URL(correctDashboard.defaultPath, request.url)
+      );
     }
   }
 
-  // ── 9. Attach CSP and standard Security headers ──
+  const isPage =
+    !pathname.startsWith("/_next") &&
+    !pathname.startsWith("/api") &&
+    !pathname.match(/\.(?:png|jpg|jpeg|gif|svg|ico|css|js|woff2?|json)$/);
+
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
   if (isPage) {
@@ -519,11 +654,22 @@ export async function middleware(request) {
     response.headers.set("X-Frame-Options", "SAMEORIGIN");
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-    response.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
+    response.headers.set(
+      "Permissions-Policy",
+      "camera=(self), microphone=(), geolocation=()"
+    );
     response.headers.set("X-XSS-Protection", "1; mode=block");
   }
 
   return response;
+}
+
+// Exported for unit testing (in-memory fallback behavior)
+export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
+
+// Test helper to control cleanup timer
+function resetForTest(now) {
+  lastCleanupTime = now;
 }
 
 export const config = {

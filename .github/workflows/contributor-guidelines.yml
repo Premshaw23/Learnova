@@ -3,8 +3,12 @@ name: Contributor Guidelines Reminder
 on:
   issues:
     types: [opened]
-  pull_request_target:
+  pull_request:
     types: [opened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   issues: write
@@ -91,9 +95,14 @@ jobs:
             message += `Thanks for being a great contributor! 🎉`;
 
             // Post comment
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue_number,
-              body: message
-            });
+            // Wrap in try-catch for fork PRs where the token is read-only
+            try {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue_number,
+                body: message
+              });
+            } catch (commentErr) {
+              console.log('Skipping comment — read-only token (fork PR)');
+            }

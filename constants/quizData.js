@@ -16,7 +16,8 @@ export const quizDatabase = {
       },
       {
         id: 2,
-        question: "Which principle states that it's impossible to simultaneously measure a particle's exact position and momentum?",
+        question:
+          "Which principle states that it's impossible to simultaneously measure a particle's exact position and momentum?",
         options: [
           "Pauli Exclusion Principle",
           "Heisenberg Uncertainty Principle",
@@ -27,7 +28,8 @@ export const quizDatabase = {
       },
       {
         id: 3,
-        question: "Which equation mathematically describes how the quantum state of a physical system changes over time?",
+        question:
+          "Which equation mathematically describes how the quantum state of a physical system changes over time?",
         options: [
           "Einstein Field Equation",
           "Maxwell's Equations",
@@ -45,19 +47,22 @@ export const quizDatabase = {
     questions: [
       {
         id: 1,
-        question: "What is the sum of the interior angles of a regular hexagon?",
+        question:
+          "What is the sum of the interior angles of a regular hexagon?",
         options: ["360°", "540°", "720°", "900°"],
         answer: 2, // 720°
       },
       {
         id: 2,
-        question: "In a right-angled triangle, if the two legs are 3 cm and 4 cm, what is the length of the hypotenuse?",
+        question:
+          "In a right-angled triangle, if the two legs are 3 cm and 4 cm, what is the length of the hypotenuse?",
         options: ["5 cm", "6 cm", "7 cm", "8 cm"],
         answer: 0, // 5 cm
       },
       {
         id: 3,
-        question: "What is the area of a circle with a radius of 7 cm? (Take pi as 22/7)",
+        question:
+          "What is the area of a circle with a radius of 7 cm? (Take pi as 22/7)",
         options: ["44 cm²", "154 cm²", "308 cm²", "616 cm²"],
         answer: 1, // 154 cm²
       },
@@ -70,14 +75,20 @@ export const quizDatabase = {
     questions: [
       {
         id: 1,
-        question: "Which planet in our solar system is known as the Red Planet?",
+        question:
+          "Which planet in our solar system is known as the Red Planet?",
         options: ["Venus", "Mars", "Jupiter", "Saturn"],
         answer: 1, // Mars
       },
       {
         id: 2,
         question: "What is the largest ocean on Earth?",
-        options: ["Atlantic Ocean", "Indian Ocean", "Southern Ocean", "Pacific Ocean"],
+        options: [
+          "Atlantic Ocean",
+          "Indian Ocean",
+          "Southern Ocean",
+          "Pacific Ocean",
+        ],
         answer: 3, // Pacific Ocean
       },
       {
@@ -88,6 +99,61 @@ export const quizDatabase = {
       },
     ],
   },
+  "Factors and Multiples": {
+    category: "math",
+    level: "elementary",
+    timeLimit: 60, // 1 minute
+    questions: [
+      {
+        id: 1,
+        question: "What are the factors of 12?",
+        options: ["1, 2, 3, 4, 6, 12", "1, 2, 4, 8", "1, 3, 9", "1, 5, 10"],
+        answer: 0, // 1, 2, 3, 4, 6, 12
+      },
+      {
+        id: 2,
+        question: "Which of the following is a multiple of 5?",
+        options: ["12", "15", "22", "28"],
+        answer: 1, // 15
+      },
+      {
+        id: 3,
+        question: "What is the greatest common factor (GCF) of 18 and 24?",
+        options: ["2", "3", "6", "12"],
+        answer: 2, // 6
+      },
+    ],
+  },
+  "Grammar Galaxy": {
+    category: "language",
+    level: "elementary",
+    timeLimit: 90, // 1.5 minutes
+    questions: [
+      {
+        id: 1,
+        question: "Which of the following is a proper noun?",
+        options: ["city", "dog", "Alice", "happiness"],
+        answer: 2, // Alice
+      },
+      {
+        id: 2,
+        question: "Identify the verb in the sentence: 'She runs every morning.'",
+        options: ["She", "runs", "every", "morning"],
+        answer: 1, // runs
+      },
+      {
+        id: 3,
+        question:
+          "Which sentence is grammatically correct?",
+        options: [
+          "He don't like pizza.",
+          "They is going to the park.",
+          "She has a cat.",
+          "We was late to the party.",
+        ],
+        answer: 2, // She has a cat.
+      },
+    ], 
 };
 
 /**
@@ -99,5 +165,8 @@ export const getQuizDataByTitle = (title) => {
   if (title && quizDatabase[title]) {
     return { ...quizDatabase[title], title };
   }
-  return { ...quizDatabase["General Knowledge Quiz"], title: title || "General Knowledge Quiz" };
+  return {
+    ...quizDatabase["General Knowledge Quiz"],
+    title: title || "General Knowledge Quiz",
+  };
 };

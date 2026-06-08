@@ -25,13 +25,22 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   if (decodedToken.uid !== userId) {
-    throw new AppError("Forbidden: You can only access your own notifications", 403);
+    throw new AppError(
+      "Forbidden: You can only access your own notifications",
+      403
+    );
   }
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`notifications_get_${ip}_${userId}`);
+  const rateLimitResult = await checkRateLimit(
+    `notifications_get_${ip}_${userId}`
+  );
   if (!rateLimitResult.allowed) {
-    return fail(429, "TOO_MANY_REQUESTS", "Too many requests. Please slow down.");
+    return fail(
+      429,
+      "TOO_MANY_REQUESTS",
+      "Too many requests. Please slow down."
+    );
   }
 
   const client = await clientPromise;
@@ -59,22 +68,30 @@ export const PATCH = withErrorHandler(async (request) => {
   }
 
   if (decodedToken.uid !== userId) {
-    throw new AppError("Forbidden: You can only modify your own notifications", 403);
+    throw new AppError(
+      "Forbidden: You can only modify your own notifications",
+      403
+    );
   }
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`notifications_patch_${ip}_${userId}`);
+  const rateLimitResult = await checkRateLimit(
+    `notifications_patch_${ip}_${userId}`
+  );
   if (!rateLimitResult.allowed) {
-    return fail(429, "TOO_MANY_REQUESTS", "Too many requests. Please slow down.");
+    return fail(
+      429,
+      "TOO_MANY_REQUESTS",
+      "Too many requests. Please slow down."
+    );
   }
 
   const client = await clientPromise;
   const db = client.db();
 
-  await db.collection("notifications").updateMany(
-    { userId, read: false },
-    { $set: { read: true } }
-  );
+  await db
+    .collection("notifications")
+    .updateMany({ userId, read: false }, { $set: { read: true } });
 
   return success({ success: true });
 });

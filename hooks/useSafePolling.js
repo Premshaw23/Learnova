@@ -50,7 +50,7 @@ export function useSafePolling(callback, interval = 30000, dependencies = []) {
     } catch {
       abortControllerRef.current = null; // Fallback for environments without AbortController
     }
-    
+
     const signal = abortControllerRef.current?.signal;
 
     // Track request sequence to prevent stale overwrites

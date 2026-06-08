@@ -14,7 +14,11 @@ const FaceRecognizer = dynamic(() => import("@/components/FaceRecognizer"), {
 
 const AttendancePage = () => {
   const { user, loading: authLoading } = useAuth();
-  const { labels, loading: labelsLoading, error: labelsError } = useLabels(user);
+  const {
+    labels,
+    loading: labelsLoading,
+    error: labelsError,
+  } = useLabels(user);
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState("validation"); // 'validation' or 'recognition'
   const [validationComplete, setValidationComplete] = useState(false);

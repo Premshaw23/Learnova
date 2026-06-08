@@ -286,6 +286,34 @@ export default function ActivityPage() {
       gradient: "from-yellow-500 to-amber-600",
       type: "game",
     },
+    {
+      id: 9,
+      title: "Factors and Multiples",
+      description: "Master factors and multiples with an interactive challenge",
+      category: "math",
+      level: "elementary",
+      duration: "15 min",
+      participants: 4123,
+      difficulty: "Beginner",
+      rating: 4.5,
+      icon: Target,
+      gradient: "from-cyan-500 to-blue-600",
+      type: "quiz",
+    },
+    {
+      id: 10,
+      title: "Grammar Galaxy",
+      description: "Improve your grammar skills with interactive exercises and quizzes",
+      category: "language",
+      level: "elementary",
+      duration: "20 min",
+      participants: 3987,
+      difficulty: "Intermediate",
+      rating: 4.6,
+      icon: BookOpen,
+      gradient: "from-rose-500 to-pink-600",
+      type: "quiz",
+    }
   ];
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -341,7 +369,11 @@ export default function ActivityPage() {
     try {
       // 2. Asynchronous Persistence
       const dbId = await logActivity(user.uid, newActivity);
-      await updateUserStat(user.uid, "Courses Enrolled", 1);
+      // Best-effort stats update; do not fail enrollment on stats errors
+      const statResult = await updateUserStat(user.uid, "Courses Enrolled", 1);
+      if (statResult?.success === false) {
+        console.warn("Stats update failed:", statResult.error);
+      }
 
       // 3. Seamless Reconciliation
       setActivities((prev) => [

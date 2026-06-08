@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import admin from "firebase-admin";
+import { AggregateField } from "firebase-admin/firestore";
 import {
   DEFAULT_SYSTEM_METRICS,
   DEFAULT_CRITICAL_ALERTS,
@@ -13,9 +14,11 @@ import {
 export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, ["admin"]);
+  const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`admin_stats_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `admin_stats_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many requests. Please slow down.", 429);
   }
@@ -34,16 +37,22 @@ export const GET = withErrorHandler(async (request) => {
     const totalCountSnap = await db.collection("institutes").count().get();
     const totalInstitutes = totalCountSnap.data().count || 0;
 
-    const activeCountSnap = await db.collection("institutes").where("status", "==", "active").count().get();
+    const activeCountSnap = await db
+      .collection("institutes")
+      .where("status", "==", "active")
+      .count()
+      .get();
     const activeInstitutes = activeCountSnap.data().count || 0;
 
-    // Fetch the aggregate sum of issues field for pending issues count
-    const allInstitutesSnap = await db.collection("institutes")
-      .select("issues")
-      .get();
-    const pendingIssues = allInstitutesSnap.docs.reduce((sum, doc) => sum + (doc.data().issues || 0), 0);
+    // Fetch the aggregate sum of issues field using Firestore server-side aggregation
+    const sumQuery = db.collection("institutes").aggregate({
+      totalIssues: AggregateField.sum("issues"),
+    });
+    const allInstitutesSnap = await sumQuery.get();
+    const pendingIssues = allInstitutesSnap.data().totalIssues || 0;
 
-    const instSnapshot = await db.collection("institutes")
+    const instSnapshot = await db
+      .collection("institutes")
       .select("name", "status", "issues")
       .limit(100)
       .get();
@@ -54,7 +63,10 @@ export const GET = withErrorHandler(async (request) => {
       }));
     }
 
-    const metricsDoc = await db.collection("system_metrics").doc("current").get();
+    const metricsDoc = await db
+      .collection("system_metrics")
+      .doc("current")
+      .get();
     if (metricsDoc.exists) {
       const data = metricsDoc.data();
       systemMetrics = {
@@ -65,7 +77,8 @@ export const GET = withErrorHandler(async (request) => {
       };
     }
 
-    const alertsSnapshot = await db.collection("critical_alerts")
+    const alertsSnapshot = await db
+      .collection("critical_alerts")
       .orderBy("createdAt", "desc")
       .limit(200)
       .get();

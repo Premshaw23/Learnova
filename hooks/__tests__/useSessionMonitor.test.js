@@ -55,12 +55,14 @@ describe("useSessionMonitor", () => {
       await global.fetch("/api/test");
     });
 
-    expect(toast.error).toHaveBeenCalledWith("Session expired. Please log in again.");
+    expect(toast.error).toHaveBeenCalledWith(
+      "Session expired. Please log in again."
+    );
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockRouterPush).toHaveBeenCalledWith("/auth");
   });
 
-  it("should intercept 403 responses and trigger logout flow", async () => {
+  it("should not trigger logout for 403 responses", async () => {
     global.fetch = vi.fn().mockResolvedValue({ status: 403 });
 
     renderHook(() => useSessionMonitor());
@@ -69,9 +71,9 @@ describe("useSessionMonitor", () => {
       await global.fetch("/api/test");
     });
 
-    expect(toast.error).toHaveBeenCalledWith("Session expired. Please log in again.");
-    expect(mockSignOut).toHaveBeenCalled();
-    expect(mockRouterPush).toHaveBeenCalledWith("/auth");
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(mockRouterPush).not.toHaveBeenCalled();
   });
 
   it("should not trigger logout for 200 responses", async () => {

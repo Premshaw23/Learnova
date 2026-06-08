@@ -1,8 +1,9 @@
 import { connectDb } from "@/lib/mongodb";
 import { AppError } from "@/lib/errors";
 import { jsonSuccess } from "@/lib/api-response";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
+import { getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { escapeRegex } from "@/utils/mongoUtils";
 
@@ -20,8 +21,9 @@ export const GET = withErrorHandler(async (request) => {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  // Authentication and Role Verification
-  const { profile } = await requireRole(request, ["admin", "teacher", "student"]);
+  // Authentication
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
 
   // Search query — escape metacharacters to prevent ReDoS
   const { searchParams } = new URL(request.url);
@@ -36,6 +38,16 @@ export const GET = withErrorHandler(async (request) => {
         ],
       }
     : {};
+
+  if (profile.role !== "admin") {
+    if (profile.instituteId) {
+      query.instituteId = profile.instituteId;
+    } else {
+      // If a non-admin (like a student) doesn't have an instituteId,
+      // they shouldn't be able to search other users globally.
+      query.instituteId = "unassigned_no_match";
+    }
+  }
 
   // Database — faceDescriptor is excluded from the projection.
   // Biometric embeddings are sensitive personal data and must not be

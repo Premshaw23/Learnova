@@ -13,9 +13,17 @@ const PasswordStrengthMeter = ({ password = "" }) => {
   const getCriteria = (pwd) => {
     return [
       { id: "length", label: "At least 8 characters", met: pwd.length >= 8 },
-      { id: "uppercase", label: "One uppercase letter", met: /[A-Z]/.test(pwd) },
+      {
+        id: "uppercase",
+        label: "One uppercase letter",
+        met: /[A-Z]/.test(pwd),
+      },
       { id: "number", label: "One number", met: /[0-9]/.test(pwd) },
-      { id: "special", label: "One special character (!@#$%^&*)", met: /[^A-Za-z0-9]/.test(pwd) },
+      {
+        id: "special",
+        label: "One special character (!@#$%^&*)",
+        met: /[^A-Za-z0-9]/.test(pwd),
+      },
     ];
   };
 
@@ -24,26 +32,52 @@ const PasswordStrengthMeter = ({ password = "" }) => {
 
   // Strength Level Definitions
   const getStrengthLevel = (score, length) => {
-    if (length === 0) return { label: "Empty", color: "bg-slate-200 dark:bg-slate-800", width: "w-0", textColor: "text-slate-400" };
-    if (score <= 1) return { label: "Weak", color: "bg-rose-500", width: "w-1/4", textColor: "text-rose-500" };
-    if (score <= 3) return { label: "Medium", color: "bg-amber-500", width: "w-3/4", textColor: "text-amber-500" };
-    return { label: "Strong", color: "bg-emerald-500", width: "w-full", textColor: "text-emerald-500" };
+    if (length === 0)
+      return {
+        label: "Empty",
+        color: "bg-slate-200 dark:bg-slate-800",
+        width: "w-0",
+        textColor: "text-slate-400",
+      };
+    if (score <= 1)
+      return {
+        label: "Weak",
+        color: "bg-rose-500",
+        width: "w-1/4",
+        textColor: "text-rose-500",
+      };
+    if (score <= 3)
+      return {
+        label: "Medium",
+        color: "bg-amber-500",
+        width: "w-3/4",
+        textColor: "text-amber-500",
+      };
+    return {
+      label: "Strong",
+      color: "bg-emerald-500",
+      width: "w-full",
+      textColor: "text-emerald-500",
+    };
   };
 
   const strength = getStrengthLevel(metCount, password.length);
 
   return (
     <div className="space-y-3 w-full transition-all duration-300">
-      
       {/* Strength Bar Indicator */}
       <div className="space-y-1.5">
         <div className="flex justify-between items-center text-xs font-semibold">
-          <span className="text-slate-500 dark:text-slate-400">Password Strength</span>
-          <span className={`transition-colors duration-300 ${strength.textColor}`}>
+          <span className="text-slate-500 dark:text-slate-400">
+            Password Strength
+          </span>
+          <span
+            className={`transition-colors duration-300 ${strength.textColor}`}
+          >
             {strength.label}
           </span>
         </div>
-        
+
         {/* Track Bar */}
         <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
           {/* Active Filling Bar */}
@@ -66,17 +100,37 @@ const PasswordStrengthMeter = ({ password = "" }) => {
                 password.length === 0
                   ? "border-slate-200 dark:border-slate-800 text-transparent"
                   : item.met
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
-                  : "bg-rose-500/10 border-rose-500/30 text-rose-500"
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-500"
               }`}
             >
               {item.met ? (
-                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                <svg
+                  className="w-2.5 h-2.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               ) : (
-                <svg className="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-2 h-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               )}
             </span>
@@ -87,8 +141,8 @@ const PasswordStrengthMeter = ({ password = "" }) => {
                 password.length === 0
                   ? "text-slate-400 dark:text-slate-500"
                   : item.met
-                  ? "text-slate-700 dark:text-slate-300 font-medium"
-                  : "text-slate-400 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-700"
+                    ? "text-slate-700 dark:text-slate-300 font-medium"
+                    : "text-slate-400 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-700"
               }`}
             >
               {item.label}

@@ -9,11 +9,16 @@ export default function AmbientMode() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.18),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(139,92,246,0.15),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(14,165,233,0.12),_transparent_28%)]" />
         <div className="relative flex flex-col gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.4em] text-slate-300">Ambient Mode</p>
-            <h2 className="mt-2 text-3xl font-semibold text-white">Calm Focus Space</h2>
+            <p className="text-sm uppercase tracking-[0.4em] text-slate-300">
+              Ambient Mode
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold text-white">
+              Calm Focus Space
+            </h2>
           </div>
           <p className="max-w-2xl text-sm leading-6 text-slate-300">
-            Sink into a serene gradient environment with soft motion to support mindful concentration and restorative breathing.
+            Sink into a serene gradient environment with soft motion to support
+            mindful concentration and restorative breathing.
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">

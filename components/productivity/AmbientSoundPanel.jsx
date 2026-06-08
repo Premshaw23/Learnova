@@ -121,9 +121,7 @@ export function AmbientSoundPanel({ isDark }) {
 
       <div className="flex items-center gap-3">
         <Volume2
-          className={`w-4 h-4 ${
-            isDark ? "text-slate-400" : "text-slate-500"
-          }`}
+          className={`w-4 h-4 ${isDark ? "text-slate-400" : "text-slate-500"}`}
         />
         <input
           type="range"

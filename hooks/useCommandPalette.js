@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
 const useCommandPalette = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,16 +9,16 @@ const useCommandPalette = () => {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         toggle();
       }
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         close();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggle, close]);
 
   return { isOpen, open, close };

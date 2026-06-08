@@ -1,5 +1,12 @@
 import React, { useEffect, useRef } from "react";
-import { FileText, RefreshCw, AlertCircle, MessageSquare, Check, X } from "lucide-react";
+import {
+  FileText,
+  RefreshCw,
+  AlertCircle,
+  MessageSquare,
+  Check,
+  X,
+} from "lucide-react";
 import SkeletonCard from "@/components/ui/SkeletonCard";
 
 export const ExceptionRequestsList = ({
@@ -10,7 +17,7 @@ export const ExceptionRequestsList = ({
   showAllRequestsModal,
   setShowAllRequestsModal,
   allRequests,
-  handleExceptionRequest
+  handleExceptionRequest,
 }) => {
   const modalContainerRef = useRef(null);
 
@@ -89,10 +96,16 @@ export const ExceptionRequestsList = ({
       const target = triggerElementRef.current;
       const restoreFocus = () => {
         let activeTarget = target;
-        if (!activeTarget || activeTarget === document.body || !document.body.contains(activeTarget)) {
+        if (
+          !activeTarget ||
+          activeTarget === document.body ||
+          !document.body.contains(activeTarget)
+        ) {
           const buttons = Array.from(document.querySelectorAll("button"));
-          activeTarget = buttons.find((btn) => btn.textContent.includes("View Exception Requests")) ||
-                         buttons.find((btn) => btn.textContent.includes("View All"));
+          activeTarget =
+            buttons.find((btn) =>
+              btn.textContent.includes("View Exception Requests")
+            ) || buttons.find((btn) => btn.textContent.includes("View All"));
         }
         if (activeTarget && typeof activeTarget.focus === "function") {
           activeTarget.focus();
@@ -258,7 +271,7 @@ export const ExceptionRequestsList = ({
       </div>
       {/* All Requests Modal */}
       {showAllRequestsModal && (
-        <div 
+        <div
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowAllRequestsModal(false);
@@ -266,7 +279,7 @@ export const ExceptionRequestsList = ({
           }}
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
         >
-          <div 
+          <div
             ref={modalContainerRef}
             className="bg-gray-900 border border-white/20 rounded-2xl p-6 max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col"
           >
@@ -332,8 +345,7 @@ export const ExceptionRequestsList = ({
                           <strong>Current Location:</strong>{" "}
                           {typeof request.currentLocation === "object"
                             ? `${
-                                request.currentLocation.distance ||
-                                "Unknown"
+                                request.currentLocation.distance || "Unknown"
                               }m from institution`
                             : request.currentLocation}
                         </div>

@@ -8,7 +8,9 @@ import React from "react";
  */
 const SkeletonCard = ({ className = "" }) => {
   return (
-    <div className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm animate-pulse space-y-4 ${className}`}>
+    <div
+      className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm animate-pulse space-y-4 ${className}`}
+    >
       {/* Image Placeholder */}
       <div className="w-full h-48 bg-slate-200 dark:bg-slate-800/80 rounded-xl flex items-center justify-center overflow-hidden">
         <svg

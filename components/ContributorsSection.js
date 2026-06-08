@@ -42,7 +42,9 @@ const ContributorsSection = () => {
                   <p className="text-sm font-semibold text-white group-hover:text-accent transition-colors">
                     {contributor.name}
                   </p>
-                  <p className="text-xs text-gray-400">@{contributor.username}</p>
+                  <p className="text-xs text-gray-400">
+                    @{contributor.username}
+                  </p>
                 </div>
               </a>
             </li>

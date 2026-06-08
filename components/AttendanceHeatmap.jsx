@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import CalendarHeatmap from "react-calendar-heatmap";
+import AttendanceHeatmapSkeleton from "./AttendanceHeatmapSkeleton";
 
 const STATUS_LABELS = {
   present: "Present",
@@ -64,7 +65,8 @@ const buildAttendanceValues = (recentActivity = []) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const activity = activityMap.get(dateKey);
     const status = activity?.status ?? mockStatusFromDate(dateKey, isWeekend);
-    const intensity = status === "present" ? getIntensityForPresent(dateKey) : 0;
+    const intensity =
+      status === "present" ? getIntensityForPresent(dateKey) : 0;
 
     return {
       date: dateKey,
@@ -79,10 +81,10 @@ const buildAttendanceValues = (recentActivity = []) => {
         status === "present"
           ? 100 - (4 - intensity) * 10
           : status === "late"
-          ? 72
-          : status === "absent"
-          ? 18
-          : 0,
+            ? 72
+            : status === "absent"
+              ? 18
+              : 0,
       subject: activity?.subject || "Attendance",
     };
   });
@@ -116,15 +118,12 @@ const getCellClassName = (value) => {
 };
 
 const AttendanceHeatmap = ({ recentActivity = [] }) => {
-  const values = useMemo(
-    () => {
-      if (!recentActivity || recentActivity.length === 0) {
-        return [];
-      }
-      return buildAttendanceValues(recentActivity);
-    },
-    [recentActivity],
-  );
+  const values = useMemo(() => {
+    if (!recentActivity || recentActivity.length === 0) {
+      return [];
+    }
+    return buildAttendanceValues(recentActivity);
+  }, [recentActivity]);
 
   const [tooltip, setTooltip] = useState(null);
 
@@ -165,6 +164,10 @@ const AttendanceHeatmap = ({ recentActivity = [] }) => {
 
   const isEmpty = values.length === 0;
 
+  if (isEmpty) {
+    return <AttendanceHeatmapSkeleton />;
+  }
+
   return (
     <div className="w-full max-w-full overflow-hidden bg-black/40 backdrop-blur-xl rounded-[2rem] border border-white/10 p-6 shadow-2xl transition-all duration-500">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -176,7 +179,8 @@ const AttendanceHeatmap = ({ recentActivity = [] }) => {
             Last 12 weeks overview
           </h3>
           <p className="max-w-xl text-sm text-slate-400">
-            A compact GitHub-style view of your attendance cadence with live hover states and clear daily status.
+            A compact GitHub-style view of your attendance cadence with live
+            hover states and clear daily status.
           </p>
         </div>
 
@@ -186,52 +190,40 @@ const AttendanceHeatmap = ({ recentActivity = [] }) => {
               key={status}
               className={`rounded-2xl border px-3 py-2 ${STATUS_BADGES[status]}`}
             >
-              <span className="block font-semibold text-white">
-                {label}
-              </span>
+              <span className="block font-semibold text-white">{label}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-slate-950/80 p-4 overflow-x-auto">
-        {isEmpty ? (
-          <div className="min-h-[220px] flex items-center justify-center rounded-3xl border border-dashed border-slate-700/60 bg-slate-950/60 p-8">
-            <div className="text-center">
-              <div className="mb-2 h-3.5 w-24 rounded-full bg-slate-700/70 animate-pulse" />
-              <p className="text-sm text-slate-400">
-                Loading attendance history…
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="min-w-[340px] sm:min-w-[520px]">
-            <CalendarHeatmap
-              startDate={startDate}
-              endDate={endDate}
-              values={values}
-              showWeekdayLabels
-              gutterSize={6}
-              weekdayLabels={["Mon", "Wed", "Fri"]}
-              classForValue={getCellClassName}
-              transformDayElement={(rect, value) =>
-                React.cloneElement(rect, {
-                  className: `${rect.props.className} cursor-pointer rounded-lg transition-all duration-200 ease-out ${getCellClassName(value)}`,
-                  onMouseEnter: (event) => showTooltip(value, event),
-                  onMouseLeave: clearTooltip,
-                  onTouchStart: (event) => showTooltip(value, event),
-                })
-              }
-            />
-          </div>
-        )}
+        <div className="min-w-[340px] sm:min-w-[520px]">
+          <CalendarHeatmap
+            startDate={startDate}
+            endDate={endDate}
+            values={values}
+            showWeekdayLabels
+            gutterSize={6}
+            weekdayLabels={["Mon", "Wed", "Fri"]}
+            classForValue={getCellClassName}
+            transformDayElement={(rect, value) =>
+              React.cloneElement(rect, {
+                className: `${rect.props.className} cursor-pointer rounded-lg transition-all duration-200 ease-out ${getCellClassName(value)}`,
+                onMouseEnter: (event) => showTooltip(value, event),
+                onMouseLeave: clearTooltip,
+                onTouchStart: (event) => showTooltip(value, event),
+              })
+            }
+          />
+        </div>
       </div>
 
       <div className="mt-4 rounded-3xl bg-white/5 border border-white/10 px-4 py-4 text-sm text-slate-400">
         <p className="font-medium text-slate-100">How to read this chart</p>
         <p className="mt-2 leading-6">
-          Darker tiles mean strong presence, amber tiles show late check-ins, and red tiles highlight absences.
-          Weekends are shown as muted tiles for a clean, premium dashboard feel.
+          Darker tiles mean strong presence, amber tiles show late check-ins,
+          and red tiles highlight absences. Weekends are shown as muted tiles
+          for a clean, premium dashboard feel.
         </p>
       </div>
 

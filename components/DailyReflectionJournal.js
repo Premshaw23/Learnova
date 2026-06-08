@@ -12,7 +12,9 @@ export default function DailyReflectionJournal() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const savedEntry = window.localStorage.getItem("learnova-wellness-reflections");
+    const savedEntry = window.localStorage.getItem(
+      "learnova-wellness-reflections"
+    );
     if (savedEntry) {
       try {
         const parsed = JSON.parse(savedEntry);
@@ -29,7 +31,11 @@ export default function DailyReflectionJournal() {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         "learnova-wellness-reflections",
-        JSON.stringify({ wentWell, proudOf, updatedAt: new Date().toISOString() })
+        JSON.stringify({
+          wentWell,
+          proudOf,
+          updatedAt: new Date().toISOString(),
+        })
       );
       setSaved(true);
       timeoutRef.current = window.setTimeout(() => setSaved(false), 2200);
@@ -57,10 +63,15 @@ export default function DailyReflectionJournal() {
         <div className="relative flex flex-col gap-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Wellness</p>
-              <h2 className="mt-2 text-3xl font-semibold text-white">Daily Reflection Journal</h2>
+              <p className="text-sm uppercase tracking-[0.4em] text-slate-400">
+                Wellness
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">
+                Daily Reflection Journal
+              </h2>
               <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-                Capture a calm moment of gratitude and recognize one proud achievement from today.
+                Capture a calm moment of gratitude and recognize one proud
+                achievement from today.
               </p>
             </div>
             <div className="inline-flex items-center gap-2 rounded-3xl bg-violet-500/10 px-4 py-3 text-sm text-violet-100 ring-1 ring-violet-500/20">
@@ -71,7 +82,9 @@ export default function DailyReflectionJournal() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-slate-950/90 p-4 text-sm text-slate-200">
-              <span className="font-semibold text-white">What went well today?</span>
+              <span className="font-semibold text-white">
+                What went well today?
+              </span>
               <textarea
                 value={wentWell}
                 onChange={({ target }) => setWentWell(target.value)}
@@ -82,7 +95,9 @@ export default function DailyReflectionJournal() {
             </label>
 
             <label className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-slate-950/90 p-4 text-sm text-slate-200">
-              <span className="font-semibold text-white">One thing you’re proud of</span>
+              <span className="font-semibold text-white">
+                One thing you’re proud of
+              </span>
               <textarea
                 value={proudOf}
                 onChange={({ target }) => setProudOf(target.value)}
@@ -98,10 +113,12 @@ export default function DailyReflectionJournal() {
               type="button"
               onClick={handleSave}
               className="inline-flex items-center justify-center gap-2 rounded-3xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-violet-400/40"
-            >
+             aria-label="Action button">
               <Feather className="h-4 w-4" /> Save reflection
             </button>
-            <p className="text-sm text-slate-400">Your notes are stored locally for a quiet end-of-day review.</p>
+            <p className="text-sm text-slate-400">
+              Your notes are stored locally for a quiet end-of-day review.
+            </p>
           </div>
 
           {saved && (
@@ -111,7 +128,8 @@ export default function DailyReflectionJournal() {
               exit={{ opacity: 0, y: 10 }}
               className="mt-4 inline-flex items-center gap-2 rounded-3xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-100"
             >
-              <CheckCircle2 className="h-4 w-4" /> Reflection saved successfully.
+              <CheckCircle2 className="h-4 w-4" /> Reflection saved
+              successfully.
             </motion.div>
           )}
         </div>

@@ -17,12 +17,12 @@ export const POST = withErrorHandler(async (request) => {
   initFirebaseAdmin();
   const db = getFirestore();
   const userId = decodedToken.uid;
-  
+
   const timetableRef = db.collection("timetables").doc(userId);
   const timetableDoc = await timetableRef.get();
-  
+
   let calendarToken;
-  
+
   if (timetableDoc.exists) {
     calendarToken = timetableDoc.data().calendarToken || crypto.randomUUID();
     await timetableRef.update({
@@ -48,17 +48,20 @@ export const GET = withErrorHandler(async (request) => {
   initFirebaseAdmin();
   const db = getFirestore();
   const userId = decodedToken.uid;
-  
+
   const timetableRef = db.collection("timetables").doc(userId);
   const timetableDoc = await timetableRef.get();
-  
+
   if (!timetableDoc.exists) {
     return jsonSuccess({ timetableData: null, calendarToken: null }, 200);
   }
-  
+
   const data = timetableDoc.data();
-  return jsonSuccess({ 
-    timetableData: data.timetableData, 
-    calendarToken: data.calendarToken 
-  }, 200);
+  return jsonSuccess(
+    {
+      timetableData: data.timetableData,
+      calendarToken: data.calendarToken,
+    },
+    200
+  );
 });

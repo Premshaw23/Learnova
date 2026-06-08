@@ -12,7 +12,7 @@ const SuperAdminDashboard = dynamic(
 export default function AdminDashboard() {
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
-      <SuperAdminDashboard/>
+      <SuperAdminDashboard />
     </ProtectedRoute>
   );
 }

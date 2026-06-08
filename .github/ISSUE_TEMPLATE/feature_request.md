@@ -1,25 +1,19 @@
 ---
-name: 🚀 Feature Request
-about: Suggest an idea or enhancement for Learnova.
-title: "[FEATURE] "
-labels: ["enhancement", "feature"]
-assignees: ""
+name: Feature Request
+about: Suggest an idea for this project
+title: '[Feature] '
+labels: 'enhancement'
+assignees: ''
 ---
 
-# Problem
-Describe the issue clearly.
+### Is your feature request related to a problem? Please describe.
+A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
 
-# Current Behavior
-Explain existing behavior.
+### Describe the solution you'd like
+A clear and concise description of what you want to happen.
 
-# Why This Improvement Is Needed
-Explain impact on users/developers.
+### Describe alternatives you've considered
+A clear and concise description of any alternative solutions or features you've considered.
 
-# Proposed Solution
-Explain the implementation approach.
-
-# Expected Outcome
-Explain expected improvements.
-
-# Additional Notes
-Optional technical/contextual notes.
+### Additional Context
+Add any other context or screenshots about the feature request here.

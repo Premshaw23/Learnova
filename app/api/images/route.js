@@ -6,43 +6,48 @@ import { del } from "@vercel/blob";
 import { connectDb } from "@/lib/mongodb";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import logger from "@/utils/logger";
 import {
   extractImageFileFromFormData,
   fetchAndValidateImage,
   getImageResponseHeaders,
   getUserImageFromDb,
   updateUserImageInDb,
-  uploadAvatarToBlob,
   validateFaceDescriptor,
 } from "@/lib/images/imagesService";
+import {
+  processAndUploadFile,
+  activeStorage,
+} from "@/lib/services/uploadService";
 
 export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(async (request) => {
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
   const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid) || { role: "student" };
 
-  const db = await connectDb();
-  const users = db.collection("users");
-  const requestingUser = await users.findOne(
-    { firebaseUid: decodedToken.uid },
-    { projection: { _id: 1 } }
-  );
-
-  if (!requestingUser) {
-    throw new NotFoundError("User not found");
+  const rateLimitResult = await checkRateLimit(`images_get_${ip}_${decodedToken.uid}`);
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  if (requestingUser._id.toString() !== id) {
-    const profile = await getUserProfile(decodedToken.uid);
-    if (!profile || !["admin", "teacher"].includes(profile.role)) {
-      throw new ForbiddenError("You can only view your own profile image");
-    }
-  }
+  const imageUrl = await getUserImageFromDb({
+    id,
+    callerUid: decodedToken.uid,
+    callerRole: profile.role,
+    callerInstituteId: profile.instituteId,
+  });
 
-  const imageUrl = await getUserImageFromDb({ id });
+  logger.info("Image accessed", {
+    userId: decodedToken.uid,
+    targetId: id,
+    timestamp: new Date().toISOString(),
+  });
+
   const { imageBuffer, contentType } = await fetchAndValidateImage(imageUrl);
 
   return new NextResponse(imageBuffer, {
@@ -54,7 +59,9 @@ export const GET = withErrorHandler(async (request) => {
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`images_post_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `images_post_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
@@ -66,23 +73,23 @@ export const POST = withErrorHandler(async (request) => {
   const faceDescriptor = validateFaceDescriptor(rawFaceDescriptor);
   const file = extractImageFileFromFormData(formData);
 
-  // Upload new avatar to Vercel Blob
-  const { blobUrl } = await uploadAvatarToBlob({
+  // Upload new avatar using the secure service
+  const { url } = await processAndUploadFile(
     file,
-    uid: decodedToken.uid,
-  });
+    `images/${decodedToken.uid}`
+  );
 
   try {
     // Atomically update user image and handle face descriptor (unset if not provided)
     await updateUserImageInDb({
       firebaseUid: decodedToken.uid,
-      imageUrl: blobUrl,
+      imageUrl: url,
       faceDescriptor,
     });
   } catch (error) {
-    await Promise.resolve(del(blobUrl)).catch(() => {});
+    await activeStorage.delete(url).catch(() => {});
     throw error;
   }
 
-  return NextResponse.json({ success: true, url: blobUrl });
+  return NextResponse.json({ success: true, url });
 });

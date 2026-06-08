@@ -6,7 +6,7 @@ import { useIsMounted } from "@/hooks/useIsMounted";
 /**
  * Custom hook for managing timers with automatic cleanup
  * Prevents memory leaks by ensuring timers are cleared on component unmount
- * 
+ *
  * @param {Function} callback - Function to execute when timer fires
  * @param {number} delay - Delay in milliseconds
  * @param {boolean} [immediate=false] - Whether to execute immediately on mount
@@ -63,7 +63,7 @@ export function useTimeout(callback, delay, immediate = false) {
 /**
  * Custom hook for managing intervals with automatic cleanup
  * Prevents memory leaks by ensuring intervals are cleared on component unmount
- * 
+ *
  * @param {Function} callback - Function to execute on each interval
  * @param {number} delay - Delay in milliseconds between executions
  * @param {boolean} [immediate=false] - Whether to execute immediately on mount
@@ -91,7 +91,7 @@ export function useInterval(callback, delay, immediate = false) {
       if (immediate && isMounted()) {
         callbackRef.current();
       }
-      
+
       intervalRef.current = setInterval(() => {
         if (isMounted()) callbackRef.current();
       }, delay);
@@ -100,15 +100,18 @@ export function useInterval(callback, delay, immediate = false) {
     return clear;
   }, [delay, immediate]);
 
-  return { clear, reset: () => {
-    clear();
-    if (delay !== null && delay !== undefined) {
-      if (immediate && isMounted()) {
-        callbackRef.current();
+  return {
+    clear,
+    reset: () => {
+      clear();
+      if (delay !== null && delay !== undefined) {
+        if (immediate && isMounted()) {
+          callbackRef.current();
+        }
+        intervalRef.current = setInterval(() => {
+          if (isMounted()) callbackRef.current();
+        }, delay);
       }
-      intervalRef.current = setInterval(() => {
-        if (isMounted()) callbackRef.current();
-      }, delay);
-    }
-  }};
+    },
+  };
 }

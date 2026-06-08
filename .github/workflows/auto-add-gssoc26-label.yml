@@ -1,0 +1,281 @@
+name: GSSoC — Auto Add GSSoC'26 Label
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Automatically applies the "GSSoC'26" label to every issue and pull request
+# the moment it is touched. A cron sweep runs every 2 hours as a catch-all.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  # ── Issues ────────────────────────────────────────────────────────────────
+  issues:
+    types:
+      - opened
+      - closed
+      - reopened
+      - assigned
+      - unassigned
+      - labeled
+      - unlabeled
+      - edited
+      - pinned
+      - unpinned
+      - milestoned
+      - demilestoned
+      - transferred
+
+  # ── Pull Requests (pull_request_target is safe for forks) ────────────────
+  pull_request_target:
+    types:
+      - opened
+      - closed
+      - reopened
+      - assigned
+      - unassigned
+      - labeled
+      - unlabeled
+      - edited
+      - ready_for_review
+      - converted_to_draft
+      - review_requested
+      - review_request_removed
+      - synchronize
+      - auto_merge_enabled
+      - auto_merge_disabled
+
+  # ── PR Reviews ────────────────────────────────────────────────────────────
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+  # ── Scheduled sweep every 2 hours (zero-miss safety net) ─────────────────
+  schedule:
+    - cron: '0 */2 * * *'
+
+  # ── Manual trigger ────────────────────────────────────────────────────────
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run? (true = log only, no changes)'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+concurrency:
+  group: gssoc26-label-${{ github.event.issue.number || github.event.pull_request.number || 'sweep' }}
+  cancel-in-progress: false
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SHARED CONFIG (edit here only)
+# ═══════════════════════════════════════════════════════════════════════════
+env:
+  GSSOC_LABEL:       "GSSoC'26"
+  GSSOC_LABEL_COLOR: "0e8a16"
+  GSSOC_LABEL_DESC:  "Part of GirlScript Summer of Code 2026"
+
+jobs:
+  # ══════════════════════════════════════════════════════════════════════════
+  # JOB A ─ Real-time fast path (single item on live events)
+  # ══════════════════════════════════════════════════════════════════════════
+  label-single-item:
+    name: "Add GSSoC'26 Label — Single Item"
+    if: >
+      github.event_name != 'schedule' &&
+      github.event_name != 'workflow_dispatch' &&
+      (
+        github.event.issue.number   != null ||
+        github.event.pull_request.number != null
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: "Apply GSSoC'26 label"
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const LABEL      = process.env.GSSOC_LABEL;
+            const COLOR      = process.env.GSSOC_LABEL_COLOR;
+            const LABEL_DESC = process.env.GSSOC_LABEL_DESC;
+
+            const itemNum  = context.payload.issue?.number
+                          ?? context.payload.pull_request?.number;
+            const itemType = context.payload.issue ? 'Issue' : 'PR';
+
+            if (!itemNum) {
+              console.log('⏭️  No item number in payload — skipping');
+              return;
+            }
+
+            console.log(`🎯 ${context.eventName} → ${itemType} #${itemNum}`);
+
+            // ── Retry helper ────────────────────────────────────────────────
+            async function withRetry(fn, tag, max = 5) {
+              for (let i = 1; i <= max; i++) {
+                try { return await fn(); }
+                catch (e) {
+                  const ok = e.status === 429 || e.status >= 500 || e.status === 403;
+                  if (ok && i < max) {
+                    const ms = Math.min(2 ** i * 1500, 30000);
+                    console.log(`⚠️  ${tag} attempt ${i} (HTTP ${e.status}) — retry in ${ms}ms`);
+                    await new Promise(r => setTimeout(r, ms));
+                  } else throw e;
+                }
+              }
+            }
+
+            // ── Ensure label exists in repo ─────────────────────────────────
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: LABEL });
+            } catch (e) {
+              if (e.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner, repo,
+                  name: LABEL, color: COLOR, description: LABEL_DESC,
+                });
+                console.log(`✅ Created label: ${LABEL}`);
+              } else throw e;
+            }
+
+            // ── Check current labels on item ────────────────────────────────
+            const { data: existing } = await withRetry(
+              () => github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: itemNum }),
+              'list-labels'
+            );
+
+            if (existing.some(l => l.name === LABEL)) {
+              console.log(`⏭️  "${LABEL}" already on ${itemType} #${itemNum} — done`);
+              return;
+            }
+
+            // ── Apply label ─────────────────────────────────────────────────
+            await withRetry(
+              () => github.rest.issues.addLabels({
+                owner, repo, issue_number: itemNum, labels: [LABEL],
+              }),
+              'add-label'
+            );
+            console.log(`🏷️  Applied "${LABEL}" to ${itemType} #${itemNum}`);
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # JOB B ─ Full paginated sweep (cron every 2 h + manual)
+  # ══════════════════════════════════════════════════════════════════════════
+  sweep-all-items:
+    name: "Add GSSoC'26 Label — Full Sweep"
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: "Sweep all issues and PRs — apply GSSoC'26"
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const LABEL      = process.env.GSSOC_LABEL;
+            const COLOR      = process.env.GSSOC_LABEL_COLOR;
+            const LABEL_DESC = process.env.GSSOC_LABEL_DESC;
+            const DRY_RUN    = context.payload.inputs?.dry_run === 'true';
+
+            console.log(`🚀 Full sweep — ${DRY_RUN ? 'DRY RUN' : 'LIVE'}`);
+            console.log(`🏷️  Label: "${LABEL}"`);
+            console.log('──────────────────────────────────────────────────────');
+
+            // ── Retry helper ────────────────────────────────────────────────
+            async function withRetry(fn, tag, max = 6) {
+              for (let i = 1; i <= max; i++) {
+                try { return await fn(); }
+                catch (e) {
+                  const retryable = e.status === 429 || e.status >= 500
+                                 || e.status === 403 || e.status === 401;
+                  if (retryable && i < max) {
+                    const after = parseInt(e.response?.headers?.['retry-after'] || '0') * 1000;
+                    const ms    = after || Math.min(2 ** i * 2000, 60000);
+                    console.log(`⚠️  ${tag} attempt ${i} (HTTP ${e.status}) — retry in ${ms / 1000}s`);
+                    await new Promise(r => setTimeout(r, ms));
+                  } else throw e;
+                }
+              }
+            }
+
+            // ── Ensure label exists ─────────────────────────────────────────
+            if (!DRY_RUN) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: LABEL });
+                console.log(`✅ Label exists: "${LABEL}"`);
+              } catch (e) {
+                if (e.status === 404) {
+                  await github.rest.issues.createLabel({
+                    owner, repo,
+                    name: LABEL, color: COLOR, description: LABEL_DESC,
+                  });
+                  console.log(`✅ Created label: "${LABEL}"`);
+                } else throw e;
+              }
+            }
+
+            let applied = 0, skipped = 0, errors = 0;
+
+            // ── Process a single item ───────────────────────────────────────
+            async function processItem(number, type) {
+              let labels;
+              try {
+                const { data } = await withRetry(
+                  () => github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: number }),
+                  `list-#${number}`
+                );
+                labels = data.map(l => l.name);
+              } catch (e) {
+                console.log(`❌ ${type} #${number} — fetch failed: ${e.message}`);
+                errors++;
+                return;
+              }
+
+              if (labels.includes(LABEL)) {
+                skipped++;
+                return; // already labeled — silent skip to keep logs clean
+              }
+
+              console.log(`🏷️  ${type} #${number} — ${DRY_RUN ? '[DRY RUN] ' : ''}applying "${LABEL}"`);
+              if (!DRY_RUN) {
+                try {
+                  await withRetry(
+                    () => github.rest.issues.addLabels({
+                      owner, repo, issue_number: number, labels: [LABEL],
+                    }),
+                    `add-#${number}`
+                  );
+                  applied++;
+                } catch (e) {
+                  console.log(`❌ ${type} #${number} — apply failed: ${e.message}`);
+                  errors++;
+                }
+              } else {
+                applied++;
+              }
+            }
+
+            // ── Paginate ALL issues + PRs (open + closed) ───────────────────
+            for await (const page of github.paginate.iterator(
+              github.rest.issues.listForRepo,
+              { owner, repo, state: 'all', per_page: 100 }
+            )) {
+              for (const item of page.data) {
+                await processItem(item.number, item.pull_request ? 'PR' : 'Issue');
+              }
+            }
+
+            console.log('──────────────────────────────────────────────────────');
+            console.log(`✅ Sweep complete`);
+            console.log(`   🏷️  Applied  : ${applied}`);
+            console.log(`   ⏭️  Skipped  : ${skipped}`);
+            console.log(`   ❌ Errors   : ${errors}`);
+
+            if (errors > 0) core.setFailed(`${errors} error(s) — check logs above`);

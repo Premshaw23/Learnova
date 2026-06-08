@@ -1,31 +1,24 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Use vi.hoisted so the shared state is available inside vi.mock factories
+// ---------------------------------------------------------------------------
+// Shared Firestore mock state — must be hoisted so vi.mock factories can see it
+// ---------------------------------------------------------------------------
 const { getMock, setMockData } = vi.hoisted(() => {
   let _mockData = null;
 
-  const getMock = vi.fn(() => {
-    if (!_mockData) {
-      return Promise.resolve({ empty: true, docs: [] });
-    }
-    return Promise.resolve({
-      empty: false,
-      docs: [{ data: () => _mockData }],
-    });
-  });
+  const getMock = vi.fn(() =>
+    _mockData
+      ? Promise.resolve({ empty: false, docs: [{ data: () => _mockData }] })
+      : Promise.resolve({ empty: true, docs: [] })
+  );
 
   const setMockData = (data) => {
     _mockData = data;
-    // Re-configure getMock with current data
-    getMock.mockImplementation(() => {
-      if (!data) {
-        return Promise.resolve({ empty: true, docs: [] });
-      }
-      return Promise.resolve({
-        empty: false,
-        docs: [{ data: () => data }],
-      });
-    });
+    getMock.mockImplementation(() =>
+      data
+        ? Promise.resolve({ empty: false, docs: [{ data: () => data }] })
+        : Promise.resolve({ empty: true, docs: [] })
+    );
   };
 
   return { getMock, setMockData };
@@ -39,20 +32,20 @@ vi.mock("firebase-admin/firestore", () => ({
   getFirestore: vi.fn(() => ({
     collection: vi.fn(() => ({
       where: vi.fn(() => ({
-        limit: vi.fn(() => ({
-          get: getMock,
-        })),
+        limit: vi.fn(() => ({ get: getMock })),
       })),
     })),
   })),
 }));
 
-// next/server is not available in jsdom - mock NextResponse
+// next/server is not available in jsdom — mock NextResponse
 vi.mock("next/server", () => {
   class MockHeaders {
     constructor(init = {}) {
       this._map = new Map();
-      Object.entries(init).forEach(([k, v]) => this._map.set(k.toLowerCase(), v));
+      Object.entries(init).forEach(([k, v]) =>
+        this._map.set(k.toLowerCase(), v)
+      );
     }
     get(name) {
       return this._map.get(name.toLowerCase()) ?? null;
@@ -79,10 +72,13 @@ vi.mock("next/server", () => {
   };
 });
 
+const { GET: getICalFeed } =
+  await import("@/app/api/timetable/ical/[token]/feed.ics/route");
 
-const { GET: getICalFeed } = await import(
-  "@/app/api/timetable/ical/[token]/feed.ics/route"
-);
+// Helper: wraps token in a resolved Promise to match Next.js 15 async params
+const makeParams = (token) => ({ params: Promise.resolve({ token }) });
+
+const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
 
 describe("Timetable iCal Feed API", () => {
   beforeEach(() => {
@@ -90,28 +86,51 @@ describe("Timetable iCal Feed API", () => {
     setMockData(null);
   });
 
-  it("should return 404 for missing token", async () => {
-    const response = await getICalFeed({}, { params: {} });
+  // ── Auth / guard cases ────────────────────────────────────────────────────
+
+  it("returns 404 when token param is absent", async () => {
+    const response = await getICalFeed({}, { params: Promise.resolve({}) });
     expect(response.status).toBe(404);
   });
 
-  it("should return 404 for invalid token", async () => {
-    setMockData(null);
-    const response = await getICalFeed({}, { params: { token: "invalid" } });
+  it("returns 404 for a non-UUID token (prevents Firestore enumeration)", async () => {
+    // Firestore should NOT be called for invalid token shapes
+    const response = await getICalFeed({}, makeParams("not-a-uuid"));
+    expect(response.status).toBe(404);
+    expect(getMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for a UUID v1 token (only v4 is accepted)", async () => {
+    const uuidV1 = "a3c5e7b0-1c2d-11ee-be56-0242ac120002";
+    const response = await getICalFeed({}, makeParams(uuidV1));
+    expect(response.status).toBe(404);
+    expect(getMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when a valid UUID token has no matching timetable in Firestore", async () => {
+    setMockData(null); // empty snapshot
+    const response = await getICalFeed({}, makeParams(VALID_UUID));
     expect(response.status).toBe(404);
   });
 
-  it("should return valid ics feed when token is valid", async () => {
+  // ── Happy path ────────────────────────────────────────────────────────────
+
+  it("returns 200 with valid .ics content for a known token", async () => {
     setMockData({
-      calendarToken: "valid-token",
+      calendarToken: VALID_UUID,
       timetableData: {
         Monday: [
-          { time: "09:00-10:30", subject: "Math", teacher: "Mr. Smith", room: "101" },
+          {
+            time: "09:00-10:30",
+            subject: "Math",
+            teacher: "Mr. Smith",
+            room: "101",
+          },
         ],
       },
     });
 
-    const response = await getICalFeed({}, { params: { token: "valid-token" } });
+    const response = await getICalFeed({}, makeParams(VALID_UUID));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/calendar");
@@ -124,5 +143,37 @@ describe("Timetable iCal Feed API", () => {
     expect(text).toContain("LOCATION:101");
     expect(text).toContain("RRULE:FREQ=WEEKLY;BYDAY=MO");
     expect(text).toContain("END:VCALENDAR");
+  });
+
+  it("returns Cache-Control: no-cache so calendar apps always get a fresh feed", async () => {
+    setMockData({ calendarToken: VALID_UUID, timetableData: {} });
+    const response = await getICalFeed({}, makeParams(VALID_UUID));
+    expect(response.headers.get("cache-control")).toContain("no-cache");
+  });
+
+  it("handles timetableData with multiple days correctly", async () => {
+    setMockData({
+      calendarToken: VALID_UUID,
+      timetableData: {
+        Monday: [
+          { time: "09:00-10:00", subject: "Maths", teacher: "T1", room: "A1" },
+        ],
+        Wednesday: [
+          {
+            time: "11:00-12:00",
+            subject: "Physics",
+            teacher: "T2",
+            room: "B2",
+          },
+        ],
+      },
+    });
+
+    const response = await getICalFeed({}, makeParams(VALID_UUID));
+    const text = await response.text();
+
+    expect(text).toContain("BYDAY=MO");
+    expect(text).toContain("BYDAY=WE");
+    expect(text.match(/BEGIN:VEVENT/g)).toHaveLength(2);
   });
 });
