@@ -164,7 +164,15 @@ export default function Footer() {
           <div className="space-y-6">
             <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">Contact</h3>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300 space-y-2">
-              <p>Email: {CONTACT_INFO.email}</p>
+              <p>
+                Email:{" "}
+                <a
+                  href={`mailto:${CONTACT_INFO.email}`}
+                  className="hover:underline hover:text-blue-500 transition-colors duration-200"
+                >
+                  {CONTACT_INFO.email}
+                </a>
+              </p>
               <p>Phone: {CONTACT_INFO.phone}</p>
               <Link href="/contact" className="flex items-center gap-1 text-purple-400">Get in touch <ExternalLink size={11}/></Link>
             </div>
