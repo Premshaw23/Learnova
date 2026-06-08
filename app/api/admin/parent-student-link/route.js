@@ -209,7 +209,7 @@ export const DELETE = withErrorHandler(async (request) => {
   if (!validation.success) {
     return jsonError({
       message: "Validation failed",
-      details: validation.error.errors.map((issue) => ({
+      details: (validation.error.issues || validation.error.errors || []).map((issue) => ({
         path: issue.path.join("."),
         message: issue.message,
       })),
