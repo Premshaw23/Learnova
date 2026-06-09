@@ -34,6 +34,10 @@ import {
   mockRecentActivity,
 } from "@/constants/mockData";
 
+import { db } from "@/lib/firebaseConfig";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { getWeekdaysSince } from "@/services/statsService";
+
 const AttendanceHeatmap = dynamic(
   () => import("./AttendanceHeatmap.jsx"),
   {
@@ -57,6 +61,51 @@ const StudentDashboard = () => {
   const [upcomingClass, setUpcomingClass] = useState(null);
   const [isAttendanceWindow, setIsAttendanceWindow] = useState(false);
   const [gamificationData, setGamificationData] = useState(null);
+  const [attendanceStats, setAttendanceStats] = useState({
+    present: 18,
+    absent: 2,
+    late: 1,
+    percentage: 90,
+  });
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchAttendanceStats = async () => {
+      try {
+        const attendanceQuery = query(
+          collection(db, "attendance_records"),
+          where("userId", "==", user.uid)
+        );
+        const snapshot = await getDocs(attendanceQuery);
+        const records = snapshot.docs.map((doc) => doc.data() || {});
+        
+        const present = records.filter((r) => r.status === "present" || !r.status).length;
+        const late = records.filter((r) => r.status === "late").length;
+        const totalClasses = getWeekdaysSince();
+        const safeTotalClasses = totalClasses > 0 ? totalClasses : 1;
+        
+        let absent = safeTotalClasses - (present + late);
+        if (absent < 0) absent = 0;
+        
+        const percentage = Math.min(
+          100,
+          Math.round(((present + late) / safeTotalClasses) * 100)
+        );
+
+        setAttendanceStats({
+          present,
+          absent,
+          late,
+          percentage,
+        });
+      } catch (err) {
+        console.error("Failed to load attendance stats:", err);
+      }
+    };
+
+    fetchAttendanceStats();
+  }, [user]);
 
   useEffect(() => {
     const fetchGamification = async () => {
@@ -277,6 +326,31 @@ const StudentDashboard = () => {
 
       {/* Main */}
       <div className="relative z-10 container mx-auto px-4 py-8 space-y-8">
+        {/* Gamification Section */}
+        {gamificationData && (
+          <div className="flex flex-col lg:flex-row gap-6 mb-4">
+            <div className="flex flex-col gap-6 flex-1">
+              <div className="flex gap-4 items-center">
+                <StreakCounter currentStreak={gamificationData.currentStreak} />
+                <div className="flex-1">
+                  <XpProgressBar 
+                    currentLevel={gamificationData.currentLevel} 
+                    currentXp={gamificationData.totalXp} 
+                  />
+                </div>
+              </div>
+              <BadgeGallery unlockedBadges={gamificationData.unlockedBadges} />
+            </div>
+          </div>
+        )}
+
+        {user && user.uid && (
+          <AttendanceAnalytics
+            userId={user.uid}
+            recentActivity={recentActivity}
+          />
+        )}
+
         {/* Attendance Window */}
         {isAttendanceWindow && upcomingClass && (
           <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-xl rounded-2xl border border-white/20 p-6 shadow-2xl">
@@ -673,32 +747,13 @@ const StatCard = ({ color, label, value }) => {
   const style = styles[color].split(" ");
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6 w-full max-w-7xl mx-auto min-h-screen">
-      {/* Gamification Section */}
-      {gamificationData && (
-        <div className="flex flex-col lg:flex-row gap-6 mb-4">
-          <div className="flex flex-col gap-6 flex-1">
-            <div className="flex gap-4 items-center">
-              <StreakCounter currentStreak={gamificationData.currentStreak} />
-              <div className="flex-1">
-                <XpProgressBar 
-                  currentLevel={gamificationData.currentLevel} 
-                  currentXp={gamificationData.totalXp} 
-                />
-              </div>
-            </div>
-            <BadgeGallery unlockedBadges={gamificationData.unlockedBadges} />
-          </div>
-        </div>
-      )}
-
-      {user && user.uid && (
-        <AttendanceAnalytics
-          userId={user.uid}
-          recentActivity={recentActivity}
-        />
-      )}
-      {/* KEEP YOUR ENTIRE EXISTING JSX HERE EXACTLY SAME */}
+    <div
+      className={`bg-gradient-to-br ${style[0]} ${style[1]} rounded-xl p-4 border ${style[2]}`}
+    >
+      <div className={`text-2xl font-bold ${style[3]}`}>
+        {value}
+      </div>
+      <div className={`${style[4]} text-sm`}>{label}</div>
     </div>
   );
 };
