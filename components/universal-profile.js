@@ -59,6 +59,26 @@ export default function UniversalProfile() {
   // Role state fetched from Firestore
   const [role, setRole] = useState("student");
   const [userData, setUserData] = useState(null);
+  const [stats, setStats] = useState({});
+
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      if (!user?.uid) return;
+      try {
+        const statsRef = doc(db, "userStats", user.uid);
+        const statsSnap = await getDoc(statsRef);
+        if (statsSnap.exists()) {
+          setStats(statsSnap.data());
+        } else {
+          setStats({});
+        }
+      } catch (error) {
+        console.error("Failed to fetch user stats:", error);
+        setStats({});
+      }
+    };
+    fetchUserStats();
+  }, [user]);
 
   useEffect(() => {
     const fetchUserData = async () => {
