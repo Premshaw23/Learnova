@@ -124,8 +124,6 @@ const createPdfDownload = (notice) => {
   doc.setTextColor(100, 116, 139); // Slate-500
 
   const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
-  const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-  const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const dateStr = createdAt.toLocaleDateString([], {
     month: "short",
     day: "numeric",
@@ -556,7 +554,7 @@ const NoticeCard = ({
           {notice.attachments.map((att, i) => (
             <div key={i}>
               {att.type === "link" ? (
-                
+                <a
                   href={att.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -565,7 +563,7 @@ const NoticeCard = ({
                   🔗 {att.name}
                 </a>
               ) : att.type?.startsWith("image/") ? (
-                
+                <a
                   href={att.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -583,7 +581,7 @@ const NoticeCard = ({
                     title={att.name}
                     className="w-full h-48"
                   />
-                  
+                  <a
                     href={att.url}
                     target="_blank"
                     rel="noopener noreferrer"

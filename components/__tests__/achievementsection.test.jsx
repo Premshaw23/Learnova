@@ -1,16 +1,17 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import AchievementSection from "../AchievementSection";
 import toast from "react-hot-toast";
 
-jest.mock("react-hot-toast", () => ({
+vi.mock("react-hot-toast", () => ({
 __esModule: true,
 default: {
-success: jest.fn(),
+success: vi.fn(),
 },
 }));
 
-jest.mock("framer-motion", () => ({
+vi.mock("framer-motion", () => ({
 motion: {
 section: ({ children, ...props }) => (
 <section {...props}>{children}</section>
@@ -18,7 +19,7 @@ section: ({ children, ...props }) => (
 },
 }));
 
-jest.mock("../AttendanceBadge", () => ({
+vi.mock("../AttendanceBadge", () => ({
 __esModule: true,
 default: ({ title, unlocked }) => ( <div
    data-testid="attendance-badge"
@@ -30,13 +31,13 @@ default: ({ title, unlocked }) => ( <div
 
 describe("AchievementSection", () => {
 beforeEach(() => {
-jest.clearAllMocks();
-jest.useFakeTimers();
+vi.clearAllMocks();
+vi.useFakeTimers();
 });
 
 afterEach(() => {
-jest.runOnlyPendingTimers();
-jest.useRealTimers();
+vi.runOnlyPendingTimers();
+vi.useRealTimers();
 });
 
 test("renders achievement section heading", () => {
@@ -102,7 +103,7 @@ render( <AchievementSection
 );
 
 
-jest.runAllTimers();
+vi.runAllTimers();
 
 expect(toast.success).toHaveBeenCalledTimes(3);
 
@@ -136,7 +137,7 @@ render( <AchievementSection
    />
 );
 
-jest.runAllTimers();
+vi.runAllTimers();
 
 expect(toast.success).toHaveBeenCalledTimes(5);
 
@@ -153,7 +154,7 @@ expect(
 
 expect(screen.getByText("3/5")).toBeInTheDocument();
 
-jest.runAllTimers();
+vi.runAllTimers();
 
 expect(toast.success).toHaveBeenCalledTimes(3);
 
@@ -170,7 +171,7 @@ render( <AchievementSection
 
 expect(screen.getByText("0/5")).toBeInTheDocument();
 
-jest.runAllTimers();
+vi.runAllTimers();
 
 expect(toast.success).not.toHaveBeenCalled();
 

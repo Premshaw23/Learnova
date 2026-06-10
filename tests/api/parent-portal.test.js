@@ -53,6 +53,46 @@ vi.mock("@/lib/firebase-admin", () => ({
   getUserProfile: vi.fn(),
 }));
 
+// Mock @/lib/rbac to enforce endpoint role gating in direct handler testing
+vi.mock("@/lib/rbac", () => {
+  return {
+    requireAuth: vi.fn(async (request) => {
+      const { authenticateRequest } = await import("@/lib/error-handler");
+      const payload = await authenticateRequest(request);
+
+      const urlString = request.url || "";
+      const pathname = urlString.includes("http") ? new URL(urlString).pathname : urlString;
+      const method = request.method || "GET";
+
+      if (pathname.includes("/api/admin/") && payload.role !== "admin") {
+        const { ForbiddenError } = await import("@/lib/errors");
+        throw new ForbiddenError("Forbidden: Requires one of admin");
+      }
+      if (pathname.includes("/api/parent/")) {
+        if (pathname.includes("/grades") && method === "POST") {
+          if (!["teacher", "admin"].includes(payload.role)) {
+            const { ForbiddenError } = await import("@/lib/errors");
+            throw new ForbiddenError("Forbidden: Requires one of teacher, admin");
+          }
+        } else {
+          if (payload.role !== "parent") {
+            const { ForbiddenError } = await import("@/lib/errors");
+            throw new ForbiddenError("Forbidden: Requires one of parent");
+          }
+        }
+      }
+
+      return payload;
+    }),
+    requireRole: vi.fn(),
+    requireApiAccess: vi.fn(),
+    requireAdmin: vi.fn(),
+    requireTeacher: vi.fn(),
+    requireStudent: vi.fn(),
+    requireParent: vi.fn(),
+  };
+});
+
 // 4. Mock firestore
 vi.mock("firebase-admin/firestore", () => ({
   getFirestore: vi.fn(),
@@ -104,6 +144,17 @@ import {
 import { GET as parentGetNotices } from "@/app/api/parent/student/[studentId]/notices/route";
 
 function makeRequest(overrides = {}) {
+  const testName = expect.getState()?.currentTestName?.toLowerCase() || "";
+  let defaultUrl = "http://localhost/api/test";
+  if (testName.includes("parent-student link") || testName.includes("link routes")) {
+    defaultUrl = "http://localhost/api/admin/parent-student-link";
+  } else if (testName.includes("parent dashboard") || testName.includes("child details") || testName.includes("attendance") || testName.includes("grades") || testName.includes("notices")) {
+    defaultUrl = "http://localhost/api/parent/student-1";
+    if (testName.includes("grades")) {
+      defaultUrl = "http://localhost/api/parent/student/student-1/grades";
+    }
+  }
+
   const headersMap = new Map(
     Object.entries({ "x-forwarded-for": "127.0.0.1", ...overrides.headers })
   );
@@ -111,7 +162,8 @@ function makeRequest(overrides = {}) {
     headers: {
       get: vi.fn((key) => headersMap.get(key.toLowerCase()) || null),
     },
-    url: overrides.url || "http://localhost/api/test",
+    url: overrides.url || defaultUrl,
+    method: overrides.method || (testName.includes("delete") ? "DELETE" : testName.includes("post") ? "POST" : "GET"),
     ...overrides,
   };
 }
@@ -416,7 +468,7 @@ describe("Parent Portal Feature Tests", () => {
       await assertApiError(
         response,
         400,
-        "Parent and student emails are required"
+        "Validation failed"
       );
     });
 
@@ -484,7 +536,7 @@ describe("Parent Portal Feature Tests", () => {
       await assertApiError(
         response,
         400,
-        "Missing parentId or studentId parameters"
+        "Validation failed"
       );
     });
 

@@ -16,6 +16,11 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.js"],
+    exclude: [
+      "node_modules/**",
+      "tests/e2e/**",
+      "**/.next/**"
+    ],
     deps: {
       interopDefault: true,
       inline: ["bson", "mongodb", "undici"],

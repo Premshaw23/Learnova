@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { POST } from "@/app/api/notices/route";
+import { POST, GET as getNoticesRoute } from "@/app/api/notices/route";
 import { GET, publishNoticeToRedis } from "@/app/api/notices/stream/route";
 import {
   getAdminDb,
@@ -52,9 +52,11 @@ vi.mock("@/lib/firebase-admin", () => ({
 
 // Mock MongoDB
 const mockMongoInsert = vi.fn();
-const mockMongoFindToArray = vi.fn();
+const mockMongoCountDocuments = vi.fn().mockResolvedValue(0);
+const mockMongoFindToArray = vi.fn().mockResolvedValue([]);
 const mockMongoFind = vi.fn().mockReturnValue({
   sort: vi.fn().mockReturnThis(),
+  skip: vi.fn().mockReturnThis(),
   limit: vi.fn().mockReturnThis(),
   toArray: mockMongoFindToArray,
 });
@@ -116,6 +118,9 @@ describe("Notice Board Isolation & Security Tests", () => {
     connectDb.mockResolvedValue({
       collection: vi.fn().mockReturnValue({
         insertOne: mockMongoInsert,
+        find: mockMongoFind,
+        countDocuments: mockMongoCountDocuments,
+        distinct: vi.fn().mockResolvedValue([]),
       }),
     });
 
@@ -210,7 +215,7 @@ describe("Notice Board Isolation & Security Tests", () => {
       );
     });
 
-    test("allows all authenticated users to create notices (role enforcement is handled by middleware)", async () => {
+    test("denies notice creation for unauthorized roles (like student) with 403", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
         decodedToken: {
@@ -238,11 +243,11 @@ describe("Notice Board Isolation & Security Tests", () => {
         payload
       );
       const response = await POST(req);
+      expect(response.status).toBe(403);
       const body = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(body.success).toBe(true);
-      expect(mockFirestoreAdd).toHaveBeenCalled();
+      expect(body.error).toContain("Forbidden");
+      expect(body.errorObj.code).toBe("HTTP_403");
+      expect(mockFirestoreAdd).not.toHaveBeenCalled();
     });
   });
 
@@ -399,6 +404,114 @@ describe("Notice Board Isolation & Security Tests", () => {
         expect.objectContaining({
           targetAudience: "student",
           instituteId: "student-456",
+        })
+      );
+    });
+  });
+
+  describe("GET /api/notices - Query, Paginate, and Stats", () => {
+    test("retrieves paginated notices and dynamic stats based on filters", async () => {
+      verifyFirebaseToken.mockResolvedValue({
+        valid: true,
+        decodedToken: {
+          uid: "student-123",
+          email: "student@domain.com",
+          email_verified: true,
+          role: "student",
+        },
+      });
+      getUserProfile.mockResolvedValue({
+        role: "student",
+        instituteId: "institute_A",
+        readNotices: ["notice-1"],
+      });
+
+      const mockNotices = [
+        {
+          _id: "notice-2",
+          title: "Exam Notice",
+          content: "Exams next week.",
+          category: "academic",
+          priority: "high",
+          isPinned: true,
+          createdAt: new Date(),
+        },
+      ];
+
+      mockMongoFindToArray.mockResolvedValue(mockNotices);
+      mockMongoCountDocuments
+        .mockResolvedValueOnce(5)  // total
+        .mockResolvedValueOnce(1)  // pinned
+        .mockResolvedValueOnce(2)  // high
+        .mockResolvedValueOnce(4)  // unread
+        .mockResolvedValueOnce(1); // totalNotices matching filters
+
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        null,
+        "http://localhost/api/notices?page=1&limit=5&category=academic&priority=high&search=Exam"
+      );
+
+      const response = await getNoticesRoute(req);
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      expect(body.success).toBe(true);
+      expect(body.notices).toHaveLength(1);
+      expect(body.notices[0].id).toBe("notice-2");
+      expect(body.notices[0].title).toBe("Exam Notice");
+      expect(body.stats).toEqual({
+        total: 5,
+        unread: 4,
+        pinned: 1,
+        high: 2,
+      });
+      expect(body.totalNotices).toBe(1);
+
+      // Verify DB find query filters
+      expect(mockMongoFind).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetAudience: "student",
+          instituteId: "institute_A",
+          category: "academic",
+          priority: "high",
+          $or: expect.arrayContaining([
+            expect.objectContaining({ title: expect.any(RegExp) }),
+          ]),
+        })
+      );
+    });
+
+    test("handles unread filtering correctly when showOnlyUnread is true", async () => {
+      verifyFirebaseToken.mockResolvedValue({
+        valid: true,
+        decodedToken: {
+          uid: "student-123",
+          email: "student@domain.com",
+          email_verified: true,
+          role: "student",
+        },
+      });
+      getUserProfile.mockResolvedValue({
+        role: "student",
+        instituteId: "institute_A",
+        readNotices: ["notice-1"],
+      });
+
+      mockMongoFindToArray.mockResolvedValue([]);
+      mockMongoCountDocuments.mockResolvedValue(0);
+
+      const req = createMockRequest(
+        { authorization: "Bearer valid-token" },
+        null,
+        "http://localhost/api/notices?showOnlyUnread=true"
+      );
+
+      await getNoticesRoute(req);
+
+      expect(mockMongoFind).toHaveBeenCalledWith(
+        expect.objectContaining({
+          _id: { $nin: ["notice-1"] },
         })
       );
     });

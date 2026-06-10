@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useNotices } from "@/contexts/FirestoreContext";
+import { apiFetch } from "@/lib/apiClient";
 import { db } from "@/lib/firebaseConfig";
 import { doc, updateDoc } from "firebase/firestore";
 import { Navbar } from "./Navbar";
@@ -28,9 +28,12 @@ const CATEGORIES = [
 const SmartNoticeBoard = () => {
   const { user, userProfile, loading: authLoading } = useAuth();
 
-  // ── Consume the shared pooled subscription from FirestoreContext ──────────
-  // No local onSnapshot — notices arrive from the global singleton listener.
-  const { notices: rawNotices, loading: noticesLoading, error: noticesError } = useNotices();
+  const [notices, setNotices] = useState([]);
+  const [totalNotices, setTotalNotices] = useState(0);
+  const [stats, setStats] = useState({ total: 0, unread: 0, pinned: 0, high: 0 });
+  const [noticesLoading, setNoticesLoading] = useState(true);
+  const [noticesError, setNoticesError] = useState(null);
+  const [availableTags, setAvailableTags] = useState([]);
 
   // feat #2184: show create form for teachers/admins/staff
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -53,22 +56,64 @@ const SmartNoticeBoard = () => {
 
   const userId = user?.uid || user?.id || "anonymous";
 
-  // Normalise createdAt to a JS Date so downstream components can safely call
-  // getRelativeTime() regardless of whether it arrived as a Firestore Timestamp
-  // or was already converted by firestorePool's snapshot mapper.
-  const notices = useMemo(
-    () =>
-      rawNotices.map((n) => ({
-        ...n,
-        createdAt:
-          n.createdAt instanceof Date
-            ? n.createdAt
-            : n.createdAt?.toDate
-            ? n.createdAt.toDate()
-            : new Date(n.createdAt || Date.now()),
-      })),
-    [rawNotices]
-  );
+  const fetchNotices = useCallback(async () => {
+    if (!userId || userId === "anonymous") return;
+    setNoticesLoading(true);
+    setNoticesError(null);
+    try {
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        search: searchQuery,
+        category: selectedCategory,
+        priority: selectedPriority,
+        tags: selectedTags.join(","),
+        dateRange: dateRange,
+        sort: sortOrder,
+        showOnlyUnread: showOnlyUnread.toString(),
+        readNotices: Array.from(readNotices).join(","),
+      });
+
+      const response = await apiFetch(`/api/notices?${queryParams.toString()}`);
+      if (response && response.success) {
+        const formatted = (response.notices || []).map((n) => ({
+          ...n,
+          createdAt: n.createdAt ? new Date(n.createdAt) : new Date(),
+        }));
+        setNotices(formatted);
+        setTotalNotices(response.totalNotices || 0);
+        if (response.stats) {
+          setStats(response.stats);
+        }
+        if (response.tags) {
+          setAvailableTags(response.tags);
+        }
+      } else {
+        throw new Error("Failed to load notices");
+      }
+    } catch (err) {
+      console.error("Error fetching notices:", err);
+      setNoticesError(err.message || "Failed to load notices");
+      toast.error(err.message || "Failed to load notices");
+    } finally {
+      setNoticesLoading(false);
+    }
+  }, [
+    userId,
+    currentPage,
+    searchQuery,
+    selectedCategory,
+    selectedPriority,
+    selectedTags,
+    dateRange,
+    sortOrder,
+    showOnlyUnread,
+    readNotices,
+  ]);
+
+  useEffect(() => {
+    fetchNotices();
+  }, [fetchNotices]);
 
   // Derived activity
   const derivedActivity = useMemo(() => {
@@ -83,11 +128,6 @@ const SmartNoticeBoard = () => {
   }, [activity, notices]);
 
   const loading = authLoading || noticesLoading;
-
-  // Show toast once if the pool reports an error
-  useEffect(() => {
-    if (noticesError) toast.error("Failed to load notices");
-  }, [noticesError]);
 
   // Load read notices from user profile or local storage fallback
   useEffect(() => {
@@ -165,11 +205,6 @@ const SmartNoticeBoard = () => {
     return new Date(date).toLocaleDateString();
   }, []);
 
-  const availableTags = useMemo(() => {
-    const tags = notices.flatMap((notice) => notice?.tags || []);
-    return [...new Set(tags)];
-  }, [notices]);
-
   const searchOptions = useMemo(() => {
     return notices.map((notice) => notice?.title || "");
   }, [notices]);
@@ -188,49 +223,11 @@ const SmartNoticeBoard = () => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategory, selectedPriority, selectedTags, dateRange, showOnlyUnread, sortOrder]);
 
-  const filteredNotices = useMemo(() => {
-    const queryText = searchQuery.trim().toLowerCase();
-    const now = Date.now();
-
-    return notices
-      .filter((notice) => {
-        const haystack = `
-          ${notice?.title || ""}
-          ${notice?.content || ""}
-          ${notice?.category || ""}
-          ${(notice?.tags || []).join(" ")}
-        `.toLowerCase();
-
-        if (queryText && !haystack.includes(queryText)) return false;
-        if (selectedCategory !== "all" && notice?.category !== selectedCategory) return false;
-        if (selectedPriority !== "all" && notice?.priority !== selectedPriority) return false;
-        if (selectedTags.length > 0 && !selectedTags.every((tag) => notice?.tags?.includes(tag))) return false;
-        if (showOnlyUnread && readNotices.has(notice.id)) return false;
-
-        const noticeTime = new Date(notice?.createdAt).getTime();
-        if (dateRange === "today") return now - noticeTime <= 24 * 60 * 60 * 1000;
-        if (dateRange === "7d") return now - noticeTime <= 7 * 24 * 60 * 60 * 1000;
-        if (dateRange === "30d") return now - noticeTime <= 30 * 24 * 60 * 60 * 1000;
-        return true;
-      })
-      .sort((a, b) => {
-        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-        if (sortOrder === "oldest") {
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        }
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
-  }, [notices, searchQuery, selectedCategory, selectedPriority, selectedTags, dateRange, sortOrder, showOnlyUnread, readNotices]);
-
-  const totalPages = Math.ceil(filteredNotices.length / itemsPerPage);
+  const totalPages = Math.ceil(totalNotices / itemsPerPage);
   const safeCurrentPage = currentPage > totalPages && totalPages > 0 ? totalPages : currentPage;
-  const indexOfLastItem = safeCurrentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const paginatedNotices = filteredNotices.slice(indexOfFirstItem, indexOfLastItem);
-
-  const unreadCount = useMemo(() => {
-    return notices.filter((notice) => !readNotices.has(notice.id)).length;
-  }, [notices, readNotices]);
+  const indexOfLastItem = (safeCurrentPage - 1) * itemsPerPage + notices.length;
+  const indexOfFirstItem = (safeCurrentPage - 1) * itemsPerPage;
+  const paginatedNotices = notices;
 
   const handleClearFilters = useCallback(() => {
     setSearchQuery("");
@@ -275,7 +272,10 @@ const SmartNoticeBoard = () => {
         {showCreateForm && (
           <NoticeForm
             onClose={() => setShowCreateForm(false)}
-            onSuccess={() => setShowCreateForm(false)}
+            onSuccess={() => {
+              setShowCreateForm(false);
+              fetchNotices();
+            }}
           />
         )}
       </AnimatePresence>
@@ -307,10 +307,10 @@ const SmartNoticeBoard = () => {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {[
-                { label: "Total", value: notices.length, color: "text-white" },
-                { label: "Unread", value: unreadCount, color: "text-emerald-400" },
-                { label: "Pinned", value: notices.filter((n) => n.isPinned).length, color: "text-yellow-400" },
-                { label: "High", value: notices.filter((n) => n.priority === "high").length, color: "text-red-400" },
+                { label: "Total", value: stats.total, color: "text-white" },
+                { label: "Unread", value: stats.unread, color: "text-emerald-400" },
+                { label: "Pinned", value: stats.pinned, color: "text-yellow-400" },
+                { label: "High", value: stats.high, color: "text-red-400" },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4 text-center">
                   <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
@@ -395,7 +395,7 @@ const SmartNoticeBoard = () => {
                 value={searchQuery}
                 onSearchChange={setSearchQuery}
                 onClearFilters={handleClearFilters}
-                resultsCount={filteredNotices.length}
+                resultsCount={totalNotices}
                 activeFilterCount={activeFilterCount}
                 suggestions={searchOptions}
                 onSuggestionSelect={handleSuggestionSelect}
@@ -420,7 +420,7 @@ const SmartNoticeBoard = () => {
 
             {/* Notices */}
             <main>
-              {filteredNotices.length === 0 ? (
+              {totalNotices === 0 ? (
                 <EmptyNoticeState query={searchQuery} onResetFilters={handleClearFilters} />
               ) : (
                 <>
@@ -460,10 +460,10 @@ const SmartNoticeBoard = () => {
                         <span className="font-semibold text-white">{indexOfFirstItem + 1}</span>
                         {" to "}
                         <span className="font-semibold text-white">
-                          {Math.min(indexOfLastItem, filteredNotices.length)}
+                          {Math.min(indexOfLastItem, totalNotices)}
                         </span>
                         {" of "}
-                        <span className="font-semibold text-white">{filteredNotices.length}</span>
+                        <span className="font-semibold text-white">{totalNotices}</span>
                         {" notices"}
                       </p>
                       <div className="flex gap-3">

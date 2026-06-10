@@ -1,42 +1,46 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 const mockUser = {
-  getIdToken: jest.fn().mockResolvedValue("mock-token"),
+  getIdToken: vi.fn().mockResolvedValue("mock-token"),
 };
 
-jest.mock("@/hooks/useAuth", () => ({
+vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: mockUser,
   }),
 }));
 
-jest.mock("../Navbar", () => ({
+vi.mock("../Navbar", () => ({
   Navbar: () => <div>Mock Navbar</div>,
 }));
 
-jest.mock("@/components/ui/DashboardSkeleton", () => {
-  return function MockDashboardSkeleton() {
+vi.mock("@/components/ui/DashboardSkeleton", () => ({
+  __esModule: true,
+  default: function MockDashboardSkeleton() {
     return <div>Dashboard Loading...</div>;
-  };
-});
+  },
+}));
 
-jest.mock("@/components/ui/ChartSkeleton", () => {
-  return function MockChartSkeleton() {
+vi.mock("@/components/ui/ChartSkeleton", () => ({
+  __esModule: true,
+  default: function MockChartSkeleton() {
     return <div>Chart Skeleton</div>;
-  };
-});
+  },
+}));
 
-jest.mock("@/components/ui/SkeletonCard", () => {
-  return function MockSkeletonCard() {
+vi.mock("@/components/ui/SkeletonCard", () => ({
+  __esModule: true,
+  default: function MockSkeletonCard() {
     return <div>Skeleton Card</div>;
-  };
-});
+  },
+}));
 
-jest.mock("next/dynamic", () => ({
+vi.mock("next/dynamic", () => ({
   __esModule: true,
   default: () => {
     return function MockDynamicComponent() {
@@ -103,12 +107,12 @@ describe("AdminDashboard", () => {
   beforeEach(() => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue(mockResponse),
+      json: vi.fn().mockResolvedValue(mockResponse),
     });
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders dashboard after successful fetch", async () => {

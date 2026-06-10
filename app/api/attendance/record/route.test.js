@@ -269,6 +269,13 @@ describe("attendance record route", () => {
     const { requireAuth } = await import("@/lib/rbac");
     requireAuth.mockResolvedValue({ uid: "user-123" });
     checkRateLimit.mockResolvedValue({ allowed: false });
+    parseJSON.mockResolvedValue({
+      userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
+      confidenceScore: 75,
+      date: "2026-05-25",
+    });
 
     const response = await POST(createMockRequest());
     await assertApiError(
