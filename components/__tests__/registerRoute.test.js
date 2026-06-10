@@ -36,6 +36,7 @@ vi.mock("@/lib/firebase-admin", () => ({
 describe("POST /api/register - Authentication, Rollback, and Validation Security Tests", () => {
   let mockFindOne;
   let mockInsertOne;
+  let mockUpdateOne;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,11 +49,13 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
     mockFindOne = vi.fn();
     mockInsertOne = vi.fn();
+    mockUpdateOne = vi.fn().mockResolvedValue({});
 
     connectDb.mockResolvedValue({
       collection: vi.fn().mockReturnValue({
         findOne: mockFindOne,
         insertOne: mockInsertOne,
+        updateOne: mockUpdateOne,
         createIndex: vi.fn().mockResolvedValue({}),
       }),
     });

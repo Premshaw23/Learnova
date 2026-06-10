@@ -54,7 +54,8 @@ const SAMPLE_GRADES = [
 export const GET = withErrorHandler(async (request, context) => {
   const decodedToken = await requireAuth(request);
   const parentId = decodedToken.uid;
-  const { studentId } = context.params;
+  const params = await context.params;
+  const { studentId } = params;
 
   initFirebaseAdmin();
   const db = getFirestore();
@@ -113,7 +114,8 @@ export const POST = withErrorHandler(async (request, context) => {
     return jsonError("Missing required grade fields", 400);
   }
 
-  let routeStudentId = context?.params?.studentId;
+  const params = await context?.params;
+  let routeStudentId = params?.studentId;
   if (!routeStudentId && request.url) {
     const match = request.url.match(/\/student\/([^/]+)\/grades/);
     if (match) {

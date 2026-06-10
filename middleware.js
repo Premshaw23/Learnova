@@ -21,17 +21,7 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
-
-function getRedis() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
-
+// getRedis is imported from @/lib/redis
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
 
@@ -464,7 +454,6 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
   if (isTokenValid && pathname.startsWith("/api/")) {
     const sessionId =
       request.cookies.get("sessionId")?.value ||
@@ -479,28 +468,15 @@ export async function middleware(request) {
               { error: "Session expired or terminated concurrently" },
               { status: 401 }
             );
-    if (isTokenValid && pathname.startsWith("/api/")) {
-      const sessionId =
-        request.cookies.get("sessionId")?.value ||
-        request.headers.get("x-session-id");
-      if (sessionId) {
-        try {
-          const redis = getRedisClient();
-          if (redis) {
-            const exists = await redis.exists(`session:${sessionId}`);
-            if (exists !== 1) {
-              return NextResponse.json(
-                { error: "Session expired or terminated concurrently" },
-                { status: 401 }
-              );
-            }
           }
-        } catch {
-          // Redis unavailable — continue without session validation
         }
+      } catch {
+        // Redis unavailable — continue without session validation
       }
     }
+  }
 
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
     const tokenFromCookie = request.cookies.get("authToken")?.value || null;
     if (tokenFromCookie) {
       try {

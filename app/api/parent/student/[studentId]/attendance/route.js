@@ -14,7 +14,8 @@ const STUDENT_ID_RE = /^[A-Za-z0-9_-]{8,128}$/;
 export const GET = withErrorHandler(async (request, context) => {
   const decodedToken = await requireAuth(request);
   const parentId = decodedToken.uid;
-  const { studentId } = context.params;
+  const params = await context.params;
+  const { studentId } = params;
 
   // Validate studentId format before issuing any database query.
   // Accepting arbitrary strings allows a caller to enumerate IDs by

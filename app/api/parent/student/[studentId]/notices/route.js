@@ -10,7 +10,8 @@ export const runtime = "nodejs";
 export const GET = withErrorHandler(async (request, context) => {
   const decodedToken = await requireAuth(request);
   const parentId = decodedToken.uid;
-  const { studentId } = context.params;
+  const params = await context.params;
+  const { studentId } = params;
 
   initFirebaseAdmin();
   const db = getFirestore();
