@@ -241,6 +241,20 @@ export default function AuthForm({
             requirements={passwordRequirements}
             strength={passwordStrength}
           />
+          {!isLogin && password && (
+            <div className="mt-2 text-xs flex justify-between items-center text-muted-foreground">
+              <span>Password strength:</span>
+              <span className={`font-bold ${
+                passwordStrength <= 2 ? "text-red-400" :
+                passwordStrength <= 4 ? "text-yellow-400" :
+                "text-green-400"
+              }`}>
+                {passwordStrength <= 2 ? "Weak" :
+                 passwordStrength <= 4 ? "Medium" :
+                 "Strong"}
+              </span>
+            </div>
+          )}
 
           {!isLogin ? (
             <PasswordInputField
