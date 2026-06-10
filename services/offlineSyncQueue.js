@@ -2,15 +2,25 @@ import { openDB } from "idb";
 
 const DB_NAME = "learnova-offline-sync-db";
 const STORE_NAME = "attendance_queue";
+const PROGRESS_STORE_NAME = "progress_queue";
+const DB_VERSION = 2;
 
 /**
- * Initializes the IndexedDB for offline attendance storage.
+ * Initializes the IndexedDB for offline storage.
  */
 export async function initOfflineDB() {
-  return openDB(DB_NAME, 1, {
+  return openDB(DB_NAME, DB_VERSION, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        store.createIndex("status", "status", { unique: false });
+        store.createIndex("timestamp", "timestamp", { unique: false });
+      }
+      if (!db.objectStoreNames.contains(PROGRESS_STORE_NAME)) {
+        const store = db.createObjectStore(PROGRESS_STORE_NAME, {
           keyPath: "id",
           autoIncrement: true,
         });
@@ -144,4 +154,80 @@ export async function syncOfflineQueue(syncCallback) {
     synced: syncedCount,
     failed: failedCount
   };
+}
+
+/**
+ * Adds a course progress record to the offline IndexedDB queue.
+ * @param {Object} record - The progress data (courseId, currentModuleId, progress, timestamp)
+ */
+export async function queueOfflineProgress(record) {
+  try {
+    const db = await initOfflineDB();
+    const id = await db.add(PROGRESS_STORE_NAME, {
+      ...record,
+      status: "pending",
+      timestamp: Date.now(),
+      retryCount: 0,
+    });
+    console.log(`[Offline Progress Sync] Queued progress record ID: ${id}`);
+    return id;
+  } catch (error) {
+    console.error("[Offline Progress Sync] Failed to queue record:", error);
+    throw error;
+  }
+}
+
+/**
+ * Retrieves all pending progress records from the offline queue.
+ */
+export async function getPendingOfflineProgress() {
+  try {
+    const db = await initOfflineDB();
+    const tx = db.transaction(PROGRESS_STORE_NAME, "readonly");
+    const index = tx.store.index("status");
+    return await index.getAll("pending");
+  } catch (error) {
+    console.error("[Offline Progress Sync] Failed to fetch pending records:", error);
+    return [];
+  }
+}
+
+/**
+ * Removes a progress record from the offline queue.
+ * @param {number} id - The ID of the record.
+ */
+export async function removeProgressFromQueue(id) {
+  try {
+    const db = await initOfflineDB();
+    await db.delete(PROGRESS_STORE_NAME, id);
+  } catch (error) {
+    console.error(`[Offline Progress Sync] Failed to delete record ${id}:`, error);
+  }
+}
+
+/**
+ * Updates retryCount for a progress record.
+ */
+export async function updateProgressRetryCount(id, retryCount) {
+  try {
+    const db = await initOfflineDB();
+    const tx = db.transaction(PROGRESS_STORE_NAME, "readwrite");
+    const store = tx.store;
+    const record = await store.get(id);
+    if (record) {
+      record.retryCount = retryCount;
+      await store.put(record);
+    }
+    await tx.done;
+  } catch (error) {
+    console.error(`[Offline Progress Sync] Failed to update retryCount for progress record ${id}:`, error);
+  }
+}
+
+/**
+ * Counts the number of pending progress records.
+ */
+export async function getPendingProgressCount() {
+  const records = await getPendingOfflineProgress();
+  return records.length;
 }
