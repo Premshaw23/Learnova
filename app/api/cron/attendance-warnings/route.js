@@ -4,6 +4,7 @@ import { authorizeCronRequest } from "@/lib/cronAuth";
 import { connectDb } from "@/lib/mongodb";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import { evaluateStudentAttendance } from "@/lib/attendanceUtils";
+import { publishEvent } from "@/lib/ssePublisher";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +158,17 @@ export async function GET(request) {
       if (notificationsToInsert.length === 0) return;
       await db.collection("notifications").insertMany(notificationsToInsert);
       await db.collection("warning_logs").insertMany(warningLogsToInsert);
+      for (const notif of notificationsToInsert) {
+        publishEvent("notifications", "warning", {
+          _id: notif._id?.toString?.() || notif._id,
+          recipientId: notif.userId,
+          title: notif.title,
+          message: notif.message,
+          type: notif.type,
+          read: false,
+          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+        }).catch(() => {});
+      }
       notificationsToInsert = [];
       warningLogsToInsert = [];
     }
@@ -280,6 +292,17 @@ export async function GET(request) {
     if (notificationsToInsert.length > 0) {
       await db.collection("notifications").insertMany(notificationsToInsert);
       await db.collection("warning_logs").insertMany(warningLogsToInsert);
+      for (const notif of notificationsToInsert) {
+        publishEvent("notifications", "warning", {
+          _id: notif._id?.toString?.() || notif._id,
+          recipientId: notif.userId,
+          title: notif.title,
+          message: notif.message,
+          type: notif.type,
+          read: false,
+          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+        }).catch(() => {});
+      }
     }
 
     await sendWarningEmails(emailsToSend);

@@ -421,35 +421,54 @@ export default function UniversalSettings() {
     setIsLoading(true);
     setError(null);
     try {
-      // Upload avatar separately if one was selected
       let avatarUrl = settings.profile.avatar;
       if (avatarFile) {
-        const formData = new FormData();
-        formData.append("file", avatarFile);
+        try {
+          const formData = new FormData();
+          formData.append("file", avatarFile);
 
-        const uploadResponse = await apiFetch("/api/upload/avatar", {
-          method: "POST",
-          body: formData,
-          credentials: "include", // Include cookies for authentication
-        });
+          const uploadResponse = await apiFetch("/api/upload/avatar", {
+            method: "POST",
+            body: formData,
+            credentials: "include", // Include cookies for authentication
+          });
 
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json().catch(() => ({}));
-          const errorMsg =
-            errorData.error || errorData.message || "Failed to upload avatar";
-          throw new Error(`Avatar upload failed: ${errorMsg}`);
+          const uploadResponseText = await uploadResponse.text().catch(() => "");
+          let uploadData = null;
+
+          if (uploadResponseText) {
+            try {
+              uploadData = JSON.parse(uploadResponseText);
+            } catch (parseError) {
+              console.error("Error parsing avatar upload response:", parseError);
+              throw new Error("Avatar upload returned invalid data.");
+            }
+          }
+
+          if (!uploadResponse.ok) {
+            const errorMsg =
+              uploadData?.error ||
+              uploadData?.message ||
+              uploadResponseText ||
+              "Failed to upload avatar";
+            throw new Error(`Avatar upload failed: ${errorMsg}`);
+          }
+
+          if (!uploadData || !uploadData.url) {
+            throw new Error("Avatar upload completed without a usable image URL.");
+          }
+
+          avatarUrl = uploadData.url;
+          setAvatarFile(null);
+          setAvatarPreview(null);
+        } catch (avatarError) {
+          console.error("Error uploading avatar:", avatarError);
+          toast.error(
+            avatarError?.message || "Avatar upload failed, saving other settings only."
+          );
         }
-
-        const uploadData = await uploadResponse.json();
-        if (!uploadData.url) {
-          throw new Error("No URL returned from avatar upload");
-        }
-        avatarUrl = uploadData.url;
-        setAvatarFile(null);
-        setAvatarPreview(null);
       }
 
-      // Save other settings
       const response = await apiFetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

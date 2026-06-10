@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectDb } from "@/lib/mongodb";
+import { connectDb, disconnectDb } from "@/lib/mongodb";
 import { initializeFirebase } from "@/lib/firebase-admin";
+import { getRedis } from "@/lib/redis";
 import admin from "firebase-admin";
 
 export const dynamic = "force-dynamic";
@@ -50,24 +51,17 @@ export async function GET() {
   }
 
   // 3. Upstash Redis health check (optional)
-  if (
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    try {
-      const { Redis } = await import("@upstash/redis");
-      const redis = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
+  try {
+    const redis = getRedis();
+    if (redis) {
       const redisStart = Date.now();
       await redis.ping();
       checks.redis = { status: "healthy", latencyMs: Date.now() - redisStart };
-    } catch (error) {
-      checks.redis = { status: "unhealthy", error: error.message };
+    } else {
+      checks.redis = { status: "not_configured" };
     }
-  } else {
-    checks.redis = { status: "not_configured" };
+  } catch (error) {
+    checks.redis = { status: "unhealthy", error: error.message };
   }
 
   // Determine overall status

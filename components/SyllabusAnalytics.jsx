@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 
 const MOCK_SYLLABUS_TRACKS = {

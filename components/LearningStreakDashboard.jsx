@@ -1,3 +1,6 @@
+"use client";
+
+
 import React, { useState } from 'react';
 
 const MOCK_ANALYTICS_DATA = {

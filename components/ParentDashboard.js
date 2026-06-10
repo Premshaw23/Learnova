@@ -704,7 +704,7 @@ const ParentDashboard = () => {
                           No attendance history found.
                         </div>
                       ) : (
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minHeight={250}>
                           <AreaChart data={attendanceChartData}>
                             <defs>
                               <linearGradient id="colorAttTrend" x1="0" y1="0" x2="0" y2="1">
@@ -754,7 +754,7 @@ const ParentDashboard = () => {
                           No academic records available.
                         </div>
                       ) : (
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minHeight={250}>
                           <BarChart data={gradesChartData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
                             <XAxis dataKey="subject" stroke="#94a3b8" fontSize={9} />

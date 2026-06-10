@@ -34,10 +34,11 @@ export default function AuthPage() {
 function AuthPageContent() {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
+  const isDirect = searchParams.get("direct") === "true";
 
-  const [showRoleSelection, setShowRoleSelection] = useState(true);
+  const [showRoleSelection, setShowRoleSelection] = useState(!isDirect);
   const [isLogin, setIsLogin] = useState(mode !== "signup");
-  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedRole, setSelectedRole] = useState(isDirect ? USER_ROLES.STUDENT : "");
 
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);

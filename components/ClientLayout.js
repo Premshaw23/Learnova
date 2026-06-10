@@ -143,8 +143,17 @@ export default function ClientLayout({ children }) {
             const requestHeaders = new Headers(
               requestInput?.headers || init.headers || {}
             );
-            if (!requestHeaders.has("x-csrf-token")) {
-              requestHeaders.set("X-CSRF-Token", csrfToken);
+            const existingToken =
+              requestHeaders.get("x-csrf-token") ||
+              requestHeaders.get("x-xsrf-token") ||
+              requestHeaders.get("x-csrftoken");
+
+            if (!existingToken) {
+              requestHeaders.set("x-csrf-token", csrfToken);
+            } else {
+              if (!requestHeaders.has("x-csrf-token")) {
+                requestHeaders.set("x-csrf-token", existingToken);
+              }
             }
 
             if (requestInput) {

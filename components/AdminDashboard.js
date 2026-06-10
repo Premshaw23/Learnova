@@ -36,6 +36,8 @@ import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import SkeletonCard from "@/components/ui/SkeletonCard";
+import ExportDropdown from "@/components/ui/ExportDropdown";
+import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 
 // CRITICAL FIX: Imported missing useAuth hook to prevent ReferenceError crash
 import { useAuth } from "@/hooks/useAuth";
@@ -71,6 +73,39 @@ const SuperAdminDashboard = () => {
   const [systemStatus, setSystemStatus] = useState("operational");
   const { user } = useAuth();
   const isMounted = useIsMounted();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = (format) => {
+    setIsExporting(true);
+    try {
+      const exportData = institutes.map((inst) => ({
+        Name: inst.name,
+        Status: inst.status,
+        Users: inst.users || "—",
+        Plan: inst.plan || "—",
+        "API Usage": inst.apiUsage || "—",
+        Storage: inst.storage || "—",
+        Health: inst.health || "—",
+        "Pending Issues": inst.issues || 0,
+      }));
+      const filename = `institutes_export_${new Date().toISOString().split("T")[0]}`;
+      if (format === "csv") {
+        exportToCSV(exportData, filename);
+      } else {
+        const columns = Object.keys(exportData[0] || {}).map((k) => ({
+          header: k,
+          dataKey: k,
+        }));
+        exportToPDF(exportData, columns, "Institute Data Export", filename);
+      }
+      toast.success(`Exported as ${format.toUpperCase()}`);
+    } catch (err) {
+      console.error("Export failed:", err);
+      toast.error("Failed to export report");
+    } finally {
+      if (isMounted()) setIsExporting(false);
+    }
+  };
 
   const [platformStats, setPlatformStats] = useState({
     totalInstitutes: 0,
@@ -401,7 +436,7 @@ const SuperAdminDashboard = () => {
               <input
                 type="text"
                 value={linkSearchQuery}
-                onChange={(e) => setLinkSearchQuery(e.target.value)}
+                onChange={(e) => { const val = e.target.value; setLinkSearchQuery(val); }}
                 placeholder="Search parent/student..."
                 className="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
               />
@@ -737,10 +772,14 @@ const SuperAdminDashboard = () => {
             <Building2 className="w-4 h-4" />
             Add New Institute
           </button>
-          <button className="px-4 py-2 bg-gray-800/60 text-gray-300 rounded-xl hover:bg-gray-700/60 flex items-center gap-2 border border-gray-600/40 transition-all duration-300" aria-label="Action button">
+          <ExportDropdown
+            onExport={handleExport}
+            isExporting={isExporting}
+            className="px-4 py-2 bg-gray-800/60 text-gray-300 rounded-xl hover:bg-gray-700/60 flex items-center gap-2 border border-gray-600/40 transition-all duration-300"
+          >
             <Download className="w-4 h-4" />
             Export Report
-          </button>
+          </ExportDropdown>
         </div>
       </div>
 

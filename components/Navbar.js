@@ -294,7 +294,7 @@ export function Navbar() {
                       size="default"
                       className="relative h-9 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition-all duration-200 hover:from-indigo-500 hover:to-violet-500"
                     >
-                      <Link href="/auth">
+                      <Link href="/auth?direct=true">
                         <span className="flex items-center gap-1.5">
                           Login <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
                         </span>
@@ -312,7 +312,7 @@ export function Navbar() {
                       size="default"
                       className="relative h-9 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition-all duration-200 hover:from-indigo-500 hover:to-violet-500"
                     >
-                      <Link href="/auth?mode=signup">
+                      <Link href="/auth?mode=signup&direct=true">
                         <span className="flex items-center gap-1.5">
                           Sign Up <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
                         </span>
