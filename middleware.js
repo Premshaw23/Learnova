@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { getRedis } from "@/lib/redis";
-import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
+import { validateCsrfOriginAndReferer, validateCsrfRequest, CSRF_PROTECTED_PATHS } from "@/lib/csrf";
 import getApiRouteRule from "@/lib/rbac-policy";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -21,16 +21,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
-
-function getRedis() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
 
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
@@ -391,10 +381,10 @@ function enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
-  if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+  const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
+  if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`)) && !isUnsafeMethod) {
     return NextResponse.next();
   }
-  const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
 
   // Clean up expired rate limit entries periodically
   cleanupRateLimitMap();
@@ -403,7 +393,10 @@ export async function middleware(request) {
   // Requests authenticated via Authorization: Bearer <token> are not CSRF-vulnerable.
   // Defer CSRF validation until after token extraction/verification below.
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
+  const matchesProtectedPath = CSRF_PROTECTED_PATHS.some((path) => pathname.startsWith(path));
+  const isServerAction = request.headers.has("next-action");
+
+  if (isUnsafeMethod && (matchesProtectedPath || isServerAction)) {
     const contentLength = Number(request.headers.get("content-length"));
     if (!Number.isNaN(contentLength) && contentLength > 1024 * 1024) {
       return NextResponse.json(
@@ -464,7 +457,6 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
   if (isTokenValid && pathname.startsWith("/api/")) {
     const sessionId =
       request.cookies.get("sessionId")?.value ||
@@ -479,39 +471,24 @@ export async function middleware(request) {
               { error: "Session expired or terminated concurrently" },
               { status: 401 }
             );
-    if (isTokenValid && pathname.startsWith("/api/")) {
-      const sessionId =
-        request.cookies.get("sessionId")?.value ||
-        request.headers.get("x-session-id");
-      if (sessionId) {
-        try {
-          const redis = getRedisClient();
-          if (redis) {
-            const exists = await redis.exists(`session:${sessionId}`);
-            if (exists !== 1) {
-              return NextResponse.json(
-                { error: "Session expired or terminated concurrently" },
-                { status: 401 }
-              );
-            }
           }
-        } catch {
-          // Redis unavailable — continue without session validation
         }
+      } catch {
+        // Redis unavailable — continue without session validation
       }
     }
+  }
 
-    const tokenFromCookie = request.cookies.get("authToken")?.value || null;
-    if (tokenFromCookie) {
-      try {
-        validateCsrfOriginAndReferer(request);
-        validateCsrfRequest(request);
-      } catch (error) {
-        return NextResponse.json(
-          { error: error.message || "Forbidden: invalid CSRF request" },
-          { status: error.statusCode || 403 }
-        );
-      }
+  const tokenFromCookie = request.cookies.get("authToken")?.value || null;
+  if (isUnsafeMethod && tokenFromCookie && (matchesProtectedPath || isServerAction)) {
+    try {
+      validateCsrfOriginAndReferer(request);
+      validateCsrfRequest(request);
+    } catch (error) {
+      return NextResponse.json(
+        { error: error.message || "Forbidden: invalid CSRF request" },
+        { status: error.statusCode || 403 }
+      );
     }
   }
 
