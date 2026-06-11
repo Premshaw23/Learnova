@@ -381,7 +381,7 @@ const ParentDashboard = () => {
 
   if (children.length === 0) {
     return (
-
+      <div className={`min-h-screen bg-slate-950 text-white ${dashboardContentOffsetClass}`}>
         <Navbar />
         <div className="max-w-4xl mx-auto pt-32 px-6 text-center space-y-6">
           <div className="w-20 h-20 bg-pink-500/10 border border-pink-500/20 rounded-full flex items-center justify-center mx-auto text-pink-400">
@@ -423,7 +423,7 @@ const ParentDashboard = () => {
   };
 
   return (
-
+    <div className={`min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white pb-12 ${dashboardContentOffsetClass}`}>
       <Navbar />
 
       {/* ── Main Header / Child Profile Selector ── */}
@@ -561,7 +561,13 @@ const ParentDashboard = () => {
       {/* ── Tab Switcher Menu ── */}
       <div className="max-w-7xl mx-auto px-6 mb-8">
         <div className="flex items-center gap-2 border-b border-white/10 pb-2 flex-wrap">
-
+          {[
+            { id: "overview", label: "Overview", icon: Activity },
+            { id: "child_progress", label: "Progress Visualizer", icon: TrendingUp },
+            { id: "attendance", label: "Attendance Details", icon: Calendar },
+            { id: "academics", label: "Academic Reports", icon: BookMarked },
+            { id: "notices", label: "Notification Center", icon: Bell },
+          ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}

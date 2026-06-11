@@ -554,7 +554,7 @@ const NoticeCard = ({
           {notice.attachments.map((att, i) => (
             <div key={i}>
               {att.type === "link" ? (
-                
+                <a
                   href={att.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -563,7 +563,7 @@ const NoticeCard = ({
                   🔗 {att.name}
                 </a>
               ) : att.type?.startsWith("image/") ? (
-                
+                <a
                   href={att.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -581,7 +581,7 @@ const NoticeCard = ({
                     title={att.name}
                     className="w-full h-48"
                   />
-                  
+                  <a
                     href={att.url}
                     target="_blank"
                     rel="noopener noreferrer"

@@ -5,6 +5,8 @@ import { ValidationError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { passcodeSchema, withValidation } from "@/lib/validations";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { verifyPasscode } from "@/utils/passcodeUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +32,7 @@ export const POST = withErrorHandler(
     const { passcode } = validatedData;
 
     const { getUserProfile } = await import("@/lib/firebase-admin");
-...
-  const profile = await getUserProfile(decodedToken.uid);
+    const profile = await getUserProfile(decodedToken.uid);
   if (!profile) {
     return NextResponse.json(
       { valid: false, error: "User profile not found." },
@@ -91,4 +92,4 @@ export const POST = withErrorHandler(
     },
     { status: 401 }
   );
-});
+}));

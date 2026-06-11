@@ -36,7 +36,6 @@ import ProductivityTrendsSection from "@/components/productivity/ProductivityTre
 import { apiFetch } from "@/lib/apiClient";
 import { TaskSection } from "@/components/productivity/TaskSection";
 import { CalendarSection } from "@/components/productivity/CalendarSection";
-import { CalendarSection } from "@/components/productivity/CalendarSection";
 import { AgendaListSection } from "@/components/productivity/AgendaListSection";
 import { safeLocalStorageSet, safeLocalStorageGet } from "@/lib/storage";
 const MODES = {

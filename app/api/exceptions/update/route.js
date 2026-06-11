@@ -38,6 +38,18 @@ const exceptionUpdateSchema = z.object({
 export const PUT = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
   const profile = await getUserProfile(decodedToken.uid);
+
+  if (
+    !profile ||
+    (profile.role !== "teacher" &&
+      profile.role !== "admin" &&
+      profile.role !== "institute")
+  ) {
+    throw new ForbiddenError(
+      "Forbidden: You do not have permission to update exception requests."
+    );
+  }
+
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `exceptions_update_${ip}_${decodedToken.uid}`

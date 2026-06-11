@@ -371,4 +371,142 @@ describe("Exceptions BOLA Security Tests", () => {
     );
     expect(res.status).toBe(403);
   });
+
+  test("update: allows updating exception if role is admin", async () => {
+    verifyFirebaseToken.mockResolvedValue({
+      valid: true,
+      decodedToken: {
+        uid: "admin-1",
+        email: "admin@domain.com",
+        email_verified: true,
+        role: "admin",
+      },
+    });
+    getUserProfile.mockResolvedValue({
+      role: "admin",
+      instituteId: "inst-D",
+    });
+
+    mockCollection.findOne.mockResolvedValue({
+      _id: "60c72b2f9b1d8e2d8c8c8c8c",
+      instituteId: "inst-D",
+      className: "Math",
+      studentEmail: "student@domain.com",
+    });
+    mockCollection.updateOne.mockResolvedValue({ matchedCount: 1 });
+
+    const payload = {
+      exceptionId: "60c72b2f9b1d8e2d8c8c8c8c",
+      status: "approved",
+      comments: "Approved by Admin",
+    };
+
+    const res = await updatePUT(
+      createMockRequest("http://localhost/api/exceptions/update", {}, payload)
+    );
+    expect(res.status).toBe(200);
+  });
+
+  test("update: allows updating exception if role is institute", async () => {
+    verifyFirebaseToken.mockResolvedValue({
+      valid: true,
+      decodedToken: {
+        uid: "inst-user-1",
+        email: "inst@domain.com",
+        email_verified: true,
+        role: "institute",
+      },
+    });
+    getUserProfile.mockResolvedValue({
+      role: "institute",
+      instituteId: "inst-D",
+    });
+
+    mockCollection.findOne.mockResolvedValue({
+      _id: "60c72b2f9b1d8e2d8c8c8c8c",
+      instituteId: "inst-D",
+      className: "Math",
+      studentEmail: "student@domain.com",
+    });
+    mockCollection.updateOne.mockResolvedValue({ matchedCount: 1 });
+
+    const payload = {
+      exceptionId: "60c72b2f9b1d8e2d8c8c8c8c",
+      status: "approved",
+      comments: "Approved by Institute",
+    };
+
+    const res = await updatePUT(
+      createMockRequest("http://localhost/api/exceptions/update", {}, payload)
+    );
+    expect(res.status).toBe(200);
+  });
+
+  test("update: throws ForbiddenError if role is student", async () => {
+    verifyFirebaseToken.mockResolvedValue({
+      valid: true,
+      decodedToken: {
+        uid: "student-1",
+        email: "student@domain.com",
+        email_verified: true,
+        role: "student",
+      },
+    });
+    getUserProfile.mockResolvedValue({
+      role: "student",
+      instituteId: "inst-D",
+    });
+
+    mockCollection.findOne.mockResolvedValue({
+      _id: "60c72b2f9b1d8e2d8c8c8c8c",
+      instituteId: "inst-D",
+      className: "Math",
+      studentEmail: "student@domain.com",
+    });
+
+    const payload = {
+      exceptionId: "60c72b2f9b1d8e2d8c8c8c8c",
+      status: "approved",
+      comments: "Approved by Student",
+    };
+
+    const res = await updatePUT(
+      createMockRequest("http://localhost/api/exceptions/update", {}, payload)
+    );
+    expect(res.status).toBe(403);
+  });
+
+  test("update: throws ForbiddenError if role is parent", async () => {
+    verifyFirebaseToken.mockResolvedValue({
+      valid: true,
+      decodedToken: {
+        uid: "parent-1",
+        email: "parent@domain.com",
+        email_verified: true,
+        role: "parent",
+      },
+    });
+    getUserProfile.mockResolvedValue({
+      role: "parent",
+      instituteId: "inst-D",
+    });
+
+    mockCollection.findOne.mockResolvedValue({
+      _id: "60c72b2f9b1d8e2d8c8c8c8c",
+      instituteId: "inst-D",
+      className: "Math",
+      studentEmail: "student@domain.com",
+    });
+
+    const payload = {
+      exceptionId: "60c72b2f9b1d8e2d8c8c8c8c",
+      status: "rejected",
+      comments: "Rejected by Parent",
+    };
+
+    const res = await updatePUT(
+      createMockRequest("http://localhost/api/exceptions/update", {}, payload)
+    );
+    expect(res.status).toBe(403);
+  });
 });
