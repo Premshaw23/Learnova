@@ -90,7 +90,8 @@ export default function Contact() {
     }
 
     return () => {
-      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+      if (cooldownIntervalRef.current)
+        clearInterval(cooldownIntervalRef.current);
     };
   }, []);
 
@@ -98,7 +99,10 @@ export default function Contact() {
     const { name, value } = e.target;
     const updatedFormData = { ...formData, [name]: value };
     setFormData(updatedFormData);
-    localStorage.setItem("learnova_contact_form_draft", JSON.stringify(updatedFormData));
+    localStorage.setItem(
+      "learnova_contact_form_draft",
+      JSON.stringify(updatedFormData)
+    );
 
     if (name === "message") {
       setCharCount(value.length);
@@ -143,7 +147,9 @@ export default function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
-      toast.error("Please log in to your Learnova account to submit this form.");
+      toast.error(
+        "Please log in to your Learnova account to submit this form."
+      );
       setSubmitStatus({
         type: "error",
         message: "You are being redirected to the login page.",
@@ -212,7 +218,10 @@ export default function Contact() {
       });
       toast.success("Message sent successfully!");
       localStorage.removeItem("learnova_contact_form_draft");
-      localStorage.setItem("learnova_contact_last_submit", Date.now().toString());
+      localStorage.setItem(
+        "learnova_contact_last_submit",
+        Date.now().toString()
+      );
       setFormData({ name: "", email: "", company: "", message: "" });
       setCharCount(0);
       setErrors({});
@@ -257,19 +266,22 @@ export default function Contact() {
       icon: Twitter,
       label: "Twitter",
       href: "https://twitter.com/learnova",
-      color: "hover:text-blue-500 hover:border-blue-300 dark:hover:text-blue-400 dark:hover:border-blue-400/50",
+      color:
+        "hover:text-blue-500 hover:border-blue-300 dark:hover:text-blue-400 dark:hover:border-blue-400/50",
     },
     {
       icon: Linkedin,
       label: "LinkedIn",
       href: "https://linkedin.com/company/learnova",
-      color: "hover:text-blue-700 hover:border-blue-400 dark:hover:text-blue-600 dark:hover:border-blue-500/50",
+      color:
+        "hover:text-blue-700 hover:border-blue-400 dark:hover:text-blue-600 dark:hover:border-blue-500/50",
     },
     {
       icon: Facebook,
       label: "Facebook",
       href: "https://facebook.com/learnova",
-      color: "hover:text-blue-600 hover:border-blue-300 dark:hover:text-blue-500 dark:hover:border-blue-400/50",
+      color:
+        "hover:text-blue-600 hover:border-blue-300 dark:hover:text-blue-500 dark:hover:border-blue-400/50",
     },
   ];
 
@@ -350,8 +362,8 @@ export default function Contact() {
 
                 <p className="text-base md:text-lg text-slate-600 dark:text-muted-foreground leading-relaxed max-w-2xl mx-auto">
                   Ready to transform your educational institution? Let&apos;s
-                  discuss how Learnova can streamline your operations and enhance
-                  student success.
+                  discuss how Learnova can streamline your operations and
+                  enhance student success.
                 </p>
               </div>
             </section>
@@ -366,10 +378,12 @@ export default function Contact() {
                     >
                       {/* Form header */}
                       <div className="mb-7 pb-5 border-b border-slate-100 dark:border-border/50">
-                        <h2 className={sectionHeadingClass}>Send us a Message</h2>
+                        <h2 className={sectionHeadingClass}>
+                          Send us a Message
+                        </h2>
                         <p className="text-slate-500 dark:text-muted-foreground mt-2 ml-3 text-sm">
-                          Fill out the form below and our team will get back to you
-                          within 24 hours.
+                          Fill out the form below and our team will get back to
+                          you within 24 hours.
                         </p>
                       </div>
 
@@ -406,7 +420,8 @@ export default function Contact() {
                               htmlFor="contact-email"
                               className="text-sm font-semibold text-slate-700 dark:text-foreground"
                             >
-                              Email Address <span className="text-accent">*</span>
+                              Email Address{" "}
+                              <span className="text-accent">*</span>
                             </label>
                             <input
                               id="contact-email"
@@ -474,8 +489,8 @@ export default function Contact() {
                                   charCount >= 10 && charCount <= 500
                                     ? "text-green-600 dark:text-green-400"
                                     : charCount > 500
-                                    ? "text-orange-500 dark:text-orange-400"
-                                    : "text-red-500 dark:text-red-400"
+                                      ? "text-orange-500 dark:text-orange-400"
+                                      : "text-red-500 dark:text-red-400"
                                 }`}
                               >
                                 {charCount < 10
@@ -608,14 +623,16 @@ export default function Contact() {
                       <div className="mt-4 p-4 bg-accent/8 dark:bg-accent/10 rounded-xl border border-accent/20 dark:border-accent/20">
                         <p className="text-accent dark:text-accent text-sm font-medium flex items-start gap-2">
                           <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
-                          For urgent support, we respond to emails within 2 hours
-                          during business days.
+                          For urgent support, we respond to emails within 2
+                          hours during business days.
                         </p>
                       </div>
                     </div>
 
                     <div className={`${cardClass} p-6 sm:p-8`}>
-                      <h3 className={`${sectionHeadingClass} mb-4`}>Follow Us</h3>
+                      <h3 className={`${sectionHeadingClass} mb-4`}>
+                        Follow Us
+                      </h3>
 
                       <div className="flex gap-3 flex-wrap">
                         {socialLinks.map((social, index) => (
@@ -647,7 +664,8 @@ export default function Contact() {
 
       <style jsx>{`
         @keyframes float {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0px) rotate(0deg);
             opacity: 0.4;
           }

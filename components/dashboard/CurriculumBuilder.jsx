@@ -18,23 +18,28 @@ import {
   Sparkles,
   RefreshCw,
   Clock,
-  Layers
+  Layers,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 // Fetch the master courses list
 import { COURSES } from "@/lib/courses";
 import { apiFetch } from "@/lib/apiClient";
-
+import useUnsavedChangesWarning from "@/hooks/useUnsavedChangesWarning";
 
 export default function CurriculumBuilder() {
   const [courses] = useState(COURSES);
-  const [selectedCourseId, setSelectedCourseId] = useState(COURSES[0]?.id || "nextjs-mastery");
+  const [selectedCourseId, setSelectedCourseId] = useState(
+    COURSES[0]?.id || "nextjs-mastery"
+  );
 
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useUnsavedChangesWarning(isDirty);
 
   // Track expanded state for module accordions
   const [expandedModules, setExpandedModules] = useState({});
@@ -59,18 +64,26 @@ export default function CurriculumBuilder() {
           setModules(parsed);
           // Auto expand first module by default
           if (parsed.length > 0) {
-            setExpandedModules(prev => ({ ...prev, [parsed[0].id]: true }));
+            setExpandedModules((prev) => ({ ...prev, [parsed[0].id]: true }));
           }
         }
 
-        const res = await apiFetch(`/api/courses/curriculum/${selectedCourseId}`);
+        const res = await apiFetch(
+          `/api/courses/curriculum/${selectedCourseId}`
+        );
         const data = await res.json();
         if (data.success) {
           setModules(data.modules);
-          localStorage.setItem(`curriculum-${selectedCourseId}`, JSON.stringify(data.modules));
+          localStorage.setItem(
+            `curriculum-${selectedCourseId}`,
+            JSON.stringify(data.modules)
+          );
           // If no cache was present, expand the first module
           if (!cached && data.modules.length > 0) {
-            setExpandedModules(prev => ({ ...prev, [data.modules[0].id]: true }));
+            setExpandedModules((prev) => ({
+              ...prev,
+              [data.modules[0].id]: true,
+            }));
           }
         }
       } catch (err) {
@@ -87,15 +100,18 @@ export default function CurriculumBuilder() {
   const syncCurriculum = async (updatedModules) => {
     setSyncing(true);
     // Optimistically update localStorage cache
-    localStorage.setItem(`curriculum-${selectedCourseId}`, JSON.stringify(updatedModules));
+    localStorage.setItem(
+      `curriculum-${selectedCourseId}`,
+      JSON.stringify(updatedModules)
+    );
 
     // Custom toast saving notification (elegant non-blocking visual feedback)
     const toastId = toast.loading("Saving changes...", {
       style: {
         background: "#09090b",
         color: "#f4f4f5",
-        border: "1px solid rgba(255, 255, 255, 0.1)"
-      }
+        border: "1px solid rgba(255, 255, 255, 0.1)",
+      },
     });
 
     try {
@@ -104,19 +120,22 @@ export default function CurriculumBuilder() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courseId: selectedCourseId,
-          modules: updatedModules
-        })
+          modules: updatedModules,
+        }),
       });
       const data = await res.json();
       if (data.success) {
         setLastSaved(new Date().toLocaleTimeString());
+        setIsDirty(false);
         toast.success(data.message || "Changes saved!", { id: toastId });
       } else {
         throw new Error(data.error);
       }
     } catch (err) {
       console.error("Sync error:", err);
-      toast.error("Offline Cache Saved. Remote server sync pending.", { id: toastId });
+      toast.error("Offline Cache Saved. Remote server sync pending.", {
+        id: toastId,
+      });
     } finally {
       setSyncing(false);
     }
@@ -124,9 +143,9 @@ export default function CurriculumBuilder() {
 
   // Toggle Accordion Collapse/Expand
   const toggleModuleExpand = (moduleId) => {
-    setExpandedModules(prev => ({
+    setExpandedModules((prev) => ({
       ...prev,
-      [moduleId]: !prev[moduleId]
+      [moduleId]: !prev[moduleId],
     }));
   };
 
@@ -139,11 +158,12 @@ export default function CurriculumBuilder() {
       id: generateId(),
       title: `New Module: Enter Title`,
       order: modules.length,
-      lessons: []
+      lessons: [],
     };
     const updated = [...modules, newModule];
     setModules(updated);
-    setExpandedModules(prev => ({ ...prev, [newModule.id]: true }));
+    setExpandedModules((prev) => ({ ...prev, [newModule.id]: true }));
+    setIsDirty(true);
     syncCurriculum(updated);
     toast.success("Module created! Double-click to rename.");
   };
@@ -151,20 +171,26 @@ export default function CurriculumBuilder() {
   // Delete Module
   const handleDeleteModule = (moduleId) => {
     const updated = modules
-      .filter(mod => mod.id !== moduleId)
+      .filter((mod) => mod.id !== moduleId)
       .map((mod, idx) => ({ ...mod, order: idx }));
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
     toast.success("Module deleted successfully.");
   };
 
   // Start Editing Title
-  const startEditing = (entityType, entityId, currentTitle, parentId = null) => {
+  const startEditing = (
+    entityType,
+    entityId,
+    currentTitle,
+    parentId = null
+  ) => {
     setEditingEntity({
       type: entityType,
       id: entityId,
       parentId,
-      tempTitle: currentTitle
+      tempTitle: currentTitle,
     });
   };
 
@@ -174,21 +200,21 @@ export default function CurriculumBuilder() {
 
     let updated = [];
     if (editingEntity.type === "module") {
-      updated = modules.map(mod =>
+      updated = modules.map((mod) =>
         mod.id === editingEntity.id
           ? { ...mod, title: editingEntity.tempTitle }
           : mod
       );
     } else if (editingEntity.type === "lesson") {
-      updated = modules.map(mod => {
+      updated = modules.map((mod) => {
         if (mod.id === editingEntity.parentId) {
           return {
             ...mod,
-            lessons: mod.lessons.map(les =>
+            lessons: mod.lessons.map((les) =>
               les.id === editingEntity.id
                 ? { ...les, title: editingEntity.tempTitle }
                 : les
-            )
+            ),
           };
         }
         return mod;
@@ -196,29 +222,31 @@ export default function CurriculumBuilder() {
     }
 
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
     setEditingEntity(null);
   };
 
   // Add Lesson to a Module
   const handleAddLesson = (moduleId, type = "video") => {
-    const targetModule = modules.find(m => m.id === moduleId);
+    const targetModule = modules.find((m) => m.id === moduleId);
     if (!targetModule) return;
 
     const newLesson = {
       id: generateId(),
       title: `New ${type.charAt(0).toUpperCase() + type.slice(1)} Lesson`,
-      duration: type === "video" ? "10 mins" : type === "quiz" ? "15 mins" : "20 mins",
+      duration:
+        type === "video" ? "10 mins" : type === "quiz" ? "15 mins" : "20 mins",
       type,
       completed: false,
-      order: targetModule.lessons.length
+      order: targetModule.lessons.length,
     };
 
-    const updated = modules.map(mod => {
+    const updated = modules.map((mod) => {
       if (mod.id === moduleId) {
         return {
           ...mod,
-          lessons: [...mod.lessons, newLesson]
+          lessons: [...mod.lessons, newLesson],
         };
       }
       return mod;
@@ -226,71 +254,80 @@ export default function CurriculumBuilder() {
 
     setModules(updated);
     // Make sure module is expanded so user sees the new lesson
-    setExpandedModules(prev => ({ ...prev, [moduleId]: true }));
+    setExpandedModules((prev) => ({ ...prev, [moduleId]: true }));
+    setIsDirty(true);
     syncCurriculum(updated);
     toast.success(`New ${type} added!`);
   };
 
   // Delete Lesson
   const handleDeleteLesson = (moduleId, lessonId) => {
-    const updated = modules.map(mod => {
+    const updated = modules.map((mod) => {
       if (mod.id === moduleId) {
         return {
           ...mod,
           lessons: mod.lessons
-            .filter(les => les.id !== lessonId)
-            .map((les, idx) => ({ ...les, order: idx }))
+            .filter((les) => les.id !== lessonId)
+            .map((les, idx) => ({ ...les, order: idx })),
         };
       }
       return mod;
     });
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
     toast.success("Lesson deleted.");
   };
 
   // Change Lesson Type
   const handleChangeLessonType = (moduleId, lessonId, newType) => {
-    const updated = modules.map(mod => {
+    const updated = modules.map((mod) => {
       if (mod.id === moduleId) {
         return {
           ...mod,
-          lessons: mod.lessons.map(les =>
+          lessons: mod.lessons.map((les) =>
             les.id === lessonId ? { ...les, type: newType } : les
-          )
+          ),
         };
       }
       return mod;
     });
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
   };
 
   // Change Lesson Duration
   const handleChangeLessonDuration = (moduleId, lessonId, newDuration) => {
-    const updated = modules.map(mod => {
+    const updated = modules.map((mod) => {
       if (mod.id === moduleId) {
         return {
           ...mod,
-          lessons: mod.lessons.map(les =>
+          lessons: mod.lessons.map((les) =>
             les.id === lessonId ? { ...les, duration: newDuration } : les
-          )
+          ),
         };
       }
       return mod;
     });
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
   };
 
   // Get matching Lucide icon for lesson type
   const getLessonIcon = (type) => {
     switch (type) {
-      case "video": return <Video className="w-4 h-4 text-sky-400" />;
-      case "article": return <FileText className="w-4 h-4 text-emerald-400" />;
-      case "quiz": return <HelpCircle className="w-4 h-4 text-amber-400" />;
-      case "code": return <Code className="w-4 h-4 text-purple-400" />;
-      default: return <BookOpen className="w-4 h-4 text-zinc-400" />;
+      case "video":
+        return <Video className="w-4 h-4 text-sky-400" />;
+      case "article":
+        return <FileText className="w-4 h-4 text-emerald-400" />;
+      case "quiz":
+        return <HelpCircle className="w-4 h-4 text-amber-400" />;
+      case "code":
+        return <Code className="w-4 h-4 text-purple-400" />;
+      default:
+        return <BookOpen className="w-4 h-4 text-zinc-400" />;
     }
   };
 
@@ -309,7 +346,13 @@ export default function CurriculumBuilder() {
     setTimeout(() => document.body.removeChild(ghost), 0);
   };
 
-  const handleDragOver = (e, targetType, targetIndex, targetModuleId, targetLessonId = null) => {
+  const handleDragOver = (
+    e,
+    targetType,
+    targetIndex,
+    targetModuleId,
+    targetLessonId = null
+  ) => {
     e.preventDefault();
     if (!draggedItem) return;
 
@@ -330,7 +373,13 @@ export default function CurriculumBuilder() {
     }
   };
 
-  const handleDrop = (e, targetType, targetIndex, targetModuleId, targetLessonId = null) => {
+  const handleDrop = (
+    e,
+    targetType,
+    targetIndex,
+    targetModuleId,
+    targetLessonId = null
+  ) => {
     e.preventDefault();
     if (!draggedItem) return;
 
@@ -345,14 +394,17 @@ export default function CurriculumBuilder() {
       // Update order field
       updated = updated.map((mod, idx) => ({ ...mod, order: idx }));
       setModules(updated);
+      setIsDirty(true);
       syncCurriculum(updated);
     }
 
     // CASE 2: Dragged Lesson dropped
     if (draggedItem.type === "lesson") {
       // Find origin and target modules
-      const originModIdx = updated.findIndex(m => m.id === draggedItem.parentModuleId);
-      const targetModIdx = updated.findIndex(m => m.id === targetModuleId);
+      const originModIdx = updated.findIndex(
+        (m) => m.id === draggedItem.parentModuleId
+      );
+      const targetModIdx = updated.findIndex((m) => m.id === targetModuleId);
 
       if (originModIdx !== -1 && targetModIdx !== -1) {
         const originModule = updated[originModIdx];
@@ -364,7 +416,9 @@ export default function CurriculumBuilder() {
         // Find insert index
         let insertIndex = targetModule.lessons.length;
         if (targetType === "lesson" && targetLessonId) {
-          const matchingIdx = targetModule.lessons.findIndex(l => l.id === targetLessonId);
+          const matchingIdx = targetModule.lessons.findIndex(
+            (l) => l.id === targetLessonId
+          );
           if (matchingIdx !== -1) {
             insertIndex = matchingIdx;
           }
@@ -374,13 +428,20 @@ export default function CurriculumBuilder() {
         targetModule.lessons.splice(insertIndex, 0, movedLesson);
 
         // Normalize order field in both modules
-        originModule.lessons = originModule.lessons.map((les, idx) => ({ ...les, order: idx }));
-        targetModule.lessons = targetModule.lessons.map((les, idx) => ({ ...les, order: idx }));
+        originModule.lessons = originModule.lessons.map((les, idx) => ({
+          ...les,
+          order: idx,
+        }));
+        targetModule.lessons = targetModule.lessons.map((les, idx) => ({
+          ...les,
+          order: idx,
+        }));
 
         setModules(updated);
+        setIsDirty(true);
         syncCurriculum(updated);
         // Force expand target module so dropped lesson is visible
-        setExpandedModules(prev => ({ ...prev, [targetModuleId]: true }));
+        setExpandedModules((prev) => ({ ...prev, [targetModuleId]: true }));
       }
     }
 
@@ -408,20 +469,24 @@ export default function CurriculumBuilder() {
                 Interactive DnD
               </span>
             </h2>
-            <p className="text-sm text-zinc-400">Drag grab handles to reorder syllabus structure instantly</p>
+            <p className="text-sm text-zinc-400">
+              Drag grab handles to reorder syllabus structure instantly
+            </p>
           </div>
         </div>
 
         {/* Course Select and Status */}
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <div className="flex flex-col gap-1 w-full sm:w-auto">
-            <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Active Syllabus</span>
+            <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">
+              Active Syllabus
+            </span>
             <select
               value={selectedCourseId}
               onChange={(e) => setSelectedCourseId(e.target.value)}
               className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-zinc-200 text-sm font-medium focus:ring-1 focus:ring-indigo-500 focus:outline-none w-full sm:w-64"
             >
-              {courses.map(course => (
+              {courses.map((course) => (
                 <option key={course.id} value={course.id}>
                   {course.title}
                 </option>
@@ -454,15 +519,19 @@ export default function CurriculumBuilder() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-zinc-900/10 border border-zinc-800/40 rounded-2xl space-y-3">
           <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
-          <p className="text-zinc-400 text-sm font-medium">Assembling curriculum structural data...</p>
+          <p className="text-zinc-400 text-sm font-medium">
+            Assembling curriculum structural data...
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Vertical Stack of Modules */}
           {modules.map((mod, modIdx) => {
             const isExpanded = !!expandedModules[mod.id];
-            const isDragged = draggedItem?.type === "module" && draggedItem.id === mod.id;
-            const isTargetOver = dragOverModuleId === mod.id && draggedItem?.type === "module";
+            const isDragged =
+              draggedItem?.type === "module" && draggedItem.id === mod.id;
+            const isTargetOver =
+              dragOverModuleId === mod.id && draggedItem?.type === "module";
 
             return (
               <div
@@ -470,20 +539,26 @@ export default function CurriculumBuilder() {
                 onDragOver={(e) => handleDragOver(e, "module", modIdx, mod.id)}
                 onDrop={(e) => handleDrop(e, "module", modIdx, mod.id)}
                 className={`group border rounded-2xl transition-all duration-300 overflow-hidden bg-zinc-900/10 backdrop-blur-md relative ${
-                  isDragged ? "opacity-30 border-dashed border-indigo-500/50 scale-[0.98]" : "border-zinc-800/60 hover:border-zinc-700/80"
+                  isDragged
+                    ? "opacity-30 border-dashed border-indigo-500/50 scale-[0.98]"
+                    : "border-zinc-800/60 hover:border-zinc-700/80"
                 } ${isTargetOver ? "border-indigo-500 bg-indigo-500/5 translate-y-1 shadow-lg shadow-indigo-500/5" : ""}`}
               >
                 {/* Module Header Panel */}
                 <div
                   className={`flex items-center justify-between p-4 px-6 border-b transition-colors duration-200 select-none ${
-                    isExpanded ? "bg-zinc-900/40 border-zinc-800/80" : "bg-transparent border-transparent"
+                    isExpanded
+                      ? "bg-zinc-900/40 border-zinc-800/80"
+                      : "bg-transparent border-transparent"
                   }`}
                 >
                   <div className="flex items-center gap-4 flex-1">
                     {/* Module Grab Handle */}
                     <div
                       draggable
-                      onDragStart={(e) => handleDragStart(e, "module", modIdx, mod.id)}
+                      onDragStart={(e) =>
+                        handleDragStart(e, "module", modIdx, mod.id)
+                      }
                       onDragEnd={resetDragStates}
                       className="cursor-grab active:cursor-grabbing p-1.5 hover:bg-zinc-800/60 border border-transparent hover:border-zinc-800 rounded-lg text-zinc-500 hover:text-zinc-200 transition-all"
                       title="Grab to reorder Module"
@@ -497,7 +572,12 @@ export default function CurriculumBuilder() {
                         <input
                           type="text"
                           value={editingEntity.tempTitle}
-                          onChange={(e) => setEditingEntity({ ...editingEntity, tempTitle: e.target.value })}
+                          onChange={(e) =>
+                            setEditingEntity({
+                              ...editingEntity,
+                              tempTitle: e.target.value,
+                            })
+                          }
                           onKeyDown={(e) => e.key === "Enter" && saveEditing()}
                           className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-zinc-100 font-semibold focus:outline-none focus:border-indigo-500 w-full"
                           autoFocus
@@ -519,12 +599,16 @@ export default function CurriculumBuilder() {
                       </div>
                     ) : (
                       <h3
-                        onDoubleClick={() => startEditing("module", mod.id, mod.title)}
+                        onDoubleClick={() =>
+                          startEditing("module", mod.id, mod.title)
+                        }
                         className="font-bold text-zinc-200 text-base flex items-center gap-2 group/title cursor-text select-none"
                       >
                         {mod.title}
                         <button
-                          onClick={() => startEditing("module", mod.id, mod.title)}
+                          onClick={() =>
+                            startEditing("module", mod.id, mod.title)
+                          }
                           className="opacity-0 group-hover/title:opacity-100 p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-zinc-200 transition-all"
                           title="Rename Module"
                           aria-label="Rename structural container"
@@ -541,9 +625,17 @@ export default function CurriculumBuilder() {
                       onClick={() => toggleModuleExpand(mod.id)}
                       className="p-1.5 hover:bg-zinc-800/80 rounded-xl text-zinc-400 hover:text-zinc-100 transition-all border border-transparent hover:border-zinc-800"
                       title={isExpanded ? "Collapse Module" : "Expand Module"}
-                      aria-label={isExpanded ? "Collapse structural container" : "Expand structural container"}
+                      aria-label={
+                        isExpanded
+                          ? "Collapse structural container"
+                          : "Expand structural container"
+                      }
                     >
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
                     </button>
                     <button
                       onClick={() => handleDeleteModule(mod.id)}
@@ -559,26 +651,54 @@ export default function CurriculumBuilder() {
                 {/* Lessons Nested Section (Accordion Body) */}
                 {isExpanded && (
                   <div
-                    onDragOver={(e) => handleDragOver(e, "module-body", null, mod.id)}
-                    onDrop={(e) => handleDrop(e, "module-body", mod.lessons.length, mod.id)}
+                    onDragOver={(e) =>
+                      handleDragOver(e, "module-body", null, mod.id)
+                    }
+                    onDrop={(e) =>
+                      handleDrop(e, "module-body", mod.lessons.length, mod.id)
+                    }
                     className="p-5 pt-1 bg-zinc-900/20 space-y-3"
                   >
                     {/* Nested Lesson Cards */}
                     <div className="space-y-2.5">
                       {mod.lessons.map((lesson, lesIdx) => {
-                        const isLessonDragged = draggedItem?.type === "lesson" && draggedItem.id === lesson.id;
-                        const isLessonTargetOver = dragOverLessonId === lesson.id && draggedItem?.type === "lesson";
+                        const isLessonDragged =
+                          draggedItem?.type === "lesson" &&
+                          draggedItem.id === lesson.id;
+                        const isLessonTargetOver =
+                          dragOverLessonId === lesson.id &&
+                          draggedItem?.type === "lesson";
 
                         return (
                           <div
                             key={lesson.id}
                             draggable
-                            onDragStart={(e) => handleDragStart(e, "lesson", lesIdx, lesson.id, mod.id)}
+                            onDragStart={(e) =>
+                              handleDragStart(
+                                e,
+                                "lesson",
+                                lesIdx,
+                                lesson.id,
+                                mod.id
+                              )
+                            }
                             onDragEnd={resetDragStates}
-                            onDragOver={(e) => handleDragOver(e, "lesson", lesIdx, mod.id, lesson.id)}
-                            onDrop={(e) => handleDrop(e, "lesson", lesIdx, mod.id, lesson.id)}
+                            onDragOver={(e) =>
+                              handleDragOver(
+                                e,
+                                "lesson",
+                                lesIdx,
+                                mod.id,
+                                lesson.id
+                              )
+                            }
+                            onDrop={(e) =>
+                              handleDrop(e, "lesson", lesIdx, mod.id, lesson.id)
+                            }
                             className={`flex items-center justify-between p-3.5 bg-zinc-950/60 border border-zinc-900 hover:border-zinc-800/60 rounded-xl transition-all duration-200 relative group/lesson ${
-                              isLessonDragged ? "opacity-35 border-dashed border-indigo-500/40 bg-zinc-950/20" : ""
+                              isLessonDragged
+                                ? "opacity-35 border-dashed border-indigo-500/40 bg-zinc-950/20"
+                                : ""
                             } ${isLessonTargetOver ? "border-indigo-500/60 bg-indigo-500/5 shadow-md shadow-indigo-500/5 translate-x-1" : ""}`}
                           >
                             <div className="flex items-center gap-3.5 flex-1">
@@ -601,8 +721,15 @@ export default function CurriculumBuilder() {
                                   <input
                                     type="text"
                                     value={editingEntity.tempTitle}
-                                    onChange={(e) => setEditingEntity({ ...editingEntity, tempTitle: e.target.value })}
-                                    onKeyDown={(e) => e.key === "Enter" && saveEditing()}
+                                    onChange={(e) =>
+                                      setEditingEntity({
+                                        ...editingEntity,
+                                        tempTitle: e.target.value,
+                                      })
+                                    }
+                                    onKeyDown={(e) =>
+                                      e.key === "Enter" && saveEditing()
+                                    }
                                     className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 w-full"
                                     autoFocus
                                   />
@@ -624,12 +751,26 @@ export default function CurriculumBuilder() {
                               ) : (
                                 <div className="flex flex-col gap-0.5">
                                   <span
-                                    onDoubleClick={() => startEditing("lesson", lesson.id, lesson.title, mod.id)}
+                                    onDoubleClick={() =>
+                                      startEditing(
+                                        "lesson",
+                                        lesson.id,
+                                        lesson.title,
+                                        mod.id
+                                      )
+                                    }
                                     className="text-sm font-semibold text-zinc-300 group-hover/lesson:text-zinc-100 flex items-center gap-2 cursor-text"
                                   >
                                     {lesson.title}
                                     <button
-                                      onClick={() => startEditing("lesson", lesson.id, lesson.title, mod.id)}
+                                      onClick={() =>
+                                        startEditing(
+                                          "lesson",
+                                          lesson.id,
+                                          lesson.title,
+                                          mod.id
+                                        )
+                                      }
                                       className="opacity-0 group-hover/lesson:opacity-100 p-0.5 hover:bg-zinc-900 rounded text-zinc-500 hover:text-zinc-300 transition-all"
                                       title="Rename Lesson"
                                       aria-label="Rename content item"
@@ -647,7 +788,13 @@ export default function CurriculumBuilder() {
                               <input
                                 type="text"
                                 value={lesson.duration}
-                                onChange={(e) => handleChangeLessonDuration(mod.id, lesson.id, e.target.value)}
+                                onChange={(e) =>
+                                  handleChangeLessonDuration(
+                                    mod.id,
+                                    lesson.id,
+                                    e.target.value
+                                  )
+                                }
                                 className="bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-800/80 rounded-md px-2 py-0.5 text-xs text-zinc-500 hover:text-zinc-300 font-medium focus:outline-none w-20 text-center transition-colors"
                                 placeholder="10 mins"
                                 title="Edit duration"
@@ -656,7 +803,13 @@ export default function CurriculumBuilder() {
                               {/* Lesson Type selector */}
                               <select
                                 value={lesson.type}
-                                onChange={(e) => handleChangeLessonType(mod.id, lesson.id, e.target.value)}
+                                onChange={(e) =>
+                                  handleChangeLessonType(
+                                    mod.id,
+                                    lesson.id,
+                                    e.target.value
+                                  )
+                                }
                                 className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-md px-2 py-0.5 text-xs text-zinc-400 font-medium focus:outline-none cursor-pointer transition-all"
                               >
                                 <option value="video">🎥 Video</option>
@@ -667,7 +820,9 @@ export default function CurriculumBuilder() {
 
                               {/* Delete Lesson Button */}
                               <button
-                                onClick={() => handleDeleteLesson(mod.id, lesson.id)}
+                                onClick={() =>
+                                  handleDeleteLesson(mod.id, lesson.id)
+                                }
                                 className="p-1 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-md text-zinc-600 hover:text-red-400 opacity-0 group-hover/lesson:opacity-100 transition-all duration-150"
                                 title="Delete Lesson"
                                 aria-label="Delete content item"
@@ -682,41 +837,40 @@ export default function CurriculumBuilder() {
                       {/* Empty Module Lessons State */}
                       {mod.lessons.length === 0 && (
                         <div className="border border-dashed border-zinc-800/50 rounded-xl p-8 text-center text-zinc-500 text-xs">
-                          📁 This module contains no lessons. Drag existing lessons here or click below to create one!
+                          📁 This module contains no lessons. Drag existing
+                          lessons here or click below to create one!
                         </div>
                       )}
                     </div>
 
                     {/* Add Lesson Actions Strip */}
                     <div className="pt-4 border-t border-zinc-800/50 flex flex-wrap gap-2 items-center">
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold pr-2">Add Content:</span>
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold pr-2">
+                        Add Content:
+                      </span>
                       <button
                         onClick={() => handleAddLesson(mod.id, "video")}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-400 hover:text-sky-300 text-xs font-semibold rounded-lg transition-colors"
                       >
-                        <Video className="w-3.5 h-3.5" />
-                        + Video
+                        <Video className="w-3.5 h-3.5" />+ Video
                       </button>
                       <button
                         onClick={() => handleAddLesson(mod.id, "article")}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 text-xs font-semibold rounded-lg transition-colors"
                       >
-                        <FileText className="w-3.5 h-3.5" />
-                        + Article
+                        <FileText className="w-3.5 h-3.5" />+ Article
                       </button>
                       <button
                         onClick={() => handleAddLesson(mod.id, "quiz")}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 hover:text-amber-300 text-xs font-semibold rounded-lg transition-colors"
                       >
-                        <HelpCircle className="w-3.5 h-3.5" />
-                        + Quiz
+                        <HelpCircle className="w-3.5 h-3.5" />+ Quiz
                       </button>
                       <button
                         onClick={() => handleAddLesson(mod.id, "code")}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 hover:text-purple-300 text-xs font-semibold rounded-lg transition-colors"
                       >
-                        <Code className="w-3.5 h-3.5" />
-                        + Code Lab
+                        <Code className="w-3.5 h-3.5" />+ Code Lab
                       </button>
                     </div>
                   </div>
@@ -730,13 +884,18 @@ export default function CurriculumBuilder() {
             <div className="flex flex-col items-center justify-center p-12 bg-zinc-900/10 border border-zinc-800 border-dashed rounded-2xl text-center space-y-3">
               <BookOpen className="w-10 h-10 text-zinc-600" />
               <div className="space-y-1">
-                <h4 className="text-zinc-300 font-bold">No modules available</h4>
-                <p className="text-zinc-500 text-sm max-w-sm">This course does not have a structured syllabus yet. Create your first module to begin!</p>
+                <h4 className="text-zinc-300 font-bold">
+                  No modules available
+                </h4>
+                <p className="text-zinc-500 text-sm max-w-sm">
+                  This course does not have a structured syllabus yet. Create
+                  your first module to begin!
+                </p>
               </div>
               <button
                 onClick={handleAddModule}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-100 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/10"
-              >
+               aria-label="Action button">
                 <Plus className="w-4 h-4" />
                 Initialize First Module
               </button>
@@ -750,7 +909,7 @@ export default function CurriculumBuilder() {
         <button
           onClick={handleAddModule}
           className="w-full flex items-center justify-center gap-2 py-4 border border-dashed border-zinc-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 text-zinc-400 hover:text-indigo-400 text-sm font-bold rounded-2xl transition-all shadow-inner group duration-300"
-        >
+         aria-label="Action button">
           <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300 text-indigo-400" />
           Add Structural Module Container
           <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />

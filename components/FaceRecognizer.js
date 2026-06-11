@@ -15,6 +15,7 @@ const BLINK_COOLDOWN_MS = 300;
 const PROCESSING_INTERVAL_MS = 100;
 
 export default function FaceRecognizer({ authUser }) {
+  // ── REFS: Track lifecycle and streams ──────────
   const isMounted = useRef(true);
   const activeStreamRef = useRef(null);
   const videoRef = useRef(null);
@@ -28,6 +29,7 @@ export default function FaceRecognizer({ authUser }) {
 
   const animationFrameId = useRef(null);
   const lastDetectionTime = useRef(0);
+  
   const blinkStateRef = useRef({
     isEyeClosed: false,
     blinkCount: 0,
@@ -47,6 +49,27 @@ export default function FaceRecognizer({ authUser }) {
   const [livenessState, setLivenessState] = useState("IDLE");
   const [blinkPrompt, setBlinkPrompt] = useState("");
   const [facingMode, setFacingMode] = useState("user");
+  const [isOffline, setIsOffline] = useState(typeof window !== "undefined" ? !navigator.onLine : false);
+
+  // ── HARD CLEANUP FUNCTION ──────────
+  const stopAllMedia = useCallback(() => {
+    isMounted.current = false;
+    if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach((t) => t.stop());
+      activeStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current.pause();
+    }
+  }, []);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return stopAllMedia;
+  }, [stopAllMedia]);
+
   const [isOffline, setIsOffline] = useState(
     typeof window !== "undefined" ? !navigator.onLine : false
   );
@@ -59,6 +82,13 @@ export default function FaceRecognizer({ authUser }) {
     const handleOnline = () => {
       if (!isMounted.current) return;
       setIsOffline(false);
+      setAttendanceState((prev) => {
+        if (prev === "queued-offline") {
+          setMessage("Synced");
+          return "saved";
+        }
+        return prev;
+      });
       syncAttendanceQueue();
     };
     const handleOffline = () => {
@@ -128,7 +158,9 @@ export default function FaceRecognizer({ authUser }) {
       if (!isMounted.current || signal?.aborted) return;
       setIsLoading(false);
       if (err.name === "NotAllowedError") {
-        setMessage("Camera access denied. Please enable camera permissions in browser settings.");
+        setMessage(
+          "Camera access denied. Please enable camera permissions in browser settings."
+        );
       } else {
         setMessage("Cannot access camera ❌");
       }
@@ -183,7 +215,8 @@ export default function FaceRecognizer({ authUser }) {
 
         // Step 1: offload model fetching to Web Worker (main thread stays free)
         await loadModelsViaWorker();
-        if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
+        if (!isMounted.current || abortControllerRef.current.signal.aborted)
+          return;
 
         // Step 2: load on main thread faceapi instance (hits PWA cache now)
         const faceapi = await import("face-api.js");
@@ -242,8 +275,13 @@ export default function FaceRecognizer({ authUser }) {
       } catch (err) {
         if (!isEffectMounted || signal.aborted) return;
         setIsLoading(false);
-        if (err.name === "NotAllowedError" || err.message?.includes("Permission denied")) {
-          setMessage("Camera access denied. Please enable camera permissions in browser settings.");
+        if (
+          err.name === "NotAllowedError" ||
+          err.message?.includes("Permission denied")
+        ) {
+          setMessage(
+            "Camera access denied. Please enable camera permissions in browser settings."
+          );
         } else {
           setMessage("Cannot access webcam ❌");
         }
@@ -339,9 +377,21 @@ export default function FaceRecognizer({ authUser }) {
       setFinished(true);
       return;
     }
-    faceMatcherRef.current = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
+    faceMatcherRef.current = new faceapi.FaceMatcher(
+      labeledFaceDescriptors,
+      0.6
+    );
   };
 
+  const processVideo = async () => {
+    if (!isMounted.current || !videoRef.current || videoRef.current.paused) return;
+
+    let faceapi = faceapiRef.current;
+    if (!faceapi) {
+      faceapi = await import("face-api.js");
+      faceapiRef.current = faceapi;
+    }
+    if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
   const processVideo = async (signal) => {
     if (
       !videoRef.current ||
@@ -360,7 +410,9 @@ export default function FaceRecognizer({ authUser }) {
 
     if (video.paused || video.ended || !video.videoWidth) {
       if (isMounted.current && !finished && !signal?.aborted) {
-        animationFrameId.current = requestAnimationFrame(() => processVideo(signal));
+        animationFrameId.current = requestAnimationFrame(() =>
+          processVideo(signal)
+        );
       }
       return;
     }
@@ -368,7 +420,9 @@ export default function FaceRecognizer({ authUser }) {
     const now = Date.now();
     if (now - lastDetectionTime.current < PROCESSING_INTERVAL_MS) {
       if (isMounted.current && !finished && !signal?.aborted) {
-        animationFrameId.current = requestAnimationFrame(() => processVideo(signal));
+        animationFrameId.current = requestAnimationFrame(() =>
+          processVideo(signal)
+        );
       }
       return;
     }
@@ -413,7 +467,11 @@ export default function FaceRecognizer({ authUser }) {
       ctx.fillStyle = "white";
       ctx.font = "16px Inter, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`${label} (${confidenceScore}%)`, box.x + box.width / 2, box.y - 8);
+      ctx.fillText(
+        `${label} (${confidenceScore}%)`,
+        box.x + box.width / 2,
+        box.y - 8
+      );
 
       setConfidence(confidenceScore);
 
@@ -424,7 +482,9 @@ export default function FaceRecognizer({ authUser }) {
         setLivenessState((prevState) => {
           if (prevState === "DETECTING_FACE" || prevState === "IDLE") {
             setMessage(`Recognized: ${label}. Checking liveness...`);
-            setBlinkPrompt(`Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`);
+            setBlinkPrompt(
+              `Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`
+            );
             return "VERIFYING_LIVENESS";
           }
           if (prevState === "VERIFYING_LIVENESS") {
@@ -438,10 +498,15 @@ export default function FaceRecognizer({ authUser }) {
               if (blinkStateRef.current.isEyeClosed) {
                 blinkStateRef.current.isEyeClosed = false;
                 const blinkTime = Date.now();
-                if (blinkTime - blinkStateRef.current.lastBlinkTime > BLINK_COOLDOWN_MS) {
+                if (
+                  blinkTime - blinkStateRef.current.lastBlinkTime >
+                  BLINK_COOLDOWN_MS
+                ) {
                   blinkStateRef.current.blinkCount += 1;
                   blinkStateRef.current.lastBlinkTime = blinkTime;
-                  const remaining = blinkStateRef.current.requiredBlinks - blinkStateRef.current.blinkCount;
+                  const remaining =
+                    blinkStateRef.current.requiredBlinks -
+                    blinkStateRef.current.blinkCount;
                   if (remaining > 0) {
                     setBlinkPrompt(`Blink detected! ${remaining} more to go.`);
                   } else {
@@ -479,8 +544,14 @@ export default function FaceRecognizer({ authUser }) {
       // Loop execution only if not finished
       // To prevent race conditions, check if we just transitioned to AUTHENTICATED
       setLivenessState((currentLiveness) => {
-        if (currentLiveness !== "AUTHENTICATED" && isMounted.current && !signal?.aborted) {
-          animationFrameId.current = requestAnimationFrame(() => processVideo(signal));
+        if (
+          currentLiveness !== "AUTHENTICATED" &&
+          isMounted.current &&
+          !signal?.aborted
+        ) {
+          animationFrameId.current = requestAnimationFrame(() =>
+            processVideo(signal)
+          );
         }
         return currentLiveness;
       });
@@ -492,16 +563,26 @@ export default function FaceRecognizer({ authUser }) {
       try {
         logEvent(analytics, "page_view", { page: "attendance" });
       } catch (err) {
-        console.warn("Analytics page_view logEvent was blocked or failed:", err);
+        console.warn(
+          "Analytics page_view logEvent was blocked or failed:",
+          err
+        );
       }
     }
   }, []);
 
   useEffect(() => {
     const persistAttendance = async () => {
-      if (!finished || !detectedPerson || !authUser?.uid || livenessState !== "AUTHENTICATED") return;
+      if (
+        !finished ||
+        !detectedPerson ||
+        !authUser?.uid ||
+        livenessState !== "AUTHENTICATED"
+      )
+        return;
       if (isSubmittingRef.current) return;
-      if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
+      if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+        return;
       if (confidence < MIN_CONFIDENCE_TO_RECORD) {
         setAttendanceState("low-confidence");
         return;
@@ -522,15 +603,19 @@ export default function FaceRecognizer({ authUser }) {
           email: detectedPerson.email || authUser.email,
           confidenceScore: confidence,
         });
-        if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+          return;
         if (result.queuedOffline) {
           setAttendanceState("queued-offline");
-          setMessage("Attendance cached offline. Waiting for network sync... ✅");
+          setMessage("Offline - Syncing later");
         } else {
-          setAttendanceState(result.alreadyRecorded ? "already-recorded" : "saved");
+          setAttendanceState(
+            result.alreadyRecorded ? "already-recorded" : "saved"
+          );
         }
       } catch (err) {
-        if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+          return;
         setAttendanceState("error");
         setMessage(err.message || "Could not save attendance.");
       }
@@ -545,9 +630,12 @@ export default function FaceRecognizer({ authUser }) {
           <div className="flex items-center gap-3">
             <span className="text-2xl animate-pulse">📡</span>
             <div className="text-left">
-              <h4 className="font-bold text-amber-400 text-sm">Offline Mode Active</h4>
+              <h4 className="font-bold text-amber-400 text-sm">
+                Offline Mode Active
+              </h4>
               <p className="text-xs text-gray-300">
-                Scans will be saved securely to local IndexedDB storage and synced automatically once connection is restored.
+                Scans will be saved securely to local IndexedDB storage and
+                synced automatically once connection is restored.
               </p>
             </div>
           </div>
@@ -602,12 +690,18 @@ export default function FaceRecognizer({ authUser }) {
             {/* Spinner + message */}
             <div className="flex flex-col items-center gap-3">
               <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-              <p className="text-white font-medium text-sm text-center max-w-xs">{message}</p>
+              <p className="text-white font-medium text-sm text-center max-w-xs">
+                {message}
+              </p>
             </div>
 
             {/* Step progress indicators */}
             <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span className={modelsReady ? "text-green-400 font-semibold" : "text-gray-500"}>
+              <span
+                className={
+                  modelsReady ? "text-green-400 font-semibold" : "text-gray-500"
+                }
+              >
                 {modelsReady ? "✓" : "○"} AI Models
               </span>
               <span className="text-gray-600">›</span>
@@ -647,8 +741,18 @@ export default function FaceRecognizer({ authUser }) {
         <div className="w-full max-w-lg mt-6 bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-6 space-y-4 relative z-10 animate-in slide-in-from-bottom-4 duration-500">
           <div className="text-center space-y-2">
             <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/25">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
             <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
@@ -658,27 +762,43 @@ export default function FaceRecognizer({ authUser }) {
 
           <div className="space-y-2">
             <div className="flex justify-between items-center bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
-              <span className="font-medium text-gray-300 uppercase tracking-wide text-xs">Name</span>
-              <span className="font-bold text-white">{detectedPerson.name}</span>
+              <span className="font-medium text-gray-300 uppercase tracking-wide text-xs">
+                Name
+              </span>
+              <span className="font-bold text-white">
+                {detectedPerson.name}
+              </span>
             </div>
             {detectedPerson.email && (
               <div className="flex justify-between items-center bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
-                <span className="font-medium text-gray-300 uppercase tracking-wide text-xs">Email</span>
-                <span className="font-bold text-white text-sm break-all">{detectedPerson.email}</span>
+                <span className="font-medium text-gray-300 uppercase tracking-wide text-xs">
+                  Email
+                </span>
+                <span className="font-bold text-white text-sm break-all">
+                  {detectedPerson.email}
+                </span>
               </div>
             )}
           </div>
 
           {attendanceState === "saved" && (
-            <p className="text-center text-sm font-medium text-emerald-300">Attendance recorded for today.</p>
+            <p className="text-center text-sm font-medium text-emerald-300">
+              Attendance recorded for today.
+            </p>
           )}
           {attendanceState === "already-recorded" && (
-            <p className="text-center text-sm font-medium text-amber-300">You have already checked in today.</p>
+            <p className="text-center text-sm font-medium text-amber-300">
+              You have already checked in today.
+            </p>
           )}
           {attendanceState === "queued-offline" && (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3.5 text-center space-y-1">
-              <p className="text-blue-300 font-semibold text-sm">Attendance saved offline.</p>
-              <p className="text-xs text-gray-300">Will sync automatically when connection is restored.</p>
+              <p className="text-blue-300 font-semibold text-sm">
+                Offline - Syncing later
+              </p>
+              <p className="text-xs text-gray-300">
+                Will sync automatically when connection is restored.
+              </p>
             </div>
           )}
         </div>
@@ -689,10 +809,23 @@ export default function FaceRecognizer({ authUser }) {
         aria-label="Switch camera"
         className="mt-6 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
       >
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
         </svg>
-        {facingMode === "user" ? "Switch to Rear Camera" : "Switch to Front Camera"}
+        {facingMode === "user"
+          ? "Switch to Rear Camera"
+          : "Switch to Front Camera"}
       </button>
 
       {finished && (
@@ -701,8 +834,18 @@ export default function FaceRecognizer({ authUser }) {
           className="mt-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-10 py-6 rounded-xl shadow-2xl hover:scale-105 transition-all duration-300"
         >
           <span className="flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
             </svg>
             Scan Again
           </span>

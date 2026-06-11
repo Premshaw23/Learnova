@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Tooltip from "./Tooltip";
 
 /**
@@ -11,6 +12,7 @@ import Tooltip from "./Tooltip";
 const ScrollToTop = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const toggleVisibility = () => {
@@ -26,13 +28,13 @@ const ScrollToTop = () => {
     };
 
     window.addEventListener("scroll", toggleVisibility, { passive: true });
-    // Run once on mount to set initial state
+    // Run once on mount or route change to set initial state
     toggleVisibility();
 
     return () => {
       window.removeEventListener("scroll", toggleVisibility);
     };
-  }, []);
+  }, [pathname]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -110,4 +112,4 @@ const ScrollToTop = () => {
 };
 
 export default ScrollToTop;
-EOF
+EOF;

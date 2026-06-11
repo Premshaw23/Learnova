@@ -47,14 +47,11 @@ export default function AttendanceHeatmap() {
     setIsLoading(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(
-        `/api/attendance/heatmap?month=${monthKey}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await fetch(`/api/attendance/heatmap?month=${monthKey}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await res.json();
       const map = {};
       (data.attendance || []).forEach((record) => {
@@ -175,8 +172,10 @@ export default function AttendanceHeatmap() {
 
       {isLoading ? (
         <div className="flex justify-center items-center h-40">
-          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent 
-                          rounded-full animate-spin" />
+          <div
+            className="w-8 h-8 border-4 border-indigo-500 border-t-transparent 
+                          rounded-full animate-spin"
+          />
         </div>
       ) : (
         <>
@@ -276,7 +275,11 @@ export default function AttendanceHeatmap() {
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: "Present", value: stats.present, color: "text-green-600" },
+                {
+                  label: "Present",
+                  value: stats.present,
+                  color: "text-green-600",
+                },
                 { label: "Absent", value: stats.absent, color: "text-red-500" },
                 { label: "Late", value: stats.late, color: "text-yellow-500" },
                 {

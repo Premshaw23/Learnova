@@ -23,12 +23,19 @@ export default function DailyGoals() {
   const addGoal = () => {
     const trimmed = goalInput.trim();
     if (!trimmed) return;
-    setGoals((current) => [...current, { id: crypto.randomUUID(), text: trimmed, complete: false }]);
+    setGoals((current) => [
+      ...current,
+      { id: crypto.randomUUID(), text: trimmed, complete: false },
+    ]);
     setGoalInput("");
   };
 
   const toggleComplete = (id) => {
-    setGoals((current) => current.map((goal) => (goal.id === id ? { ...goal, complete: !goal.complete } : goal)));
+    setGoals((current) =>
+      current.map((goal) =>
+        goal.id === id ? { ...goal, complete: !goal.complete } : goal
+      )
+    );
   };
 
   const removeGoal = (id) => {
@@ -39,15 +46,22 @@ export default function DailyGoals() {
     <section className="rounded-[2rem] border border-white/10 bg-white/85 dark:bg-slate-950/80 dark:border-slate-700 shadow-2xl shadow-slate-950/20 backdrop-blur-xl p-6 lg:p-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">Wellness</p>
-          <h2 className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">Daily Goals</h2>
+          <p className="text-sm uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">
+            Wellness
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">
+            Daily Goals
+          </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Add simple wellness targets for the day and keep track of progress as goals are completed.
+            Add simple wellness targets for the day and keep track of progress
+            as goals are completed.
           </p>
         </div>
         <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/90 dark:bg-slate-900/80 p-4 text-center shadow-sm">
           <CheckCircle2 className="mx-auto h-6 w-6 text-slate-500 dark:text-slate-300" />
-          <p className="mt-2 text-xs uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Build momentum</p>
+          <p className="mt-2 text-xs uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">
+            Build momentum
+          </p>
         </div>
       </div>
 
@@ -67,17 +81,22 @@ export default function DailyGoals() {
             type="button"
             onClick={addGoal}
             className="inline-flex items-center justify-center rounded-3xl bg-slate-900 text-white px-5 py-3 text-sm font-semibold transition hover:bg-slate-800"
-          >
+           aria-label="Action button">
             <Plus className="mr-2 h-4 w-4" /> Add Goal
           </button>
         </div>
 
         <div className="mt-6 space-y-3">
           {goals.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No goals added yet. Start with something small and calming.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No goals added yet. Start with something small and calming.
+            </p>
           ) : (
             goals.map((goal) => (
-              <div key={goal.id} className="flex items-center justify-between rounded-3xl border border-slate-200/80 bg-white/90 p-4 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-100">
+              <div
+                key={goal.id}
+                className="flex items-center justify-between rounded-3xl border border-slate-200/80 bg-white/90 p-4 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-100"
+              >
                 <button
                   type="button"
                   onClick={() => toggleComplete(goal.id)}

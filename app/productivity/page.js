@@ -36,8 +36,9 @@ import ProductivityTrendsSection from "@/components/productivity/ProductivityTre
 import { apiFetch } from "@/lib/apiClient";
 import { TaskSection } from "@/components/productivity/TaskSection";
 import { CalendarSection } from "@/components/productivity/CalendarSection";
+import { CalendarSection } from "@/components/productivity/CalendarSection";
 import { AgendaListSection } from "@/components/productivity/AgendaListSection";
-
+import { safeLocalStorageSet, safeLocalStorageGet } from "@/lib/storage";
 const MODES = {
   focus: { label: "Focus", seconds: 25 * 60, accent: "text-cyan-300" },
   short: { label: "Short Break", seconds: 5 * 60, accent: "text-emerald-300" },
@@ -79,8 +80,12 @@ const SOUNDSCAPES = [
 ];
 
 function formatTime(seconds) {
-  const mins = Math.floor(seconds / 60).toString().padStart(2, "0");
-  const secs = Math.floor(seconds % 60).toString().padStart(2, "0");
+  const mins = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const secs = Math.floor(seconds % 60)
+    .toString()
+    .padStart(2, "0");
   return `${mins}:${secs}`;
 }
 
@@ -147,10 +152,11 @@ const AcademicEligibilityCard = ({ isDark }) => {
 
   return (
     <motion.div
-      className={`${isDark
+      className={`${
+        isDark
           ? "bg-black/40 border border-white/10 backdrop-blur-xl"
           : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-        } rounded-3xl p-6`}
+      } rounded-3xl p-6`}
       initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
@@ -162,7 +168,7 @@ const AcademicEligibilityCard = ({ isDark }) => {
         <div>
           <h3 className="text-base font-semibold flex items-center gap-2">
             <GraduationCap className="w-5 h-5 text-cyan-300" />
-              Academic Eligibility
+            Academic Eligibility
           </h3>
 
           <p className="text-xs text-slate-400 mt-1">
@@ -186,30 +192,22 @@ const AcademicEligibilityCard = ({ isDark }) => {
         <div>
           <p className="text-xs text-slate-400">Current CGPA</p>
 
-          <div className="text-lg font-semibold text-white">
-            {cgpa}
-          </div>
+          <div className="text-lg font-semibold text-white">{cgpa}</div>
         </div>
 
         <div>
           <p className="text-xs text-slate-400">Required CGPA</p>
 
-          <div className="text-lg font-semibold text-white">
-            {requiredCgpa}
-          </div>
+          <div className="text-lg font-semibold text-white">{requiredCgpa}</div>
         </div>
       </div>
 
       {/* CGPA Progress */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-xs text-slate-400">
-            CGPA Progress
-          </p>
+          <p className="text-xs text-slate-400">CGPA Progress</p>
 
-          <span className="text-xs text-slate-400">
-            {cgpaPercent}%
-          </span>
+          <span className="text-xs text-slate-400">{cgpaPercent}%</span>
         </div>
 
         <div className="h-2 rounded-full bg-white/10 overflow-hidden">
@@ -223,13 +221,9 @@ const AcademicEligibilityCard = ({ isDark }) => {
       {/* Attendance */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-xs text-slate-400">
-            Attendance
-          </p>
+          <p className="text-xs text-slate-400">Attendance</p>
 
-          <span className="text-xs font-medium">
-            {attendancePercent}%
-          </span>
+          <span className="text-xs font-medium">{attendancePercent}%</span>
         </div>
 
         <div className="h-2 rounded-full bg-white/10 overflow-hidden">
@@ -256,15 +250,11 @@ const AcademicEligibilityCard = ({ isDark }) => {
         <button
           onClick={handleCheck}
           className="w-full rounded-xl bg-cyan-500 hover:bg-cyan-400 transition-colors px-3 py-1.5 text-sm font-semibold text-slate-900"
-        >
+         aria-label="Action button">
           Check Eligibility
         </button>
 
-        {errorMsg && (
-          <p className="text-xs text-rose-300">
-            {errorMsg}
-          </p>
-        )}
+        {errorMsg && <p className="text-xs text-rose-300">{errorMsg}</p>}
       </div>
     </motion.div>
   );
@@ -317,12 +307,8 @@ export default function ProductivityPage() {
   /** Syncs current tasks and agenda to the API. Writes to localStorage first for instant persistence. */
   const syncToApi = useCallback(
     async (currentTasks, currentAgenda) => {
-      try {
-        localStorage.setItem(TASKS_KEY, JSON.stringify(currentTasks));
-        localStorage.setItem(AGENDA_KEY, JSON.stringify(currentAgenda));
-      } catch (_) {
-        // localStorage may be full or unavailable
-      }
+      safeLocalStorageSet(TASKS_KEY, currentTasks);
+      safeLocalStorageSet(AGENDA_KEY, currentAgenda);
 
       if (!user || isSyncingRef.current) return;
       isSyncingRef.current = true;
@@ -359,14 +345,10 @@ export default function ProductivityPage() {
   useEffect(() => {
     async function loadData() {
       if (!user) {
-        try {
-          const savedTasks = localStorage.getItem(TASKS_KEY);
-          const savedAgenda = localStorage.getItem(AGENDA_KEY);
-          if (savedTasks) setTasks(JSON.parse(savedTasks));
-          if (savedAgenda) setAgendaItems(JSON.parse(savedAgenda));
-        } catch (_) {
-          // Corrupted localStorage — use empty defaults
-        }
+        const savedTasks = safeLocalStorageGet(TASKS_KEY);
+        const savedAgenda = safeLocalStorageGet(AGENDA_KEY);
+        if (savedTasks) setTasks(savedTasks);
+        if (savedAgenda) setAgendaItems(savedAgenda);
         setDataLoaded(true);
         return;
       }
@@ -381,20 +363,15 @@ export default function ProductivityPage() {
         if (data.agendaItems && Object.keys(data.agendaItems).length > 0) {
           setAgendaItems(data.agendaItems);
         }
-      } catch (_) {
-        try {
-          const savedTasks = localStorage.getItem(TASKS_KEY);
-          const savedAgenda = localStorage.getItem(AGENDA_KEY);
-          if (savedTasks) setTasks(JSON.parse(savedTasks));
-          if (savedAgenda) setAgendaItems(JSON.parse(savedAgenda));
-        } catch (__) {
-          // Corrupted localStorage — use empty defaults
-        }
+        const savedTasks = safeLocalStorageGet(TASKS_KEY);
+        const savedAgenda = safeLocalStorageGet(AGENDA_KEY);
+        if (savedTasks) setTasks(savedTasks);
+        if (savedAgenda) setAgendaItems(savedAgenda);
       } finally {
         setDataLoaded(true);
       }
     }
-    
+
     // Set loading to false after component mounts
     const timer = setTimeout(() => {
       setLoading(false);
@@ -621,9 +598,7 @@ export default function ProductivityPage() {
     { month: "long", year: "numeric" }
   );
 
-  const focusMinutes = Math.floor(
-    (focusSessions * MODES.focus.seconds) / 60
-  );
+  const focusMinutes = Math.floor((focusSessions * MODES.focus.seconds) / 60);
 
   const totalTasks = tasks.length || 1;
   const completedTasks = tasks.filter((task) => task.done).length;
@@ -747,15 +722,21 @@ export default function ProductivityPage() {
 
       if (type === "rain") {
         // Synthesize Pink Noise (Voss-McCartney method) for rain
-        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        let b0 = 0,
+          b1 = 0,
+          b2 = 0,
+          b3 = 0,
+          b4 = 0,
+          b5 = 0,
+          b6 = 0;
         for (let i = 0; i < data.length; i += 1) {
           const white = Math.random() * 2 - 1;
           b0 = 0.99886 * b0 + white * 0.0555179;
           b1 = 0.99332 * b1 + white * 0.0750759;
-          b2 = 0.96900 * b2 + white * 0.1538520;
-          b3 = 0.86650 * b3 + white * 0.3104856;
-          b4 = 0.55000 * b4 + white * 0.5329522;
-          b5 = -0.7616 * b5 - white * 0.0168980;
+          b2 = 0.969 * b2 + white * 0.153852;
+          b3 = 0.8665 * b3 + white * 0.3104856;
+          b4 = 0.55 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.016898;
           const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
           b6 = white * 0.115926;
           data[i] = pink * 0.12; // Normalize peak amplitude
@@ -781,7 +762,7 @@ export default function ProductivityPage() {
         let lastOut = 0.0;
         for (let i = 0; i < data.length; i += 1) {
           const white = Math.random() * 2 - 1;
-          data[i] = (lastOut + (0.02 * white)) / 1.02;
+          data[i] = (lastOut + 0.02 * white) / 1.02;
           lastOut = data[i];
           data[i] *= 3.5; // Amplify back to audible range
         }
@@ -807,7 +788,7 @@ export default function ProductivityPage() {
 
         source.connect(filter);
         filter.connect(gainNode);
-        
+
         source.start();
         lfo.start();
 
@@ -897,461 +878,590 @@ export default function ProductivityPage() {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${isDark ? "text-white" : "text-slate-900"
+      className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${
+        isDark ? "text-white" : "text-slate-900"
       } relative overflow-x-hidden transition-all duration-500`}
     >
       <Navbar />
-      
+
       {loading ? (
         <TimerSkeleton />
       ) : (
         <>
-      <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
-        {isDark && <DarkVeil hueShift={ambientStyles.veilHue} />}
-      </div>
+          <div
+            className="absolute inset-0 pointer-events-none z-0"
+            aria-hidden="true"
+          >
+            {isDark && <DarkVeil hueShift={ambientStyles.veilHue} />}
+          </div>
 
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div className={`absolute -top-32 -right-32 w-72 h-72 rounded-full ${ambientStyles.glowPrimary} blur-3xl transition-colors duration-500`} />
-        <div className={`absolute bottom-0 left-0 w-72 h-72 rounded-full ${ambientStyles.glowSecondary} blur-3xl transition-colors duration-500`} />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.04),transparent_55%)]" />
-      </div>
+          <div className="absolute inset-0 pointer-events-none z-0">
+            <div
+              className={`absolute -top-32 -right-32 w-72 h-72 rounded-full ${ambientStyles.glowPrimary} blur-3xl transition-colors duration-500`}
+            />
+            <div
+              className={`absolute bottom-0 left-0 w-72 h-72 rounded-full ${ambientStyles.glowSecondary} blur-3xl transition-colors duration-500`}
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.04),transparent_55%)]" />
+          </div>
 
-      <div className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10 ">
-        <div className="max-w-6xl mx-auto space-y-12">
-          <section className="text-center space-y-4">
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${isDark
-                ? "bg-white/10 border border-white/10 text-white"
-                : "bg-slate-100 border border-slate-300 text-slate-900"
-              }`}>
-              <Sparkles className="w-4 h-4 text-cyan-300" />
-              <span className={`text-sm uppercase tracking-[0.3em] ${isDark ? "text-cyan-200" : "text-cyan-700"
-                }`}>
-                Productivity Suite
-              </span>
-            </div>
-            <h1 className="text-3xl sm:text-5xl font-bold">
-              Stay in Flow. Track What Matters.
-            </h1>
-            <p className={`text-lg ${isDark ? "text-slate-300" : "text-slate-600"} max-w-2xl mx-auto`}>
-              A productivity workspace designed for educators and learners.
-              Plan your day, protect focus blocks, and keep tasks moving.
-            </p>
-          </section>
-
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              <TimerSection
-                mode={mode}
-                timeLeft={timeLeft}
-                sessionSeconds={sessionSeconds}
-                focusSessions={focusSessions}
-                focusMinutes={focusMinutes}
-                isRunning={isRunning}
-                recentCompleted={recentCompleted}
-                MODES={MODES}
-                switchMode={switchMode}
-                toggleTimer={toggleTimer}
-                resetTimer={resetTimer}
-                applyManualTime={applyManualTime}
-                manualMinutes={manualMinutes}
-                setManualMinutes={setManualMinutes}
-                isDark={isDark}
-              />
-
-              <CalendarSection
-                calendar={calendar}
-                monthLabel={monthLabel}
-                selectedDateLabel={selectedDateLabel}
-                selectedDateKey={selectedDateKey}
-                setSelectedDateKey={setSelectedDateKey}
-                agendaItems={agendaItems}
-                agendaSummaryForSelectedDate={agendaSummaryForSelectedDate}
-                monthOffset={monthOffset}
-                setMonthOffset={setMonthOffset}
-                calendarFilter={calendarFilter}
-                setCalendarFilter={setCalendarFilter}
-                TIME_BLOCKS={TIME_BLOCKS}
-                WEEK_DAYS={WEEK_DAYS}
-                todayKey={todayKey}
-                isDark={isDark}
-              />
-
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 md:p-8 `}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.08 }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center justify-between gap-4 mb-6">
-                  <div>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus Snapshot</p>
-                    <h3 className="text-2xl font-semibold flex items-center gap-2">
-                      <Flame className="w-5 h-5 text-orange-300" />
-                      Today at a glance
-                    </h3>
-                  </div>
-                  <div className={`px-3 py-1 rounded-full text-xs border border-white/10 ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                    {selectedDateLabel}
-                  </div>
+          <div className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10 ">
+            <div className="max-w-6xl mx-auto space-y-12">
+              <section className="text-center space-y-4">
+                <div
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${
+                    isDark
+                      ? "bg-white/10 border border-white/10 text-white"
+                      : "bg-slate-100 border border-slate-300 text-slate-900"
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-cyan-300" />
+                  <span
+                    className={`text-sm uppercase tracking-[0.3em] ${
+                      isDark ? "text-cyan-200" : "text-cyan-700"
+                    }`}
+                  >
+                    Productivity Suite
+                  </span>
                 </div>
+                <h1 className="text-3xl sm:text-5xl font-bold">
+                  Stay in Flow. Track What Matters.
+                </h1>
+                <p
+                  className={`text-lg ${isDark ? "text-slate-300" : "text-slate-600"} max-w-2xl mx-auto`}
+                >
+                  A productivity workspace designed for educators and learners.
+                  Plan your day, protect focus blocks, and keep tasks moving.
+                </p>
+              </section>
 
-                <div className="grid sm:grid-cols-3 gap-4">
-                  <div className={`rounded-2xl ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    } p-4`}>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>Agenda items</p>
-                    <div className="mt-2 text-2xl font-semibold text-cyan-200">
-                      {agendaCount}
-                    </div>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}>Scheduled today</p>
-                  </div>
-                  <div className={`rounded-2xl ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    } p-4`}>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>Task completion</p>
-                    <div className="mt-2 text-2xl font-semibold text-emerald-200">
-                      {taskCompletion}%
-                    </div>
-                    <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
+              <div className="grid lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                  <TimerSection
+                    mode={mode}
+                    timeLeft={timeLeft}
+                    sessionSeconds={sessionSeconds}
+                    focusSessions={focusSessions}
+                    focusMinutes={focusMinutes}
+                    isRunning={isRunning}
+                    recentCompleted={recentCompleted}
+                    MODES={MODES}
+                    switchMode={switchMode}
+                    toggleTimer={toggleTimer}
+                    resetTimer={resetTimer}
+                    applyManualTime={applyManualTime}
+                    manualMinutes={manualMinutes}
+                    setManualMinutes={setManualMinutes}
+                    isDark={isDark}
+                  />
+
+                  <CalendarSection
+                    calendar={calendar}
+                    monthLabel={monthLabel}
+                    selectedDateLabel={selectedDateLabel}
+                    selectedDateKey={selectedDateKey}
+                    setSelectedDateKey={setSelectedDateKey}
+                    agendaItems={agendaItems}
+                    agendaSummaryForSelectedDate={agendaSummaryForSelectedDate}
+                    monthOffset={monthOffset}
+                    setMonthOffset={setMonthOffset}
+                    calendarFilter={calendarFilter}
+                    setCalendarFilter={setCalendarFilter}
+                    TIME_BLOCKS={TIME_BLOCKS}
+                    WEEK_DAYS={WEEK_DAYS}
+                    todayKey={todayKey}
+                    isDark={isDark}
+                  />
+
+                  <motion.div
+                    className={`${
+                      isDark
+                        ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                        : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                    } rounded-3xl p-6 md:p-8 `}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.5, ease: "easeOut", delay: 0.08 }}
+                    whileHover={{ y: -4 }}
+                  >
+                    <div className="flex items-center justify-between gap-4 mb-6">
+                      <div>
+                        <p
+                          className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Focus Snapshot
+                        </p>
+                        <h3 className="text-2xl font-semibold flex items-center gap-2">
+                          <Flame className="w-5 h-5 text-orange-300" />
+                          Today at a glance
+                        </h3>
+                      </div>
                       <div
-                        className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
-                        style={{ width: `${taskCompletion}%` }}
-                      />
+                        className={`px-3 py-1 rounded-full text-xs border border-white/10 ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                      >
+                        {selectedDateLabel}
+                      </div>
                     </div>
+
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      <div
+                        className={`rounded-2xl ${
+                          isDark
+                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                        } p-4`}
+                      >
+                        <p
+                          className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Agenda items
+                        </p>
+                        <div className="mt-2 text-2xl font-semibold text-cyan-200">
+                          {agendaCount}
+                        </div>
+                        <p
+                          className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}
+                        >
+                          Scheduled today
+                        </p>
+                      </div>
+                      <div
+                        className={`rounded-2xl ${
+                          isDark
+                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                        } p-4`}
+                      >
+                        <p
+                          className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Task completion
+                        </p>
+                        <div className="mt-2 text-2xl font-semibold text-emerald-200">
+                          {taskCompletion}%
+                        </div>
+                        <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
+                            style={{ width: `${taskCompletion}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div
+                        className={`rounded-2xl ${
+                          isDark
+                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                        } p-4`}
+                      >
+                        <p
+                          className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Soundscape
+                        </p>
+                        <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
+                          <SoundscapeIcon className="w-4 h-4 text-purple-500" />
+                          {soundscapeOn ? "On" : "Off"}
+                        </div>
+                        <p
+                          className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}
+                        >
+                          {soundscapeOn ? soundscape : "Silent focus"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`mt-6 rounded-2xl ${
+                        isDark
+                          ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                          : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                      } p-4`}
+                    >
+                      <p
+                        className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                      >
+                        Next focus block
+                      </p>
+                      {nextFocusBlock ? (
+                        <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
+                          <Timer className="w-5 h-5 text-cyan-300" />
+                          {nextFocusBlock.text}
+                          <span
+                            className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                          >
+                            {nextFocusBlock.time}
+                          </span>
+                        </div>
+                      ) : (
+                        <p
+                          className={`mt-2 text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Add a focus item to see it here.
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                  <div className="w-full overflow-hidden">
+                    <ProductivityTrendsSection isDark={isDark} />
                   </div>
-                  <div className={`rounded-2xl ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    } p-4`}>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>Soundscape</p>
-                    <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
-                      <SoundscapeIcon className="w-4 h-4 text-purple-500" />
-                      {soundscapeOn ? "On" : "Off"}
+                </div>
+
+                <div className="space-y-8">
+                  <TaskSection
+                    tasks={tasks}
+                    taskInput={taskInput}
+                    taskPriority={taskPriority}
+                    setTaskInput={setTaskInput}
+                    setTaskPriority={setTaskPriority}
+                    addTask={addTask}
+                    toggleTask={toggleTask}
+                    moveTask={moveTask}
+                    removeTask={removeTask}
+                    taskCompletion={taskCompletion}
+                    PRIORITIES={PRIORITIES}
+                    isDark={isDark}
+                  />
+
+                  <motion.div
+                    className={`${
+                      isDark
+                        ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                        : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                    } rounded-3xl p-6 space-y-4`}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.5, ease: "easeOut", delay: 0.15 }}
+                    whileHover={{ y: -4 }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-blue-300" />
+                      <h3 className="text-xl font-semibold">Focus Insights</h3>
                     </div>
-                    <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"} mt-1`}>
-                      {soundscapeOn ? soundscape : "Silent focus"}
+                    <div className="space-y-4">
+                      <div
+                        className={`rounded-2xl p-4 ${
+                          isDark
+                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Energy level
+                        </p>
+                        <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
+                          <div className="h-full w-3/4 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500" />
+                        </div>
+                      </div>
+                      <div
+                        className={`rounded-2xl p-4 ${
+                          isDark
+                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Deep work streak
+                        </p>
+                        <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
+                          <Flame className="w-5 h-5 text-orange-300" />6 days
+                          strong
+                        </div>
+                      </div>
+                      <div
+                        className={`rounded-2xl p-4 ${
+                          isDark
+                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Next focus block
+                        </p>
+                        {nextFocusBlock ? (
+                          <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
+                            <Timer className="w-5 h-5 text-cyan-300" />
+                            {nextFocusBlock.text}
+                            <span
+                              className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                            >
+                              {nextFocusBlock.time}
+                            </span>
+                          </div>
+                        ) : (
+                          <p
+                            className={`mt-2 text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                          >
+                            No focus blocks scheduled yet.
+                          </p>
+                        )}
+                      </div>
+                      <div
+                        className={`rounded-2xl p-4 ${
+                          isDark
+                            ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                            : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Soundscape
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {SOUNDSCAPES.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.value}
+                                type="button"
+                                onClick={() => setSoundscape(item.value)}
+                                className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 transition-all duration-300 ${
+                                  soundscape === item.value
+                                    ? isDark
+                                      ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
+                                      : "border-cyan-300 bg-cyan-100 text-cyan-900"
+                                    : isDark
+                                      ? "border-white/10 text-slate-300 hover:text-white"
+                                      : "border-slate-300 text-slate-700 hover:text-slate-900 bg-white/60"
+                                }`}
+                              >
+                                <Icon className="w-3 h-3" />
+                                {item.label}
+                              </button>
+                            );
+                          })}
+                          <button
+                            onClick={() => setSoundscapeOn((prev) => !prev)}
+                            className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 transition-all duration-300 ${
+                              soundscapeOn
+                                ? isDark
+                                  ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
+                                  : "border-emerald-300 bg-emerald-100 text-emerald-900"
+                                : isDark
+                                  ? "border-white/10 text-slate-300 hover:text-white"
+                                  : "border-slate-300 text-slate-700 hover:text-slate-900 bg-white/60"
+                            }`}
+                          >
+                            {soundscapeOn ? "On" : "Off"}
+                            <SoundscapeIcon className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <div className="h-2 flex-1 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
+                            <div
+                              className={`h-full w-2/3 ${
+                                soundscapeOn
+                                  ? "bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
+                                  : "bg-white/10"
+                              }`}
+                            />
+                          </div>
+                          <span
+                            className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                          >
+                            EQ
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    className={`${
+                      isDark
+                        ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                        : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                    } rounded-3xl p-6 space-y-3`}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+                    whileHover={{ y: -4 }}
+                  >
+                    <h3 className="text-xl font-semibold flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-purple-300" />
+                      Creative Boosts
+                    </h3>
+                    <p
+                      className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}
+                    >
+                      Try a 2-minute stretch, write one win, and reset your
+                      focus before the next block.
                     </p>
-                  </div>
-                </div>
-
-                <div className={`mt-6 rounded-2xl ${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } p-4`}>
-                  <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>Next focus block</p>
-                  {nextFocusBlock ? (
-                    <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
-                      <Timer className="w-5 h-5 text-cyan-300" />
-                      {nextFocusBlock.text}
-                      <span className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                        {nextFocusBlock.time}
-                      </span>
+                    <div className="flex flex-wrap gap-2">
+                      {["Breathing", "Stretch", "Hydrate"].map((item) => (
+                        <button
+                          key={item}
+                          onClick={() => {
+                            setMode("short");
+                            setSessionSeconds(120);
+                            setTimeLeft(120);
+                            setManualMinutes("2");
+                            setIsRunning(true);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs ${
+                            isDark
+                              ? "bg-white/10 border border-white/10 text-white"
+                              : "bg-slate-100 border border-slate-300 text-slate-900"
+                          } hover:bg-white/20 transition-colors cursor-pointer ${isDark ? "text-white" : "text-slate-900"}`}
+                        >
+                          {item}
+                        </button>
+                      ))}
                     </div>
-                  ) : (
-                    <p className={`mt-2 text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                      Add a focus item to see it here.
-                    </p>
-                  )}
-                </div>
-              </motion.div>
-              <div className="w-full overflow-hidden">
-                <ProductivityTrendsSection isDark={isDark} />
-              </div>
-            </div>
-
-            <div className="space-y-8">
-              <TaskSection
-                tasks={tasks}
-                taskInput={taskInput}
-                taskPriority={taskPriority}
-                setTaskInput={setTaskInput}
-                setTaskPriority={setTaskPriority}
-                addTask={addTask}
-                toggleTask={toggleTask}
-                moveTask={moveTask}
-                removeTask={removeTask}
-                taskCompletion={taskCompletion}
-                PRIORITIES={PRIORITIES}
-                isDark={isDark}
-              />
-
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 space-y-4`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.15 }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-blue-300" />
-                  <h3 className="text-xl font-semibold">Focus Insights</h3>
-                </div>
-                <div className="space-y-4">
-                  <div className={`rounded-2xl p-4 ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Energy level</p>
-                    <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
-                      <div className="h-full w-3/4 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500" />
-                    </div>
+                  </motion.div>
+                  <AgendaListSection
+                    selectedDateLabel={selectedDateLabel}
+                    agendaForSelectedDate={agendaForSelectedDate}
+                    TIME_BLOCKS={TIME_BLOCKS}
+                    agendaInput={agendaInput}
+                    setAgendaInput={setAgendaInput}
+                    agendaLabel={agendaLabel}
+                    setAgendaLabel={setAgendaLabel}
+                    addAgendaItem={addAgendaItem}
+                    moveAgendaItem={moveAgendaItem}
+                    removeAgendaItem={removeAgendaItem}
+                    isDark={isDark}
+                  />
+                  <div className="mt-6">
+                    <AcademicEligibilityCard isDark={isDark} />
                   </div>
-                  <div className={`rounded-2xl p-4 ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Deep work streak</p>
-                    <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
-                      <Flame className="w-5 h-5 text-orange-300" />
-                      6 days strong
+                  <motion.div
+                    className={`${
+                      isDark
+                        ? "bg-black/40 border border-white/10 backdrop-blur-xl"
+                        : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
+                    } rounded-3xl p-6 `}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.5, ease: "easeOut", delay: 0.3 }}
+                    whileHover={{ y: -4 }}
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <Sparkles className="w-5 h-5 text-cyan-300" />
+                      <h3 className="text-xl font-semibold">Daily Summary</h3>
                     </div>
-                  </div>
-                  <div className={`rounded-2xl p-4 ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Next focus block</p>
-                    {nextFocusBlock ? (
-                      <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
-                        <Timer className="w-5 h-5 text-cyan-300" />
-                        {nextFocusBlock.text}
-                        <span className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                          {nextFocusBlock.time}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span
+                          className={`${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Tasks completed
+                        </span>
+                        <span
+                          className={`${isDark ? "text-slate-200" : "text-slate-800"}`}
+                        >
+                          {completedTasks} / {tasks.length}
                         </span>
                       </div>
-                    ) : (
-                      <p className={`mt-2 text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                        No focus blocks scheduled yet.
-                      </p>
-                    )}
-                  </div>
-                  <div className={`rounded-2xl p-4 ${isDark
-                      ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                      : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                    }`}>
-                    <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>Soundscape</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {SOUNDSCAPES.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                          <button
-                            key={item.value}
-                            type="button"
-                            onClick={() => setSoundscape(item.value)}
-                            className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 transition-all duration-300 ${
-  soundscape === item.value
-    ? isDark
-      ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
-      : "border-cyan-300 bg-cyan-100 text-cyan-900"
-    : isDark
-      ? "border-white/10 text-slate-300 hover:text-white"
-      : "border-slate-300 text-slate-700 hover:text-slate-900 bg-white/60"
-}`}
-                          >
-                            <Icon className="w-3 h-3" />
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => setSoundscapeOn((prev) => !prev)}
-                        className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 transition-all duration-300 ${
-  soundscapeOn
-    ? isDark
-      ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
-      : "border-emerald-300 bg-emerald-100 text-emerald-900"
-    : isDark
-      ? "border-white/10 text-slate-300 hover:text-white"
-      : "border-slate-300 text-slate-700 hover:text-slate-900 bg-white/60"
-}`}
-                      >
-                        {soundscapeOn ? "On" : "Off"}
-                        <SoundscapeIcon className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <div className="h-2 flex-1 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
+                      <div className="h-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                         <div
-                          className={`h-full w-2/3 ${soundscapeOn
-                              ? "bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
-                              : "bg-white/10"
-                            }`}
+                          className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
+                          style={{ width: `${taskCompletion}%` }}
                         />
                       </div>
-                      <span className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>EQ</span>
+                      <div className="flex items-center justify-between text-sm">
+                        <span
+                          className={`${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Agenda items
+                        </span>
+                        <span
+                          className={`${isDark ? "text-slate-200" : "text-slate-800"}`}
+                        >
+                          {agendaCount}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span
+                          className={`${isDark ? "text-slate-300" : "text-slate-600"}`}
+                        >
+                          Focus minutes
+                        </span>
+                        <span
+                          className={`${isDark ? "text-slate-200" : "text-slate-800"}`}
+                        >
+                          {focusMinutes} min
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
-              </motion.div>
-
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 space-y-3`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
-                whileHover={{ y: -4 }}
-              >
-                <h3 className="text-xl font-semibold flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-purple-300" />
-                  Creative Boosts
-                </h3>
-                <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                  Try a 2-minute stretch, write one win, and reset your focus
-                  before the next block.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {["Breathing", "Stretch", "Hydrate"].map((item) => (
-                    <button
-                      key={item}
-                      onClick={() => {
-                        setMode("short");
-                        setSessionSeconds(120);
-                        setTimeLeft(120);
-                        setManualMinutes("2");
-                        setIsRunning(true);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
-                      className={`px-3 py-1 rounded-full text-xs ${isDark
-                          ? "bg-white/10 border border-white/10 text-white"
-                          : "bg-slate-100 border border-slate-300 text-slate-900"
-                        } hover:bg-white/20 transition-colors cursor-pointer ${isDark ? "text-white" : "text-slate-900"}`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-              <AgendaListSection
-                selectedDateLabel={selectedDateLabel}
-                agendaForSelectedDate={agendaForSelectedDate}
-                TIME_BLOCKS={TIME_BLOCKS}
-                agendaInput={agendaInput}
-                setAgendaInput={setAgendaInput}
-                agendaLabel={agendaLabel}
-                setAgendaLabel={setAgendaLabel}
-                addAgendaItem={addAgendaItem}
-                moveAgendaItem={moveAgendaItem}
-                removeAgendaItem={removeAgendaItem}
-                isDark={isDark}
-              />
-              <div className="mt-6">
-                <AcademicEligibilityCard isDark={isDark} />
               </div>
-              <motion.div
-                className={`${isDark
-                    ? "bg-black/40 border border-white/10 backdrop-blur-xl"
-                    : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-                  } rounded-3xl p-6 `}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.3 }}
-                whileHover={{ y: -4 }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="w-5 h-5 text-cyan-300" />
-                  <h3 className="text-xl font-semibold">Daily Summary</h3>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className={`${isDark ? "text-slate-300" : "text-slate-600"}`}>Tasks completed</span>
-                    <span className={`${isDark ? "text-slate-200" : "text-slate-800"}`}>
-                      {completedTasks} / {tasks.length}
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500"
-                      style={{ width: `${taskCompletion}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className={`${isDark ? "text-slate-300" : "text-slate-600"}`}>Agenda items</span>
-                    <span className={`${isDark ? "text-slate-200" : "text-slate-800"}`}>{agendaCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className={`${isDark ? "text-slate-300" : "text-slate-600"}`}>Focus minutes</span>
-                    <span className={`${isDark ? "text-slate-200" : "text-slate-800"}`}>{focusMinutes} min</span>
-                  </div>
-                </div>
-              </motion.div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="fixed bottom-8 right-6 z-40">
-        <div className="relative">
-          {showQuickAdd && (
-            <motion.div
-              className="absolute bottom-16 right-0 flex flex-col gap-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-            >
+          <div className="fixed bottom-8 right-6 z-40">
+            <div className="relative">
+              {showQuickAdd && (
+                <motion.div
+                  className="absolute bottom-16 right-0 flex flex-col gap-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                >
+                  <button
+                    onClick={() => {
+                      setShowQuickAdd(false);
+                      setTaskInput("");
+                      setAgendaInput("");
+                    }}
+                    className={`px-4 py-2 rounded-full ${
+                      isDark
+                        ? "bg-white/10 border border-white/10 text-white"
+                        : "bg-slate-100 border border-slate-300 text-slate-900"
+                    } text-sm`}
+                  >
+                    Quick Add Task
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowQuickAdd(false);
+                      setAgendaInput("");
+                    }}
+                    className={`px-4 py-2 rounded-full ${
+                      isDark
+                        ? "bg-white/10 border border-white/10 text-white"
+                        : "bg-slate-100 border border-slate-300 text-slate-900"
+                    } text-sm`}
+                  >
+                    Quick Add Agenda
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowQuickAdd(false);
+                      setIsRunning(true);
+                    }}
+                    className={`px-4 py-2 rounded-full ${
+                      isDark
+                        ? "bg-white/10 border border-white/10 text-white"
+                        : "bg-slate-100 border border-slate-300 text-slate-900"
+                    } text-sm`}
+                  >
+                    Start Focus
+                  </button>
+                </motion.div>
+              )}
               <button
-                onClick={() => {
-                  setShowQuickAdd(false);
-                  setTaskInput("");
-                  setAgendaInput("");
-                }}
-                className={`px-4 py-2 rounded-full ${isDark
-                    ? "bg-white/10 border border-white/10 text-white"
-                    : "bg-slate-100 border border-slate-300 text-slate-900"
-                  } text-sm`}
+                onClick={() => setShowQuickAdd((prev) => !prev)}
+                className="h-12 w-12 rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-slate-900 flex items-center justify-center shadow-lg"
+                aria-label="Quick add"
               >
-                Quick Add Task
+                <Plus className="w-5 h-5" />
               </button>
-              <button
-                onClick={() => {
-                  setShowQuickAdd(false);
-                  setAgendaInput("");
-                }}
-                className={`px-4 py-2 rounded-full ${isDark
-                    ? "bg-white/10 border border-white/10 text-white"
-                    : "bg-slate-100 border border-slate-300 text-slate-900"
-                  } text-sm`}
-              >
-                Quick Add Agenda
-              </button>
-              <button
-                onClick={() => {
-                  setShowQuickAdd(false);
-                  setIsRunning(true);
-                }}
-                className={`px-4 py-2 rounded-full ${isDark
-                    ? "bg-white/10 border border-white/10 text-white"
-                    : "bg-slate-100 border border-slate-300 text-slate-900"
-                  } text-sm`}
-              >
-                Start Focus
-              </button>
-            </motion.div>
-          )}
-          <button
-            onClick={() => setShowQuickAdd((prev) => !prev)}
-            className="h-12 w-12 rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-slate-900 flex items-center justify-center shadow-lg"
-            aria-label="Quick add"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+            </div>
+          </div>
         </>
       )}
     </div>

@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 /**
  * CircularProgress Component
  * Renders an animated circular completion progress ring using standard SVG elements.
- * 
+ *
  * Props:
  * - value: Target completion percentage (0 - 100)
  * - size: Pixel size for height and width (default: 60)
@@ -27,7 +27,8 @@ export default function CircularProgress({ value = 0, size = 60 }) {
   const radius = 38;
   const strokeWidth = 7;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (animatedValue / 100) * circumference;
+  const strokeDashoffset =
+    circumference - (animatedValue / 100) * circumference;
 
   return (
     <div
@@ -62,7 +63,7 @@ export default function CircularProgress({ value = 0, size = 60 }) {
           className="stroke-indigo-600 dark:stroke-indigo-400 fill-transparent transition-all duration-1000 ease-out"
         />
       </svg>
-      
+
       {/* Central Percentage Value Text */}
       <span className="absolute text-xs md:text-sm font-black tracking-tight text-slate-800 dark:text-slate-100">
         {Math.round(animatedValue)}%

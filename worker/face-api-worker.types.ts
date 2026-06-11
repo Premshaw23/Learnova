@@ -1,4 +1,7 @@
-export type FaceApiWorkerAction = 'LOAD_MODELS' | 'DETECT_FACES' | 'CLEAR_MODELS';
+export type FaceApiWorkerAction =
+  | "LOAD_MODELS"
+  | "DETECT_FACES"
+  | "CLEAR_MODELS";
 
 export interface FaceApiWorkerRequest {
   action: FaceApiWorkerAction;
@@ -24,7 +27,11 @@ export interface FaceDetectionResult {
 }
 
 export interface FaceApiWorkerResponse {
-  type: 'LOAD_MODELS_SUCCESS' | 'LOAD_MODELS_FAILURE' | 'DETECT_FACES_SUCCESS' | 'DETECT_FACES_FAILURE';
+  type:
+    | "LOAD_MODELS_SUCCESS"
+    | "LOAD_MODELS_FAILURE"
+    | "DETECT_FACES_SUCCESS"
+    | "DETECT_FACES_FAILURE";
   success: boolean;
   payload?: {
     detections?: FaceDetectionResult[];

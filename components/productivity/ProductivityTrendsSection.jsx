@@ -4,17 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import AIProductivityInsights from "./AIProductivityInsights";
 
-import {
-  Flame,
-  Clock3,
-  BarChart3,
-  Brain,
-  TrendingUp,
-} from "lucide-react";
+import { Flame, Clock3, BarChart3, Brain, TrendingUp } from "lucide-react";
 
 import {
   ResponsiveContainer,
-    Bar,
+  Bar,
   XAxis,
   YAxis,
   BarChart,
@@ -24,9 +18,7 @@ import {
 import { apiFetch } from "@/lib/apiClient";
 import { useAuth } from "@/hooks/useAuth";
 
-import {
-  getAnalyticsSummary,
-} from "@/utils/productivityAnalytics";
+import { getAnalyticsSummary } from "@/utils/productivityAnalytics";
 
 export default function ProductivityTrendsSection({ isDark }) {
   const { user } = useAuth();
@@ -41,21 +33,15 @@ export default function ProductivityTrendsSection({ isDark }) {
 
         const token = await user.getIdToken();
 
-        const data = await apiFetch(
-          "/api/productivity/session",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const data = await apiFetch("/api/productivity/session", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         setSessions(data.sessions || []);
       } catch (error) {
-        console.error(
-          "Failed to load productivity analytics:",
-          error
-        );
+        console.error("Failed to load productivity analytics:", error);
       } finally {
         setLoading(false);
       }
@@ -64,10 +50,7 @@ export default function ProductivityTrendsSection({ isDark }) {
     loadSessions();
   }, [user]);
 
-  const analytics = useMemo(
-  () => getAnalyticsSummary(sessions),
-  [sessions]
-);
+  const analytics = useMemo(() => getAnalyticsSummary(sessions), [sessions]);
 
   if (loading) {
     return (
@@ -78,9 +61,7 @@ export default function ProductivityTrendsSection({ isDark }) {
             : "bg-white border border-slate-200"
         }`}
       >
-        <p className="text-sm opacity-70">
-          Loading productivity analytics...
-        </p>
+        <p className="text-sm opacity-70">Loading productivity analytics...</p>
       </div>
     );
   }
@@ -125,298 +106,240 @@ export default function ProductivityTrendsSection({ isDark }) {
         </div>
       </div>
 
-<div className="grid lg:grid-cols-2 gap-6 items-stretch">
-
-    {/* LEFT SIDE - CHART */}
-
-    <div
-        className={`rounded-2xl p-4 ${
-        isDark
-            ? "bg-black/40 border border-white/10"
-            : "bg-slate-50 border border-slate-200"
-        }`}
-    >
-        <div className="flex items-center justify-between mb-4">
-        <div>
-            <h4 className="text-lg font-semibold">
-            Weekly Focus Trend
-            </h4>
-
-            <p
-            className={`text-sm ${
-                isDark
-                ? "text-slate-300"
-                : "text-slate-600"
-            }`}
-            >
-            Minutes focused each day
-            </p>
-        </div>
+      <div className="grid lg:grid-cols-2 gap-6 items-stretch">
+        {/* LEFT SIDE - CHART */}
 
         <div
-            className={`text-sm ${
+          className={`rounded-2xl p-4 ${
             isDark
-                ? "text-slate-300"
-                : "text-slate-600"
-            }`}
+              ? "bg-black/40 border border-white/10"
+              : "bg-slate-50 border border-slate-200"
+          }`}
         >
-            Avg: {analytics.averageSessionDuration}m
-        </div>
-        </div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-lg font-semibold">Weekly Focus Trend</h4>
 
-        <div className="h-52">
-        <ResponsiveContainer width="100%" height={200}>
-            <BarChart
+              <p
+                className={`text-sm ${
+                  isDark ? "text-slate-300" : "text-slate-600"
+                }`}
+              >
+                Minutes focused each day
+              </p>
+            </div>
+
+            <div
+              className={`text-sm ${
+                isDark ? "text-slate-300" : "text-slate-600"
+              }`}
+            >
+              Avg: {analytics.averageSessionDuration}m
+            </div>
+          </div>
+
+          <div className="h-52">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart
                 data={analytics.weeklyFocusData}
                 margin={{
-                    top: 10,
-                    right: 0,
-                    left: -10,
-                    bottom: -10,
+                  top: 10,
+                  right: 0,
+                  left: -10,
+                  bottom: -10,
                 }}
-                >
+              >
                 <defs>
-                    <linearGradient
-                    id="barGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                    >
-                    <stop
-                        offset="0%"
-                        stopColor="#22d3ee"
-                    />
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22d3ee" />
 
-                    <stop
-                        offset="50%"
-                        stopColor="#6366f1"
-                    />
+                    <stop offset="50%" stopColor="#6366f1" />
 
-                    <stop
-                        offset="100%"
-                        stopColor="#9333ea"
-                    />
-                    </linearGradient>
+                    <stop offset="100%" stopColor="#9333ea" />
+                  </linearGradient>
                 </defs>
 
                 <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    opacity={0.08}
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  opacity={0.08}
                 />
 
                 <YAxis hide />
 
                 <XAxis
-                    dataKey="day"
-                    tick={{
+                  dataKey="day"
+                  tick={{
                     fontSize: 11,
                     fill: "#94a3b8",
-                    }}
-                    tickLine={false}
-                    axisLine={false}
+                  }}
+                  tickLine={false}
+                  axisLine={false}
                 />
                 <Bar
-                    dataKey="minutes"
-                    fill="url(#barGradient)"
-                    radius={[6, 6, 0, 0]}
-                    barSize={28}
+                  dataKey="minutes"
+                  fill="url(#barGradient)"
+                  radius={[6, 6, 0, 0]}
+                  barSize={28}
                 />
-            </BarChart>
-        </ResponsiveContainer>
-        </div>
-    </div>
-
-    {/* RIGHT SIDE - METRICS */}
-
-    <div className="grid grid-cols-2 gap-3">
-
-    {/* Total Focus Time */}
-
-    <div
-        className={`rounded-xl p-3 ${
-        isDark
-            ? "bg-black/40 border border-white/10"
-            : "bg-slate-50 border border-slate-200"
-        }`}
-    >
-        <div className="flex items-center gap-2 mb-1">
-            <Clock3 className="w-4 h-4 text-blue-500" />
-
-            <p className="text-xs opacity-70">
-                Total Focus Time
-            </p>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        <div className="flex items-end gap-1">
-            <span className="text-3xl font-semibold text-blue-400 leading-none">
-                {analytics.totalFocusMinutes}
-            </span>
+        {/* RIGHT SIDE - METRICS */}
 
-            <span className="text-sm text-blue-500 pb-0.5">
-                mins
-            </span>
-            </div>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Total Focus Time */}
 
-        <p className="text-xs text-slate-500 mt-1">
-        This Week
-        </p>
-    </div>
-
-    {/* Avg Session */}
-
-    <div
-        className={`rounded-xl p-3 ${
-        isDark
-            ? "bg-black/40 border border-white/10"
-            : "bg-slate-50 border border-slate-200"
-        }`}
-    >
-        <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-emerald-300" />
-            <p className="text-xs opacity-70">
-                Avg. Session
-            </p>
-        </div>
-
-        <div className="flex items-end gap-1">
-            <span className="text-3xl font-semibold text-emerald-300 leading-none">
-                {analytics.averageSessionDuration}
-            </span>
-
-            <span className="text-sm text-emerald-400 pb-0.5">
-                mins
-            </span>
-            </div>
-
-        <p className="text-xs text-slate-500 mt-1">
-        Per session
-        </p>
-    </div>
-
-    {/* Focus Sessions */}
-
-    <div
-        className={`rounded-xl p-3 ${
-        isDark
-            ? "bg-black/40 border border-white/10"
-            : "bg-slate-50 border border-slate-200"
-        }`}
-    >
-        <div className="flex items-center gap-2 mb-1">
-            <BarChart3 className="w-4 h-4 text-cyan-300" />
-            <p className="text-xs opacity-70">
-                Focus Sessions
-            </p>
-        </div>
-
-        <div className="text-3xl font-semibold text-cyan-300 leading-none">
-            {analytics.completedFocusSessions}
-        </div>
-
-        <p className="text-xs text-slate-500 pb-0.5">
-        Completed
-        </p>
-    </div>
-
-    {/* Focus Streak */}
-
-    <div
-        className={`rounded-xl p-3 ${
-        isDark
-            ? "bg-black/40 border border-white/10"
-            : "bg-slate-50 border border-slate-200"
-        }`}
-    >
-        <div className="flex items-center gap-2 mb-1">
-            <Flame className="w-4 h-4 text-orange-300" />
-            <p className="text-xs opacity-70">
-                Focus Streak
-            </p>
-        </div>
-
-        <div className="flex items-end gap-1">
-            <span className="text-3xl font-semibold text-yellow-300 leading-none">
-                {analytics.focusStreak}
-            </span>
-
-            <span className="text-sm text-yellow-400 pb-0.5">
-                days
-            </span>
-            </div>
-
-        <p className="text-xs text-slate-500 mt-1">
-        Current streak
-        </p>
-    </div>
-
-    {/* Best Focus Time */}
-
-    <div
-        className={`rounded-xl p-3 ${
-        isDark
-            ? "bg-black/40 border border-white/10"
-            : "bg-slate-50 border border-slate-200"
-        }`}
-    >
-        <div className="flex items-center gap-2 mb-1">
-            <Clock3 className="w-4 h-4 text-yellow-300" />
-            <p className="text-xs opacity-70">
-                Best Focus Time
-            </p>
-        </div>
-
-       <div
-            className={`text-xl font-semibold transition-colors duration-300 ${
-                isDark ? "text-slate-100" : "text-slate-900"
+          <div
+            className={`rounded-xl p-3 ${
+              isDark
+                ? "bg-black/40 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
             }`}
-            >
-            {analytics.peakFocusHours}
-        </div>
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Clock3 className="w-4 h-4 text-blue-500" />
 
-        <p className="text-xs text-slate-500 pb-0.5">
-        Most productive
-        </p>
-    </div>
-
-    {/* Consistency Score */}
-
-    <div
-        className={`rounded-xl p-3 ${
-        isDark
-            ? "bg-black/40 border border-white/10"
-            : "bg-slate-50 border border-slate-200"
-        }`}
-    >
-        <div className="flex items-center gap-2 mb-1">
-            <Brain className="w-4 h-4 text-purple-300" />
-            <p className="text-xs opacity-70">
-                Consistency Score
-            </p>
-        </div>
-
-        <div className="flex items-end gap-1">
-            <span className="text-3xl font-semibold text-emerald-300 leading-none">
-                {analytics.consistencyScore}
-            </span>
-
-            <span className="text-sm text-emerald-400 pb-0.5">
-                %
-            </span>
+              <p className="text-xs opacity-70">Total Focus Time</p>
             </div>
 
-        <p className="text-xs text-slate-500 mt-1">
-        This week
-        </p>
-    </div>
-    </div>
-    </div>
-    
-    <AIProductivityInsights
-        analytics={analytics}
-        isDark={isDark}
-    />
+            <div className="flex items-end gap-1">
+              <span className="text-3xl font-semibold text-blue-400 leading-none">
+                {analytics.totalFocusMinutes}
+              </span>
+
+              <span className="text-sm text-blue-500 pb-0.5">mins</span>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-1">This Week</p>
+          </div>
+
+          {/* Avg Session */}
+
+          <div
+            className={`rounded-xl p-3 ${
+              isDark
+                ? "bg-black/40 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="w-4 h-4 text-emerald-300" />
+              <p className="text-xs opacity-70">Avg. Session</p>
+            </div>
+
+            <div className="flex items-end gap-1">
+              <span className="text-3xl font-semibold text-emerald-300 leading-none">
+                {analytics.averageSessionDuration}
+              </span>
+
+              <span className="text-sm text-emerald-400 pb-0.5">mins</span>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-1">Per session</p>
+          </div>
+
+          {/* Focus Sessions */}
+
+          <div
+            className={`rounded-xl p-3 ${
+              isDark
+                ? "bg-black/40 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart3 className="w-4 h-4 text-cyan-300" />
+              <p className="text-xs opacity-70">Focus Sessions</p>
+            </div>
+
+            <div className="text-3xl font-semibold text-cyan-300 leading-none">
+              {analytics.completedFocusSessions}
+            </div>
+
+            <p className="text-xs text-slate-500 pb-0.5">Completed</p>
+          </div>
+
+          {/* Focus Streak */}
+
+          <div
+            className={`rounded-xl p-3 ${
+              isDark
+                ? "bg-black/40 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Flame className="w-4 h-4 text-orange-300" />
+              <p className="text-xs opacity-70">Focus Streak</p>
+            </div>
+
+            <div className="flex items-end gap-1">
+              <span className="text-3xl font-semibold text-yellow-300 leading-none">
+                {analytics.focusStreak}
+              </span>
+
+              <span className="text-sm text-yellow-400 pb-0.5">days</span>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-1">Current streak</p>
+          </div>
+
+          {/* Best Focus Time */}
+
+          <div
+            className={`rounded-xl p-3 ${
+              isDark
+                ? "bg-black/40 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Clock3 className="w-4 h-4 text-yellow-300" />
+              <p className="text-xs opacity-70">Best Focus Time</p>
+            </div>
+
+            <div
+              className={`text-xl font-semibold transition-colors duration-300 ${
+                isDark ? "text-slate-100" : "text-slate-900"
+              }`}
+            >
+              {analytics.peakFocusHours}
+            </div>
+
+            <p className="text-xs text-slate-500 pb-0.5">Most productive</p>
+          </div>
+
+          {/* Consistency Score */}
+
+          <div
+            className={`rounded-xl p-3 ${
+              isDark
+                ? "bg-black/40 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Brain className="w-4 h-4 text-purple-300" />
+              <p className="text-xs opacity-70">Consistency Score</p>
+            </div>
+
+            <div className="flex items-end gap-1">
+              <span className="text-3xl font-semibold text-emerald-300 leading-none">
+                {analytics.consistencyScore}
+              </span>
+
+              <span className="text-sm text-emerald-400 pb-0.5">%</span>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-1">This week</p>
+          </div>
+        </div>
+      </div>
+
+      <AIProductivityInsights analytics={analytics} isDark={isDark} />
     </motion.div>
   );
 }

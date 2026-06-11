@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { AlertTriangle, CheckCircle, TrendingDown, TrendingUp, Minus, RefreshCw, Mail } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  TrendingDown,
+  TrendingUp,
+  Minus,
+  RefreshCw,
+  Mail,
+} from "lucide-react";
 
 /**
  * AttendanceRiskDashboard
@@ -88,7 +96,8 @@ export default function AttendanceRiskDashboard() {
     try {
       // EmailJS is called client-side using environment variables
       const emailjsServiceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
-      const emailjsTemplateId = process.env.NEXT_PUBLIC_EMAILJS_ATTENDANCE_TEMPLATE_ID;
+      const emailjsTemplateId =
+        process.env.NEXT_PUBLIC_EMAILJS_ATTENDANCE_TEMPLATE_ID;
       const emailjsPublicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
 
       if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey) {
@@ -100,10 +109,11 @@ export default function AttendanceRiskDashboard() {
             to_email: student.email,
             to_name: student.studentName,
             attendance_rate: `${student.attendanceRate}%`,
-            risk_level: RISK_CONFIG[student.riskLevel]?.label || student.riskLevel,
+            risk_level:
+              RISK_CONFIG[student.riskLevel]?.label || student.riskLevel,
             trend: student.trend,
           },
-          emailjsPublicKey,
+          emailjsPublicKey
         );
       }
 
@@ -116,9 +126,8 @@ export default function AttendanceRiskDashboard() {
   };
 
   const filteredStudents =
-    data?.students?.filter(
-      (s) => filter === "all" || s.riskLevel === filter,
-    ) ?? [];
+    data?.students?.filter((s) => filter === "all" || s.riskLevel === filter) ??
+    [];
 
   if (loading) {
     return (
@@ -141,7 +150,7 @@ export default function AttendanceRiskDashboard() {
         <button
           onClick={fetchRiskData}
           className="mt-3 text-xs underline opacity-70 hover:opacity-100"
-        >
+         aria-label="Action button">
           Retry
         </button>
       </div>
@@ -167,7 +176,7 @@ export default function AttendanceRiskDashboard() {
         <button
           onClick={fetchRiskData}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
-        >
+         aria-label="Action button">
           <RefreshCw className="w-3.5 h-3.5" />
           Refresh
         </button>
@@ -198,7 +207,8 @@ export default function AttendanceRiskDashboard() {
       ) : (
         <div className="space-y-2">
           {filteredStudents.map((student) => {
-            const rowConfig = RISK_CONFIG[student.riskLevel] || RISK_CONFIG.good;
+            const rowConfig =
+              RISK_CONFIG[student.riskLevel] || RISK_CONFIG.good;
             const alreadyNotified = notifiedIds.has(student.userId);
             const isSending = sendingId === student.userId;
 
@@ -246,7 +256,11 @@ export default function AttendanceRiskDashboard() {
                     }`}
                   >
                     <Mail className="w-3.5 h-3.5" />
-                    {isSending ? "Sending…" : alreadyNotified ? "Notified" : "Notify"}
+                    {isSending
+                      ? "Sending…"
+                      : alreadyNotified
+                        ? "Notified"
+                        : "Notify"}
                   </button>
                 )}
               </div>

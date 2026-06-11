@@ -2,7 +2,11 @@ const STRENGTH_LEVELS = [
   { label: "Weak", barClass: "bg-red-500", textClass: "text-red-400" },
   { label: "Fair", barClass: "bg-orange-500", textClass: "text-orange-400" },
   { label: "Strong", barClass: "bg-yellow-500", textClass: "text-yellow-400" },
-  { label: "Very Strong", barClass: "bg-green-500", textClass: "text-green-400" },
+  {
+    label: "Very Strong",
+    barClass: "bg-green-500",
+    textClass: "text-green-400",
+  },
 ];
 
 /**
@@ -18,7 +22,13 @@ const STRENGTH_LEVELS = [
  */
 export function getPasswordStrength(password = "") {
   if (!password) {
-    return { score: 0, label: "Weak", barClass: "bg-red-500", textClass: "text-red-400", widthClass: "w-0" };
+    return {
+      score: 0,
+      label: "Weak",
+      barClass: "bg-red-500",
+      textClass: "text-red-400",
+      widthClass: "w-0",
+    };
   }
 
   let score = 0;
@@ -44,5 +54,11 @@ export function getPasswordStrength(password = "") {
 
   const level = STRENGTH_LEVELS[levelIndex];
 
-  return { score, label: level.label, barClass: level.barClass, textClass: level.textClass, widthClass };
+  return {
+    score,
+    label: level.label,
+    barClass: level.barClass,
+    textClass: level.textClass,
+    widthClass,
+  };
 }

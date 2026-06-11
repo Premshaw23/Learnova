@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireParent } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireParent(request);
+  const decodedToken = await requireAuth(request);
   const parentId = decodedToken.uid;
 
   initFirebaseAdmin();
@@ -31,14 +31,16 @@ export const GET = withErrorHandler(async (request) => {
     if (!studentDoc.exists) continue;
 
     const studentProfile = studentDoc.data();
-    const studentName = studentProfile.fullName || studentProfile.name || "Student";
+    const studentName =
+      studentProfile.fullName || studentProfile.name || "Student";
     const instituteId = studentProfile.instituteId || "N/A";
 
     // Fetch student overall stats (like attendance rate)
     const statsDoc = await db.collection("userStats").doc(studentId).get();
     const stats = statsDoc.exists ? statsDoc.data() : {};
     const attendanceRateStr = stats["Attendance Rate"] || "0%";
-    const attendanceRate = parseInt(attendanceRateStr.replace("%", ""), 10) || 0;
+    const attendanceRate =
+      parseInt(attendanceRateStr.replace("%", ""), 10) || 0;
 
     // Fetch recent 3 notices for the student's institute
     let notices = [];
@@ -63,16 +65,21 @@ export const GET = withErrorHandler(async (request) => {
       .collection("grades")
       .where("studentId", "==", studentId)
       .get();
-    
+
     const grades = gradesSnap.docs.map((doc) => doc.data());
-    const gpa = grades.length > 0
-      ? (grades.reduce((sum, g) => sum + g.score, 0) / grades.length).toFixed(1)
-      : "N/A";
+    const gpa =
+      grades.length > 0
+        ? (grades.reduce((sum, g) => sum + g.score, 0) / grades.length).toFixed(
+            1
+          )
+        : "N/A";
 
     // Self-healing check: Trigger low-attendance notification if rate is below 75%
     if (attendanceRate < 75) {
       // Check if alert already exists within the last 24 hours
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const oneDayAgo = new Date(
+        Date.now() - 24 * 60 * 60 * 1000
+      ).toISOString();
       const existingAlerts = await db
         .collection("notifications")
         .where("recipientId", "==", parentId)

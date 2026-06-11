@@ -1,4 +1,19 @@
 import { processSyncQueue } from "../services/syncQueue";
+import { BackgroundSyncPlugin } from "workbox-background-sync";
+import { registerRoute } from "workbox-routing";
+import { NetworkOnly } from "workbox-strategies";
+
+const bgSyncPlugin = new BackgroundSyncPlugin("attendance-queue", {
+  maxRetentionTime: 24 * 60, // Retry for max of 24 Hours (specified in minutes)
+});
+
+registerRoute(
+  /\/api\/attendance\/record/,
+  new NetworkOnly({
+    plugins: [bgSyncPlugin],
+  }),
+  "POST"
+);
 
 let csrfTokenCache = null; // { token: string, fetchedAt: number }
 let csrfTokenPromise = null;
@@ -8,7 +23,9 @@ const MAX_RETRIES = 5;
 const INITIAL_DELAY = 1000; // 1 second
 
 function isUnsafeMethod(method) {
-  return ["POST", "PUT", "PATCH", "DELETE"].includes((method || "GET").toUpperCase());
+  return ["POST", "PUT", "PATCH", "DELETE"].includes(
+    (method || "GET").toUpperCase()
+  );
 }
 
 function clearCsrfCache() {
@@ -18,7 +35,10 @@ function clearCsrfCache() {
 function isSameOriginApiUrl(url) {
   try {
     const parsedUrl = new URL(url, self.location.origin);
-    return parsedUrl.origin === self.location.origin && parsedUrl.pathname.startsWith("/api/");
+    return (
+      parsedUrl.origin === self.location.origin &&
+      parsedUrl.pathname.startsWith("/api/")
+    );
   } catch {
     return false;
   }
@@ -43,20 +63,22 @@ async function getCsrfToken() {
     credentials: "same-origin",
     cache: "no-store",
   })
-  .then(async (response) => {
-    if (!response.ok) {
-      return null;
-    }
+    .then(async (response) => {
+      if (!response.ok) {
+        return null;
+      }
 
-    const data = await response.json().catch(() => null);
-    const csrfToken = data?.csrfToken || null;
-    if (csrfToken) {
-      csrfTokenCache = { token: csrfToken, fetchedAt: Date.now() };
-    }
-    return csrfToken;
-  })
+      const data = await response.json().catch(() => null);
+      const csrfToken = data?.csrfToken || null;
+      if (csrfToken) {
+        csrfTokenCache = { token: csrfToken, fetchedAt: Date.now() };
+      }
+      return csrfToken;
+    })
     .catch(() => null)
-    .finally(() => { csrfTokenPromise = null; });
+    .finally(() => {
+      csrfTokenPromise = null;
+    });
 
   return csrfTokenPromise;
 }
@@ -64,21 +86,30 @@ async function getCsrfToken() {
 async function swFetchWithCsrf(url, options = {}) {
   const method = options.method || "GET";
   const headers = new Headers(options.headers || {});
-  
+
   if (isUnsafeMethod(method) && isSameOriginApiUrl(url)) {
-    if (!headers.has("x-csrf-token") && !headers.has("X-CSRF-Token")) {
+    const existingToken =
+      headers.get("x-csrf-token") ||
+      headers.get("x-xsrf-token") ||
+      headers.get("x-csrftoken");
+
+    if (!existingToken) {
       const token = await getCsrfToken();
-      if (token) headers.set("X-CSRF-Token", token);
+      if (token) headers.set("x-csrf-token", token);
+    } else {
+      if (!headers.has("x-csrf-token")) {
+        headers.set("x-csrf-token", existingToken);
+      }
     }
   }
-  
+
   return fetch(url, { ...options, headers });
 }
 
 async function handleSync() {
   const clients = await self.clients.matchAll();
-  clients.forEach(c => c.postMessage({ type: "SYNC_PENDING_ACTIONS_START" }));
-  
+  clients.forEach((c) => c.postMessage({ type: "SYNC_PENDING_ACTIONS_START" }));
+
   let attempt = 0;
   let delay = INITIAL_DELAY;
   let result = null;
@@ -87,40 +118,47 @@ async function handleSync() {
   while (attempt < MAX_RETRIES) {
     try {
       result = await processSyncQueue(swFetchWithCsrf);
-      
+
       // If result has failed items (e.g., 500 API errors), retry the batch
       if (result && result.failCount > 0) {
-        throw new Error(`Sync queue processing failed items count: ${result.failCount}`);
+        throw new Error(
+          `Sync queue processing failed items count: ${result.failCount}`
+        );
       }
-      
+
       // Successful sync execution path
-      clients.forEach(c => c.postMessage({ 
-        type: "SYNC_PENDING_ACTIONS_COMPLETE", 
-        successCount: result.successCount, 
-        failCount: 0 
-      }));
+      clients.forEach((c) =>
+        c.postMessage({
+          type: "SYNC_PENDING_ACTIONS_COMPLETE",
+          successCount: result.successCount,
+          failCount: 0,
+        })
+      );
       return;
     } catch (error) {
       attempt++;
       lastError = error;
-      
+
       if (attempt >= MAX_RETRIES) {
         break; // Out of retry attempts
       }
-      
+
       // Wait for the double exponential delay time spacing before attempting again
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
       delay *= 2;
     }
   }
 
   // Handle ultimate failure execution state after retries run dry
-  clients.forEach(c => c.postMessage({ 
-    type: "SYNC_PENDING_ACTIONS_FAILED_PERMANENTLY", 
-    message: "Background synchronization failed permanently after retry limits. Please refresh or retry manually.",
-    failCount: result ? result.failCount : 1
-  }));
-  
+  clients.forEach((c) =>
+    c.postMessage({
+      type: "SYNC_PENDING_ACTIONS_FAILED_PERMANENTLY",
+      message:
+        "Background synchronization failed permanently after retry limits. Please refresh or retry manually.",
+      failCount: result ? result.failCount : 1,
+    })
+  );
+
   throw lastError || new Error("Sync execution failed permanently.");
 }
 
@@ -129,19 +167,35 @@ const CACHE_MAX_ENTRIES = 200;
 const ANONYMOUS_USER_PREFIX = "anon";
 self.addEventListener("sync", (event) => {
   if (event.tag === "sync-pending-actions") {
-    event.waitUntil(handleSync().catch(err => console.error("[SW] Background sync failed:", err)));
+    event.waitUntil(
+      handleSync().catch((err) =>
+        console.error("[SW] Background sync failed:", err)
+      )
+    );
   }
 });
 
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "TRIGGER_SYNC_PENDING_ACTIONS") {
-    event.waitUntil(handleSync().catch(err => console.error("[SW] Message sync failed:", err)));
+    event.waitUntil(
+      handleSync().catch((err) =>
+        console.error("[SW] Message sync failed:", err)
+      )
+    );
   } else if (event.data && event.data.type === "CLEAR_USER_CACHE") {
     const userHash = event.data.userHash;
     if (userHash) {
-      event.waitUntil(clearCacheForUser(userHash).catch(err => console.error("[SW] Clear user cache failed:", err)));
+      event.waitUntil(
+        clearCacheForUser(userHash).catch((err) =>
+          console.error("[SW] Clear user cache failed:", err)
+        )
+      );
     } else {
-      event.waitUntil(clearUserCaches().catch(err => console.error("[SW] Clear all caches failed:", err)));
+      event.waitUntil(
+        clearUserCaches().catch((err) =>
+          console.error("[SW] Clear all caches failed:", err)
+        )
+      );
     }
   }
 });
@@ -174,20 +228,26 @@ async function clearCacheForUser(userHash) {
   await Promise.all(
     keys
       .filter((request) => request.url.includes(userPattern))
-      .map((request) => cache.delete(request)),
+      .map((request) => cache.delete(request))
   );
 }
 
 async function clearUserCaches() {
   const cacheNames = await caches.keys();
-  const apiCaches = cacheNames.filter((name) => name.startsWith("learnova-api-cache"));
+  const apiCaches = cacheNames.filter((name) =>
+    name.startsWith("learnova-api-cache")
+  );
   await Promise.all(apiCaches.map((name) => caches.delete(name)));
 }
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
-  if (request.method === "GET" && request.url.includes("/api/") && !request.url.includes("/api/auth/")) {
+  if (
+    request.method === "GET" &&
+    request.url.includes("/api/") &&
+    !request.url.includes("/api/auth/")
+  ) {
     event.respondWith(
       (async () => {
         const userHash = getUserHashFromRequest(request);
@@ -203,16 +263,25 @@ self.addEventListener("fetch", (event) => {
           const networkResponse = await fetch(request);
           if (networkResponse.ok) {
             const cloned = networkResponse.clone();
-            const cachePutPromise = cache.put(cacheKey, cloned).then(() => trimCache(cache));
-            event.waitUntil(cachePutPromise.catch(err => console.error("[SW] Cache put failed:", err)));
+            const cachePutPromise = cache
+              .put(cacheKey, cloned)
+              .then(() => trimCache(cache));
+            event.waitUntil(
+              cachePutPromise.catch((err) =>
+                console.error("[SW] Cache put failed:", err)
+              )
+            );
           }
           return networkResponse;
         } catch {
           const offlineResponse = await cache.match(cacheKey);
-          return offlineResponse || new Response("You are offline", {
-            status: 503,
-            headers: { "Content-Type": "text/plain" },
-          });
+          return (
+            offlineResponse ||
+            new Response("You are offline", {
+              status: 503,
+              headers: { "Content-Type": "text/plain" },
+            })
+          );
         }
       })()
     );
@@ -223,7 +292,12 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request).catch(async () => {
         const cached = await caches.match("/offline.html");
-        return cached || new Response("You are offline", { headers: { "Content-Type": "text/plain" } });
+        return (
+          cached ||
+          new Response("You are offline", {
+            headers: { "Content-Type": "text/plain" },
+          })
+        );
       })
     );
   }

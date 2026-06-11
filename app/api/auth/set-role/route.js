@@ -16,7 +16,9 @@ export const POST = withValidation(
   withErrorHandler(async (request, data) => {
     const decodedToken = await requireAuth(request);
 
-    const rateLimitResult = await checkRateLimit(`set_role_${decodedToken.uid}`);
+    const rateLimitResult = await checkRateLimit(
+      `set_role_${decodedToken.uid}`
+    );
     if (!rateLimitResult.allowed) {
       throw new AppError("Too many attempts. Please try again later.", 429);
     }
@@ -27,12 +29,18 @@ export const POST = withValidation(
     if (role === "teacher") {
       const expectedCode = process.env.TEACHER_INVITE_CODE;
       if (!expectedCode || inviteCode !== expectedCode) {
-        return jsonError("Forbidden: Invalid or missing teacher invite code.", 403);
+        return jsonError(
+          "Forbidden: Invalid or missing teacher invite code.",
+          403
+        );
       }
     } else if (role === "institute") {
       const expectedCode = process.env.INSTITUTE_INVITE_CODE;
       if (!expectedCode || inviteCode !== expectedCode) {
-        return jsonError("Forbidden: Invalid or missing institute invite code.", 403);
+        return jsonError(
+          "Forbidden: Invalid or missing institute invite code.",
+          403
+        );
       }
     }
     // ------------------------------------------------------------------------
@@ -77,8 +85,6 @@ export const POST = withValidation(
     if (role === "institute" && instituteName) {
       userProfile.instituteName = instituteName;
     }
-
-
 
     const sagaResult = await executeSaga({
       operationType: "set_role",
@@ -151,7 +157,9 @@ export const POST = withValidation(
           },
           compensate: async () => {
             const mongoDB = await connectDb();
-            await mongoDB.collection("users").deleteOne({ firebaseUid: decodedToken.uid });
+            await mongoDB
+              .collection("users")
+              .deleteOne({ firebaseUid: decodedToken.uid });
           },
         },
       ],

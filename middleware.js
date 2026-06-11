@@ -13,11 +13,125 @@ const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY;
 // acceptance window for expired or revoked tokens.
 const CLOCK_TOLERANCE_SECONDS = 60;
 
-const PUBLIC_API_PATHS = [
-  "/api/auth/csrf",
+// ─── Rate Limiting ────────────────────────────────────────────────────────────
+// Uses Upstash Redis (Vercel KV) as a centralized store so that rate limit
+// state is shared across all serverless/edge instances, preventing bypass
+// attacks. Falls back to per-instance memory only during local development.
+
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX = 5;
+
+function getRedis() {
+  if (!redisClient) {
+    redisClient = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return redisClient;
+}
+
+// Dev-only in-memory fallback (never used in production)
+const devRateLimitMap = new Map();
+
+const AUTH_RATE_LIMITED_PATHS = [
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/logout",
+  "/api/auth/forgot-password",
   "/api/auth/reset-password",
-  "/api/health",
+  "/api/auth/verify-email",
+  "/api/auth/verify-otp",
 ];
+
+const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
+
+function isAuthRoute(pathname) {
+  return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
+}
+
+async function rateLimit(ip, pathname, request) {
+  const cookies = typeof request.cookies?.get === "function" ? request.cookies : { get: () => undefined };
+  const sessionFingerprint = cookies.get("__Secure-next-auth.session-token")?.value
+    || cookies.get("next-auth.session-token")?.value
+    || cookies.get("authToken")?.value
+    || "";
+  const key = `ratelimit:auth:${ip}_${pathname}_${sessionFingerprint.slice(0, 16)}`;
+  const limit = RATE_LIMIT_MAX;
+  const windowMs = RATE_LIMIT_WINDOW_MS;
+
+  const hasRedis =
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (hasRedis) {
+    try {
+      const redis = getRedis();
+      const now = Date.now();
+      const windowStart = now - windowMs;
+
+      const multi = redis.multi();
+      multi.zremrangebyscore(key, 0, windowStart);
+      multi.zadd(key, { score: now, member: `${now}-${Math.random()}` });
+      multi.zcard(key);
+      multi.expire(key, Math.ceil(windowMs / 1000));
+      const [, , count] = await multi.exec();
+
+      const current = Number(count);
+      if (current > limit) {
+        const oldest = await redis.zrange(key, 0, 0, { withScores: true });
+        const resetTime = oldest.length >= 2 ? Number(oldest[1]) + windowMs : now + windowMs;
+        const retryAfter = Math.ceil((resetTime - now) / 1000);
+        return { allowed: false, remaining: 0, retryAfter };
+      }
+
+      return { allowed: true, remaining: limit - current };
+    } catch (err) {
+      console.error("[rate-limit] Upstash Redis error — denying request:", err);
+      return { allowed: false, remaining: 0, retryAfter: Math.ceil(windowMs / 1000) };
+    }
+  }
+
+  // Development-only in-memory fallback
+  const entry = devRateLimitMap.get(key);
+  const now = Date.now();
+
+  if (!entry || now > entry.resetTime) {
+    devRateLimitMap.set(key, { count: 1, resetTime: now + windowMs });
+    return { allowed: true, remaining: limit - 1 };
+  }
+
+  if (entry.count >= limit) {
+    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
+    return { allowed: false, remaining: 0, retryAfter };
+  }
+
+  entry.count += 1;
+  return { allowed: true, remaining: limit - entry.count };
+}
+
+// Periodically clean up expired entries to prevent unbounded memory growth
+// This runs on every middleware invocation but only cleans every 5 minutes
+let lastCleanupTime = 0;
+
+function cleanupRateLimitMap() {
+  try {
+    const now = Date.now();
+
+    if (now - lastCleanupTime < 5 * 60 * 1000) return;
+
+    lastCleanupTime = now;
+
+    if (devRateLimitMap.size === 0) return;
+
+    for (const [key, entry] of devRateLimitMap.entries()) {
+      if (now > entry.resetTime) {
+        devRateLimitMap.delete(key);
+      }
+    }
+  } catch {
+    // Cleanup failure must never crash the middleware
+  }
+}
 
 // ─── CSP ──────────────────────────────────────────────────────────────────────
 
@@ -155,7 +269,9 @@ async function verifyIdToken(token) {
       try {
         const headerParts = token.split(".");
         if (headerParts.length >= 1) {
-          let headerPayload = headerParts[0].replace(/-/g, "+").replace(/_/g, "/");
+          let headerPayload = headerParts[0]
+            .replace(/-/g, "+")
+            .replace(/_/g, "/");
           while (headerPayload.length % 4) headerPayload += "=";
           const headerJson =
             typeof atob === "function"
@@ -200,6 +316,7 @@ async function verifyIdToken(token) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken: token }),
+        signal: AbortSignal.timeout(5000),
       }
     );
 
@@ -235,15 +352,92 @@ async function verifyIdToken(token) {
   }
 }
 
+// ─── RBAC enforcement ────────────────────────────────────────────────────────
+
+function enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole) {
+  const rule = getApiRouteRule(pathname);
+
+  if (!rule) {
+    // Not an API route — no RBAC enforcement
+    return null;
+  }
+
+  if (rule.public) {
+    return null;
+  }
+
+  if (!isTokenValid) {
+    return { error: "Unauthorized", status: 401 };
+  }
+
+  if (!isEmailVerified) {
+    return { error: "Forbidden: Email not verified", status: 403 };
+  }
+
+  if (rule.roles && rule.roles.length > 0) {
+    if (!userRole) {
+      return { error: "Forbidden: No role assigned", status: 403 };
+    }
+    if (!rule.roles.includes(userRole)) {
+      return { error: "Forbidden: Role mismatch", status: 403 };
+    }
+  }
+
+  return null;
+}
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+  if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+    return NextResponse.next();
+  }
   const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(request.method);
+
+  // Clean up expired rate limit entries periodically
+  cleanupRateLimitMap();
 
   // NOTE: CSRF validation applies only for cookie-authenticated requests.
   // Requests authenticated via Authorization: Bearer <token> are not CSRF-vulnerable.
   // Defer CSRF validation until after token extraction/verification below.
+
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
+    const contentLength = Number(request.headers.get("content-length"));
+    if (!Number.isNaN(contentLength) && contentLength > 1024 * 1024) {
+      return NextResponse.json(
+        { error: "Payload too large (limit 1MB)" },
+        { status: 413 }
+      );
+    }
+  }
+
+  // ── 1. Rate limiting for auth API routes ──
+  if (isAuthRoute(pathname)) {
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+
+    const { allowed, remaining, retryAfter } = await rateLimit(ip, pathname, request);
+
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Too many attempts. Please try again in ${retryAfter} seconds.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfter),
+            "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
+    }
+  }
 
   const requestHeaders = new Headers(request.headers);
 
@@ -286,30 +480,55 @@ export async function middleware(request) {
   }
 
   const protectedDashboards = [
-    { prefix: "/student", apiPrefix: "/api/student", role: "student", defaultPath: "/student/dashboard" },
-    { prefix: "/teacher", apiPrefix: "/api/teacher", role: "teacher", defaultPath: "/teacher/dashboard" },
-    { prefix: "/admin", apiPrefix: "/api/admin", role: "admin", defaultPath: "/admin/dashboard" },
-    { prefix: "/institute", apiPrefix: "/api/institute", role: "institute", defaultPath: "/institute/dashboard" },
-    { prefix: "/parent", apiPrefix: "/api/parent", role: "parent", defaultPath: "/parent/dashboard" },
+    {
+      prefix: "/student",
+      apiPrefix: "/api/student",
+      role: "student",
+      defaultPath: "/student/dashboard",
+    },
+    {
+      prefix: "/teacher",
+      apiPrefix: "/api/teacher",
+      role: "teacher",
+      defaultPath: "/teacher/dashboard",
+    },
+    {
+      prefix: "/admin",
+      apiPrefix: "/api/admin",
+      role: "admin",
+      defaultPath: "/admin/dashboard",
+    },
+    {
+      prefix: "/institute",
+      apiPrefix: "/api/institute",
+      role: "institute",
+      defaultPath: "/institute/dashboard",
+    },
+    {
+      prefix: "/parent",
+      apiPrefix: "/api/parent",
+      role: "parent",
+      defaultPath: "/parent/dashboard",
+    },
   ];
 
-  const matchedDashboard = protectedDashboards.find((dashboard) =>
-    pathname.startsWith(dashboard.prefix) ||
-    (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
+  const matchedDashboard = protectedDashboards.find(
+    (dashboard) =>
+      pathname.startsWith(dashboard.prefix) ||
+      (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
   );
 
-  if (
-    pathname.startsWith("/api/") &&
-    pathname !== "/api/check-groq-config" &&
-    !PUBLIC_API_PATHS.some((path) => pathname.startsWith(path))
-  ) {
-    if (!matchedDashboard) {
-      if (!isTokenValid) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (!isEmailVerified) {
-        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
-      }
+  // ── 2. RBAC enforcement for all API routes ──
+  // This runs before handler execution, enforcing the centralized policy
+  // defined in API_ROUTE_RULES. Fail-closed: unmatched paths default to
+  // authenticated access.
+  if (pathname.startsWith("/api/") && !matchedDashboard) {
+    const rbacResult = enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole);
+    if (rbacResult) {
+      return NextResponse.json(
+        { error: rbacResult.error },
+        { status: rbacResult.status }
+      );
     }
   }
 
@@ -322,16 +541,26 @@ export async function middleware(request) {
     }
     if (!isEmailVerified) {
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Forbidden: Email not verified" },
+          { status: 403 }
+        );
       }
       return NextResponse.redirect(new URL("/verify", request.url));
     }
     if (userRole !== matchedDashboard.role) {
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Forbidden: Role mismatch" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Forbidden: Role mismatch" },
+          { status: 403 }
+        );
       }
-      const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
-      const redirectTarget = correctDashboard ? correctDashboard.defaultPath : "/profile";
+      const correctDashboard = protectedDashboards.find(
+        (d) => d.role === userRole
+      );
+      const redirectTarget = correctDashboard
+        ? correctDashboard.defaultPath
+        : "/profile";
       return NextResponse.redirect(new URL(redirectTarget, request.url));
     }
   }
@@ -355,16 +584,24 @@ export async function middleware(request) {
       return NextResponse.redirect(new URL("/auth", request.url));
     }
     if (isEmailVerified) {
-      const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
-      const redirectTarget = correctDashboard ? correctDashboard.defaultPath : "/profile";
+      const correctDashboard = protectedDashboards.find(
+        (d) => d.role === userRole
+      );
+      const redirectTarget = correctDashboard
+        ? correctDashboard.defaultPath
+        : "/profile";
       return NextResponse.redirect(new URL(redirectTarget, request.url));
     }
   }
 
   if (pathname === "/auth" && isTokenValid && isEmailVerified && userRole) {
-    const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
+    const correctDashboard = protectedDashboards.find(
+      (d) => d.role === userRole
+    );
     if (correctDashboard) {
-      return NextResponse.redirect(new URL(correctDashboard.defaultPath, request.url));
+      return NextResponse.redirect(
+        new URL(correctDashboard.defaultPath, request.url)
+      );
     }
   }
 
@@ -380,11 +617,22 @@ export async function middleware(request) {
     response.headers.set("X-Frame-Options", "SAMEORIGIN");
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-    response.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
+    response.headers.set(
+      "Permissions-Policy",
+      "camera=(self), microphone=(), geolocation=()"
+    );
     response.headers.set("X-XSS-Protection", "1; mode=block");
   }
 
   return response;
+}
+
+// Exported for unit testing (in-memory fallback behavior)
+export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
+
+// Test helper to control cleanup timer
+function resetForTest(now) {
+  lastCleanupTime = now;
 }
 
 export const config = {

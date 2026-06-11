@@ -3,7 +3,7 @@ import "jspdf-autotable";
 
 /**
  * Generates a professional PDF attendance report.
- * 
+ *
  * @param {Array} data - Array of student attendance records
  * @param {Object} options - Metadata options including class name, teacher, range, logo
  * @returns {jsPDF} The generated jsPDF instance
@@ -34,27 +34,35 @@ export const exportAttendancePDF = (data, options = {}) => {
     } catch (e) {
       console.warn("Logo rendering failed:", e);
     }
-    
+
     // Institute Name
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text(instituteName, 30, startY + 5);
-    
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(100);
-    doc.text("AI-Powered Smart Student Engagement & Attendance", 30, startY + 10);
+    doc.text(
+      "AI-Powered Smart Student Engagement & Attendance",
+      30,
+      startY + 10
+    );
     startY += 18;
   } else {
     // Regular Header text
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.text(instituteName, 14, startY + 5);
-    
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(100);
-    doc.text("AI-Powered Smart Student Engagement & Attendance", 14, startY + 10);
+    doc.text(
+      "AI-Powered Smart Student Engagement & Attendance",
+      14,
+      startY + 10
+    );
     startY += 18;
   }
 
@@ -94,7 +102,11 @@ export const exportAttendancePDF = (data, options = {}) => {
   doc.setFont("helvetica", "bold");
   doc.text("Generated On:", 110, startY + 6);
   doc.setFont("helvetica", "normal");
-  doc.text(new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString(), 138, startY + 6);
+  doc.text(
+    new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString(),
+    138,
+    startY + 6
+  );
 
   startY += 18;
 
@@ -103,7 +115,11 @@ export const exportAttendancePDF = (data, options = {}) => {
     doc.setFont("helvetica", "italic");
     doc.setFontSize(12);
     doc.setTextColor(156, 163, 175); // gray-400
-    doc.text("No attendance data available for the selected date range.", 14, startY + 10);
+    doc.text(
+      "No attendance data available for the selected date range.",
+      14,
+      startY + 10
+    );
   } else {
     const columns = ["Date", "Student Name", "Roll No", "Status"];
     const body = data.map((item) => [

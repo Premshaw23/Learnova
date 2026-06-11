@@ -1,32 +1,33 @@
 /** @type {import('next').NextConfig} */
-import { webcrypto } from 'node:crypto';
-import createNextIntlPlugin from 'next-intl/plugin';
-import withPWAInit from '@ducanh2912/next-pwa';
+import { webcrypto } from "node:crypto";
+import createNextIntlPlugin from "next-intl/plugin";
+import withPWAInit from "@ducanh2912/next-pwa";
 
 // Polyfill globalThis.crypto for Node 18 (jose middleware uses Web Crypto API).
 // This covers any in-process code paths; worker threads are handled via
 // --experimental-global-webcrypto in the build script (package.json);
 // child processes spawned after config load inherit NODE_OPTIONS below.
-if (typeof globalThis.crypto === 'undefined') {
+if (typeof globalThis.crypto === "undefined") {
   globalThis.crypto = webcrypto;
 }
-if (!process.env.NODE_OPTIONS?.includes('--experimental-global-webcrypto')) {
-  process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ' --experimental-global-webcrypto';
+if (!process.env.NODE_OPTIONS?.includes("--experimental-global-webcrypto")) {
+  process.env.NODE_OPTIONS =
+    (process.env.NODE_OPTIONS || "") + " --experimental-global-webcrypto";
 }
 
-const withNextIntl = createNextIntlPlugin('./i18n/request.js');
+const withNextIntl = createNextIntlPlugin("./i18n/request.js");
 
 // fix: configure PWA fallback so offline navigation shows /offline instead
 // of a blank screen or browser error (fixes #2182)
 const withPWA = withPWAInit({
-  dest: 'public',
+  dest: "public",
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  disable: process.env.NODE_ENV === 'development',
+  disable: process.env.NODE_ENV === "development",
   fallbacks: {
     // Any uncached document (page) navigation while offline → /offline
-    document: '/offline',
+    document: "/offline",
   },
   workboxOptions: {
     disableDevLogs: true,
@@ -35,9 +36,9 @@ const withPWA = withPWAInit({
       // but cached response is served when offline
       {
         urlPattern: /^\/api\/.*/i,
-        handler: 'NetworkFirst',
+        handler: "NetworkFirst",
         options: {
-          cacheName: 'api-cache',
+          cacheName: "api-cache",
           networkTimeoutSeconds: 10,
           expiration: {
             maxEntries: 64,
@@ -51,9 +52,9 @@ const withPWA = withPWAInit({
       // Static assets — CacheFirst for performance
       {
         urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|otf)$/i,
-        handler: 'CacheFirst',
+        handler: "CacheFirst",
         options: {
-          cacheName: 'static-assets',
+          cacheName: "static-assets",
           expiration: {
             maxEntries: 128,
             maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
@@ -63,9 +64,9 @@ const withPWA = withPWAInit({
       // Next.js static chunks — StaleWhileRevalidate
       {
         urlPattern: /\/_next\/static\/.*/i,
-        handler: 'StaleWhileRevalidate',
+        handler: "StaleWhileRevalidate",
         options: {
-          cacheName: 'next-static',
+          cacheName: "next-static",
           expiration: {
             maxEntries: 256,
             maxAgeSeconds: 7 * 24 * 60 * 60,
@@ -75,9 +76,9 @@ const withPWA = withPWAInit({
       // Next.js image optimization
       {
         urlPattern: /\/_next\/image\?.*/i,
-        handler: 'StaleWhileRevalidate',
+        handler: "StaleWhileRevalidate",
         options: {
-          cacheName: 'next-image',
+          cacheName: "next-image",
           expiration: {
             maxEntries: 64,
             maxAgeSeconds: 24 * 60 * 60,
@@ -87,9 +88,9 @@ const withPWA = withPWAInit({
       // App pages — NetworkFirst so content stays fresh
       {
         urlPattern: /^\/(?!api\/).*/i,
-        handler: 'NetworkFirst',
+        handler: "NetworkFirst",
         options: {
-          cacheName: 'pages-cache',
+          cacheName: "pages-cache",
           networkTimeoutSeconds: 10,
           expiration: {
             maxEntries: 32,
@@ -119,7 +120,12 @@ const nextConfig = {
       ...(config.resolve.fallback || {}),
       fs: false,
       encoding: false,
+      canvas: false,
     };
+    config.externals = config.externals || [];
+    if (Array.isArray(config.externals)) {
+      config.externals.push("canvas");
+    }
     return config;
   },
   eslint: {
@@ -128,20 +134,29 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/attendance/:path*',
+        source: "/attendance/:path*",
         headers: [
-          { key: 'Permissions-Policy', value: "camera=(self), microphone=(), geolocation=()" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(), geolocation=()",
+          },
         ],
       },
       {
-        source: '/((?!attendance).*)',
+        source: "/((?!attendance).*)",
         headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'Content-Security-Policy', value: "frame-ancestors 'none';" },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none';" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
         ],
       },
     ];

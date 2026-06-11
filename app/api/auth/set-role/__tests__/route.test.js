@@ -102,7 +102,11 @@ describe("POST /api/auth/set-role", () => {
     const db = await connectDb();
     const usersCol = db.collection("users");
     usersCol.updateOne.mockResolvedValue({ matchedCount: 1 });
-    admin.firestore().collection().doc().get.mockResolvedValue({ exists: false });
+    admin
+      .firestore()
+      .collection()
+      .doc()
+      .get.mockResolvedValue({ exists: false });
   });
 
   const createMockRequest = (body) => {
@@ -115,7 +119,10 @@ describe("POST /api/auth/set-role", () => {
   };
 
   test("rejects setting teacher role without invalid/missing invite code", async () => {
-    requireAuth.mockResolvedValue({ uid: "user-123", email: "test@example.com" });
+    requireAuth.mockResolvedValue({
+      uid: "user-123",
+      email: "test@example.com",
+    });
     process.env.TEACHER_INVITE_CODE = "SECRET_123";
 
     const request = createMockRequest({
@@ -136,7 +143,10 @@ describe("POST /api/auth/set-role", () => {
   });
 
   test("successfully sets role and writes to firestore, claims, and mongodb", async () => {
-    requireAuth.mockResolvedValue({ uid: "user-123", email: "student@example.com" });
+    requireAuth.mockResolvedValue({
+      uid: "user-123",
+      email: "student@example.com",
+    });
 
     const request = createMockRequest({
       role: "student",
@@ -150,18 +160,25 @@ describe("POST /api/auth/set-role", () => {
     const data = await response.json();
 
     expect(response.status).toBe(201);
-    expect(admin.auth().setCustomUserClaims).toHaveBeenCalledWith("user-123", { role: "student" });
+    expect(admin.auth().setCustomUserClaims).toHaveBeenCalledWith("user-123", {
+      role: "student",
+    });
     expect(admin.firestore().collection().doc().set).toHaveBeenCalled();
     const db = await connectDb();
     expect(db.collection("users").updateOne).toHaveBeenCalled();
   });
 
   test("retries mongo sync and triggers rollback on complete failure", async () => {
-    requireAuth.mockResolvedValue({ uid: "user-failed", email: "student@example.com" });
+    requireAuth.mockResolvedValue({
+      uid: "user-failed",
+      email: "student@example.com",
+    });
 
     // Mock MongoDB updateOne failure
     const db = await connectDb();
-    db.collection("users").updateOne.mockRejectedValue(new Error("Mongo network error"));
+    db.collection("users").updateOne.mockRejectedValue(
+      new Error("Mongo network error")
+    );
 
     const request = createMockRequest({
       role: "student",
@@ -181,7 +198,10 @@ describe("POST /api/auth/set-role", () => {
     expect(db.collection("users").updateOne).toHaveBeenCalledTimes(3);
 
     // Compensating actions (claims rollback and firestore delete) must be called
-    expect(admin.auth().setCustomUserClaims).toHaveBeenLastCalledWith("user-failed", {});
+    expect(admin.auth().setCustomUserClaims).toHaveBeenLastCalledWith(
+      "user-failed",
+      {}
+    );
     expect(admin.firestore().collection().doc().delete).toHaveBeenCalled();
   });
 });

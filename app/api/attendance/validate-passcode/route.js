@@ -4,54 +4,33 @@ import { requireAuth } from "@/lib/rbac";
 import { ValidationError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
-import { checkRateLimit } from "@/lib/rateLimit";
-import { z } from "zod";
-import { verifyPasscode } from "@/utils/passcodeUtils";
+import { passcodeSchema, withValidation } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 
-const passcodeSchema = z.object({
-  passcode: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? "Passcode is required"
-          : "Passcode must be a string",
-    })
-    .trim()
-    .min(1, "Passcode is required"),
-});
+export const POST = withErrorHandler(
+  withValidation(passcodeSchema, async (request, validatedData) => {
+    const decodedToken = await requireAuth(request);
 
-export const POST = withErrorHandler(async (request) => {
-  const decodedToken = await requireAuth(request);
-
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`passcode_${ip}_${decodedToken?.uid}`);
-
-  if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { valid: false, error: "Too many attempts. Please try again later." },
-      { status: 429 }
+    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const rateLimitResult = await checkRateLimit(
+      `passcode_${ip}_${decodedToken?.uid}`
     );
-  }
 
-  // Initialize Firebase app to prevent cold-start crashes
-  initializeFirebase();
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { valid: false, error: "Too many attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
 
-  const body = await parseJSON(request, 1024);
-  
-  const validation = passcodeSchema.safeParse(body);
-  if (!validation.success) {
-    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
-    return NextResponse.json(
-      { valid: false, error: firstError },
-      { status: 400 }
-    );
-  }
-  
-  const { passcode } = validation.data;
+    // Initialize Firebase app to prevent cold-start crashes
+    initializeFirebase();
 
-  const { getUserProfile } = await import("@/lib/firebase-admin");
+    const { passcode } = validatedData;
+
+    const { getUserProfile } = await import("@/lib/firebase-admin");
+...
   const profile = await getUserProfile(decodedToken.uid);
   if (!profile) {
     return NextResponse.json(
@@ -105,7 +84,11 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   return NextResponse.json(
-    { valid: false, error: "Invalid passcode. Please contact your teacher for the correct code." },
+    {
+      valid: false,
+      error:
+        "Invalid passcode. Please contact your teacher for the correct code.",
+    },
     { status: 401 }
   );
 });

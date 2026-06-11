@@ -15,8 +15,7 @@ const CommentSection = ({ noticeId }) => {
 
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
-  const storageKey = getCommentStorageKey(noticeId);
-
+  var storageKey = getCommentStorageKey(noticeId);
 
   useEffect(() => {
     const savedComments = safeLocalStorageGet(storageKey, null);
@@ -55,7 +54,8 @@ const CommentSection = ({ noticeId }) => {
     const replacement = syntax + selectedText + syntax;
 
     // Construct the new string
-    const updatedValue = text.substring(0, start) + replacement + text.substring(end);
+    const updatedValue =
+      text.substring(0, start) + replacement + text.substring(end);
     setNewComment(updatedValue);
 
     // Refocus and place the cursor seamlessly back inside or after the syntax
@@ -76,7 +76,7 @@ const CommentSection = ({ noticeId }) => {
         insertMarkdown("**"); // Bold format
       } else if (event.key.toLowerCase() === "i") {
         event.preventDefault();
-        insertMarkdown("*");  // Italic format
+        insertMarkdown("*"); // Italic format
       }
     }
   };
@@ -110,10 +110,7 @@ const CommentSection = ({ noticeId }) => {
 
     setComments(updatedComments);
 
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify(updatedComments)
-    );
+    localStorage.setItem(storageKey, JSON.stringify(updatedComments));
   };
 
   return (
@@ -153,14 +150,19 @@ const CommentSection = ({ noticeId }) => {
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 break-words">{comment.text}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 break-words">
+                {comment.text}
+              </p>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
 
       {/* Interactive Input form box */}
-      <form onSubmit={handleSubmitComment} className="relative flex items-center gap-2">
+      <form
+        onSubmit={handleSubmitComment}
+        className="relative flex items-center gap-2"
+      >
         <input
           type="text"
           value={newComment}

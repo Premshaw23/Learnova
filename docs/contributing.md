@@ -1,288 +1,234 @@
-# 🤝 Contributing to Learnova
+# Contributing to Learnova
 
-Thank you for your interest in contributing to **Learnova** — an AI-powered education platform! We welcome contributions of all kinds: bug fixes, new features, documentation improvements, and more.
+Thank you for your interest in contributing to Learnova! We welcome contributions from everyone, whether it's code, bug reports, features, or documentation.
 
----
+## 🤝 Code of Conduct
 
-## 📋 Table of Contents
+Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Project Structure](#project-structure)
-- [How to Contribute](#how-to-contribute)
-- [Pull Request Guidelines](#pull-request-guidelines)
-- [Coding Standards](#coding-standards)
-- [Commit Message Guidelines](#commit-message-guidelines)
-- [Reporting Bugs](#reporting-bugs)
-- [Requesting Features](#requesting-features)
-- [Good First Issues](#good-first-issues)
-- [Getting Help](#getting-help)
+## 💬 How Can I Contribute?
 
----
+### 1. **Reporting Bugs**
+- Check if the bug has already been reported in [Issues](../../issues)
+- If not, create a new issue with:
+  - Clear title and description
+  - Steps to reproduce
+  - Expected vs actual behavior
+  - Screenshots/logs if applicable
+  - Your environment (OS, Node version, etc.)
 
-## 📜 Code of Conduct
+### 2. **Suggesting Features**
+- Use the Discussions tab to propose ideas
+- Describe the use case and benefits
+- Wait for community feedback before implementing
 
-Please be respectful, inclusive, and constructive in all interactions. We expect all contributors to uphold a welcoming and harassment-free environment.
+### 3. **Submitting Code**
+- Fork the repository
+- Create a feature branch: `git checkout -b feature/your-feature`
+- Follow the [Development Guide](#-development-guide)
+- Commit with clear messages: `git commit -m "Add feature: description"`
+- Push to your fork: `git push origin feature/your-feature`
+- Open a Pull Request with a detailed description
 
----
-
-## 🚀 Getting Started
-
-1. **Fork** the repository on GitHub.
-2. **Clone** your fork locally:
-   ```bash
-   git clone https://github.com/<your-username>/Learnova.git
-   cd Learnova
-   ```
-3. Add the upstream remote:
-   ```bash
-   git remote add upstream https://github.com/Premshaw23/Learnova.git
-   ```
+### 4. **Documentation**
+- Fix typos or clarify confusing sections
+- Add examples or usage guides
+- Update API documentation
+- Submit PRs directly to `main`
 
 ---
 
-## 🛠️ Development Setup
+## 🛠️ Development Guide
 
 ### Prerequisites
+- Node.js 18+
+- npm or yarn
+- Git
 
-- **Node.js** 18+
-- A **Firebase** project (Auth + Analytics enabled)
-- A **MongoDB** instance (local or Atlas)
-- A **Vercel Blob** store (for file uploads)
-
-### Install dependencies
+### Setup
 
 ```bash
+# Clone your fork
+git clone https://github.com/YOUR_USERNAME/Learnova.git
+cd Learnova
+
+# Install dependencies
 npm install
+
+# Create environment variables (see .env.example)
+cp .env.example .env.local
+# Edit .env.local with your credentials
 ```
 
-### Configure environment variables
-
-Create a `.env.local` file in the root directory:
-
-```env
-# Firebase
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
-
-# MongoDB
-MONGODB_URI=your_mongodb_connection_string
-MONGODB_DB=your_database_name
-
-# Firebase Admin (server-side)
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_CLIENT_EMAIL=your_client_email
-FIREBASE_PRIVATE_KEY=your_private_key
-
-# Vercel Blob
-BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
-
-# EmailJS
-NEXT_PUBLIC_EMAILJS_SERVICE_ID=your_service_id
-NEXT_PUBLIC_EMAILJS_TEMPLATE_ID=your_template_id
-NEXT_PUBLIC_EMAILJS_USER_ID=your_user_id
-```
-
-### Run the development server
+### Running Development Server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Visit `http://localhost:3000` in your browser.
 
-### Build for production
+### Building for Production
 
 ```bash
 npm run build
 npm run start
 ```
 
----
+### Code Style
 
-## 📁 Project Structure
+- Use **ESLint** rules (enforced via pre-commit hooks if available)
+- Follow **Next.js** app router conventions
+- Use meaningful variable/component names
+- Add comments for complex logic
+- Keep functions small and focused
 
-```
-learnova/
-├── app/                  # Next.js App Router pages and API routes
-│   ├── api/              # Server-side API routes (MongoDB + Firebase Admin)
-│   ├── auth/             # Authentication pages
-│   ├── student/          # Student dashboard
-│   ├── teacher/          # Teacher dashboard
-│   ├── institute/        # Institute dashboard
-│   └── admin/            # Admin dashboard
-├── components/           # Reusable React components
-├── constants/            # App-wide constants (roles, config)
-├── contexts/             # React context providers (AuthContext)
-├── hooks/                # Custom React hooks
-├── lib/                  # Helper libraries (Firebase, MongoDB)
-├── services/             # Service layer (auth, etc.)
-├── utils/                # Utility/helper functions
-└── public/               # Static assets
-```
+### Testing
+
+- Test features locally before submitting PR
+- Verify different user roles (Student, Teacher, Institute, Admin)
+- Test on mobile devices (PWA feature)
+- Check dark mode compatibility if applicable
 
 ---
 
-## 🧑‍💻 How to Contribute
+## 📋 PR Guidelines
 
-### 1. Find an issue to work on
+### Before Submitting a PR
 
-- Browse [open issues](https://github.com/Premshaw23/Learnova/issues).
-- Look for issues labelled **`good first issue`** if you're new.
-- Comment on the issue to let maintainers know you're working on it.
+1. Update `main` with latest changes: `git pull origin main`
+2. Rebase your branch: `git rebase main` (avoid merge commits)
+3. Test locally: `npm run dev` and `npm run build`
+4. Ensure no sensitive data is committed
 
-### 2. Create a feature branch
+### PR Description Template
 
-Always branch off from `main`:
+```markdown
+## Description
+Brief description of changes
 
-```bash
-git checkout main
-git pull upstream main
-git checkout -b fix/your-descriptive-branch-name
+## Related Issue
+Closes #123
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Documentation update
+- [ ] Performance improvement
+
+## Changes Made
+- Detailed list of changes
+- What was added/modified/removed
+
+## Testing
+How to test the changes
+
+## Screenshots (if applicable)
+For UI changes, include before/after screenshots
 ```
 
-Branch naming conventions:
-- `fix/` — bug fixes
-- `feat/` — new features
-- `docs/` — documentation changes
-- `chore/` — maintenance tasks
-- `test/` — adding or updating tests
+### Review Process
 
-### 3. Make your changes
-
-- Keep changes focused on the issue you're resolving.
-- Follow the [coding standards](#coding-standards) below.
-- Add or update tests where applicable.
-- Update documentation if your change affects documented behaviour.
-
-### 4. Test your changes
-
-```bash
-npm run build   # Ensure it builds without errors
-npm run dev     # Manually test your changes in the browser
-```
-
-### 5. Push and open a Pull Request
-
-```bash
-git push origin fix/your-descriptive-branch-name
-```
-
-Then open a Pull Request against the `main` branch on GitHub.
+- At least 1 maintainer review required
+- All conversations resolved
+- Feedback addressed before merge
+- Squash commits before final merge (if requested)
 
 ---
 
-## 🔀 Pull Request Guidelines
+## 🔒 Security
 
-- Fill in the PR template completely.
-- Reference the related issue (e.g., `Closes #42`).
-- Keep PRs small and focused — one concern per PR.
-- Add screenshots for UI changes.
-- Ensure the build passes before requesting a review.
-- Be responsive to reviewer feedback.
+**Do not** include sensitive information in pull requests:
+- API keys, tokens, or credentials
+- Private encryption keys
+- Database URIs with passwords
+- Personal information
 
----
-
-## 🎨 Coding Standards
-
-### General
-
-- Use **functional React components** with hooks.
-- Prefer **named exports** for components; use default exports only for page components.
-- Keep component files focused — extract large logic into custom hooks or utility functions.
-
-### Styling
-
-- Use **Tailwind CSS** utility classes for all styling.
-- Avoid inline `style` attributes unless absolutely necessary.
-- Follow the existing dark-themed design system (gray-800/700 backgrounds, indigo/purple accents).
-- Ensure layouts are **mobile-responsive** (use `sm:`, `md:`, `lg:` breakpoints).
-
-### JavaScript / JSX
-
-- Use **ES6+** syntax (arrow functions, destructuring, optional chaining, etc.).
-- Avoid `var`; prefer `const` and `let`.
-- Validate all user inputs both client-side and server-side.
-- Always handle async errors with `try/catch` and return meaningful error messages.
-
-### API Routes
-
-- All API routes live in `app/api/`.
-- Verify Firebase ID tokens server-side using `lib/firebase-admin.js` for protected endpoints.
-- Return consistent JSON responses:
-  ```js
-  // Success
-  return Response.json({ success: true, data: ... }, { status: 200 });
-  // Error
-  return Response.json({ error: 'Descriptive message' }, { status: 4xx/5xx });
-  ```
-- Always include proper HTTP status codes.
+If you find a security vulnerability, please email security@learnova.com instead of opening an issue (or follow [SECURITY.md](SECURITY.md)).
 
 ---
 
-## ✍️ Commit Message Guidelines
+## 🎯 Areas We Need Help With
 
-Follow the [Conventional Commits](https://www.conventionalcommits.org/) format:
+- **Backend**: MongoDB queries, API optimization
+- **Frontend**: UI/UX improvements, responsive design
+- **Mobile**: PWA testing and mobile-specific issues
+- **Documentation**: Setup guides, troubleshooting
+- **Testing**: Adding test cases
+- **Internationalization**: Adding new language support
+
+---
+
+## 📚 Project Structure Reference
 
 ```
-<type>(<scope>): <short description>
-```
+app/                    # Next.js app routes
+├── auth/              # Authentication pages
+├── student/           # Student dashboard
+├── teacher/           # Teacher dashboard
+├── institute/         # Institute dashboard
+└── admin/             # Admin dashboard
 
-**Types:**
-- `feat` — a new feature
-- `fix` — a bug fix
-- `docs` — documentation only
-- `style` — formatting, no logic change
-- `refactor` — code change that neither fixes a bug nor adds a feature
-- `test` — adding or correcting tests
-- `chore` — build process, dependency updates, etc.
+components/            # Reusable React components
+└── [Feature components]
 
-**Examples:**
-```
-feat(auth): add password confirmation field to sign-up form
-fix(api): return 404 instead of 500 when user not found
-docs(contributing): add branch naming conventions
+lib/                   # Utilities & Firebase config
+services/              # API & external services
+contexts/              # React contexts (Auth, etc.)
+hooks/                 # Custom hooks
 ```
 
 ---
 
-## 🐛 Reporting Bugs
+## 📝 Commit Message Conventions
 
-Use the **Bug Report** issue template. Please include:
-- Steps to reproduce
-- Expected vs actual behaviour
-- Browser/OS details
-- Screenshots or error messages if applicable
+- Use present tense: `Add feature` not `Added feature`
+- Be descriptive: `Fix login validation on empty username` not `Fix bug`
+- Keep first line under 50 characters
+- Reference issues: `Add auth: closes #42`
 
----
+Example:
+```
+Add face recognition attendance validation
 
-## 💡 Requesting Features
-
-Use the **Feature Request** issue template. Please include:
-- The problem you're solving
-- Your proposed solution
-- Any alternatives you've considered
-
----
-
-## 🌱 Good First Issues
-
-New to the project? Look for issues labelled [`good first issue`](https://github.com/Premshaw23/Learnova/labels/good%20first%20issue). These are small, well-defined tasks perfect for getting familiar with the codebase.
+- Implement conflict detection
+- Add manual override option
+- Update UI for verification
+- Closes #89
+```
 
 ---
 
-## 💬 Getting Help
+## 🚀 Getting Your PR Merged
 
-- Open a [GitHub Discussion](https://github.com/Premshaw23/Learnova/discussions) for questions.
-- Comment on the relevant issue if you're stuck.
-- Be patient — maintainers are volunteers and will respond as soon as they can.
+1. ✅ Code review approved
+2. ✅ All discussions resolved
+3. ✅ No merge conflicts
+4. ✅ Passes CI/CD checks (if enabled)
+5. ✅ Documentation updated if needed
 
 ---
 
-Thank you for helping make Learnova better! 🎓
+## 💡 Questions?
+
+- Open a Discussion
+- Check existing issues for similar topics
+- Review [README.md](README.md) for project overview
+- Email: contact@learnova.com
+
+---
+
+## 🙏 Thank You!
+
+Your contributions make Learnova better. We appreciate:
+- Your time and effort
+- Constructive feedback
+- Bug reports
+- Feature ideas
+- Community support
+
+**Happy coding!** 🎓
+
+
+### Firebase Auth State Listener Rules
+- Unsubscribe from listeners on component unmount to prevent leaks.

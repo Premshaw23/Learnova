@@ -28,11 +28,13 @@ import {
   User,
   RefreshCw,
   Upload,
+  Award,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import ExportDropdown from "@/components/ui/ExportDropdown";
 import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 import { Navbar } from "./Navbar";
+import { dashboardContentOffsetClass } from "@/components/navigation";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
 import BulkImportModal from "./dashboard/BulkImportModal";
@@ -43,6 +45,11 @@ import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
   { ssr: false, loading: () => <ChartSkeleton variant="chart" /> }
+);
+
+const InstituteAchievementPanel = dynamic(
+  () => import("@/components/achievements/InstituteAchievementPanel"),
+  { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 
 const InstituteDashboard = () => {
@@ -61,27 +68,32 @@ const InstituteDashboard = () => {
     setIsExporting(true);
     setTimeout(() => {
       try {
-        const exportData = attendanceRequests.map(req => ({
+        const exportData = attendanceRequests.map((req) => ({
           Date: selectedDate,
-          'Student Name': req.student,
-          'Roll No': req.rollNo,
-          'Class': req.class,
-          'Status': req.status,
+          "Student Name": req.student,
+          "Roll No": req.rollNo,
+          Class: req.class,
+          Status: req.status,
         }));
-        
+
         const filename = `institute_attendance_requests_${selectedDate}`;
-        
-        if (format === 'csv') {
+
+        if (format === "csv") {
           exportToCSV(exportData, filename);
         } else {
           const columns = [
-            { header: 'Date', dataKey: 'Date' },
-            { header: 'Student', dataKey: 'Student Name' },
-            { header: 'Roll No', dataKey: 'Roll No' },
-            { header: 'Class', dataKey: 'Class' },
-            { header: 'Status', dataKey: 'Status' }
+            { header: "Date", dataKey: "Date" },
+            { header: "Student", dataKey: "Student Name" },
+            { header: "Roll No", dataKey: "Roll No" },
+            { header: "Class", dataKey: "Class" },
+            { header: "Status", dataKey: "Status" },
           ];
-          exportToPDF(exportData, columns, `Institute Attendance Requests - ${selectedDate}`, filename);
+          exportToPDF(
+            exportData,
+            columns,
+            `Institute Attendance Requests - ${selectedDate}`,
+            filename
+          );
         }
         toast.success(`Successfully exported as ${format.toUpperCase()}`);
       } catch (err) {
@@ -215,7 +227,9 @@ const InstituteDashboard = () => {
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-muted-foreground dark:text-gray-300 text-sm font-medium">{title}</p>
+            <p className="text-muted-foreground dark:text-gray-300 text-sm font-medium">
+              {title}
+            </p>
 
             <p className={`text-2xl font-bold mt-1 ${currentColor.text}`}>
               {value}
@@ -302,7 +316,7 @@ const InstituteDashboard = () => {
 
             {/* Notifications */}
             <button
-              aria-label={`Notifications${dashboardData.pendingRequests > 0 ? `, ${dashboardData.pendingRequests > 99 ? '99+' : dashboardData.pendingRequests} pending requests` : ''}`}
+              aria-label={`Notifications${dashboardData.pendingRequests > 0 ? `, ${dashboardData.pendingRequests > 99 ? "99+" : dashboardData.pendingRequests} pending requests` : ""}`}
               className="relative p-2.5 bg-gray-800/60 hover:bg-gray-700/60 
                              rounded-xl border border-gray-600/40 transition-colors shadow-sm"
             >
@@ -312,7 +326,9 @@ const InstituteDashboard = () => {
                   className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-foreground dark:text-white 
                                text-xs rounded-full flex items-center justify-center shadow-md"
                 >
-                  {dashboardData.pendingRequests > 99 ? "99+" : dashboardData.pendingRequests}
+                  {dashboardData.pendingRequests > 99
+                    ? "99+"
+                    : dashboardData.pendingRequests}
                 </span>
               )}
             </button>
@@ -332,7 +348,9 @@ const InstituteDashboard = () => {
                 <div className="text-foreground dark:text-white text-sm font-medium">
                   {currentUser.name}
                 </div>
-                <div className="text-xs text-muted-foreground dark:text-gray-400">{currentUser.role}</div>
+                <div className="text-xs text-muted-foreground dark:text-gray-400">
+                  {currentUser.role}
+                </div>
               </div>
               <ChevronDown className="w-4 h-4 text-muted-foreground dark:text-gray-400" />
             </div>
@@ -341,7 +359,6 @@ const InstituteDashboard = () => {
       </div>
     </div>
   );
-
 
   const OverviewTab = () => (
     <div className="space-y-8">
@@ -407,7 +424,9 @@ const InstituteDashboard = () => {
               <Download className="w-5 h-5 text-green-400 group-hover:text-green-300" />
               <div>
                 <div className="font-medium text-green-300">Export Reports</div>
-                <div className="text-sm text-muted-foreground dark:text-gray-400">CSV/PDF formats</div>
+                <div className="text-sm text-muted-foreground dark:text-gray-400">
+                  CSV/PDF formats
+                </div>
               </div>
             </div>
           </ExportDropdown>
@@ -422,7 +441,9 @@ const InstituteDashboard = () => {
                 <div className="font-medium text-orange-300">
                   System Settings
                 </div>
-                <div className="text-sm text-muted-foreground dark:text-gray-400">Configure platform</div>
+                <div className="text-sm text-muted-foreground dark:text-gray-400">
+                  Configure platform
+                </div>
               </div>
             </div>
           </button>
@@ -452,7 +473,9 @@ const InstituteDashboard = () => {
               >
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <p className="font-medium text-foreground dark:text-white">{request.student}</p>
+                    <p className="font-medium text-foreground dark:text-white">
+                      {request.student}
+                    </p>
                     <p className="text-sm text-muted-foreground dark:text-gray-400">
                       {request.rollNo} • {request.class}
                     </p>
@@ -462,8 +485,8 @@ const InstituteDashboard = () => {
                       request.status === "pending"
                         ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
                         : request.status === "approved"
-                        ? "bg-green-500/20 text-green-400 border-green-500/30"
-                        : "bg-red-500/20 text-red-400 border-red-500/30"
+                          ? "bg-green-500/20 text-green-400 border-green-500/30"
+                          : "bg-red-500/20 text-red-400 border-red-500/30"
                     }`}
                   >
                     {request.status.toUpperCase()}
@@ -473,8 +496,12 @@ const InstituteDashboard = () => {
                   <span className="font-medium">Reason:</span> {request.reason}
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground dark:text-gray-400">{request.location}</p>
-                  <p className="text-xs text-muted-foreground dark:text-gray-500">{request.time}</p>
+                  <p className="text-xs text-muted-foreground dark:text-gray-400">
+                    {request.location}
+                  </p>
+                  <p className="text-xs text-muted-foreground dark:text-gray-500">
+                    {request.time}
+                  </p>
                 </div>
               </div>
             ))}
@@ -492,8 +519,12 @@ const InstituteDashboard = () => {
                 className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 hover:bg-gray-800/70 transition-colors"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-foreground dark:text-white font-medium">{classItem.name}</div>
-                  <div className="text-sm text-muted-foreground dark:text-gray-400">{classItem.time}</div>
+                  <div className="text-foreground dark:text-white font-medium">
+                    {classItem.name}
+                  </div>
+                  <div className="text-sm text-muted-foreground dark:text-gray-400">
+                    {classItem.time}
+                  </div>
                 </div>
                 <div className="text-sm text-muted-foreground dark:text-gray-400 mb-2">
                   {classItem.teacher} • Room {classItem.room}
@@ -541,7 +572,9 @@ const InstituteDashboard = () => {
       <div className="space-y-8">
         {/* Header with Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h2 className="text-2xl font-bold text-foreground dark:text-white">Class Management</h2>
+          <h2 className="text-2xl font-bold text-foreground dark:text-white">
+            Class Management
+          </h2>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
               <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground dark:text-gray-400" />
@@ -584,13 +617,22 @@ const InstituteDashboard = () => {
                   <BookOpen className="w-6 h-6 text-foreground dark:text-white" />
                 </div>
                 <div className="flex space-x-2">
-                  <button aria-label="View class details" className="text-blue-400 hover:text-blue-300 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30 transition-colors">
+                  <button
+                    aria-label="View class details"
+                    className="text-blue-400 hover:text-blue-300 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30 transition-colors"
+                  >
                     <Eye className="w-4 h-4" />
                   </button>
-                  <button aria-label="Edit class" className="text-green-400 hover:text-green-300 p-2 bg-green-500/20 rounded-lg border border-green-500/30 transition-colors">
+                  <button
+                    aria-label="Edit class"
+                    className="text-green-400 hover:text-green-300 p-2 bg-green-500/20 rounded-lg border border-green-500/30 transition-colors"
+                  >
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button aria-label="Delete class" className="text-red-400 hover:text-red-300 p-2 bg-red-500/20 rounded-lg border border-red-500/30 transition-colors">
+                  <button
+                    aria-label="Delete class"
+                    className="text-red-400 hover:text-red-300 p-2 bg-red-500/20 rounded-lg border border-red-500/30 transition-colors"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -601,17 +643,23 @@ const InstituteDashboard = () => {
               </h3>
               <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground dark:text-gray-400">Teacher:</span>
+                  <span className="text-muted-foreground dark:text-gray-400">
+                    Teacher:
+                  </span>
                   <span className="text-foreground dark:text-white font-medium">
                     {classItem.teacher}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground dark:text-gray-400">Room:</span>
+                  <span className="text-muted-foreground dark:text-gray-400">
+                    Room:
+                  </span>
                   <span className="text-blue-400">{classItem.room}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground dark:text-gray-400">Time:</span>
+                  <span className="text-muted-foreground dark:text-gray-400">
+                    Time:
+                  </span>
                   <span className="text-green-400">{classItem.time}</span>
                 </div>
               </div>
@@ -644,7 +692,9 @@ const InstituteDashboard = () => {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-foreground dark:text-white">Teacher Management</h2>
+        <h2 className="text-2xl font-bold text-foreground dark:text-white">
+          Teacher Management
+        </h2>
         <button
           disabled={isLoading}
           className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-foreground dark:text-white px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 flex items-center shadow-xl"
@@ -679,18 +729,24 @@ const InstituteDashboard = () => {
             <h3 className="font-bold text-foreground dark:text-white text-lg mb-1">
               {teacher.name}
             </h3>
-            <p className="text-muted-foreground dark:text-gray-400 text-sm mb-1">{teacher.email}</p>
+            <p className="text-muted-foreground dark:text-gray-400 text-sm mb-1">
+              {teacher.email}
+            </p>
             <p className="text-blue-400 text-sm mb-4">{teacher.department}</p>
 
             <div className="space-y-2 text-sm mb-4">
               <div className="flex justify-between">
-                <span className="text-muted-foreground dark:text-gray-400">Classes:</span>
+                <span className="text-muted-foreground dark:text-gray-400">
+                  Classes:
+                </span>
                 <span className="text-foreground dark:text-white font-medium">
                   {teacher.classes}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground dark:text-gray-400">Avg. Attendance:</span>
+                <span className="text-muted-foreground dark:text-gray-400">
+                  Avg. Attendance:
+                </span>
                 <span className="text-green-400 font-medium">
                   {teacher.attendance}
                 </span>
@@ -698,10 +754,13 @@ const InstituteDashboard = () => {
             </div>
 
             <div className="flex space-x-2">
-              <button className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl transition-colors text-sm font-medium">
+              <button className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl transition-colors text-sm font-medium" aria-label="Action button">
                 View Details
               </button>
-              <button aria-label="Edit teacher" className="bg-gray-500/20 hover:bg-gray-500/30 text-muted-foreground dark:text-gray-400 border border-gray-500/30 px-3 py-2 rounded-xl transition-colors">
+              <button
+                aria-label="Edit teacher"
+                className="bg-gray-500/20 hover:bg-gray-500/30 text-muted-foreground dark:text-gray-400 border border-gray-500/30 px-3 py-2 rounded-xl transition-colors"
+              >
                 <Edit className="w-4 h-4" />
               </button>
             </div>
@@ -715,7 +774,9 @@ const InstituteDashboard = () => {
     <div className="space-y-8">
       {/* Header with Date Picker */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-foreground dark:text-white">Attendance Overview</h2>
+        <h2 className="text-2xl font-bold text-foreground dark:text-white">
+          Attendance Overview
+        </h2>
         <div className="flex gap-3">
           <input
             type="date"
@@ -737,21 +798,27 @@ const InstituteDashboard = () => {
         <StatCard
           title="Present Today"
           value={dashboardData.todayAttendance?.toLocaleString() ?? "N/A"}
-          subtitle={`${dashboardData.todayAttendance ? ((dashboardData.todayAttendance/dashboardData.totalStudents)*100).toFixed(1) : 0}% of total`}
+          subtitle={`${dashboardData.todayAttendance ? ((dashboardData.todayAttendance / dashboardData.totalStudents) * 100).toFixed(1) : 0}% of total`}
           icon={CheckCircle}
           color="green"
         />
         <StatCard
           title="Absent Today"
-          value={dashboardData.totalStudents - dashboardData.todayAttendance || 0}
-          subtitle={`${dashboardData.totalStudents ? (((dashboardData.totalStudents - dashboardData.todayAttendance)/dashboardData.totalStudents)*100).toFixed(1) : 0}% of total`}
+          value={
+            dashboardData.totalStudents - dashboardData.todayAttendance || 0
+          }
+          subtitle={`${dashboardData.totalStudents ? (((dashboardData.totalStudents - dashboardData.todayAttendance) / dashboardData.totalStudents) * 100).toFixed(1) : 0}% of total`}
           icon={XCircle}
           color="red"
         />
         <StatCard
           title="Late Arrivals"
           value={dashboardData.lateArrivals ?? "N/A"}
-          subtitle={dashboardData.lateArrivals ? `${((dashboardData.lateArrivals/dashboardData.totalStudents)*100).toFixed(1)}% of total` : "Data unavailable"}
+          subtitle={
+            dashboardData.lateArrivals
+              ? `${((dashboardData.lateArrivals / dashboardData.totalStudents) * 100).toFixed(1)}% of total`
+              : "Data unavailable"
+          }
           icon={Clock}
           color="yellow"
         />
@@ -796,7 +863,9 @@ const InstituteDashboard = () => {
                       <span className="font-medium">Location:</span>{" "}
                       {request.location}
                     </p>
-                    <p className="text-xs text-muted-foreground dark:text-gray-500">{request.time}</p>
+                    <p className="text-xs text-muted-foreground dark:text-gray-500">
+                      {request.time}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3 ml-4">
@@ -805,8 +874,8 @@ const InstituteDashboard = () => {
                       request.status === "pending"
                         ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
                         : request.status === "approved"
-                        ? "bg-green-500/20 text-green-400 border-green-500/30"
-                        : "bg-red-500/20 text-red-400 border-red-500/30"
+                          ? "bg-green-500/20 text-green-400 border-green-500/30"
+                          : "bg-red-500/20 text-red-400 border-red-500/30"
                     }`}
                   >
                     {request.status.toUpperCase()}
@@ -851,7 +920,9 @@ const InstituteDashboard = () => {
 
   const SettingsTab = () => (
     <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-foreground dark:text-white">System Settings</h2>
+      <h2 className="text-2xl font-bold text-foreground dark:text-white">
+        System Settings
+      </h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Attendance Settings */}
@@ -884,7 +955,9 @@ const InstituteDashboard = () => {
                         defaultChecked={!["Sat", "Sun"].includes(day)}
                         className="rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
                       />
-                      <span className="ml-2 text-sm text-muted-foreground dark:text-gray-300">{day}</span>
+                      <span className="ml-2 text-sm text-muted-foreground dark:text-gray-300">
+                        {day}
+                      </span>
                     </label>
                   )
                 )}
@@ -1022,7 +1095,7 @@ const InstituteDashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+      <div className={`min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center ${dashboardContentOffsetClass}`}>
         <div className="fixed top-0 left-0 w-full z-50 shadow-xl border-b border-white/10 bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-xl">
           <Navbar />
         </div>
@@ -1030,8 +1103,12 @@ const InstituteDashboard = () => {
           <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-10 h-10 text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold text-foreground dark:text-white mb-2">Error Loading Dashboard</h2>
-          <p className="text-muted-foreground dark:text-gray-400 mb-6">{error}</p>
+          <h2 className="text-2xl font-bold text-foreground dark:text-white mb-2">
+            Error Loading Dashboard
+          </h2>
+          <p className="text-muted-foreground dark:text-gray-400 mb-6">
+            {error}
+          </p>
           <button
             onClick={() => window.location.reload()}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-foreground dark:text-white px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
@@ -1045,7 +1122,7 @@ const InstituteDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className={`min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 ${dashboardContentOffsetClass}`}>
       {/* Sticky Premium Navbar */}
       <div className="fixed top-0 left-0 w-full z-50 shadow-xl border-b border-white/10 bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-xl">
         <Navbar />
@@ -1109,7 +1186,17 @@ const InstituteDashboard = () => {
             <UserCheck className="w-5 h-5 mr-2" />
             Attendance
           </button>
-          {/* ...existing code... */}
+          <button
+            onClick={() => setActiveTab("achievements")}
+            className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center ${
+              activeTab === "achievements"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-foreground dark:text-white shadow-lg"
+                : "bg-gray-800/50 text-muted-foreground dark:text-gray-300 hover:bg-gray-700/50 border border-gray-600/50"
+            }`}
+          >
+            <Award className="w-5 h-5 mr-2" />
+            Achievements
+          </button>
           <button
             onClick={() => setActiveTab("settings")}
             className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center ${
@@ -1131,13 +1218,16 @@ const InstituteDashboard = () => {
         {activeTab === "classes" && <ClassesTab />}
         {activeTab === "teachers" && <TeachersTab />}
         {activeTab === "attendance" && <AttendanceTab />}
+        {activeTab === "achievements" && <InstituteAchievementPanel />}
         {activeTab === "settings" && <SettingsTab />}
         {/* Add Class Modal */}
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
               <div className="flex items-center justify-between p-6 border-b border-gray-800">
-                <h2 className="text-xl font-bold text-foreground dark:text-white">Add New Class</h2>
+                <h2 className="text-xl font-bold text-foreground dark:text-white">
+                  Add New Class
+                </h2>
                 <button
                   onClick={() => setShowAddModal(false)}
                   className="text-muted-foreground dark:text-gray-400 hover:text-foreground dark:text-white transition-colors"

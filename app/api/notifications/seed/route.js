@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
-import { requireRole, requireAuth } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { ForbiddenError, ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { publishEvent } from "@/lib/ssePublisher";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,9 @@ export const POST = withErrorHandler(async (request) => {
   // Allow admins to seed any user, but non-admins can only seed notifications for their own account
   const isAdmin = decodedToken.role === "admin";
   if (!isAdmin && decodedToken.uid !== userId) {
-    throw new ForbiddenError("Forbidden: You can only seed notifications for your own account");
+    throw new ForbiddenError(
+      "Forbidden: You can only seed notifications for your own account"
+    );
   }
 
   // 4. Rate limiting check
@@ -38,36 +41,32 @@ export const POST = withErrorHandler(async (request) => {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     "127.0.0.1";
 
-  const rateLimitResult = await checkRateLimit(`notifications_seed_${ip}_${userId}`);
+  const rateLimitResult = await checkRateLimit(
+    `notifications_seed_${ip}_${userId}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many requests. Please slow down.", 429);
   }
 
   // 5. Database operations: Insert mock notifications
   const db = await connectDb();
-  await db.collection("notifications").insertMany([
-    {
-      userId,
-      message: "Attendance marked for CS101",
-      type: "attendance",
+  const now = new Date();
+  const notifications = [
+    { userId, message: "Attendance marked for CS101", type: "attendance", read: false, createdAt: now },
+    { userId, message: "New notice posted by Admin", type: "notice", read: false, createdAt: now },
+    { userId, message: "System alert: Maintenance scheduled", type: "alert", read: false, createdAt: now },
+  ];
+  await db.collection("notifications").insertMany(notifications);
+
+  for (const notif of notifications) {
+    publishEvent("notifications", "mock", {
+      recipientId: notif.userId,
+      message: notif.message,
+      type: notif.type,
       read: false,
-      createdAt: new Date(),
-    },
-    {
-      userId,
-      message: "New notice posted by Admin",
-      type: "notice",
-      read: false,
-      createdAt: new Date(),
-    },
-    {
-      userId,
-      message: "System alert: Maintenance scheduled",
-      type: "alert",
-      read: false,
-      createdAt: new Date(),
-    },
-  ]);
+      createdAt: notif.createdAt.toISOString(),
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ success: true });
 });

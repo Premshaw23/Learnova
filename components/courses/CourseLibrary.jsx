@@ -25,7 +25,6 @@ import {
 } from "@/lib/courses";
 import { useIsMounted } from "@/hooks/useIsMounted";
 
-
 const getDifficultyVariant = (difficulty) => {
   const diff = difficulty?.toLowerCase();
   if (diff === "beginner") return "success";
@@ -53,7 +52,35 @@ export default function CourseLibrary({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [savedCourseIds, setSavedCourseIds] = useState([]);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [courseProgress, setCourseProgress] = useState({});
   const isMounted = useIsMounted();
+
+  // Load course completion progress from localStorage on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const progressMap = {};
+    allCourses.forEach((course) => {
+      const savedCompleted = localStorage.getItem(
+        `learnova_completed_lessons_${course.id}`
+      );
+      if (savedCompleted) {
+        try {
+          const completed = JSON.parse(savedCompleted);
+          const match = course.duration.match(/(\d+)\s+lessons?/);
+          const totalLessons = match ? parseInt(match[1], 10) : 0;
+          if (totalLessons > 0) {
+            const completedCount =
+              Object.values(completed).filter(Boolean).length;
+            const pct = Math.round((completedCount / totalLessons) * 100);
+            progressMap[course.id] = Math.min(100, pct);
+          }
+        } catch (e) {
+          console.error("Failed to parse progress for course:", course.id, e);
+        }
+      }
+    });
+    setCourseProgress(progressMap);
+  }, [allCourses]);
 
   // Sync state if initial courses change (e.g. search filter or category chip select re-fetches from server)
   useEffect(() => {
@@ -88,7 +115,9 @@ export default function CourseLibrary({
     } catch (error) {
       console.error("Failed to load more courses:", error);
       if (isMounted()) {
-        toast.error("Failed to load more courses. Please check your connection.");
+        toast.error(
+          "Failed to load more courses. Please check your connection."
+        );
       }
     } finally {
       if (isMounted()) setIsLoading(false);
@@ -103,7 +132,10 @@ export default function CourseLibrary({
         ? existingIds.filter((id) => id !== course.id)
         : [...existingIds, course.id];
 
-      const didPersist = safeLocalStorageSet(SAVED_COURSES_STORAGE_KEY, nextIds);
+      const didPersist = safeLocalStorageSet(
+        SAVED_COURSES_STORAGE_KEY,
+        nextIds
+      );
 
       if (!didPersist) {
         toast.error("Could not update saved courses on this device.");
@@ -155,8 +187,11 @@ export default function CourseLibrary({
           </span>
         </button>
         <div className="text-sm font-medium text-slate-400 bg-slate-900/40 border border-slate-800/80 px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm">
-          Showing <span className="text-indigo-400 font-bold">{visibleCourses.length}</span> of{" "}
-          <span className="text-white">{visibleTotal}</span>{" "}
+          Showing{" "}
+          <span className="text-indigo-400 font-bold">
+            {visibleCourses.length}
+          </span>{" "}
+          of <span className="text-white">{visibleTotal}</span>{" "}
           {showSavedOnly ? "saved courses" : "courses"}
         </div>
       </div>
@@ -181,7 +216,10 @@ export default function CourseLibrary({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.3) }}
+                    transition={{
+                      duration: 0.4,
+                      delay: Math.min(index * 0.05, 0.3),
+                    }}
                     className="group bg-white/5 border border-white/10 hover:border-indigo-500/40 rounded-2xl p-5 space-y-4 flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:hover:shadow-2xl relative overflow-hidden"
                   >
                     {/* Decorative glowing card accent */}
@@ -247,6 +285,30 @@ export default function CourseLibrary({
                       <p className="text-sm text-slate-400 line-clamp-2 text-ellipsis overflow-hidden leading-relaxed">
                         {course.description}
                       </p>
+
+                      {/* Course Progress */}
+                      {courseProgress[course.id] !== undefined && (
+                        <div className="pt-2">
+                          <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mb-1.5">
+                            <span>Progress</span>
+                            <span
+                              className={
+                                courseProgress[course.id] === 100
+                                  ? "text-amber-400 font-bold"
+                                  : "text-indigo-400 font-bold"
+                              }
+                            >
+                              {courseProgress[course.id]}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${courseProgress[course.id] === 100 ? "bg-amber-500" : "bg-indigo-500"}`}
+                              style={{ width: `${courseProgress[course.id]}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Card Bottom Section */}

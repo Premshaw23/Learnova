@@ -31,9 +31,12 @@ export default function AttendanceMetricsPage() {
 
       <div className="mt-12 rounded-xl border border-white/10 bg-white/5 p-8">
         <p className="text-slate-400 text-sm">
-          Full methodology and institution-level data will be published here.
-          In the meantime, explore the{" "}
-          <Link href="/case-studies/impact" className="text-purple-400 underline hover:text-purple-300">
+          Full methodology and institution-level data will be published here. In
+          the meantime, explore the{" "}
+          <Link
+            href="/case-studies/impact"
+            className="text-purple-400 underline hover:text-purple-300"
+          >
             Impact Reports
           </Link>{" "}
           page.

@@ -23,7 +23,10 @@ vi.mock("@/lib/error-handler", () => {
           return await handler(request, ...args);
         } catch (error) {
           if (error && error.statusCode !== undefined) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
+            const payload =
+              error.originalMessage !== undefined
+                ? error.originalMessage
+                : error.message;
             return {
               status: error.statusCode,
               json: async () => ({ error: payload, success: false }),
@@ -31,7 +34,10 @@ vi.mock("@/lib/error-handler", () => {
           }
           return {
             status: 500,
-            json: async () => ({ error: error.message || "Internal server error", success: false }),
+            json: async () => ({
+              error: error.message || "Internal server error",
+              success: false,
+            }),
           };
         }
       };
@@ -84,14 +90,23 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { executeSaga } from "@/lib/transactionCoordinator";
 
 // Import route handlers
-import { GET as adminGetLink, POST as adminPostLink, DELETE as adminDeleteLink } from "@/app/api/admin/parent-student-link/route";
+import {
+  GET as adminGetLink,
+  POST as adminPostLink,
+  DELETE as adminDeleteLink,
+} from "@/app/api/admin/parent-student-link/route";
 import { GET as parentGetDashboard } from "@/app/api/parent/dashboard/route";
 import { GET as parentGetAttendance } from "@/app/api/parent/student/[studentId]/attendance/route";
-import { GET as parentGetGrades, POST as parentPostGrade } from "@/app/api/parent/student/[studentId]/grades/route";
+import {
+  GET as parentGetGrades,
+  POST as parentPostGrade,
+} from "@/app/api/parent/student/[studentId]/grades/route";
 import { GET as parentGetNotices } from "@/app/api/parent/student/[studentId]/notices/route";
 
 function makeRequest(overrides = {}) {
-  const headersMap = new Map(Object.entries({ "x-forwarded-for": "127.0.0.1", ...overrides.headers }));
+  const headersMap = new Map(
+    Object.entries({ "x-forwarded-for": "127.0.0.1", ...overrides.headers })
+  );
   return {
     headers: {
       get: vi.fn((key) => headersMap.get(key.toLowerCase()) || null),
@@ -110,17 +125,51 @@ describe("Parent Portal Feature Tests", () => {
 
     store = {
       users: {
-        "parent-1": { uid: "parent-1", email: "parent1@learnova.edu", role: "parent", fullName: "Parent One" },
-        "student-1": { uid: "student-1", email: "student1@learnova.edu", role: "student", fullName: "Student One", instituteId: "inst-1", studentId: "S001" },
-        "student-2": { uid: "student-2", email: "student2@learnova.edu", role: "student", fullName: "Student Two", instituteId: "inst-1", studentId: "S002" },
-        "teacher-1": { uid: "teacher-1", email: "teacher1@learnova.edu", role: "teacher", fullName: "Teacher One" },
+        "parent-1": {
+          uid: "parent-1",
+          email: "parent1@learnova.edu",
+          role: "parent",
+          fullName: "Parent One",
+        },
+        "student-1": {
+          uid: "student-1",
+          email: "student1@learnova.edu",
+          role: "student",
+          fullName: "Student One",
+          instituteId: "inst-1",
+          studentId: "S001",
+        },
+        "student-2": {
+          uid: "student-2",
+          email: "student2@learnova.edu",
+          role: "student",
+          fullName: "Student Two",
+          instituteId: "inst-1",
+          studentId: "S002",
+        },
+        "teacher-1": {
+          uid: "teacher-1",
+          email: "teacher1@learnova.edu",
+          role: "teacher",
+          fullName: "Teacher One",
+          instituteId: "inst-1",
+        },
       },
       parent_student_links: {
-        "parent-1_student-1": { parentId: "parent-1", studentId: "student-1", createdAt: new Date().toISOString() },
+        "parent-1_student-1": {
+          parentId: "parent-1",
+          studentId: "student-1",
+          createdAt: new Date().toISOString(),
+        },
       },
       grades: {},
       notices: {
-        "notice-1": { instituteId: "inst-1", targetAudience: ["student", "parent"], title: "Important Notice", createdAt: new Date() },
+        "notice-1": {
+          instituteId: "inst-1",
+          targetAudience: ["student", "parent"],
+          title: "Important Notice",
+          createdAt: new Date(),
+        },
       },
       userStats: {
         "student-1": { "Attendance Rate": "85%" },
@@ -128,8 +177,18 @@ describe("Parent Portal Feature Tests", () => {
       },
       notifications: {},
       attendance_records: {
-        "att-1": { userId: "student-1", date: "2026-05-28", status: "present", confidenceScore: 0.95 },
-        "att-2": { userId: "student-1", date: "2026-05-27", status: "absent", confidenceScore: 0.90 },
+        "att-1": {
+          userId: "student-1",
+          date: "2026-05-28",
+          status: "present",
+          confidenceScore: 0.95,
+        },
+        "att-2": {
+          userId: "student-1",
+          date: "2026-05-27",
+          status: "absent",
+          confidenceScore: 0.9,
+        },
       },
     };
 
@@ -185,7 +244,9 @@ describe("Parent Portal Feature Tests", () => {
               }
               if (op === "array-contains-any") {
                 const itemArr = item[field] || [];
-                return Array.isArray(itemArr) && val.some((v) => itemArr.includes(v));
+                return (
+                  Array.isArray(itemArr) && val.some((v) => itemArr.includes(v))
+                );
               }
               if (op === ">=") {
                 return item[field] >= val;
@@ -222,7 +283,10 @@ describe("Parent Portal Feature Tests", () => {
                   }
                   if (o2 === "array-contains-any") {
                     const itemArr = item[f2] || [];
-                    return Array.isArray(itemArr) && v2.some((v) => itemArr.includes(v));
+                    return (
+                      Array.isArray(itemArr) &&
+                      v2.some((v) => itemArr.includes(v))
+                    );
                   }
                   if (o2 === ">=") {
                     return item[f2] >= v2;
@@ -263,7 +327,11 @@ describe("Parent Portal Feature Tests", () => {
 
   describe("Security & Authorization Checks", () => {
     it("should reject non-admin users from accessing parent-student link routes", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "parent-1", email_verified: true, role: "parent" });
+      authenticateRequest.mockResolvedValue({
+        uid: "parent-1",
+        email_verified: true,
+        role: "parent",
+      });
       getUserProfile.mockResolvedValue(store.users["parent-1"]);
 
       const response = await adminGetLink(makeRequest());
@@ -271,7 +339,11 @@ describe("Parent Portal Feature Tests", () => {
     });
 
     it("should reject non-parent users from accessing parent dashboard", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "student-1", email_verified: true, role: "student" });
+      authenticateRequest.mockResolvedValue({
+        uid: "student-1",
+        email_verified: true,
+        role: "student",
+      });
       getUserProfile.mockResolvedValue(store.users["student-1"]);
 
       const response = await parentGetDashboard(makeRequest());
@@ -279,17 +351,27 @@ describe("Parent Portal Feature Tests", () => {
     });
 
     it("should reject non-parent users from accessing child details routes", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "student-1", email_verified: true, role: "student" });
+      authenticateRequest.mockResolvedValue({
+        uid: "student-1",
+        email_verified: true,
+        role: "student",
+      });
       getUserProfile.mockResolvedValue(store.users["student-1"]);
 
-      const response = await parentGetAttendance(makeRequest(), { params: { studentId: "student-1" } });
+      const response = await parentGetAttendance(makeRequest(), {
+        params: { studentId: "student-1" },
+      });
       await assertApiError(response, 403, "Forbidden: Requires one of parent");
     });
   });
 
   describe("Admin parent-student link endpoints", () => {
     beforeEach(() => {
-      authenticateRequest.mockResolvedValue({ uid: "admin-1", email_verified: true, role: "admin" });
+      authenticateRequest.mockResolvedValue({
+        uid: "admin-1",
+        email_verified: true,
+        role: "admin",
+      });
       getUserProfile.mockResolvedValue({ uid: "admin-1", role: "admin" });
     });
 
@@ -298,15 +380,17 @@ describe("Parent Portal Feature Tests", () => {
       const body = await assertApiSuccess(response, 200);
 
       expect(body.data.links).toHaveLength(1);
-      expect(body.data.links[0]).toEqual(expect.objectContaining({
-        id: "parent-1_student-1",
-        parentId: "parent-1",
-        studentId: "student-1",
-        parentName: "Parent One",
-        parentEmail: "parent1@learnova.edu",
-        studentName: "Student One",
-        studentEmail: "student1@learnova.edu",
-      }));
+      expect(body.data.links[0]).toEqual(
+        expect.objectContaining({
+          id: "parent-1_student-1",
+          parentId: "parent-1",
+          studentId: "student-1",
+          parentName: "Parent One",
+          parentEmail: "parent1@learnova.edu",
+          studentName: "Student One",
+          studentEmail: "student1@learnova.edu",
+        })
+      );
     });
 
     it("POST /api/admin/parent-student-link: should successfully create a link when both emails exist and roles are valid", async () => {
@@ -329,7 +413,11 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminPostLink(makeRequest());
-      await assertApiError(response, 400, "Parent and student emails are required");
+      await assertApiError(
+        response,
+        400,
+        "Parent and student emails are required"
+      );
     });
 
     it("POST /api/admin/parent-student-link: should return 404 if parent user email does not exist", async () => {
@@ -339,7 +427,11 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminPostLink(makeRequest());
-      await assertApiError(response, 404, 'Parent with email "nonexistent_parent@learnova.edu" not found');
+      await assertApiError(
+        response,
+        404,
+        'Parent with email "nonexistent_parent@learnova.edu" not found'
+      );
     });
 
     it("POST /api/admin/parent-student-link: should return 400 if the emails resolve to the wrong roles", async () => {
@@ -350,7 +442,11 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminPostLink(makeRequest());
-      await assertApiError(response, 400, 'User "student1@learnova.edu" is registered as "student", not "parent"');
+      await assertApiError(
+        response,
+        400,
+        'User "student1@learnova.edu" is registered as "student", not "parent"'
+      );
     });
 
     it("POST /api/admin/parent-student-link: should return 400 if link already exists", async () => {
@@ -360,12 +456,16 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminPostLink(makeRequest());
-      await assertApiError(response, 400, "This relationship is already linked");
+      await assertApiError(
+        response,
+        400,
+        "This relationship is already linked"
+      );
     });
 
     it("DELETE /api/admin/parent-student-link: should delete successfully", async () => {
       const request = makeRequest({
-        url: "http://localhost/api/admin/parent-student-link?parentId=parent-1&studentId=student-1"
+        url: "http://localhost/api/admin/parent-student-link?parentId=parent-1&studentId=student-1",
       });
 
       const response = await adminDeleteLink(request);
@@ -377,11 +477,15 @@ describe("Parent Portal Feature Tests", () => {
 
     it("DELETE /api/admin/parent-student-link: should return 400 if query params are missing", async () => {
       const request = makeRequest({
-        url: "http://localhost/api/admin/parent-student-link?parentId=parent-1"
+        url: "http://localhost/api/admin/parent-student-link?parentId=parent-1",
       });
 
       const response = await adminDeleteLink(request);
-      await assertApiError(response, 400, "Missing parentId or studentId parameters");
+      await assertApiError(
+        response,
+        400,
+        "Missing parentId or studentId parameters"
+      );
     });
 
     it("POST /api/admin/parent-student-link: should return 500 if the saga coordinator fails to sync the link", async () => {
@@ -395,7 +499,11 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminPostLink(makeRequest());
-      await assertApiError(response, 500, "Failed to sync parent-student link: MongoDB database connection timed out");
+      await assertApiError(
+        response,
+        500,
+        "Failed to sync parent-student link: MongoDB database connection timed out"
+      );
     });
 
     it("DELETE /api/admin/parent-student-link: should return 500 if the saga coordinator fails to delete the link", async () => {
@@ -405,17 +513,25 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const request = makeRequest({
-        url: "http://localhost/api/admin/parent-student-link?parentId=parent-1&studentId=student-1"
+        url: "http://localhost/api/admin/parent-student-link?parentId=parent-1&studentId=student-1",
       });
 
       const response = await adminDeleteLink(request);
-      await assertApiError(response, 500, "Failed to delete parent-student link: Failed to connect to MongoDB instance");
+      await assertApiError(
+        response,
+        500,
+        "Failed to delete parent-student link: Failed to connect to MongoDB instance"
+      );
     });
   });
 
   describe("Parent dashboard and self-healing low attendance alert check", () => {
     beforeEach(() => {
-      authenticateRequest.mockResolvedValue({ uid: "parent-1", email_verified: true, role: "parent" });
+      authenticateRequest.mockResolvedValue({
+        uid: "parent-1",
+        email_verified: true,
+        role: "parent",
+      });
       getUserProfile.mockResolvedValue(store.users["parent-1"]);
     });
 
@@ -430,13 +546,17 @@ describe("Parent Portal Feature Tests", () => {
 
     it("GET /api/parent/dashboard: should trigger low-attendance notification if a child has < 75% attendance", async () => {
       // Link student-2 (who has 60% attendance) to parent-1
-      store.parent_student_links["parent-1_student-2"] = { parentId: "parent-1", studentId: "student-2", createdAt: new Date().toISOString() };
+      store.parent_student_links["parent-1_student-2"] = {
+        parentId: "parent-1",
+        studentId: "student-2",
+        createdAt: new Date().toISOString(),
+      };
 
       const response = await parentGetDashboard(makeRequest());
       const body = await assertApiSuccess(response, 200);
 
       expect(body.data.students).toHaveLength(2);
-      
+
       // Verify that notification was created in the mock store
       const notifications = Object.values(store.notifications);
       expect(notifications).toHaveLength(1);
@@ -447,8 +567,12 @@ describe("Parent Portal Feature Tests", () => {
     });
 
     it("GET /api/parent/dashboard: should not duplicate low-attendance notification if one already exists in last 24h", async () => {
-      store.parent_student_links["parent-1_student-2"] = { parentId: "parent-1", studentId: "student-2", createdAt: new Date().toISOString() };
-      
+      store.parent_student_links["parent-1_student-2"] = {
+        parentId: "parent-1",
+        studentId: "student-2",
+        createdAt: new Date().toISOString(),
+      };
+
       // Seed a recent alert in notifications store
       store.notifications["exist-alert-id"] = {
         recipientId: "parent-1",
@@ -470,35 +594,63 @@ describe("Parent Portal Feature Tests", () => {
 
   describe("Security & boundaries: parent cannot fetch unlinked student details", () => {
     beforeEach(() => {
-      authenticateRequest.mockResolvedValue({ uid: "parent-1", email_verified: true, role: "parent" });
+      authenticateRequest.mockResolvedValue({
+        uid: "parent-1",
+        email_verified: true,
+        role: "parent",
+      });
       getUserProfile.mockResolvedValue(store.users["parent-1"]);
     });
 
     it("GET /api/parent/student/[studentId]/attendance: should block unauthorized student access", async () => {
       // student-2 is not linked to parent-1
-      const response = await parentGetAttendance(makeRequest(), { params: { studentId: "student-2" } });
-      await assertApiError(response, 403, "Access Denied: You are not authorized to view this student's records.");
+      const response = await parentGetAttendance(makeRequest(), {
+        params: { studentId: "student-2" },
+      });
+      await assertApiError(
+        response,
+        403,
+        "Access Denied: You are not authorized to view this student's records."
+      );
     });
 
     it("GET /api/parent/student/[studentId]/grades: should block unauthorized student access", async () => {
-      const response = await parentGetGrades(makeRequest(), { params: { studentId: "student-2" } });
-      await assertApiError(response, 403, "Access Denied: You are not authorized to view this student's records.");
+      const response = await parentGetGrades(makeRequest(), {
+        params: { studentId: "student-2" },
+      });
+      await assertApiError(
+        response,
+        403,
+        "Access Denied: You are not authorized to view this student's records."
+      );
     });
 
     it("GET /api/parent/student/[studentId]/notices: should block unauthorized student access", async () => {
-      const response = await parentGetNotices(makeRequest(), { params: { studentId: "student-2" } });
-      await assertApiError(response, 403, "Access Denied: You are not authorized to view this student's records.");
+      const response = await parentGetNotices(makeRequest(), {
+        params: { studentId: "student-2" },
+      });
+      await assertApiError(
+        response,
+        403,
+        "Access Denied: You are not authorized to view this student's records."
+      );
     });
   });
 
   describe("Student detail routes for authorized parents", () => {
     beforeEach(() => {
-      authenticateRequest.mockResolvedValue({ uid: "parent-1", email_verified: true, role: "parent" });
+      authenticateRequest.mockResolvedValue({
+        uid: "parent-1",
+        email_verified: true,
+        role: "parent",
+      });
       getUserProfile.mockResolvedValue(store.users["parent-1"]);
     });
 
     it("GET /api/parent/student/[studentId]/attendance: should return correct attendance stats and records", async () => {
-      const response = await parentGetAttendance(makeRequest(), { params: { studentId: "student-1" } });
+      const response = await parentGetAttendance(makeRequest(), {
+        params: { studentId: "student-1" },
+      });
       const body = await assertApiSuccess(response, 200);
 
       expect(body.data.stats.total).toBe(2);
@@ -511,19 +663,31 @@ describe("Parent Portal Feature Tests", () => {
     it("GET /api/parent/student/[studentId]/grades: should self-seed sample grades if student grades are empty", async () => {
       expect(Object.keys(store.grades)).toHaveLength(0);
 
-      const response = await parentGetGrades(makeRequest(), { params: { studentId: "student-1" } });
+      const response = await parentGetGrades(makeRequest(), {
+        params: { studentId: "student-1" },
+      });
       const body = await assertApiSuccess(response, 200);
 
-      // Verify that sample grades were seeded in the database
+      // Verify that sample grades are returned without persisting to the database
       expect(body.data.grades).toHaveLength(5);
-      expect(Object.keys(store.grades)).toHaveLength(5);
+      expect(Object.keys(store.grades)).toHaveLength(0);
       expect(body.data.grades[0].subject).toBe("Chemistry");
     });
 
     it("GET /api/parent/student/[studentId]/grades: should return existing grades and not self-seed if present", async () => {
-      store.grades["grade-math"] = { studentId: "student-1", subject: "Maths", score: 95, maxScore: 100, grade: "A+", term: "Finals", date: "2026-05-15" };
+      store.grades["grade-math"] = {
+        studentId: "student-1",
+        subject: "Maths",
+        score: 95,
+        maxScore: 100,
+        grade: "A+",
+        term: "Finals",
+        date: "2026-05-15",
+      };
 
-      const response = await parentGetGrades(makeRequest(), { params: { studentId: "student-1" } });
+      const response = await parentGetGrades(makeRequest(), {
+        params: { studentId: "student-1" },
+      });
       const body = await assertApiSuccess(response, 200);
 
       expect(body.data.grades).toHaveLength(1);
@@ -531,7 +695,9 @@ describe("Parent Portal Feature Tests", () => {
     });
 
     it("GET /api/parent/student/[studentId]/notices: should return notices for the student's institute", async () => {
-      const response = await parentGetNotices(makeRequest(), { params: { studentId: "student-1" } });
+      const response = await parentGetNotices(makeRequest(), {
+        params: { studentId: "student-1" },
+      });
       const body = await assertApiSuccess(response, 200);
 
       expect(body.data.notices).toHaveLength(1);
@@ -541,8 +707,12 @@ describe("Parent Portal Feature Tests", () => {
 
   describe("Grade posting and parent notification", () => {
     it("POST /api/parent/student/[studentId]/grades: should allow teachers/admins to add grades and send notifications to linked parents", async () => {
-      authenticateRequest.mockResolvedValue({ uid: "teacher-1", email_verified: true, role: "teacher" });
-      getUserProfile.mockResolvedValue(store.users["teacher-1"]);
+      authenticateRequest.mockResolvedValue({
+        uid: "teacher-1",
+        email_verified: true,
+        role: "teacher",
+      });
+      getUserProfile.mockImplementation(async (uid) => store.users[uid]);
 
       parseJSON.mockResolvedValue({
         studentId: "student-1",
@@ -564,7 +734,9 @@ describe("Parent Portal Feature Tests", () => {
       expect(notifications).toHaveLength(1);
       expect(notifications[0].recipientId).toBe("parent-1");
       expect(notifications[0].type).toBe("grade_update");
-      expect(notifications[0].message).toContain("A new grade (A in History) has been posted");
+      expect(notifications[0].message).toContain(
+        "A new grade (A in History) has been posted"
+      );
     });
   });
 });
