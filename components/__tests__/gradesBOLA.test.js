@@ -149,4 +149,60 @@ describe("Grades BOLA Security Tests", () => {
     expect(res.status).toBe(201);
     expect(data.success).toBe(true);
   });
+
+  test("rejects request if caller has parent role", async () => {
+    verifyFirebaseToken.mockResolvedValue({
+      valid: true,
+      decodedToken: { uid: "parent-1", role: "parent", email_verified: true },
+    });
+    getUserProfile.mockImplementation(async (uid) => {
+      if (uid === "parent-1") return { role: "parent", instituteId: "inst-A" };
+      if (uid === "student-1") return { role: "student", instituteId: "inst-A" };
+      return null;
+    });
+
+    const req = createMockRequest("http://localhost", {}, { studentId: "student-1", subject: "Math", grade: "A", score: 90 });
+    const res = await gradesPOST(req, { params: { studentId: "student-1" } });
+
+    const data = await res.json();
+    expect(res.status).toBe(403);
+    expect(data.error).toBe("Forbidden");
+  });
+
+  test("rejects request if caller has student role", async () => {
+    verifyFirebaseToken.mockResolvedValue({
+      valid: true,
+      decodedToken: { uid: "student-1", role: "student", email_verified: true },
+    });
+    getUserProfile.mockImplementation(async (uid) => {
+      if (uid === "student-1") return { role: "student", instituteId: "inst-A" };
+      return null;
+    });
+
+    const req = createMockRequest("http://localhost", {}, { studentId: "student-1", subject: "Math", grade: "A", score: 90 });
+    const res = await gradesPOST(req, { params: { studentId: "student-1" } });
+
+    const data = await res.json();
+    expect(res.status).toBe(403);
+    expect(data.error).toBe("Forbidden");
+  });
+
+  test("allows request if caller is institute role", async () => {
+    verifyFirebaseToken.mockResolvedValue({
+      valid: true,
+      decodedToken: { uid: "inst-1", role: "institute", email_verified: true },
+    });
+    getUserProfile.mockImplementation(async (uid) => {
+      if (uid === "inst-1") return { role: "institute", uid: "inst-1" };
+      if (uid === "student-1") return { role: "student", instituteId: "inst-1" };
+      return null;
+    });
+
+    const req = createMockRequest("http://localhost", {}, { studentId: "student-1", subject: "Math", grade: "A", score: 90 });
+    const res = await gradesPOST(req, { params: { studentId: "student-1" } });
+
+    const data = await res.json();
+    expect(res.status).toBe(201);
+    expect(data.success).toBe(true);
+  });
 });

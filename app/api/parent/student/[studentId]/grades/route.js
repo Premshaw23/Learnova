@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireAuth } from "@/lib/rbac";
+import { requireAuth, requireParent } from "@/lib/rbac";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { connectDb } from "@/lib/mongodb";
@@ -52,7 +52,7 @@ const SAMPLE_GRADES = [
 ];
 
 export const GET = withErrorHandler(async (request, context) => {
-  const decodedToken = await requireAuth(request);
+  const { payload: decodedToken } = await requireParent(request);
   const parentId = decodedToken.uid;
   const { studentId } = context.params;
 
@@ -106,6 +106,13 @@ export const POST = withErrorHandler(async (request, context) => {
   // Let admins or teachers add grades
   const decodedToken = await requireAuth(request);
   const profile = await getUserProfile(decodedToken.uid);
+  const userRole = profile?.role || decodedToken.role;
+
+  const allowedRoles = ["teacher", "institute", "admin"];
+  if (!userRole || !allowedRoles.includes(userRole)) {
+    return jsonError("Forbidden", 403);
+  }
+
   const body = await parseJSON(request, 1024 * 5);
   const { studentId, subject, grade, score, maxScore, term, date } = body;
 
