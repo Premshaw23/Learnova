@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Mock CSRF module
+vi.mock("@/lib/csrf", () => ({
+  validateCsrfOriginAndReferer: vi.fn(),
+  validateCsrfRequest: vi.fn(),
+  CSRF_PROTECTED_PATHS: ["/api/", "/auth/"],
+}));
+
 // We test the exported functions and rate limiting behavior
 // by importing the middleware module and testing the rate limit logic directly
 
@@ -269,5 +276,126 @@ describe("Middleware Role-Based Redirects", () => {
     expect(getRedirectTarget("institute")).toBe("/institute/dashboard");
     expect(getRedirectTarget("unknown")).toBe("/profile");
     expect(getRedirectTarget(null)).toBe("/profile");
+  });
+});
+
+describe("Middleware CSRF Protection", () => {
+  let validateCsrfRequestMock;
+  let validateCsrfOriginAndRefererMock;
+
+  beforeEach(async () => {
+    const { validateCsrfRequest, validateCsrfOriginAndReferer } = await import("@/lib/csrf");
+    validateCsrfRequestMock = vi.mocked(validateCsrfRequest);
+    validateCsrfOriginAndRefererMock = vi.mocked(validateCsrfOriginAndReferer);
+    validateCsrfRequestMock.mockClear();
+    validateCsrfOriginAndRefererMock.mockClear();
+  });
+
+  it("runs CSRF checks on mutating requests for CSRF-protected paths (e.g. /auth/*) with cookie auth", async () => {
+    const { middleware } = await import("@/middleware");
+    const mockRequest = {
+      method: "POST",
+      nextUrl: {
+        pathname: "/auth/login",
+        origin: "http://localhost",
+      },
+      url: "http://localhost/auth/login",
+      headers: new Headers({ "content-length": "100" }),
+      cookies: {
+        get: (name) => (name === "authToken" ? { value: "token-123" } : null),
+      },
+    };
+
+    await middleware(mockRequest);
+
+    expect(validateCsrfRequestMock).toHaveBeenCalledTimes(1);
+    expect(validateCsrfOriginAndRefererMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs CSRF checks on mutating requests that are Server Actions even if the path is not standard API/auth path", async () => {
+    const { middleware } = await import("@/middleware");
+    const mockRequest = {
+      method: "POST",
+      nextUrl: {
+        pathname: "/some-custom-page",
+        origin: "http://localhost",
+      },
+      url: "http://localhost/some-custom-page",
+      headers: new Headers({
+        "content-length": "100",
+        "next-action": "action-id-123",
+      }),
+      cookies: {
+        get: (name) => (name === "authToken" ? { value: "token-123" } : null),
+      },
+    };
+
+    await middleware(mockRequest);
+
+    expect(validateCsrfRequestMock).toHaveBeenCalledTimes(1);
+    expect(validateCsrfOriginAndRefererMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not run CSRF checks on non-protected paths that are not Server Actions", async () => {
+    const { middleware } = await import("@/middleware");
+    const mockRequest = {
+      method: "POST",
+      nextUrl: {
+        pathname: "/public-profile",
+        origin: "http://localhost",
+      },
+      url: "http://localhost/public-profile",
+      headers: new Headers({ "content-length": "100" }),
+      cookies: {
+        get: (name) => (name === "authToken" ? { value: "token-123" } : null),
+      },
+    };
+
+    await middleware(mockRequest);
+
+    expect(validateCsrfRequestMock).not.toHaveBeenCalled();
+    expect(validateCsrfOriginAndRefererMock).not.toHaveBeenCalled();
+  });
+
+  it("does not run CSRF checks on GET requests", async () => {
+    const { middleware } = await import("@/middleware");
+    const mockRequest = {
+      method: "GET",
+      nextUrl: {
+        pathname: "/auth/login",
+        origin: "http://localhost",
+      },
+      url: "http://localhost/auth/login",
+      headers: new Headers(),
+      cookies: {
+        get: (name) => (name === "authToken" ? { value: "token-123" } : null),
+      },
+    };
+
+    await middleware(mockRequest);
+
+    expect(validateCsrfRequestMock).not.toHaveBeenCalled();
+    expect(validateCsrfOriginAndRefererMock).not.toHaveBeenCalled();
+  });
+
+  it("does not run CSRF checks if authToken cookie is missing (no cookie auth)", async () => {
+    const { middleware } = await import("@/middleware");
+    const mockRequest = {
+      method: "POST",
+      nextUrl: {
+        pathname: "/auth/login",
+        origin: "http://localhost",
+      },
+      url: "http://localhost/auth/login",
+      headers: new Headers({ "content-length": "100" }),
+      cookies: {
+        get: () => null,
+      },
+    };
+
+    await middleware(mockRequest);
+
+    expect(validateCsrfRequestMock).not.toHaveBeenCalled();
+    expect(validateCsrfOriginAndRefererMock).not.toHaveBeenCalled();
   });
 });

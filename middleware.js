@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { Redis } from "@upstash/redis";
-import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
+import { validateCsrfOriginAndReferer, validateCsrfRequest, CSRF_PROTECTED_PATHS } from "@/lib/csrf";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -269,8 +269,11 @@ export async function middleware(request) {
     }
   }
 
+  const matchesProtectedPath = CSRF_PROTECTED_PATHS.some((path) => pathname.startsWith(path));
+  const isServerAction = request.headers.has("next-action");
+
   const tokenFromCookie = request.cookies.get("authToken")?.value || null;
-  if (pathname.startsWith("/api/") && isUnsafeMethod && tokenFromCookie) {
+  if (isUnsafeMethod && tokenFromCookie && (matchesProtectedPath || isServerAction)) {
     try {
       validateCsrfOriginAndReferer(request);
       validateCsrfRequest(request);
