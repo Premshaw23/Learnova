@@ -75,7 +75,7 @@ import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
 
 import { db } from "@/lib/firebaseConfig";
 
-import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 
 import AttendanceRiskDashboard from "@/components/dashboard/AttendanceRiskDashboard";
 import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";

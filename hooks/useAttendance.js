@@ -225,7 +225,8 @@ export const useAttendance = ({ role, user }) => {
   useEffect(() => {
     if (role !== "teacher" || !user) return;
     let cancelled = false;
-    let unsubscribe = null;
+
+    const unsubscribeRef = { current: null };
 
     const fetchStudentsAndAttendance = async () => {
       try {
@@ -351,7 +352,7 @@ export const useAttendance = ({ role, user }) => {
         if (cancelled) {
           unsub();
         } else {
-          unsubscribe = unsub;
+          unsubscribeRef.current = unsub;
         }
       } catch (err) {
         console.error("Error fetching students for roster:", err);
@@ -365,7 +366,7 @@ export const useAttendance = ({ role, user }) => {
     fetchStudentsAndAttendance();
     return () => {
       cancelled = true;
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeRef.current) unsubscribeRef.current();
     };
   }, [role, user]);
 
