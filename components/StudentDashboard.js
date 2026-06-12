@@ -244,14 +244,10 @@ const StudentDashboard = () => {
   const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(false);
   const lastScheduleTickRef = useRef(getScheduleTickKey(new Date()));
 
-<<<<<<< HEAD
-=======
-  const [showComplaint, setShowComplaint] =
-    useState(false);
+  const [goal, setGoal] = useState("");
+  const [level, setLevel] = useState("Beginner");
+  const [roadmap, setRoadmap] = useState([]);
 
-    const [goal, setGoal] = useState("");
-const [level, setLevel] = useState("Beginner");
-const [roadmap, setRoadmap] = useState([]);
   useEffect(() => {
     const fetchGamification = async () => {
       try {
@@ -284,7 +280,6 @@ const [roadmap, setRoadmap] = useState([]);
   }, [user]);
 
   // Attendance stats
->>>>>>> 1c4eca93 (feat: add AI learning roadmap generator)
   const attendanceStats = useMemo(() => {
     const counts = recentActivity.reduce(
       (acc, curr) => {
