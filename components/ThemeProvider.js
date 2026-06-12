@@ -8,7 +8,7 @@ export function ThemeProvider({ children }) {
       attribute="class"
       defaultTheme="dark"
       enableSystem={true}
-      disableTransitionOnChange
+      disableTransitionOnChange={false}
     >
       {children}
     </NextThemesProvider>
