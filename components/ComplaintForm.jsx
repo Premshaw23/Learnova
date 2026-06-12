@@ -360,12 +360,7 @@ export default function ComplaintForm({ onClose, onSubmitComplaint }) {
             className="md:col-span-2 px-4 py-3 rounded-2xl border border-border bg-background outline-none resize-none"
           />
 
-          <button
-            type="submit"
-            className="md:col-span-2 py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600 text-white font-semibold hover:scale-[1.01] transition-all shadow-xl"
-          >
-            Submit Complaint
-          </button>
+          
             <div className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10">
               <div>
                 <span className="text-xs font-bold block text-slate-700 dark:text-slate-300">
