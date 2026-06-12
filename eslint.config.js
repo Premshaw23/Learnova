@@ -19,6 +19,7 @@ const rules = {
 
 module.exports = [
   {
+    files: ["**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs"],
     plugins: {
       "react-hooks": reactHooks,
     },
