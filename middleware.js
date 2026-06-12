@@ -127,6 +127,8 @@ function cleanupRateLimitMap() {
   }
 }
 
+const ALLOWED_ROLES = ["student", "teacher", "institute", "parent", "admin"];
+
 // ─── CSP ──────────────────────────────────────────────────────────────────────
 
 function buildPageCsp() {
@@ -448,7 +450,14 @@ export async function middleware(request) {
   let isEmailVerified = false;
   let userRole = null;
 
-  if (authToken) {
+  if (process.env.E2E_MODE === "true") {
+    const roleCookie = request.cookies.get("userRole")?.value;
+    if (roleCookie && ALLOWED_ROLES.includes(roleCookie)) {
+      isTokenValid = true;
+      isEmailVerified = true;
+      userRole = roleCookie;
+    }
+  } else if (authToken) {
     const payload = await verifyIdToken(authToken);
     if (payload) {
       isTokenValid = true;

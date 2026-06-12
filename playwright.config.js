@@ -71,6 +71,7 @@ export default defineConfig({
       NEXT_PUBLIC_EMAILJS_USER_ID:
         process.env.NEXT_PUBLIC_EMAILJS_USER_ID || "dummy",
       GROQ_API_KEY: process.env.GROQ_API_KEY || "dummy",
+      E2E_MODE: process.env.E2E_MODE || "true",
     },
   },
 });
