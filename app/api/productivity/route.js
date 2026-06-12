@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 import { ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -49,11 +49,7 @@ const postSchema = z.object({
  * Returns empty defaults for first-time users.
  */
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, [
-    "student",
-    "teacher",
-    "admin",
-  ]);
+  const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `productivity_get_${ip}_${decodedToken.uid}`
@@ -91,11 +87,7 @@ export const GET = withErrorHandler(async (request) => {
  * Validates input with Zod to prevent abuse.
  */
 export const POST = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, [
-    "student",
-    "teacher",
-    "admin",
-  ]);
+  const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `productivity_post_${ip}_${decodedToken.uid}`

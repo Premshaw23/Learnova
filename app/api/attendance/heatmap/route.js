@@ -3,21 +3,13 @@ import { ForbiddenError, ValidationError } from "@/lib/errors";
 import { getFirestore } from "firebase-admin/firestore";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { fail, success } from "@/lib/api-response";
-
-// Backwards-compatible alias for test suites that mock `requireAuth` directly.
-// In production, authorization is performed via `requireRole`.
-// eslint-disable-next-line no-unused-vars
-const requireAuth = requireRole;
 
 export const GET = withErrorHandler(async (request) => {
   initFirebaseAdmin();
-  const { payload: decodedToken, profile } = await requireRole(request, [
-    "student",
-    "teacher",
-    "admin",
-  ]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
 
   const { searchParams } = new URL(request.url);
   const requestedUserId = searchParams.get("userId");

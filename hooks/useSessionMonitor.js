@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -10,8 +9,8 @@ export function useSessionMonitor() {
   const { signOut } = useAuth();
   const router = useRouter();
   const isIntercepting = useRef(false);
-  const isSessionExpired = useRef(false);   //  local ref — no window pollution
-  const resetTimerRef = useRef(null);        //  store timer ID so we can cancel it
+  const isSessionExpired = useRef(false); //  local ref — no window pollution
+  const resetTimerRef = useRef(null); //  store timer ID so we can cancel it
 
   useEffect(() => {
     if (typeof window === "undefined" || isIntercepting.current) return;
@@ -32,8 +31,8 @@ export function useSessionMonitor() {
       if (!isOwnApi) return response;
 
       if (response.status === 401) {
-        if (!isSessionExpired.current) {       
-          isSessionExpired.current = true;    
+        if (!isSessionExpired.current) {
+          isSessionExpired.current = true;
 
           toast.error("Session expired. Please log in again.");
 
@@ -46,7 +45,7 @@ export function useSessionMonitor() {
           router.push("/auth");
 
           resetTimerRef.current = setTimeout(() => {
-            isSessionExpired.current = false;  
+            isSessionExpired.current = false;
             resetTimerRef.current = null;
           }, 5000);
         }
@@ -58,9 +57,10 @@ export function useSessionMonitor() {
     return () => {
       window.fetch = originalFetch;
       isIntercepting.current = false;
-      isSessionExpired.current = false;        //  always reset on unmount
+      isSessionExpired.current = false; //  always reset on unmount
 
-      if (resetTimerRef.current) {             //  cancel pending timer on unmount
+      if (resetTimerRef.current) {
+        //  cancel pending timer on unmount
         clearTimeout(resetTimerRef.current);
         resetTimerRef.current = null;
       }

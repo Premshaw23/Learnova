@@ -78,18 +78,15 @@ describe("AttendanceValidation Core States", () => {
     const user = userEvent.setup();
 
     mockApiFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        timeWindow: {
-          start: "00:00",
-          end: "23:59",
-        },
-        gpsLocation: {
-          lat: 0,
-          lng: 0,
-          radius: 100,
-        },
-      }),
+      timeWindow: {
+        start: "00:00",
+        end: "23:59",
+      },
+      gpsLocation: {
+        lat: 0,
+        lng: 0,
+        radius: 100,
+      },
     });
 
     render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
@@ -115,18 +112,15 @@ describe("AttendanceValidation Core States", () => {
     const user = userEvent.setup();
 
     mockApiFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        timeWindow: {
-          start: "00:00",
-          end: "23:59",
-        },
-        gpsLocation: {
-          lat: 0,
-          lng: 0,
-          radius: 100,
-        },
-      }),
+      timeWindow: {
+        start: "00:00",
+        end: "23:59",
+      },
+      gpsLocation: {
+        lat: 0,
+        lng: 0,
+        radius: 100,
+      },
     });
 
     render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
@@ -154,18 +148,15 @@ describe("AttendanceValidation Core States", () => {
     const user = userEvent.setup();
 
     mockApiFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        timeWindow: {
-          start: "00:00",
-          end: "23:59",
-        },
-        gpsLocation: {
-          lat: 0,
-          lng: 0,
-          radius: 100,
-        },
-      }),
+      timeWindow: {
+        start: "00:00",
+        end: "23:59",
+      },
+      gpsLocation: {
+        lat: 0,
+        lng: 0,
+        radius: 100,
+      },
     });
 
     render(<AttendanceValidation onValidationSuccess={vi.fn()} />);

@@ -17,9 +17,7 @@ export default function StudyDeck() {
   async function fetchCards() {
     setLoading(true);
     try {
-      const res = await apiFetch(`/api/flashcards`);
-      if (!res.ok) throw new Error("Failed to load flashcards");
-      const data = await res.json();
+      const data = await apiFetch(`/api/flashcards`);
       setCards(data || []);
       setIndex(0);
       setShowBack(false);

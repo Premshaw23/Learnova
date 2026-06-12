@@ -2,7 +2,7 @@ import { authenticateRequest } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { connectDbForSSE } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
 
@@ -11,19 +11,6 @@ const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const HEARTBEAT_INTERVAL_MS = 15000;
 const POLL_INTERVAL_MS = 10000;
 const NOTICE_TTL_SECONDS = 24 * 60 * 60; // 24 hours
-
-// ── Redis Client ─────────────────────────────────────────────────────────────
-let redisClient;
-
-function getRedis() {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  if (!redisClient) {
-    redisClient = new Redis({ url, token });
-  }
-  return redisClient;
-}
 
 // ── Redis Keys ───────────────────────────────────────────────────────────────
 const redisKeys = {

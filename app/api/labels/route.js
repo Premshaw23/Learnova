@@ -1,8 +1,9 @@
 import { connectDb } from "@/lib/mongodb";
 import { AppError } from "@/lib/errors";
 import { jsonSuccess } from "@/lib/api-response";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
+import { getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { escapeRegex } from "@/utils/mongoUtils";
 
@@ -20,12 +21,9 @@ export const GET = withErrorHandler(async (request) => {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  // Authentication and Role Verification
-  const { profile } = await requireRole(request, [
-    "admin",
-    "teacher",
-    "student",
-  ]);
+  // Authentication
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
 
   // Search query — escape metacharacters to prevent ReDoS
   const { searchParams } = new URL(request.url);

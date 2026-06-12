@@ -59,12 +59,15 @@ describe("statsService", () => {
       });
     });
 
-    it("should throw on failure response", async () => {
+    it("should return failure info on failure response", async () => {
       fetch.mockResolvedValue({
         ok: false,
         json: async () => ({ error: "Failed" }),
       });
-      await expect(initializeUserStats("user123")).rejects.toThrow("Failed");
+      const res = await initializeUserStats("user123");
+      expect(res).toHaveProperty("success", false);
+      expect(res.error).toBeInstanceOf(Error);
+      expect(res.error.message).toMatch(/Failed/);
     });
   });
 
@@ -130,14 +133,13 @@ describe("statsService", () => {
       expect(rate).toBe(87);
     });
 
-    it("should throw on failure response", async () => {
+    it("should return null on failure response", async () => {
       fetch.mockResolvedValue({
         ok: false,
         json: async () => ({ error: "Query failed" }),
       });
-      await expect(recalculateAttendanceRate("user123")).rejects.toThrow(
-        "Query failed"
-      );
+      const res = await recalculateAttendanceRate("user123");
+      expect(res).toBeNull();
     });
   });
 });

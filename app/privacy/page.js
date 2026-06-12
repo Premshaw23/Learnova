@@ -74,20 +74,16 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">
-              4. Data Sharing
-            </h2>
+            <h2 className="text-2xl font-semibold mb-3">4. Data Sharing</h2>
             <p className="text-muted-foreground">
               Learnova does not sell or share your personal data with third
-              parties for marketing purposes. Data may be shared only with
-              your institution administrators or as required by applicable law.
+              parties for marketing purposes. Data may be shared only with your
+              institution administrators or as required by applicable law.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">
-              5. Your Rights
-            </h2>
+            <h2 className="text-2xl font-semibold mb-3">5. Your Rights</h2>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
               <li>You may request access to your personal data at any time.</li>
               <li>
@@ -101,12 +97,10 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">
-              6. Cookies
-            </h2>
+            <h2 className="text-2xl font-semibold mb-3">6. Cookies</h2>
             <p className="text-muted-foreground">
-              Learnova uses cookies and similar technologies to maintain
-              session state, remember user preferences, and improve platform
+              Learnova uses cookies and similar technologies to maintain session
+              state, remember user preferences, and improve platform
               performance. You may disable cookies in your browser settings,
               though this may affect platform functionality.
             </p>
@@ -125,16 +119,11 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">
-              8. Contact Us
-            </h2>
+            <h2 className="text-2xl font-semibold mb-3">8. Contact Us</h2>
             <p className="text-muted-foreground">
               If you have any questions about this Privacy Policy or how your
               data is handled, please reach out via our{" "}
-              
-               <a href="/contact"
-                className="text-purple-400 hover:underline"
-              >
+              <a href="/contact" className="text-purple-400 hover:underline">
                 contact page
               </a>
               .

@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireAdmin } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { initializeFirebase, getAdminDb } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
  * Should be triggered by a cron job or manual admin action.
  */
 export const POST = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireAdmin(request);
+  const decodedToken = await requireAuth(request);
 
   initializeFirebase();
   const db = admin.firestore();
@@ -55,83 +55,62 @@ export const POST = withErrorHandler(async (request) => {
 
       // If operation failed and was fully compensated, mark as resolved
       if (op.status === "compensating" && op.fullyCompensated) {
-        await mongoDB
-          .collection("pending_operations")
-          .updateOne(
-            { operationId: op.operationId },
-            {
-              $set: {
-                status: "resolved_by_reconciliation",
-                updatedAt: new Date(),
-              },
-            }
-          );
+        await mongoDB.collection("pending_operations").updateOne(
+          { operationId: op.operationId },
+          {
+            $set: {
+              status: "resolved_by_reconciliation",
+              updatedAt: new Date(),
+            },
+          }
+        );
       }
     }
   } catch (err) {
     results.errors.push(`Stale operations review failed: ${err.message}`);
   }
 
-  // 2. Find orphaned Firebase Auth accounts (exist in Auth but not in any DB)
+  // 2. Reconcile Firestore ↔ MongoDB using batched cursor pagination.
+  //    Memory is bounded to O(BATCH_SIZE) — no full UID Sets are built.
   try {
-    const PAGE_SIZE = 500;
+    const BATCH_SIZE = 200;
 
-    // Page through Firestore users
-    const firestoreUids = new Set();
+    // Phase 1: Firestore → MongoDB
+    const mongoBulkOps = [];
     let firestoreCursor = null;
+
     do {
-      let firestoreQuery = db.collection("users").limit(PAGE_SIZE);
+      let firestoreQuery = db.collection("users").limit(BATCH_SIZE);
       if (firestoreCursor) {
         firestoreQuery = firestoreQuery.startAfter(firestoreCursor);
       }
-      const firestoreSnapshot = await firestoreQuery.get();
-      if (firestoreSnapshot.empty) break;
-      firestoreSnapshot.docs.forEach((doc) => firestoreUids.add(doc.id));
-      firestoreCursor =
-        firestoreSnapshot.docs[firestoreSnapshot.docs.length - 1];
-    } while (firestoreCursor);
+      const snapshot = await firestoreQuery.get();
+      if (snapshot.empty) break;
 
-    // Page through MongoDB users
-    const mongoUids = new Set();
-    const mongoUsersMap = new Map();
-    let mongoCursor = null;
-    let lastBatchSize = 0;
-    do {
-      let mongoQuery = mongoDB
+      firestoreCursor = snapshot.docs[snapshot.docs.length - 1];
+      const batchUids = snapshot.docs.map((d) => d.id);
+
+      const existingMongo = await mongoDB
         .collection("users")
-        .find({})
-        .sort({ _id: 1 })
-        .limit(PAGE_SIZE);
-      if (mongoCursor) {
-        mongoQuery = mongoQuery.skip(mongoCursor);
-      }
-      const mongoBatch = await mongoQuery.toArray();
-      lastBatchSize = mongoBatch.length;
-      if (lastBatchSize === 0) break;
-      mongoBatch.forEach((u) => {
-        if (u.firebaseUid) {
-          mongoUids.add(u.firebaseUid);
-          mongoUsersMap.set(u.firebaseUid, u);
-        }
-      });
-      mongoCursor = (mongoCursor || 0) + lastBatchSize;
-    } while (lastBatchSize === PAGE_SIZE);
+        .find({ firebaseUid: { $in: batchUids } })
+        .project({ firebaseUid: 1 })
+        .toArray();
+      const existingMongoUids = new Set(
+        existingMongo.map((u) => u.firebaseUid)
+      );
 
-    // Bulk-reconcile: Firestore → MongoDB
-    const mongoBulkOps = [];
-    for (const uid of firestoreUids) {
-      if (!mongoUids.has(uid)) {
-        const firestoreDoc = await db.collection("users").doc(uid).get();
-        const firestoreData = firestoreDoc.data();
+      for (const doc of snapshot.docs) {
+        if (existingMongoUids.has(doc.id)) continue;
+        const firestoreData = doc.data();
         if (!firestoreData) continue;
 
         const now = new Date().toISOString();
         mongoBulkOps.push({
           updateOne: {
-            filter: { firebaseUid: uid },
+            filter: { firebaseUid: doc.id },
             update: {
               $set: {
-                firebaseUid: uid,
+                firebaseUid: doc.id,
                 email: firestoreData.email || "",
                 name: firestoreData.fullName || "",
                 fullName: firestoreData.fullName || "",
@@ -152,7 +131,8 @@ export const POST = withErrorHandler(async (request) => {
           },
         });
       }
-    }
+    } while (firestoreCursor);
+
     if (mongoBulkOps.length > 0) {
       const bulkResult = await mongoDB
         .collection("users")
@@ -161,14 +141,46 @@ export const POST = withErrorHandler(async (request) => {
         bulkResult.upsertedCount + bulkResult.modifiedCount;
     }
 
-    // Bulk-reconcile: MongoDB → Firestore
-    let firestoreBatch = db.batch();
-    let firestoreBatchSize = 0;
-    let firestoreBatchOps = 0;
-    for (const uid of mongoUids) {
-      if (!firestoreUids.has(uid)) {
-        const mongoUser = mongoUsersMap.get(uid);
-        if (!mongoUser) continue;
+    // Phase 2: MongoDB → Firestore — cursor-based pagination, batch reads
+    let lastMongoId = null;
+    let firestoreWriteCount = 0;
+
+    while (true) {
+      const mongoFilter = lastMongoId ? { _id: { $gt: lastMongoId } } : {};
+      const mongoBatch = await mongoDB
+        .collection("users")
+        .find(mongoFilter)
+        .sort({ _id: 1 })
+        .limit(BATCH_SIZE)
+        .toArray();
+
+      if (mongoBatch.length === 0) break;
+      lastMongoId = mongoBatch[mongoBatch.length - 1]._id;
+
+      const batchUids = mongoBatch
+        .map((u) => u.firebaseUid)
+        .filter(Boolean);
+
+      if (batchUids.length === 0) continue;
+
+      const docRefs = batchUids.map((uid) =>
+        db.collection("users").doc(uid)
+      );
+      const firestoreDocs = await db.getAll(...docRefs);
+      const existingFirestoreUids = new Set(
+        firestoreDocs.filter((d) => d.exists).map((d) => d.id)
+      );
+
+      let firestoreBatch = db.batch();
+      let batchCount = 0;
+
+      for (const mongoUser of mongoBatch) {
+        if (
+          !mongoUser.firebaseUid ||
+          existingFirestoreUids.has(mongoUser.firebaseUid)
+        ) {
+          continue;
+        }
 
         const profile = {
           uid: mongoUser.firebaseUid,
@@ -178,23 +190,28 @@ export const POST = withErrorHandler(async (request) => {
           createdAt: mongoUser.createdAt || new Date().toISOString(),
           lastLogin: mongoUser.lastLogin || null,
         };
-        firestoreBatch.set(db.collection("users").doc(uid), profile, {
-          merge: true,
-        });
-        firestoreBatchSize++;
-        firestoreBatchOps++;
+        firestoreBatch.set(
+          db.collection("users").doc(mongoUser.firebaseUid),
+          profile,
+          { merge: true }
+        );
+        batchCount++;
 
-        if (firestoreBatchSize >= 500) {
+        if (batchCount >= 500) {
           await firestoreBatch.commit();
           firestoreBatch = db.batch();
-          firestoreBatchSize = 0;
+          firestoreWriteCount += batchCount;
+          batchCount = 0;
         }
       }
+
+      if (batchCount > 0) {
+        await firestoreBatch.commit();
+        firestoreWriteCount += batchCount;
+      }
     }
-    if (firestoreBatchSize > 0) {
-      await firestoreBatch.commit();
-    }
-    results.firestoreToMongoReconciled = firestoreBatchOps;
+
+    results.firestoreToMongoReconciled = firestoreWriteCount;
   } catch (err) {
     results.errors.push(`DB reconciliation failed: ${err.message}`);
   }

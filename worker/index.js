@@ -88,9 +88,18 @@ async function swFetchWithCsrf(url, options = {}) {
   const headers = new Headers(options.headers || {});
 
   if (isUnsafeMethod(method) && isSameOriginApiUrl(url)) {
-    if (!headers.has("x-csrf-token") && !headers.has("X-CSRF-Token")) {
+    const existingToken =
+      headers.get("x-csrf-token") ||
+      headers.get("x-xsrf-token") ||
+      headers.get("x-csrftoken");
+
+    if (!existingToken) {
       const token = await getCsrfToken();
-      if (token) headers.set("X-CSRF-Token", token);
+      if (token) headers.set("x-csrf-token", token);
+    } else {
+      if (!headers.has("x-csrf-token")) {
+        headers.set("x-csrf-token", existingToken);
+      }
     }
   }
 

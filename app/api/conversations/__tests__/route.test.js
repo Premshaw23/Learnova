@@ -147,7 +147,11 @@ describe("GET /api/conversations - Pagination", () => {
   });
 
   test("returns conversations for authenticated user", async () => {
-    const req = createMockRequest({}, null, "http://localhost/api/conversations");
+    const req = createMockRequest(
+      {},
+      null,
+      "http://localhost/api/conversations"
+    );
     const response = await GET(req);
 
     expect(response.status).toBe(200);
@@ -174,7 +178,11 @@ describe("GET /api/conversations - Pagination", () => {
   test("rejects when rate limited", async () => {
     checkRateLimit.mockResolvedValue({ allowed: false, remaining: 0 });
 
-    const req = createMockRequest({}, null, "http://localhost/api/conversations");
+    const req = createMockRequest(
+      {},
+      null,
+      "http://localhost/api/conversations"
+    );
     const response = await GET(req);
 
     expect(response.status).toBe(429);

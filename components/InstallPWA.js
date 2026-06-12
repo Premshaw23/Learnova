@@ -122,13 +122,15 @@ export default function InstallPWA() {
               <button
                 onClick={handleInstall}
                 className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold text-xs hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 cursor-pointer shadow-lg shadow-purple-600/20"
-               aria-label="Action button">
+                aria-label="Action button"
+              >
                 Install
               </button>
               <button
                 onClick={handleDismiss}
                 className="px-4 py-2 rounded-xl bg-slate-800/80 border border-white/5 text-slate-300 font-semibold text-xs hover:bg-slate-700/80 hover:text-white hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 cursor-pointer"
-               aria-label="Action button">
+                aria-label="Action button"
+              >
                 Not now
               </button>
             </div>

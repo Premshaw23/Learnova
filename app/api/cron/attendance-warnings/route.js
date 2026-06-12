@@ -4,6 +4,7 @@ import { authorizeCronRequest } from "@/lib/cronAuth";
 import { connectDb } from "@/lib/mongodb";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import { evaluateStudentAttendance } from "@/lib/attendanceUtils";
+import { publishEvent } from "@/lib/ssePublisher";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,6 @@ async function getRecentWarningUserIds(db, userIds, cooldownDate) {
   return new Set(checks.filter(Boolean));
 }
 
-
 async function sendWarningEmails(emailsToSend) {
   const hasEmailConfig =
     process.env.EMAILJS_SERVICE_ID &&
@@ -66,7 +66,7 @@ async function sendWarningEmails(emailsToSend) {
 
   const sendEmail = async (emailData) => {
     try {
-      await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -78,8 +78,26 @@ async function sendWarningEmails(emailsToSend) {
           template_params: emailData,
         }),
       });
+
+      if (!response.ok) {
+        let responseBody = "";
+        try {
+          responseBody = await response.text();
+        } catch {
+          // Ignore body parse failures and log status-based diagnostics.
+        }
+
+        console.error(
+          `[attendance-warnings] EmailJS request failed for ${emailData.to_email} with status ${response.status} ${response.statusText}${
+            responseBody ? `: ${responseBody}` : ""
+          }`
+        );
+      }
     } catch (error) {
-      console.error(`Failed to send email to ${emailData.to_email}:`, error);
+      console.error(
+        `[attendance-warnings] Failed to send email to ${emailData.to_email}:`,
+        error
+      );
     }
   };
 
@@ -105,10 +123,9 @@ export async function GET(request) {
     // Ensure the warning_logs collection has a compound index on (userId, createdAt)
     // so the cooldown query does not trigger a full collection scan
     try {
-      await db.collection("warning_logs").createIndex(
-        { userId: 1, createdAt: -1 },
-        { background: true }
-      );
+      await db
+        .collection("warning_logs")
+        .createIndex({ userId: 1, createdAt: -1 }, { background: true });
     } catch {
       // Index may already exist
     }
@@ -139,6 +156,17 @@ export async function GET(request) {
       if (notificationsToInsert.length === 0) return;
       await db.collection("notifications").insertMany(notificationsToInsert);
       await db.collection("warning_logs").insertMany(warningLogsToInsert);
+      for (const notif of notificationsToInsert) {
+        publishEvent("notifications", "warning", {
+          _id: notif._id?.toString?.() || notif._id,
+          recipientId: notif.userId,
+          title: notif.title,
+          message: notif.message,
+          type: notif.type,
+          read: false,
+          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+        }).catch(() => {});
+      }
       notificationsToInsert = [];
       warningLogsToInsert = [];
     }
@@ -262,6 +290,17 @@ export async function GET(request) {
     if (notificationsToInsert.length > 0) {
       await db.collection("notifications").insertMany(notificationsToInsert);
       await db.collection("warning_logs").insertMany(warningLogsToInsert);
+      for (const notif of notificationsToInsert) {
+        publishEvent("notifications", "warning", {
+          _id: notif._id?.toString?.() || notif._id,
+          recipientId: notif.userId,
+          title: notif.title,
+          message: notif.message,
+          type: notif.type,
+          read: false,
+          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+        }).catch(() => {});
+      }
     }
 
     await sendWarningEmails(emailsToSend);

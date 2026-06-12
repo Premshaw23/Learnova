@@ -16,7 +16,7 @@ vi.mock("jspdf", () => {
     autoTable: vi.fn(),
   };
   return {
-    default: vi.fn(() => mockDoc),
+    default: vi.fn(function () { return mockDoc; }),
   };
 });
 

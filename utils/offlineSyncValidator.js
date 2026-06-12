@@ -4,9 +4,9 @@
  * Prevents cheating through modified local data
  */
 
-import { createLogger } from './logger';
+import { createLogger } from "./logger";
 
-const logger = createLogger('offline-sync');
+const logger = createLogger("offline-sync");
 
 /**
  * Validates offline progress synchronization data
@@ -16,18 +16,18 @@ export class OfflineSyncValidator {
    * Validate attendance record structure and values
    */
   static validateAttendanceRecord(record) {
-    if (!record || typeof record !== 'object') {
+    if (!record || typeof record !== "object") {
       return {
         isValid: false,
-        reason: 'Record must be an object',
+        reason: "Record must be an object",
       };
     }
 
     // Validate date format (ISO string)
-    if (!record.date || typeof record.date !== 'string') {
+    if (!record.date || typeof record.date !== "string") {
       return {
         isValid: false,
-        reason: 'Record must have a valid date field',
+        reason: "Record must have a valid date field",
       };
     }
 
@@ -35,7 +35,7 @@ export class OfflineSyncValidator {
     if (isNaN(dateObj.getTime())) {
       return {
         isValid: false,
-        reason: 'Date is not a valid ISO format',
+        reason: "Date is not a valid ISO format",
       };
     }
 
@@ -43,31 +43,37 @@ export class OfflineSyncValidator {
     if (dateObj > new Date()) {
       return {
         isValid: false,
-        reason: 'Attendance date cannot be in the future',
+        reason: "Attendance date cannot be in the future",
       };
     }
 
     // Validate time format (HH:MM)
     if (record.time) {
-      if (typeof record.time !== 'string' || !/^\d{2}:\d{2}$/.test(record.time)) {
+      if (
+        typeof record.time !== "string" ||
+        !/^\d{2}:\d{2}$/.test(record.time)
+      ) {
         return {
           isValid: false,
-          reason: 'Time must be in HH:MM format',
+          reason: "Time must be in HH:MM format",
         };
       }
     }
 
     // Validate status if present
-    if (record.status && !['present', 'absent', 'late'].includes(record.status.toLowerCase())) {
+    if (
+      record.status &&
+      !["present", "absent", "late"].includes(record.status.toLowerCase())
+    ) {
       return {
         isValid: false,
-        reason: 'Status must be present, absent, or late',
+        reason: "Status must be present, absent, or late",
       };
     }
 
     return {
       isValid: true,
-      reason: 'Attendance record is valid',
+      reason: "Attendance record is valid",
     };
   }
 
@@ -75,49 +81,52 @@ export class OfflineSyncValidator {
    * Validate progress data consistency
    */
   static validateProgressConsistency(currentServerData, offlineChanges) {
-    if (!currentServerData || typeof currentServerData !== 'object') {
+    if (!currentServerData || typeof currentServerData !== "object") {
       return {
         isValid: false,
-        reason: 'Server data must be provided for validation',
+        reason: "Server data must be provided for validation",
       };
     }
 
     if (!Array.isArray(offlineChanges)) {
       return {
         isValid: false,
-        reason: 'Offline changes must be an array',
+        reason: "Offline changes must be an array",
       };
     }
 
     // Validate each change
     for (const change of offlineChanges) {
-      if (!change.type || !['add', 'update', 'delete'].includes(change.type)) {
+      if (!change.type || !["add", "update", "delete"].includes(change.type)) {
         return {
           isValid: false,
-          reason: 'Change type must be add, update, or delete',
+          reason: "Change type must be add, update, or delete",
           invalidChange: change,
         };
       }
 
       // Validate operation data
-      if (!change.data || typeof change.data !== 'object') {
+      if (!change.data || typeof change.data !== "object") {
         return {
           isValid: false,
-          reason: 'Change must have valid data object',
+          reason: "Change must have valid data object",
           invalidChange: change,
         };
       }
     }
 
     // Check for conflicting changes
-    const conflictCheck = this.checkForConflicts(currentServerData, offlineChanges);
+    const conflictCheck = this.checkForConflicts(
+      currentServerData,
+      offlineChanges
+    );
     if (!conflictCheck.isValid) {
       return conflictCheck;
     }
 
     return {
       isValid: true,
-      reason: 'Progress data is consistent',
+      reason: "Progress data is consistent",
     };
   }
 
@@ -146,7 +155,7 @@ export class OfflineSyncValidator {
     let totalXpGained = 0;
     const xpChanges = offlineChanges.filter((c) => c.data.xp);
     for (const change of xpChanges) {
-      if (typeof change.data.xp === 'number') {
+      if (typeof change.data.xp === "number") {
         totalXpGained += change.data.xp;
       }
     }
@@ -157,7 +166,12 @@ export class OfflineSyncValidator {
     }
 
     // Check for impossible progress jumps
-    if (serverData.level && offlineChanges.some((c) => c.data.level && c.data.level > (serverData.level + 5))) {
+    if (
+      serverData.level &&
+      offlineChanges.some(
+        (c) => c.data.level && c.data.level > serverData.level + 5
+      )
+    ) {
       suspiciousPatterns.impossibleProgressJump = true;
     }
 
@@ -175,19 +189,21 @@ export class OfflineSyncValidator {
       }
     }
 
-    const hasSuspiciousPatterns = Object.values(suspiciousPatterns).some((v) => v);
+    const hasSuspiciousPatterns = Object.values(suspiciousPatterns).some(
+      (v) => v
+    );
 
     if (hasSuspiciousPatterns) {
       return {
         isValid: false,
-        reason: 'Suspicious patterns detected in offline changes',
+        reason: "Suspicious patterns detected in offline changes",
         suspiciousPatterns,
       };
     }
 
     return {
       isValid: true,
-      reason: 'No conflicts or suspicious patterns detected',
+      reason: "No conflicts or suspicious patterns detected",
     };
   }
 
@@ -195,10 +211,10 @@ export class OfflineSyncValidator {
    * Validate entire offline sync payload
    */
   static validateOfflineSyncPayload(payload, currentServerData) {
-    if (!payload || typeof payload !== 'object') {
+    if (!payload || typeof payload !== "object") {
       return {
         isValid: false,
-        reason: 'Payload must be an object',
+        reason: "Payload must be an object",
         fraudScore: 100,
       };
     }
@@ -206,18 +222,18 @@ export class OfflineSyncValidator {
     const { userId, timestamp, changes, signature } = payload;
 
     // Validate required fields
-    if (!userId || typeof userId !== 'string') {
+    if (!userId || typeof userId !== "string") {
       return {
         isValid: false,
-        reason: 'Payload must include valid userId',
+        reason: "Payload must include valid userId",
         fraudScore: 80,
       };
     }
 
-    if (!timestamp || typeof timestamp !== 'string') {
+    if (!timestamp || typeof timestamp !== "string") {
       return {
         isValid: false,
-        reason: 'Payload must include timestamp',
+        reason: "Payload must include timestamp",
         fraudScore: 80,
       };
     }
@@ -226,7 +242,7 @@ export class OfflineSyncValidator {
     if (isNaN(payloadTime.getTime())) {
       return {
         isValid: false,
-        reason: 'Timestamp must be valid ISO format',
+        reason: "Timestamp must be valid ISO format",
         fraudScore: 80,
       };
     }
@@ -237,7 +253,7 @@ export class OfflineSyncValidator {
     if (hoursSinceSync < 0 || hoursSinceSync > 24) {
       return {
         isValid: false,
-        reason: 'Sync timestamp is outside acceptable range',
+        reason: "Sync timestamp is outside acceptable range",
         fraudScore: 70,
         hoursSinceSync,
       };
@@ -247,7 +263,7 @@ export class OfflineSyncValidator {
     if (!Array.isArray(changes) || changes.length === 0) {
       return {
         isValid: false,
-        reason: 'Payload must include at least one change',
+        reason: "Payload must include at least one change",
         fraudScore: 60,
       };
     }
@@ -255,10 +271,10 @@ export class OfflineSyncValidator {
     // Validate each change
     for (const change of changes) {
       const validation = this.validateAttendanceRecord(change.data);
-      if (!validation.isValid && change.type !== 'delete') {
+      if (!validation.isValid && change.type !== "delete") {
         return {
           isValid: false,
-          reason: 'Invalid change data',
+          reason: "Invalid change data",
           fraudScore: 75,
           invalidChange: change,
         };
@@ -266,7 +282,10 @@ export class OfflineSyncValidator {
     }
 
     // Check for conflicts
-    const conflictCheck = this.checkForConflicts(currentServerData || {}, changes);
+    const conflictCheck = this.checkForConflicts(
+      currentServerData || {},
+      changes
+    );
     if (!conflictCheck.isValid) {
       return {
         isValid: false,
@@ -278,7 +297,7 @@ export class OfflineSyncValidator {
 
     return {
       isValid: true,
-      reason: 'Offline sync payload is valid',
+      reason: "Offline sync payload is valid",
       fraudScore: 0,
     };
   }
@@ -289,14 +308,17 @@ export class OfflineSyncValidator {
   static calculateFraudScore(payload, serverData) {
     let score = 0;
 
-    if (!payload || typeof payload !== 'object') score += 100;
+    if (!payload || typeof payload !== "object") score += 100;
     if (!payload.userId) score += 20;
     if (!payload.timestamp) score += 15;
     if (!Array.isArray(payload.changes)) score += 25;
 
     // Check changes for suspicious patterns
     if (payload.changes) {
-      const validation = this.checkForConflicts(serverData || {}, payload.changes);
+      const validation = this.checkForConflicts(
+        serverData || {},
+        payload.changes
+      );
       if (!validation.isValid) {
         if (validation.suspiciousPatterns?.massiveXpGain) score += 30;
         if (validation.suspiciousPatterns?.impossibleProgressJump) score += 35;
@@ -312,12 +334,22 @@ export class OfflineSyncValidator {
 /**
  * Safe offline sync wrapper with validation
  */
-export async function validateAndSyncOfflineProgress(payload, currentServerData, applyChanges) {
-  const validation = OfflineSyncValidator.validateOfflineSyncPayload(payload, currentServerData);
-  const fraudScore = OfflineSyncValidator.calculateFraudScore(payload, currentServerData);
+export async function validateAndSyncOfflineProgress(
+  payload,
+  currentServerData,
+  applyChanges
+) {
+  const validation = OfflineSyncValidator.validateOfflineSyncPayload(
+    payload,
+    currentServerData
+  );
+  const fraudScore = OfflineSyncValidator.calculateFraudScore(
+    payload,
+    currentServerData
+  );
 
   if (!validation.isValid) {
-    logger.error('Invalid offline sync attempt', {
+    logger.error("Invalid offline sync attempt", {
       userId: payload?.userId,
       reason: validation.reason,
       fraudScore,
@@ -332,7 +364,7 @@ export async function validateAndSyncOfflineProgress(payload, currentServerData,
   }
 
   if (fraudScore > 50) {
-    logger.warn('High fraud score for offline sync', {
+    logger.warn("High fraud score for offline sync", {
       userId: payload.userId,
       fraudScore,
       patterns: validation.suspiciousPatterns,
@@ -340,11 +372,11 @@ export async function validateAndSyncOfflineProgress(payload, currentServerData,
   }
 
   // Apply validated changes
-  if (applyChanges && typeof applyChanges === 'function') {
+  if (applyChanges && typeof applyChanges === "function") {
     try {
       const appliedChanges = await applyChanges(payload.changes);
 
-      logger.info('Offline sync successful', {
+      logger.info("Offline sync successful", {
         userId: payload.userId,
         changesApplied: appliedChanges.length,
         fraudScore,
@@ -356,14 +388,14 @@ export async function validateAndSyncOfflineProgress(payload, currentServerData,
         fraudScore,
       };
     } catch (error) {
-      logger.error('Error applying offline sync changes', {
+      logger.error("Error applying offline sync changes", {
         userId: payload.userId,
         error: error.message,
       });
 
       return {
         success: false,
-        reason: 'Failed to apply changes',
+        reason: "Failed to apply changes",
         fraudScore,
         changes: [],
       };

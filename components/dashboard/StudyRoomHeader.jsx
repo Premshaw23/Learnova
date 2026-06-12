@@ -81,7 +81,10 @@ const StudyRoomHeader = ({
           </div>
 
           {/* Leave Session Button */}
-          <button className="px-4 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-semibold rounded-xl text-sm border border-rose-100 dark:border-rose-950/40 active:scale-95 transition-all duration-200" aria-label="Action button">
+          <button
+            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-semibold rounded-xl text-sm border border-rose-100 dark:border-rose-950/40 active:scale-95 transition-all duration-200"
+            aria-label="Action button"
+          >
             End Session
           </button>
         </div>

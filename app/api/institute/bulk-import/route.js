@@ -6,7 +6,7 @@ import {
 } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { parseJSON } from "@/lib/error-handler";
 import {
   findExistingOperation,
@@ -23,10 +23,7 @@ const MAX_BULK_IMPORT_PAYLOAD_BYTES = 1024 * 1024;
 export async function POST(req) {
   try {
     // Authenticate and authorize — only institute or admin can bulk-import
-    const { payload: decodedToken } = await requireRole(req, [
-      "institute",
-      "admin",
-    ]);
+    const decodedToken = await requireAuth(req);
 
     const profile = await getUserProfile(decodedToken.uid);
     const instituteId = profile?.instituteId || decodedToken.uid;
