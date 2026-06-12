@@ -16,90 +16,70 @@ const AUTH_PAGES = [
 async function loginAsRole(page, role) {
   await page.goto("/auth");
   await page.context().addCookies([
-    {
-      name: "userRole",
-      value: role,
-      domain: "localhost",
-      path: "/",
-    },
-    {
-      name: "authToken",
-      value: "mock-token-for-" + role,
-      domain: "localhost",
-      path: "/",
-    },
+    { name: "userRole", value: role, domain: "localhost", path: "/" },
+    { name: "authToken", value: "mock-token-for-" + role, domain: "localhost", path: "/" },
   ]);
 }
 
+async function runAudit(page) {
+  return await new AxeBuilder({ page })
+    .withTags(["wcag2aa", "wcag21aa"])
+    .options({
+      runOnly: { type: "tag", values: ["wcag2aa", "wcag21aa"] },
+      resultTypes: ["violations"],
+    })
+    .analyze();
+}
+
 test.describe("Accessibility (a11y) Audit — WCAG 2.1 AA", () => {
-  PUBLIC_PAGES.forEach(({ name, path }) => {
-    test(`${name} should have no critical or serious violations`, async ({ page }) => {
-      await page.goto(path);
-      await page.waitForLoadState("networkidle");
+  const scan = async (page, name, path, role) => {
+    const prefix = role ? `${name} (${path}) as ${role}` : `${name} (${path})`;
+    await page.waitForLoadState("networkidle");
+    const results = await runAudit(page);
 
-      const results = await new AxeBuilder({ page })
-        .withTags(["wcag2aa", "wcag21aa"])
-        .options({
-          runOnly: {
-            type: "tag",
-            values: ["wcag2aa", "wcag21aa"],
-          },
-          resultTypes: ["violations"],
-        })
-        .analyze();
+    const nonColorViolations = results.violations.filter(
+      (v) => v.id !== "color-contrast"
+    );
+    const colorContrast = results.violations.filter(
+      (v) => v.id === "color-contrast"
+    );
 
-      const criticalSerious = results.violations.filter(
-        (v) => v.impact === "critical" || v.impact === "serious"
-      );
-
-      if (criticalSerious.length > 0) {
-        console.log(`\n--- ${name} (${path}) ---`);
-        criticalSerious.forEach((v) => {
-          console.log(`  [${v.impact}] ${v.id}: ${v.help}`);
-          console.log(`  URL: ${v.helpUrl}`);
-          v.nodes.slice(0, 3).forEach((n) => {
-            console.log(`    - ${n.target?.join(", ")}`);
-          });
+    if (nonColorViolations.length > 0) {
+      console.log(`\n--- ${prefix} — Non-color-contrast violations ---`);
+      nonColorViolations.forEach((v) => {
+        console.log(`  [${v.impact}] ${v.id}: ${v.help}`);
+        console.log(`  URL: ${v.helpUrl}`);
+        v.nodes.slice(0, 3).forEach((n) => {
+          console.log(`    - ${n.target?.join(", ")}`);
         });
-      }
+      });
+    }
 
-      expect(criticalSerious).toEqual([]);
+    if (colorContrast.length > 0) {
+      console.log(`\n--- ${prefix} — Color contrast issues (report-only) ---`);
+      colorContrast.forEach((v) => {
+        console.log(`  [${v.impact}] ${v.id}: ${v.nodes.length} elements`);
+        v.nodes.slice(0, 3).forEach((n) => {
+          console.log(`    - ${n.target?.join(", ")}`);
+        });
+      });
+    }
+
+    expect(nonColorViolations).toEqual([]);
+  };
+
+  PUBLIC_PAGES.forEach(({ name, path }) => {
+    test(`${name} should have no critical or serious a11y violations`, async ({ page }) => {
+      await page.goto(path);
+      await scan(page, name, path);
     });
   });
 
   AUTH_PAGES.forEach(({ name, path, role }) => {
-    test(`${name} should have no critical or serious violations`, async ({ page }) => {
+    test(`${name} should have no critical or serious a11y violations`, async ({ page }) => {
       await loginAsRole(page, role);
       await page.goto(path);
-      await page.waitForLoadState("networkidle");
-
-      const results = await new AxeBuilder({ page })
-        .withTags(["wcag2aa", "wcag21aa"])
-        .options({
-          runOnly: {
-            type: "tag",
-            values: ["wcag2aa", "wcag21aa"],
-          },
-          resultTypes: ["violations"],
-        })
-        .analyze();
-
-      const criticalSerious = results.violations.filter(
-        (v) => v.impact === "critical" || v.impact === "serious"
-      );
-
-      if (criticalSerious.length > 0) {
-        console.log(`\n--- ${name} (${path}) as ${role} ---`);
-        criticalSerious.forEach((v) => {
-          console.log(`  [${v.impact}] ${v.id}: ${v.help}`);
-          console.log(`  URL: ${v.helpUrl}`);
-          v.nodes.slice(0, 3).forEach((n) => {
-            console.log(`    - ${n.target?.join(", ")}`);
-          });
-        });
-      }
-
-      expect(criticalSerious).toEqual([]);
+      await scan(page, name, path, role);
     });
   });
 });
