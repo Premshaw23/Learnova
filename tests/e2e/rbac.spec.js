@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const ROLES = ['student', 'teacher', 'institute', 'parent', 'admin'];
 
 const DASHBOARDS = {
-  student: '/dashboard', // often student uses root dashboard or /student/dashboard
+  student: '/student/dashboard',
   teacher: '/teacher/dashboard',
   institute: '/institute/dashboard',
   parent: '/parent/dashboard',
