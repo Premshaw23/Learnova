@@ -48,17 +48,17 @@ on:
 
   # ── Scheduled sweep every 2 hours (zero-miss safety net) ─────────────────
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: "0 */2 * * *"
 
   # ── Manual trigger ────────────────────────────────────────────────────────
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run? (true = log only, no changes)'
+        description: "Dry run? (true = log only, no changes)"
         required: false
-        default: 'false'
+        default: "false"
         type: choice
-        options: ['false', 'true']
+        options: ["false", "true"]
 
 concurrency:
   group: gssoc26-label-${{ github.event.issue.number || github.event.pull_request.number || 'sweep' }}
@@ -68,9 +68,9 @@ concurrency:
 # SHARED CONFIG (edit here only)
 # ═══════════════════════════════════════════════════════════════════════════
 env:
-  GSSOC_LABEL:       "GSSoC'26"
+  GSSOC_LABEL: "GSSoC'26"
   GSSOC_LABEL_COLOR: "0e8a16"
-  GSSOC_LABEL_DESC:  "Part of GirlScript Summer of Code 2026"
+  GSSOC_LABEL_DESC: "Part of GirlScript Summer of Code 2026"
 
 jobs:
   # ══════════════════════════════════════════════════════════════════════════

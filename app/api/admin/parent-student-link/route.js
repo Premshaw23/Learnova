@@ -8,7 +8,11 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
 
-import { parentStudentLinkSchema, deleteParentStudentLinkSchema, withValidation } from "@/lib/validations";
+import {
+  parentStudentLinkSchema,
+  deleteParentStudentLinkSchema,
+  withValidation,
+} from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -127,8 +131,15 @@ export const POST = withErrorHandler(
       );
     }
 
-    if (parentProfile.instituteId && studentProfile.instituteId && parentProfile.instituteId !== studentProfile.instituteId) {
-      return jsonError("Parent and student must belong to the same institute", 400);
+    if (
+      parentProfile.instituteId &&
+      studentProfile.instituteId &&
+      parentProfile.instituteId !== studentProfile.instituteId
+    ) {
+      return jsonError(
+        "Parent and student must belong to the same institute",
+        400
+      );
     }
 
     const parentId = parentProfile.uid;
@@ -157,7 +168,10 @@ export const POST = withErrorHandler(
         {
           name: "write_firestore",
           execute: async () => {
-            await db.collection("parent_student_links").doc(linkId).set(linkData);
+            await db
+              .collection("parent_student_links")
+              .doc(linkId)
+              .set(linkData);
           },
           compensate: async () => {
             await db.collection("parent_student_links").doc(linkId).delete();
@@ -192,14 +206,17 @@ export const POST = withErrorHandler(
       );
     }
 
-    return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
+    return jsonSuccess(
+      { success: true, link: { id: linkId, ...linkData } },
+      201
+    );
   })
 );
 
 export const DELETE = withErrorHandler(async (request) => {
   const { payload } = await requireAdmin(request);
   const url = new URL(request.url);
-  
+
   const queryParams = {
     parentId: url.searchParams.get("parentId"),
     studentId: url.searchParams.get("studentId"),
@@ -207,13 +224,16 @@ export const DELETE = withErrorHandler(async (request) => {
 
   const validation = deleteParentStudentLinkSchema.safeParse(queryParams);
   if (!validation.success) {
-    return jsonError({
-      message: "Validation failed",
-      details: validation.error.errors.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    }, 422);
+    return jsonError(
+      {
+        message: "Validation failed",
+        details: validation.error.errors.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      },
+      422
+    );
   }
 
   const { parentId, studentId } = validation.data;

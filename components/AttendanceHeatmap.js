@@ -275,6 +275,16 @@ export default function AttendanceHeatmap() {
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
+<<<<<<< HEAD
+=======
+                {
+                  label: "Present",
+                  value: stats.present,
+                  color: "text-green-600",
+                },
+                { label: "Absent", value: stats.absent, color: "text-red-500" },
+                { label: "Pending Review", value: stats.pending_review, color: "text-orange-500" },
+>>>>>>> 3074d027 (fix: force clear github conflict cache)
                 {
                   label: "Present",
                   value: stats.present,

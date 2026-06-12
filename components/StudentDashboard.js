@@ -381,7 +381,9 @@ const StudentDashboard = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-background relative overflow-x-hidden ${dashboardContentOffsetClass}`}>
+    <div
+      className={`min-h-screen bg-background relative overflow-x-hidden ${dashboardContentOffsetClass}`}
+    >
       <Navbar />
 
       {/* Diagnostic Quiz Section */}

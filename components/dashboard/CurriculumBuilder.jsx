@@ -895,7 +895,8 @@ export default function CurriculumBuilder() {
               <button
                 onClick={handleAddModule}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-100 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/10"
-               aria-label="Action button">
+                aria-label="Action button"
+              >
                 <Plus className="w-4 h-4" />
                 Initialize First Module
               </button>
@@ -909,7 +910,8 @@ export default function CurriculumBuilder() {
         <button
           onClick={handleAddModule}
           className="w-full flex items-center justify-center gap-2 py-4 border border-dashed border-zinc-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 text-zinc-400 hover:text-indigo-400 text-sm font-bold rounded-2xl transition-all shadow-inner group duration-300"
-         aria-label="Action button">
+          aria-label="Action button"
+        >
           <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300 text-indigo-400" />
           Add Structural Module Container
           <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />

@@ -58,7 +58,8 @@ export default function RoleSelection({ onRoleSelect }) {
           features.
         </p>
         <p className="mx-auto mt-2 max-w-lg text-sm font-medium text-muted-foreground">
-          Role selection is required before you can sign in or create an account.
+          Role selection is required before you can sign in or create an
+          account.
         </p>
       </div>
 

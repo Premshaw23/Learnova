@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useTranslations } from 'next-intl';
-import { useEffect } from 'react';
+import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 
 export default function Error({ error, reset }) {
   let t = null;
@@ -9,20 +9,23 @@ export default function Error({ error, reset }) {
   // 1. Defensively try to initialize the translation hook.
   // If next-intl core infrastructure is completely broken, this catch prevents a hard crash.
   try {
-    t = useTranslations('common');
+    t = useTranslations("common");
   } catch (e) {
-    console.error('Failed to initialize translation context in Error Boundary:', e);
+    console.error(
+      "Failed to initialize translation context in Error Boundary:",
+      e
+    );
   }
 
   useEffect(() => {
-    console.error('Runtime error:', error?.message ?? 'Unknown error', {
+    console.error("Runtime error:", error?.message ?? "Unknown error", {
       digest: error?.digest,
     });
   }, [error]);
 
   // 2. Safe text resolution using the requested t.has() fallback strategy.
-  const errorText = t && t.has('error') ? t('error') : 'Something went wrong.';
-  const retryText = t && t.has('try_again') ? t('try_again') : 'Try again';
+  const errorText = t && t.has("error") ? t("error") : "Something went wrong.";
+  const retryText = t && t.has("try_again") ? t("try_again") : "Try again";
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center">
@@ -30,9 +33,7 @@ export default function Error({ error, reset }) {
         Service Temporarily Unavailable
       </h1>
 
-      <p className="text-gray-600 mb-6">
-        {errorText}
-      </p>
+      <p className="text-gray-600 mb-6">{errorText}</p>
 
       <button
         onClick={() => reset()}

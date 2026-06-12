@@ -26,7 +26,9 @@ export default function CertificatePreviewModal({ achievement, onClose }) {
         >
           <div className="flex items-center justify-between p-5 border-b border-white/10">
             <div>
-              <h3 className="text-lg font-bold text-white">{achievement.title}</h3>
+              <h3 className="text-lg font-bold text-white">
+                {achievement.title}
+              </h3>
               <p className="text-sm text-gray-400">{achievement.category}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -73,7 +75,9 @@ export default function CertificatePreviewModal({ achievement, onClose }) {
                 <p>No certificate file attached</p>
               </div>
             )}
-            <p className="mt-4 text-sm text-gray-400">{achievement.description}</p>
+            <p className="mt-4 text-sm text-gray-400">
+              {achievement.description}
+            </p>
           </div>
         </motion.div>
       </motion.div>

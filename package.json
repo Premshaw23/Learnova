@@ -76,11 +76,8 @@
     "react-calendar": "^6.0.1",
     "react-calendar-heatmap": "^1.10.0",
     "react-chartjs-2": "^5.3.1",
-
     "react-csv": "^2.2.2",
-
     "react-circular-progressbar": "^2.2.0",
-
     "react-dom": "19.1.0",
     "react-hook-form": "^7.76.1",
     "algoliasearch": "^5.0.0",

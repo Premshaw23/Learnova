@@ -32,7 +32,9 @@ export const GET = withErrorHandler(async (request) => {
   const userId = decodedToken.uid;
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`conversations_get_${ip}_${userId}`);
+  const rateLimitResult = await checkRateLimit(
+    `conversations_get_${ip}_${userId}`
+  );
   if (!rateLimitResult.allowed) {
     return jsonError("Too many requests. Please try again later.", 429);
   }
@@ -67,7 +69,9 @@ export const POST = withErrorHandler(async (request) => {
   const userId = decodedToken.uid;
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`conversations_post_${ip}_${userId}`);
+  const rateLimitResult = await checkRateLimit(
+    `conversations_post_${ip}_${userId}`
+  );
   if (!rateLimitResult.allowed) {
     return jsonError("Too many requests. Please try again later.", 429);
   }

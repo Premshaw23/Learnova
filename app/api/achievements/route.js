@@ -32,8 +32,14 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError(firstError);
   }
 
-  const { studentId, title, description, category, certificateUrl, achievementDate } =
-    validation.data;
+  const {
+    studentId,
+    title,
+    description,
+    category,
+    certificateUrl,
+    achievementDate,
+  } = validation.data;
 
   await assertInstituteScope(profile, studentId, decodedToken.role);
 
@@ -47,7 +53,8 @@ export const POST = withErrorHandler(async (request) => {
 
   const achievement = await createAchievement({
     studentId,
-    studentName: student.fullName || student.displayName || student.email || "Student",
+    studentName:
+      student.fullName || student.displayName || student.email || "Student",
     instituteId: student.instituteId || profile?.instituteId || null,
     title,
     description,
@@ -59,5 +66,8 @@ export const POST = withErrorHandler(async (request) => {
 
   await notifyAchievementCreated(studentId, title, issuerName);
 
-  return jsonSuccess({ achievement, message: "Achievement created successfully" }, 201);
+  return jsonSuccess(
+    { achievement, message: "Achievement created successfully" },
+    201
+  );
 });

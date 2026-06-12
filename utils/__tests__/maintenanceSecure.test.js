@@ -10,33 +10,33 @@ import {
   revokeBypassToken,
   cleanupExpiredTokens,
   getMaintenanceStatus,
-} from '../maintenanceSecure';
+} from "../maintenanceSecure";
 
-describe('Maintenance Security Module', () => {
+describe("Maintenance Security Module", () => {
   beforeEach(() => {
     // Reset environment for each test
     delete process.env.NEXT_PUBLIC_MAINTENANCE_MODE;
     delete process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES;
   });
 
-  describe('generateBypassToken', () => {
-    it('should generate a valid bypass token', () => {
+  describe("generateBypassToken", () => {
+    it("should generate a valid bypass token", () => {
       const result = generateBypassToken();
 
-      expect(result).toHaveProperty('token');
-      expect(result).toHaveProperty('expiresAt');
-      expect(result).toHaveProperty('expiryMinutes');
+      expect(result).toHaveProperty("token");
+      expect(result).toHaveProperty("expiresAt");
+      expect(result).toHaveProperty("expiryMinutes");
       expect(result.token).toHaveLength(64); // 32 bytes = 64 hex chars
     });
 
-    it('should generate cryptographically random tokens', () => {
+    it("should generate cryptographically random tokens", () => {
       const token1 = generateBypassToken();
       const token2 = generateBypassToken();
 
       expect(token1.token).not.toBe(token2.token);
     });
 
-    it('should set proper expiration time', () => {
+    it("should set proper expiration time", () => {
       const before = new Date();
       const result = generateBypassToken();
       const after = new Date();
@@ -52,32 +52,32 @@ describe('Maintenance Security Module', () => {
     });
   });
 
-  describe('verifyBypassToken', () => {
-    it('should verify a valid token', () => {
+  describe("verifyBypassToken", () => {
+    it("should verify a valid token", () => {
       const { token } = generateBypassToken();
       const result = verifyBypassToken(token);
 
       expect(result.isValid).toBe(true);
-      expect(result.reason).toBe('Token is valid');
+      expect(result.reason).toBe("Token is valid");
     });
 
-    it('should reject invalid tokens', () => {
-      const result = verifyBypassToken('invalid_token_string');
+    it("should reject invalid tokens", () => {
+      const result = verifyBypassToken("invalid_token_string");
 
       expect(result.isValid).toBe(false);
-      expect(result.reason).toBe('Token not found or invalid');
+      expect(result.reason).toBe("Token not found or invalid");
     });
 
-    it('should reject null/empty tokens', () => {
+    it("should reject null/empty tokens", () => {
       const result1 = verifyBypassToken(null);
-      const result2 = verifyBypassToken('');
+      const result2 = verifyBypassToken("");
 
       expect(result1.isValid).toBe(false);
       expect(result2.isValid).toBe(false);
     });
 
-    it('should reject expired tokens', async () => {
-      process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES = '0'; // Expire immediately
+    it("should reject expired tokens", async () => {
+      process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES = "0"; // Expire immediately
       const { token } = generateBypassToken();
 
       // Wait for token to expire
@@ -86,47 +86,50 @@ describe('Maintenance Security Module', () => {
       const result = verifyBypassToken(token);
 
       expect(result.isValid).toBe(false);
-      expect(result.reason).toBe('Token has expired');
+      expect(result.reason).toBe("Token has expired");
     });
   });
 
-  describe('isMaintenanceModeActive', () => {
-    it('should return false when maintenance mode is disabled', () => {
-      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = 'false';
+  describe("isMaintenanceModeActive", () => {
+    it("should return false when maintenance mode is disabled", () => {
+      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = "false";
 
       const result = isMaintenanceModeActive({});
 
       expect(result).toBe(false);
     });
 
-    it('should return true when maintenance mode is enabled without bypass', () => {
-      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = 'true';
+    it("should return true when maintenance mode is enabled without bypass", () => {
+      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = "true";
 
       const result = isMaintenanceModeActive({});
 
       expect(result).toBe(true);
     });
 
-    it('should allow bypass with valid token in cookie', () => {
-      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = 'true';
+    it("should allow bypass with valid token in cookie", () => {
+      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = "true";
       const { token } = generateBypassToken();
 
       const request = {
         cookies: {
-          get: (name) => (name === 'learnova_maintenance_bypass' ? { value: token } : undefined),
+          get: (name) =>
+            name === "learnova_maintenance_bypass"
+              ? { value: token }
+              : undefined,
         },
         headers: {
           get: () => undefined,
         },
       };
 
-      const result = isMaintenanceModeActive(request, 'user123');
+      const result = isMaintenanceModeActive(request, "user123");
 
       expect(result).toBe(false); // Maintenance mode bypassed
     });
 
-    it('should allow bypass with valid token in header', () => {
-      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = 'true';
+    it("should allow bypass with valid token in header", () => {
+      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = "true";
       const { token } = generateBypassToken();
 
       const request = {
@@ -134,35 +137,39 @@ describe('Maintenance Security Module', () => {
           get: () => undefined,
         },
         headers: {
-          get: (name) => (name === 'x-learnova-maintenance-bypass' ? token : undefined),
+          get: (name) =>
+            name === "x-learnova-maintenance-bypass" ? token : undefined,
         },
       };
 
-      const result = isMaintenanceModeActive(request, 'user123');
+      const result = isMaintenanceModeActive(request, "user123");
 
       expect(result).toBe(false); // Maintenance mode bypassed
     });
 
-    it('should enforce maintenance mode with invalid bypass token', () => {
-      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = 'true';
+    it("should enforce maintenance mode with invalid bypass token", () => {
+      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = "true";
 
       const request = {
         cookies: {
-          get: (name) => (name === 'learnova_maintenance_bypass' ? { value: 'invalid' } : undefined),
+          get: (name) =>
+            name === "learnova_maintenance_bypass"
+              ? { value: "invalid" }
+              : undefined,
         },
         headers: {
           get: () => undefined,
         },
       };
 
-      const result = isMaintenanceModeActive(request, 'user123');
+      const result = isMaintenanceModeActive(request, "user123");
 
       expect(result).toBe(true); // Maintenance mode enforced
     });
   });
 
-  describe('revokeBypassToken', () => {
-    it('should revoke a valid token', () => {
+  describe("revokeBypassToken", () => {
+    it("should revoke a valid token", () => {
       const { token } = generateBypassToken();
 
       // Verify token works before revoke
@@ -175,16 +182,16 @@ describe('Maintenance Security Module', () => {
       expect(verifyBypassToken(token).isValid).toBe(false);
     });
 
-    it('should handle revoking non-existent tokens gracefully', () => {
+    it("should handle revoking non-existent tokens gracefully", () => {
       expect(() => {
-        revokeBypassToken('non-existent-token');
+        revokeBypassToken("non-existent-token");
       }).not.toThrow();
     });
   });
 
-  describe('cleanupExpiredTokens', () => {
-    it('should remove expired tokens', async () => {
-      process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES = '0'; // Immediate expiration
+  describe("cleanupExpiredTokens", () => {
+    it("should remove expired tokens", async () => {
+      process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES = "0"; // Immediate expiration
 
       const { token } = generateBypassToken();
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -194,7 +201,7 @@ describe('Maintenance Security Module', () => {
       expect(verifyBypassToken(token).isValid).toBe(false);
     });
 
-    it('should keep valid tokens during cleanup', () => {
+    it("should keep valid tokens during cleanup", () => {
       const { token } = generateBypassToken();
 
       cleanupExpiredTokens();
@@ -203,28 +210,28 @@ describe('Maintenance Security Module', () => {
     });
   });
 
-  describe('getMaintenanceStatus', () => {
-    it('should return current maintenance status', () => {
-      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = 'true';
+  describe("getMaintenanceStatus", () => {
+    it("should return current maintenance status", () => {
+      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = "true";
       generateBypassToken();
 
       const status = getMaintenanceStatus();
 
-      expect(status).toHaveProperty('maintenanceEnabled');
-      expect(status).toHaveProperty('activeTokens');
-      expect(status).toHaveProperty('trackedUsers');
-      expect(status).toHaveProperty('configuration');
+      expect(status).toHaveProperty("maintenanceEnabled");
+      expect(status).toHaveProperty("activeTokens");
+      expect(status).toHaveProperty("trackedUsers");
+      expect(status).toHaveProperty("configuration");
       expect(status.maintenanceEnabled).toBe(true);
       expect(status.activeTokens).toBeGreaterThan(0);
     });
   });
 
-  describe('Rate limiting', () => {
-    it('should enforce rate limit on bypass attempts', () => {
-      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = 'true';
-      process.env.MAINTENANCE_MAX_ATTEMPTS_PER_HOUR = '2';
+  describe("Rate limiting", () => {
+    it("should enforce rate limit on bypass attempts", () => {
+      process.env.NEXT_PUBLIC_MAINTENANCE_MODE = "true";
+      process.env.MAINTENANCE_MAX_ATTEMPTS_PER_HOUR = "2";
 
-      const userId = 'testuser';
+      const userId = "testuser";
 
       // Create dummy request for attempts
       const request = {

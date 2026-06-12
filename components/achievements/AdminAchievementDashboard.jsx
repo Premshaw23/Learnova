@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Award, Search, Filter, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import {
+  Award,
+  Search,
+  Filter,
+  CheckCircle,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch } from "@/lib/apiClient";
@@ -85,8 +92,12 @@ export default function AdminAchievementDashboard() {
           <Award className="w-5 h-5 text-blue-400" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-white">Global Achievement Dashboard</h3>
-          <p className="text-xs text-gray-400">Manage and verify all platform achievements</p>
+          <h3 className="text-lg font-bold text-white">
+            Global Achievement Dashboard
+          </h3>
+          <p className="text-xs text-gray-400">
+            Manage and verify all platform achievements
+          </p>
         </div>
       </div>
 
@@ -94,7 +105,9 @@ export default function AdminAchievementDashboard() {
 
       {analytics?.instituteLeaderboard?.length > 0 && (
         <div className="bg-[#0B1120]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-          <h4 className="text-sm font-semibold text-white mb-3">Institution Leaderboard</h4>
+          <h4 className="text-sm font-semibold text-white mb-3">
+            Institution Leaderboard
+          </h4>
           <div className="space-y-2">
             {analytics.instituteLeaderboard.map((inst, i) => (
               <div
@@ -104,7 +117,9 @@ export default function AdminAchievementDashboard() {
                 <span className="text-sm text-gray-300">
                   #{i + 1} {inst.instituteId}
                 </span>
-                <span className="text-sm font-bold text-blue-400">{inst.count} achievements</span>
+                <span className="text-sm font-bold text-blue-400">
+                  {inst.count} achievements
+                </span>
               </div>
             ))}
           </div>
@@ -150,7 +165,10 @@ export default function AdminAchievementDashboard() {
           </thead>
           <tbody>
             {achievements.map((a) => (
-              <tr key={a.achievementId} className="border-b border-white/5 hover:bg-white/5">
+              <tr
+                key={a.achievementId}
+                className="border-b border-white/5 hover:bg-white/5"
+              >
                 <td className="py-3 px-4 text-white font-medium">{a.title}</td>
                 <td className="py-3 px-4 text-gray-400">{a.studentName}</td>
                 <td className="py-3 px-4 text-gray-400">{a.category}</td>
@@ -161,7 +179,9 @@ export default function AdminAchievementDashboard() {
                     {a.verificationStatus}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-gray-400">{a.achievementDate?.slice(0, 10)}</td>
+                <td className="py-3 px-4 text-gray-400">
+                  {a.achievementDate?.slice(0, 10)}
+                </td>
                 <td className="py-3 px-4">
                   <div className="flex gap-2">
                     {a.certificateUrl && (
@@ -187,14 +207,18 @@ export default function AdminAchievementDashboard() {
           </tbody>
         </table>
         {achievements.length === 0 && (
-          <p className="text-center text-gray-500 py-8">No achievements found</p>
+          <p className="text-center text-gray-500 py-8">
+            No achievements found
+          </p>
         )}
       </div>
 
       {verifyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#0B1120]/95 border border-white/10 rounded-2xl p-6 max-w-md w-full">
-            <h4 className="text-white font-semibold mb-4">Verify: {verifyModal.title}</h4>
+            <h4 className="text-white font-semibold mb-4">
+              Verify: {verifyModal.title}
+            </h4>
             <textarea
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
@@ -208,7 +232,11 @@ export default function AdminAchievementDashboard() {
                 disabled={submitting}
                 className="flex-1 flex items-center justify-center gap-1 py-2 bg-green-500/20 text-green-400 rounded-xl text-sm"
               >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-4 h-4" />
+                )}
                 Verify
               </button>
               <button
@@ -218,7 +246,10 @@ export default function AdminAchievementDashboard() {
               >
                 <XCircle className="w-4 h-4" /> Reject
               </button>
-              <button onClick={() => setVerifyModal(null)} className="px-4 py-2 text-gray-400 text-sm">
+              <button
+                onClick={() => setVerifyModal(null)}
+                className="px-4 py-2 text-gray-400 text-sm"
+              >
                 Cancel
               </button>
             </div>
@@ -227,7 +258,10 @@ export default function AdminAchievementDashboard() {
       )}
 
       {preview && (
-        <CertificatePreviewModal achievement={preview} onClose={() => setPreview(null)} />
+        <CertificatePreviewModal
+          achievement={preview}
+          onClose={() => setPreview(null)}
+        />
       )}
     </div>
   );

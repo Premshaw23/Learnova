@@ -35,7 +35,9 @@ function FooterLink({ href, children, external = false }) {
       >
         <span className="relative">
           {children}
-          {external && <ExternalLink size={14} className="ml-1 inline shrink-0" />}
+          {external && (
+            <ExternalLink size={14} className="ml-1 inline shrink-0" />
+          )}
           <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-gradient-to-r from-purple-400 to-blue-400 transition-all duration-300 group-hover:w-full" />
         </span>
         <ArrowUpRight
@@ -109,7 +111,11 @@ export default function Footer() {
     { label: "Terms & Conditions", href: "/terms" },
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Streaks", href: "/streaks" },
-    { label: "GitHub Codebase", href: "https://github.com/Premshaw23/Learnova", external: true },
+    {
+      label: "GitHub Codebase",
+      href: "https://github.com/Premshaw23/Learnova",
+      external: true,
+    },
     { label: "Discord Server", href: "https://discord.gg/", external: true },
   ];
 
@@ -195,22 +201,34 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-white/90 sm:text-sm">Quick Links</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-white/90 sm:text-sm">
+              Quick Links
+            </h3>
             <ul className="grid grid-cols-2 gap-3 sm:block sm:space-y-3">
               {quickLinks.map((link) => (
                 <FooterLink key={link.href} href={link.href}>
                   {link.label}
                 </FooterLink>
               ))}
-              <li onClick={() => window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"))} className="col-span-2 cursor-pointer group flex items-center gap-2 text-sm text-slate-300 hover:text-white">
-                <Keyboard className="h-4 w-4 text-fuchsia-200" /> Keyboard Shortcuts
+              <li
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("learnova:open-shortcuts")
+                  )
+                }
+                className="col-span-2 cursor-pointer group flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+              >
+                <Keyboard className="h-4 w-4 text-fuchsia-200" /> Keyboard
+                Shortcuts
               </li>
             </ul>
           </div>
 
           {/* Sections */}
           <div className="space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-white/90 sm:text-sm">Sections</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-white/90 sm:text-sm">
+              Sections
+            </h3>
             <ul className="grid grid-cols-2 gap-3 sm:block sm:space-y-3">
               {sectionLinks.map((link) => (
                 <FooterLink key={link.href} href={link.href}>
@@ -222,7 +240,9 @@ export default function Footer() {
 
           {/* Contact Column */}
           <div className="space-y-5">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-white/90 sm:text-sm">Contact</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-white/90 sm:text-sm">
+              Contact
+            </h3>
             <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300 space-y-2 sm:rounded-2xl">
               <p>
                 Email:{" "}
@@ -234,8 +254,11 @@ export default function Footer() {
                 </a>
               </p>
               <p>Phone: {CONTACT_INFO.phone}</p>
-              <Link href="/contact" className="inline-flex items-center gap-1 text-purple-400 hover:underline">
-                Get in touch <ExternalLink size={11}/>
+              <Link
+                href="/contact"
+                className="inline-flex items-center gap-1 text-purple-400 hover:underline"
+              >
+                Get in touch <ExternalLink size={11} />
               </Link>
             </div>
             <div className="rounded-xl border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-transparent to-cyan-500/10 p-4 sm:rounded-2xl">

@@ -425,7 +425,8 @@ export const resetPassword = async (email) => {
 export const enrollTOTP = async (user) => {
   try {
     const multiFactorSession = await multiFactor(user).getSession();
-    const tfaSecret = await TotpMultiFactorGenerator.generateSecret(multiFactorSession);
+    const tfaSecret =
+      await TotpMultiFactorGenerator.generateSecret(multiFactorSession);
     const qrCodeUrl = tfaSecret.generateQrCodeUrl(user.email, "Learnova");
     return { success: true, secret: tfaSecret, qrCodeUrl };
   } catch (err) {
@@ -442,7 +443,8 @@ export const enrollTOTP = async (user) => {
  */
 export const verifyTOTPEnrollment = async (user, tfaSecret, code) => {
   try {
-    const multiFactorAssertion = TotpMultiFactorGenerator.assertionForEnrollment(tfaSecret, code);
+    const multiFactorAssertion =
+      TotpMultiFactorGenerator.assertionForEnrollment(tfaSecret, code);
     await multiFactor(user).enroll(multiFactorAssertion, "TOTP Authenticator");
     return { success: true };
   } catch (err) {
@@ -458,18 +460,26 @@ export const verifyTOTPEnrollment = async (user, tfaSecret, code) => {
  */
 export const verifyTOTPSignIn = async (resolver, code) => {
   try {
-    const enrolledFactor = resolver.hints.find(hint => hint.factorId === TotpMultiFactorGenerator.FACTOR_ID);
+    const enrolledFactor = resolver.hints.find(
+      (hint) => hint.factorId === TotpMultiFactorGenerator.FACTOR_ID
+    );
     if (!enrolledFactor) throw new Error("No TOTP factor found.");
 
-    const multiFactorAssertion = TotpMultiFactorGenerator.assertionForSignIn(enrolledFactor.uid, code);
+    const multiFactorAssertion = TotpMultiFactorGenerator.assertionForSignIn(
+      enrolledFactor.uid,
+      code
+    );
     const userCredential = await resolver.resolveSignIn(multiFactorAssertion);
-    
+
     // Set last login
-    await setDoc(doc(db, "users", userCredential.user.uid), { lastLogin: new Date() }, { merge: true });
+    await setDoc(
+      doc(db, "users", userCredential.user.uid),
+      { lastLogin: new Date() },
+      { merge: true }
+    );
 
     return { success: true, userData: { role: undefined } }; // Client handles role via context
   } catch (err) {
     return { success: false, error: err.message };
   }
 };
-

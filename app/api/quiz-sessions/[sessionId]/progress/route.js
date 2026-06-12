@@ -7,10 +7,10 @@ export const GET = withErrorHandler(async (req, { params }) => {
   const { sessionId } = await params;
 
   if (!sessionId) {
-    return new Response(
-      JSON.stringify({ error: "Session ID is required" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Session ID is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const db = await connectDb();
@@ -32,9 +32,7 @@ export const GET = withErrorHandler(async (req, { params }) => {
     });
   }
 
-  const quiz = await db
-    .collection("quizzes")
-    .findOne({ _id: session.quizId });
+  const quiz = await db.collection("quizzes").findOne({ _id: session.quizId });
 
   return new Response(
     JSON.stringify({

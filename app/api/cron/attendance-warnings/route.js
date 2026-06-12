@@ -53,7 +53,6 @@ async function getRecentWarningUserIds(db, userIds, cooldownDate) {
   return new Set(checks.filter(Boolean));
 }
 
-
 async function sendWarningEmails(emailsToSend) {
   const hasEmailConfig =
     process.env.EMAILJS_SERVICE_ID &&
@@ -105,10 +104,9 @@ export async function GET(request) {
     // Ensure the warning_logs collection has a compound index on (userId, createdAt)
     // so the cooldown query does not trigger a full collection scan
     try {
-      await db.collection("warning_logs").createIndex(
-        { userId: 1, createdAt: -1 },
-        { background: true }
-      );
+      await db
+        .collection("warning_logs")
+        .createIndex({ userId: 1, createdAt: -1 }, { background: true });
     } catch {
       // Index may already exist
     }
@@ -196,16 +194,21 @@ export async function GET(request) {
       // Process students in batches to keep memory usage bounded
       for (let i = 0; i < instituteStudents.length; i += STUDENT_BATCH_SIZE) {
         const batch = instituteStudents.slice(i, i + STUDENT_BATCH_SIZE);
-        const batchUids = batch.map(s => s.uid || s.firebaseUid).filter(Boolean);
+        const batchUids = batch
+          .map((s) => s.uid || s.firebaseUid)
+          .filter(Boolean);
         if (batchUids.length === 0) continue;
 
         // Load attendance records for this batch only
-        const records = await db.collection("attendance").find({
-          userId: { $in: batchUids },
-          instituteId,
-        }).toArray();
+        const records = await db
+          .collection("attendance")
+          .find({
+            userId: { $in: batchUids },
+            instituteId,
+          })
+          .toArray();
 
-        const attendanceByUser = new Map(batchUids.map(uid => [uid, []]));
+        const attendanceByUser = new Map(batchUids.map((uid) => [uid, []]));
         for (const record of records) {
           const userRecords = attendanceByUser.get(record.userId);
           if (userRecords) {
@@ -218,7 +221,10 @@ export async function GET(request) {
           if (!uid || recentWarningUserIds.has(uid)) continue;
 
           const studentAttendance = attendanceByUser.get(uid) || [];
-          const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
+          const evaluation = evaluateStudentAttendance(
+            studentAttendance,
+            threshold
+          );
 
           if (evaluation.isBelowThreshold) {
             const email = student.email;

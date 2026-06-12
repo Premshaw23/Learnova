@@ -7,7 +7,10 @@ export async function GET(request) {
   try {
     await requireAuth(request);
   } catch {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 }
+    );
   }
 
   const { searchParams } = new URL(request.url);

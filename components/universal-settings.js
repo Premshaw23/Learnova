@@ -1497,7 +1497,10 @@ export default function UniversalSettings() {
               >
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left" aria-label="Action button">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <FileText className="h-6 w-6 text-blue-400" />
                       <div>
                         <p className="text-white font-medium">Documentation</p>
@@ -1507,7 +1510,10 @@ export default function UniversalSettings() {
                       </div>
                     </button>
 
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left" aria-label="Action button">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <Mail className="h-6 w-6 text-green-400" />
                       <div>
                         <p className="text-white font-medium">
@@ -1519,7 +1525,10 @@ export default function UniversalSettings() {
                       </div>
                     </button>
 
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left" aria-label="Action button">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <HelpCircle className="h-6 w-6 text-purple-400" />
                       <div>
                         <p className="text-white font-medium">FAQ</p>
@@ -1529,7 +1538,10 @@ export default function UniversalSettings() {
                       </div>
                     </button>
 
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left" aria-label="Action button">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <Globe className="h-6 w-6 text-orange-400" />
                       <div>
                         <p className="text-white font-medium">Community</p>

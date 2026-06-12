@@ -150,26 +150,26 @@ export default function MoodTracker() {
                   : "border-slate-200 bg-slate-950/80 text-slate-100 shadow-slate-950/10 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
               }`}
             >
-             <div className="flex items-start justify-between gap-4">
-  <div className="flex-1 min-w-0">
-    <div className="flex items-center gap-2 flex-wrap">
-      <p className="text-lg font-semibold">{mood.label}</p>
-      {isActive && (
-        <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.35em] text-violet-100 ring-1 ring-violet-500/30">
-          Selected
-        </span>
-      )}
-    </div>
-    <p className="mt-2 text-sm text-slate-400 dark:text-slate-400">
-      {mood.description}
-    </p>
-  </div>
-  <div
-    className={`flex h-12 w-12 items-center justify-center rounded-2xl shrink-0 ${isActive ? "bg-white/15 text-white ring-1 ring-white/20 shadow-[0_0_0_1px_rgba(255,255,255,0.14)]" : "bg-white/10 text-slate-100 border border-slate-800 dark:bg-slate-800/90 dark:border-slate-700"}`}
-  >
-    <Icon className="h-6 w-6" />
-  </div>
-</div>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-lg font-semibold">{mood.label}</p>
+                    {isActive && (
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.35em] text-violet-100 ring-1 ring-violet-500/30">
+                        Selected
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-slate-400 dark:text-slate-400">
+                    {mood.description}
+                  </p>
+                </div>
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl shrink-0 ${isActive ? "bg-white/15 text-white ring-1 ring-white/20 shadow-[0_0_0_1px_rgba(255,255,255,0.14)]" : "bg-white/10 text-slate-100 border border-slate-800 dark:bg-slate-800/90 dark:border-slate-700"}`}
+                >
+                  <Icon className="h-6 w-6" />
+                </div>
+              </div>
             </motion.button>
           );
         })}

@@ -8,21 +8,21 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run? (true = log only, no changes)'
+        description: "Dry run? (true = log only, no changes)"
         required: true
-        default: 'false'
+        default: "false"
         type: choice
         options:
-          - 'false'
-          - 'true'
+          - "false"
+          - "true"
       start_from:
-        description: 'Resume from issue/PR number (leave 0 to process all)'
+        description: "Resume from issue/PR number (leave 0 to process all)"
         required: false
-        default: '0'
+        default: "0"
       remove_label:
-        description: 'Label to REMOVE from all items (leave blank to skip removal)'
+        description: "Label to REMOVE from all items (leave blank to skip removal)"
         required: false
-        default: 'mentor:Premshaw23'
+        default: "mentor:Premshaw23"
 
 jobs:
   bulk-label:

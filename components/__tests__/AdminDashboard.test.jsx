@@ -115,14 +115,10 @@ describe("AdminDashboard", () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Learnova Admin Center")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Learnova Admin Center")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText("Super Admin Dashboard")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Super Admin Dashboard")).toBeInTheDocument();
 
     expect(
       screen.getByText("System Status: All Services Operational")
@@ -145,9 +141,7 @@ describe("AdminDashboard", () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Learnova Admin Center")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Learnova Admin Center")).toBeInTheDocument();
     });
 
     await user.click(
@@ -156,13 +150,9 @@ describe("AdminDashboard", () => {
       })
     );
 
-    expect(
-      screen.getByText("Institute Management")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Institute Management")).toBeInTheDocument();
 
-    expect(
-      screen.getByText("Delhi Technical University")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Delhi Technical University")).toBeInTheDocument();
   });
 
   test("switches to monitoring tab", async () => {
@@ -171,9 +161,7 @@ describe("AdminDashboard", () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Learnova Admin Center")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Learnova Admin Center")).toBeInTheDocument();
     });
 
     await user.click(
@@ -193,9 +181,7 @@ describe("AdminDashboard", () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Learnova Admin Center")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Learnova Admin Center")).toBeInTheDocument();
     });
 
     await user.click(

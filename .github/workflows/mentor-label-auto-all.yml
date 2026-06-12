@@ -61,17 +61,17 @@ on:
 
   # ── Scheduled sweep — every 2 hours (catches anything the events missed) ──
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: "0 */2 * * *"
 
   # ── Manual trigger ────────────────────────────────────────────────────────
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run? (true = log only)'
+        description: "Dry run? (true = log only)"
         required: false
-        default: 'false'
+        default: "false"
         type: choice
-        options: ['false', 'true']
+        options: ["false", "true"]
 
 concurrency:
   group: auto-mentor-label-${{ github.event.issue.number || github.event.pull_request.number || 'sweep' }}

@@ -4,7 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BellOff, Bell } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { dropdownVariants } from "./constants";
-import { dropdownPanelClass, glassPanelStyle, iconBtnClass } from "./glassStyles";
+import {
+  dropdownPanelClass,
+  glassPanelStyle,
+  iconBtnClass,
+} from "./glassStyles";
 
 export default function NotificationPanel({
   isOpen,

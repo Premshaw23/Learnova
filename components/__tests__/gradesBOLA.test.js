@@ -57,7 +57,11 @@ describe("Grades BOLA Security Tests", () => {
     vi.clearAllMocks();
   });
 
-  const createMockRequest = (url = "http://localhost", headers = {}, body = null) => {
+  const createMockRequest = (
+    url = "http://localhost",
+    headers = {},
+    body = null
+  ) => {
     const headersMap = new Map(
       Object.entries({
         "x-forwarded-for": "127.0.0.1",
@@ -82,11 +86,16 @@ describe("Grades BOLA Security Tests", () => {
       decodedToken: { uid: "teacher-1", role: "teacher", email_verified: true },
     });
     getUserProfile.mockImplementation(async (uid) => {
-      if (uid === "teacher-1") return { role: "teacher", instituteId: "inst-A" };
+      if (uid === "teacher-1")
+        return { role: "teacher", instituteId: "inst-A" };
       return { role: "student", instituteId: "inst-A" };
     });
 
-    const req = createMockRequest("http://localhost", {}, { studentId: "student-2", subject: "Math", grade: "A", score: 90 });
+    const req = createMockRequest(
+      "http://localhost",
+      {},
+      { studentId: "student-2", subject: "Math", grade: "A", score: 90 }
+    );
     const res = await gradesPOST(req, { params: { studentId: "student-1" } });
 
     const data = await res.json();
@@ -100,11 +109,16 @@ describe("Grades BOLA Security Tests", () => {
       decodedToken: { uid: "teacher-1", role: "teacher", email_verified: true },
     });
     getUserProfile.mockImplementation(async (uid) => {
-      if (uid === "teacher-1") return { role: "teacher", instituteId: "inst-A" };
+      if (uid === "teacher-1")
+        return { role: "teacher", instituteId: "inst-A" };
       return null;
     });
 
-    const req = createMockRequest("http://localhost", {}, { studentId: "student-1", subject: "Math", grade: "A", score: 90 });
+    const req = createMockRequest(
+      "http://localhost",
+      {},
+      { studentId: "student-1", subject: "Math", grade: "A", score: 90 }
+    );
     const res = await gradesPOST(req, { params: { studentId: "student-1" } });
 
     const data = await res.json();
@@ -118,17 +132,25 @@ describe("Grades BOLA Security Tests", () => {
       decodedToken: { uid: "teacher-1", role: "teacher", email_verified: true },
     });
     getUserProfile.mockImplementation(async (uid) => {
-      if (uid === "teacher-1") return { role: "teacher", instituteId: "inst-A" };
-      if (uid === "student-1") return { role: "student", instituteId: "inst-B" };
+      if (uid === "teacher-1")
+        return { role: "teacher", instituteId: "inst-A" };
+      if (uid === "student-1")
+        return { role: "student", instituteId: "inst-B" };
       return null;
     });
 
-    const req = createMockRequest("http://localhost", {}, { studentId: "student-1", subject: "Math", grade: "A", score: 90 });
+    const req = createMockRequest(
+      "http://localhost",
+      {},
+      { studentId: "student-1", subject: "Math", grade: "A", score: 90 }
+    );
     const res = await gradesPOST(req, { params: { studentId: "student-1" } });
 
     const data = await res.json();
     expect(res.status).toBe(403);
-    expect(data.error).toContain("not authorized to access records from another institute");
+    expect(data.error).toContain(
+      "not authorized to access records from another institute"
+    );
   });
 
   test("allows request if caller is admin or matches student instituteId", async () => {
@@ -137,12 +159,18 @@ describe("Grades BOLA Security Tests", () => {
       decodedToken: { uid: "teacher-1", role: "teacher", email_verified: true },
     });
     getUserProfile.mockImplementation(async (uid) => {
-      if (uid === "teacher-1") return { role: "teacher", instituteId: "inst-A" };
-      if (uid === "student-1") return { role: "student", instituteId: "inst-A" };
+      if (uid === "teacher-1")
+        return { role: "teacher", instituteId: "inst-A" };
+      if (uid === "student-1")
+        return { role: "student", instituteId: "inst-A" };
       return null;
     });
 
-    const req = createMockRequest("http://localhost", {}, { studentId: "student-1", subject: "Math", grade: "A", score: 90 });
+    const req = createMockRequest(
+      "http://localhost",
+      {},
+      { studentId: "student-1", subject: "Math", grade: "A", score: 90 }
+    );
     const res = await gradesPOST(req, { params: { studentId: "student-1" } });
 
     const data = await res.json();

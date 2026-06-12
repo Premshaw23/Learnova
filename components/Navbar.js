@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Activity, Menu, X, User, Settings, Sparkles, Search, PanelLeft } from "lucide-react";
+import {
+  Activity,
+  Menu,
+  X,
+  User,
+  Settings,
+  Sparkles,
+  Search,
+  PanelLeft,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -206,7 +215,7 @@ export function Navbar() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-            <NavbarBrand onNavigate={() => setIsMenuOpen(false)} />
+              <NavbarBrand onNavigate={() => setIsMenuOpen(false)} />
             </div>
 
             <div className={navCapsuleClass}>
@@ -296,7 +305,8 @@ export function Navbar() {
                     >
                       <Link href="/auth">
                         <span className="flex items-center gap-1.5">
-                          Login <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
+                          Login{" "}
+                          <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
                         </span>
                       </Link>
                     </Button>
@@ -314,7 +324,8 @@ export function Navbar() {
                     >
                       <Link href="/auth?mode=signup">
                         <span className="flex items-center gap-1.5">
-                          Sign Up <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
+                          Sign Up{" "}
+                          <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
                         </span>
                       </Link>
                     </Button>
@@ -329,7 +340,9 @@ export function Navbar() {
                 whileTap={{ scale: 0.92 }}
                 onClick={handleMobileMenuToggle}
                 className={iconBtnClass}
-                aria-label={onDashboard ? "Open dashboard sidebar" : "Toggle menu"}
+                aria-label={
+                  onDashboard ? "Open dashboard sidebar" : "Toggle menu"
+                }
                 aria-expanded={onDashboard ? mobileSidebarOpen : isMenuOpen}
               >
                 <AnimatePresence mode="wait">

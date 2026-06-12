@@ -754,7 +754,10 @@ const InstituteDashboard = () => {
             </div>
 
             <div className="flex space-x-2">
-              <button className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl transition-colors text-sm font-medium" aria-label="Action button">
+              <button
+                className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl transition-colors text-sm font-medium"
+                aria-label="Action button"
+              >
                 View Details
               </button>
               <button
@@ -1095,7 +1098,9 @@ const InstituteDashboard = () => {
 
   if (error) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center ${dashboardContentOffsetClass}`}>
+      <div
+        className={`min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center ${dashboardContentOffsetClass}`}
+      >
         <div className="fixed top-0 left-0 w-full z-50 shadow-xl border-b border-white/10 bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-xl">
           <Navbar />
         </div>
@@ -1122,7 +1127,9 @@ const InstituteDashboard = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 ${dashboardContentOffsetClass}`}>
+    <div
+      className={`min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 ${dashboardContentOffsetClass}`}
+    >
       {/* Sticky Premium Navbar */}
       <div className="fixed top-0 left-0 w-full z-50 shadow-xl border-b border-white/10 bg-gradient-to-r from-gray-900/90 via-gray-800/90 to-gray-900/90 backdrop-blur-xl">
         <Navbar />

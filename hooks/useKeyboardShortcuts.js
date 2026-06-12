@@ -62,7 +62,15 @@ export function useKeyboardShortcuts({
         onEscape?.();
       }
     },
-    [onSearch, onHelp, onEscape, onTheme, onHome, onLeaderboard, onNotifications]
+    [
+      onSearch,
+      onHelp,
+      onEscape,
+      onTheme,
+      onHome,
+      onLeaderboard,
+      onNotifications,
+    ]
   );
 
   useEffect(() => {

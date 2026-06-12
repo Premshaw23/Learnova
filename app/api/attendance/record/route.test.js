@@ -112,6 +112,9 @@ describe("attendance record route", () => {
       email: "client@example.com",
       confidenceScore: 75,
       date: "2026-05-25",
+      latitude: 31.326,
+      longitude: 75.576,
+      deviceId: "mock-device-fingerprint-123",
     });
 
     getUserProfile.mockResolvedValue({
@@ -165,6 +168,9 @@ describe("attendance record route", () => {
       email: "client@example.com",
       confidenceScore: 80,
       date: "2026-05-25",
+      latitude: 31.326,
+      longitude: 75.576,
+      deviceId: "mock-device-fingerprint-123",
     });
 
     getUserProfile.mockResolvedValue({
@@ -216,6 +222,9 @@ describe("attendance record route", () => {
       email: "client@example.com",
       confidenceScore: 80,
       date: "2026-05-25",
+      latitude: 31.326,
+      longitude: 75.576,
+      deviceId: "mock-device-fingerprint-123",
     });
 
     const response = await POST(createMockRequest());
@@ -236,6 +245,9 @@ describe("attendance record route", () => {
       studentName: "Test User",
       email: "test@example.com",
       confidenceScore: 59,
+      latitude: 31.326,
+      longitude: 75.576,
+      deviceId: "mock-device-fingerprint-123",
     });
     let response = await POST(createMockRequest());
     await assertApiError(
@@ -250,6 +262,9 @@ describe("attendance record route", () => {
       studentName: "Test User",
       email: "test@example.com",
       confidenceScore: 101,
+      latitude: 31.326,
+      longitude: 75.576,
+      deviceId: "mock-device-fingerprint-123",
     });
     response = await POST(createMockRequest());
     await assertApiError(response, 400, "Validation failed");
@@ -260,6 +275,9 @@ describe("attendance record route", () => {
       studentName: "Test User",
       email: "test@example.com",
       confidenceScore: "not-a-number",
+      latitude: 31.326,
+      longitude: 75.576,
+      deviceId: "mock-device-fingerprint-123",
     });
     response = await POST(createMockRequest());
     await assertApiError(response, 400, "Validation failed");
@@ -287,6 +305,9 @@ describe("attendance record route", () => {
       email: "client@example.com",
       confidenceScore: 75,
       date: "2026-05-25",
+      latitude: 31.326,
+      longitude: 75.576,
+      deviceId: "mock-device-fingerprint-123",
     });
 
     getUserProfile.mockResolvedValue({

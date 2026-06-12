@@ -147,7 +147,8 @@ export default function EmailVerificationPage() {
           <button
             onClick={handleBackToAuth}
             className="mb-8 flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
-           aria-label="Action button">
+            aria-label="Action button"
+          >
             <ArrowLeft className="w-5 h-5" />
             Back to Sign In
           </button>
@@ -275,7 +276,8 @@ export default function EmailVerificationPage() {
                   <button
                     onClick={handleSignOut}
                     className="text-indigo-400 hover:text-indigo-300 font-medium text-sm transition-colors"
-                   aria-label="Action button">
+                    aria-label="Action button"
+                  >
                     Sign out and use different email
                   </button>
                 </div>
@@ -286,7 +288,10 @@ export default function EmailVerificationPage() {
             <div className="mt-8 text-center">
               <p className="text-gray-400 text-sm">
                 Still having trouble?{" "}
-                <button className="text-indigo-400 hover:text-indigo-300 transition-colors" aria-label="Action button">
+                <button
+                  className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                  aria-label="Action button"
+                >
                   Contact Support
                 </button>
               </p>

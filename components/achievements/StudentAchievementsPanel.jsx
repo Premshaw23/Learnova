@@ -46,8 +46,12 @@ export default function StudentAchievementsPanel() {
   }, [fetchAchievements]);
 
   const stats = useMemo(() => {
-    const verified = achievements.filter((a) => a.verificationStatus === "Verified").length;
-    const pending = achievements.filter((a) => a.verificationStatus === "Pending").length;
+    const verified = achievements.filter(
+      (a) => a.verificationStatus === "Verified"
+    ).length;
+    const pending = achievements.filter(
+      (a) => a.verificationStatus === "Pending"
+    ).length;
     return { total: achievements.length, verified, pending };
   }, [achievements]);
 
@@ -57,12 +61,18 @@ export default function StudentAchievementsPanel() {
         <div className="h-8 w-48 bg-white/5 rounded-xl animate-pulse" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-white/5 rounded-2xl animate-pulse" />
+            <div
+              key={i}
+              className="h-32 bg-white/5 rounded-2xl animate-pulse"
+            />
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-40 bg-white/5 rounded-2xl animate-pulse" />
+            <div
+              key={i}
+              className="h-40 bg-white/5 rounded-2xl animate-pulse"
+            />
           ))}
         </div>
       </div>
@@ -77,8 +87,12 @@ export default function StudentAchievementsPanel() {
             <Award className="w-5 h-5 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Digital Certificates</h3>
-            <p className="text-xs text-gray-400">Your achievements & verified certificates</p>
+            <h3 className="text-lg font-bold text-white">
+              Digital Certificates
+            </h3>
+            <p className="text-xs text-gray-400">
+              Your achievements & verified certificates
+            </p>
           </div>
         </div>
         <button
@@ -163,7 +177,10 @@ export default function StudentAchievementsPanel() {
       )}
 
       {preview && (
-        <CertificatePreviewModal achievement={preview} onClose={() => setPreview(null)} />
+        <CertificatePreviewModal
+          achievement={preview}
+          onClose={() => setPreview(null)}
+        />
       )}
     </div>
   );
