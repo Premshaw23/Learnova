@@ -101,6 +101,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@swc/core": "^1.15.40",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
