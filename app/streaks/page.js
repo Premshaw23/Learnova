@@ -19,13 +19,13 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
 import { doc, updateDoc } from "firebase/firestore";
+import { safeLocalStorageSet, safeLocalStorageGet } from "@/lib/storage";
 import { normalizeStreakCount } from "@/lib/streakUtils";
-
 export default function StreaksPage() {
   const [streak, setStreak] = useState(0);
   const [lastVisit, setLastVisit] = useState("");
   const [history, setHistory] = useState([]);
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
 
   // Load and initialize data from Firestore or localStorage
   const loadStreakData = () => {
@@ -41,19 +41,9 @@ export default function StreaksPage() {
         storedLastVisit = userProfile.siteLastVisit || "";
         storedHistory = userProfile.siteVisitHistory || [];
       } else {
-        storedStreak = normalizeStreakCount(
-          localStorage.getItem("learnova_site_streak")
-        );
-        storedLastVisit =
-          localStorage.getItem("learnova_site_last_visit") || "";
-        try {
-          const historyStr = localStorage.getItem(
-            "learnova_site_visit_history"
-          );
-          storedHistory = historyStr ? JSON.parse(historyStr) : [];
-        } catch (e) {
-          storedHistory = [];
-        }
+        storedStreak = normalizeStreakCount(safeLocalStorageGet("learnova_site_streak", "0"));
+        storedLastVisit = safeLocalStorageGet("learnova_site_last_visit", "");
+        storedHistory = safeLocalStorageGet("learnova_site_visit_history", []);
       }
 
       setStreak(storedStreak);
@@ -126,12 +116,9 @@ export default function StreaksPage() {
         newHistory.push(todayDateStr);
       }
 
-      localStorage.setItem("learnova_site_streak", newStreak.toString());
-      localStorage.setItem("learnova_site_last_visit", todayDateStr);
-      localStorage.setItem(
-        "learnova_site_visit_history",
-        JSON.stringify(newHistory)
-      );
+      safeLocalStorageSet("learnova_site_streak", newStreak.toString());
+      safeLocalStorageSet("learnova_site_last_visit", todayDateStr);
+      safeLocalStorageSet("learnova_site_visit_history", newHistory);
 
       setStreak(newStreak);
       setLastVisit(todayDateStr);
@@ -172,12 +159,9 @@ export default function StreaksPage() {
 
       const todayDateStr = historyList[0]; // today
 
-      localStorage.setItem("learnova_site_streak", "7");
-      localStorage.setItem("learnova_site_last_visit", todayDateStr);
-      localStorage.setItem(
-        "learnova_site_visit_history",
-        JSON.stringify(historyList)
-      );
+      safeLocalStorageSet("learnova_site_streak", "7");
+      safeLocalStorageSet("learnova_site_last_visit", todayDateStr);
+      safeLocalStorageSet("learnova_site_visit_history", historyList);
 
       setStreak(7);
       setLastVisit(todayDateStr);
@@ -208,12 +192,9 @@ export default function StreaksPage() {
       const localToday = new Date(today.getTime() - offset * 60 * 1000);
       const todayDateStr = localToday.toISOString().split("T")[0];
 
-      localStorage.setItem("learnova_site_streak", "1");
-      localStorage.setItem("learnova_site_last_visit", todayDateStr);
-      localStorage.setItem(
-        "learnova_site_visit_history",
-        JSON.stringify([todayDateStr])
-      );
+      safeLocalStorageSet("learnova_site_streak", "1");
+      safeLocalStorageSet("learnova_site_last_visit", todayDateStr);
+      safeLocalStorageSet("learnova_site_visit_history", [todayDateStr]);
 
       setStreak(1);
       setLastVisit(todayDateStr);
@@ -275,6 +256,14 @@ export default function StreaksPage() {
 
   const streakLevel = getStreakLevel(streak);
   const last7Days = getLast7Days();
+
+  if (authLoading) {
+  return (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.18),transparent_45%),linear-gradient(180deg,rgba(9,9,11,1),rgba(3,7,18,1))] flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+    </div>
+  );
+}
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.18),transparent_45%),linear-gradient(180deg,rgba(9,9,11,1),rgba(3,7,18,1))] text-slate-100 py-16 px-6 font-sans">
@@ -519,7 +508,8 @@ export default function StreaksPage() {
                 <button
                   onClick={handleSimulateConsecutive}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-white text-slate-950 px-4 py-2.5 text-sm font-bold transition-all hover:bg-slate-100 hover:scale-[1.02] cursor-pointer"
-                 aria-label="Action button">
+                  aria-label="Action button"
+                >
                   <Plus className="h-4 w-4" />
                   Simulate Next Visit Day
                 </button>
@@ -527,7 +517,8 @@ export default function StreaksPage() {
                 <button
                   onClick={handleSimulateFullWeek}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10 cursor-pointer"
-                 aria-label="Action button">
+                  aria-label="Action button"
+                >
                   <Award className="h-4 w-4 text-purple-400" />
                   Set 7-Day Streak
                 </button>
@@ -535,7 +526,8 @@ export default function StreaksPage() {
                 <button
                   onClick={handleResetStreak}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/5 px-4 py-2.5 text-sm font-semibold text-rose-300 transition-colors hover:bg-rose-500/10 cursor-pointer"
-                 aria-label="Action button">
+                  aria-label="Action button"
+                >
                   <RotateCcw className="h-4 w-4" />
                   Reset Progress
                 </button>

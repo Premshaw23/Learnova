@@ -188,8 +188,9 @@ export default function VolumetricPlanner() {
         <button
           type="submit"
           className="col-span-2 md:col-span-6 bg-blue-600 text-white p-2 rounded hover:bg-blue-700 font-medium transition-colors"
-         aria-label="Action button">
-          Add Study Resource
+          aria-label="Action button"
+        >
+          Add Item to Layout
         </button>
       </form>
 

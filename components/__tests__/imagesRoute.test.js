@@ -8,6 +8,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import {
   extractImageFileFromFormData,
   fetchAndValidateImage,
+  getImageResponseHeaders,
   getUserImageFromDb,
   updateUserImageInDb,
   validateFaceDescriptor,

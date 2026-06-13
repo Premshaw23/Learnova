@@ -28,9 +28,13 @@ export const GET = withErrorHandler(async (request) => {
   const id = searchParams.get("id");
 
   const decodedToken = await requireAuth(request);
-  const profile = await getUserProfile(decodedToken.uid) || { role: "student" };
+  const profile = (await getUserProfile(decodedToken.uid)) || {
+    role: "student",
+  };
 
-  const rateLimitResult = await checkRateLimit(`images_get_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `images_get_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }

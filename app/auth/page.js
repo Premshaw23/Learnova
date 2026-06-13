@@ -34,10 +34,11 @@ export default function AuthPage() {
 function AuthPageContent() {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
+  const isDirect = searchParams.get("direct") === "true";
 
-  const [showRoleSelection, setShowRoleSelection] = useState(true);
+  const [showRoleSelection, setShowRoleSelection] = useState(!isDirect);
   const [isLogin, setIsLogin] = useState(mode !== "signup");
-  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedRole, setSelectedRole] = useState(isDirect ? USER_ROLES.STUDENT : "");
 
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -70,18 +71,27 @@ function AuthPageContent() {
     setErrors({});
   };
 
-  const handleSubmit = async (formData) => {
-    // <-- Accept formData directly here
-    const { email, password, fullName, instituteName, inviteCode } = formData; // Extract fields for the API call
-    const { isValid, errors: validationErrors } = validateForm(
-      formData,
-      isLogin
-    );
+ const handleSubmit = async (formData) => {
+  // Validate role selection before proceeding with authentication
+  if (!selectedRole) {
+    setErrors({
+      role: "Please select your role before proceeding with authentication",
+      submit: "Role selection is required. Please go back and select a role."
+    });
+    return;
+  }
 
-    if (!isValid) {
-      setErrors(validationErrors);
-      return;
-    }
+  const { email, password, fullName, instituteName, inviteCode } = formData;
+
+  const { isValid, errors: validationErrors } = validateForm(
+    formData,
+    isLogin
+  );
+
+  if (!isValid) {
+    setErrors(validationErrors);
+    return;
+  }
 
     setIsLoading(true);
     setErrors({});
@@ -99,7 +109,9 @@ function AuthPageContent() {
       }
 
       if (result.needsVerification) {
-        toast.success("Verification email sent! Please check your inbox.");
+        toast.error(
+          "Your email is not verified. Please verify your email to continue."
+        );
         setShowRoleSelection(true);
         router.push("/verify");
       } else if (result.needsProfile) {

@@ -205,7 +205,8 @@ const NoticeSearch = ({
           type="button"
           onClick={onClearFilters}
           className="shrink-0 rounded-3xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 active:scale-95"
-         aria-label="Action button">
+          aria-label="Action button"
+        >
           Clear filters
         </button>
       </div>

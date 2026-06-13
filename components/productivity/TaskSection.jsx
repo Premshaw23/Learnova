@@ -74,7 +74,8 @@ export function TaskSection({
           <button
             type="submit"
             className="ml-auto px-3 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:shadow-lg hover:shadow-purple-500/20 transition-all duration-300"
-           aria-label="Action button">
+            aria-label="Action button"
+          >
             <Plus className="w-4 h-4" />
           </button>
         </div>

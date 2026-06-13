@@ -1,6 +1,7 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
+import { getUserProfile } from "@/lib/firebase-admin";
 import { connectDb } from "@/lib/mongodb";
 
 /**
@@ -19,11 +20,8 @@ import { connectDb } from "@/lib/mongodb";
  *  - good     : attendanceRate >= 80
  */
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken, profile } = await requireRole(request, [
-    "teacher",
-    "institute",
-    "admin",
-  ]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
 
   const db = await connectDb();
 

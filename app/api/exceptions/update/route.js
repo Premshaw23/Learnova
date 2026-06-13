@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
-import { getUserProfileByEmail } from "@/lib/firebase-admin";
+import { getUserProfile, getUserProfileByEmail } from "@/lib/firebase-admin";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import {
   AppError,
   ValidationError,
@@ -36,10 +36,8 @@ const exceptionUpdateSchema = z.object({
 });
 
 export const PUT = withErrorHandler(async (request) => {
-  const { payload: decodedToken, profile } = await requireRole(request, [
-    "admin",
-    "teacher",
-  ]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `exceptions_update_${ip}_${decodedToken.uid}`

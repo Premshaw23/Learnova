@@ -1,11 +1,12 @@
 import { POST } from "@/app/api/flashcards/route";
-import { requireRole } from "@/lib/rbac";
+import { requireRole, requireAuth } from "@/lib/rbac";
 import { checkRateLimit } from "@/lib/rateLimit";
 import * as FlashcardModel from "@/lib/models/flashcardModel";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/rbac", () => ({
   requireRole: vi.fn(),
+  requireAuth: vi.fn(),
 }));
 
 vi.mock("@/lib/rateLimit", () => ({
@@ -30,6 +31,7 @@ describe("POST /api/flashcards - Zod Validation and Security", () => {
     requireRole.mockResolvedValue({
       payload: { uid: "user-123", role: "student" },
     });
+    requireAuth.mockResolvedValue({ uid: "user-123", role: "student" });
     checkRateLimit.mockResolvedValue({ allowed: true });
   });
 

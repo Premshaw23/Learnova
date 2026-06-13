@@ -34,7 +34,9 @@ export default function SearchModal({ isOpen, onClose }) {
 
   useEffect(() => {
     const savedSearches = JSON.parse(
-      localStorage.getItem("recentSearches") || "[]"
+      (typeof window !== "undefined" && window.localStorage
+        ? window.localStorage.getItem("recentSearches")
+        : null) || "[]"
     );
 
     setRecentSearches(savedSearches);
@@ -124,12 +126,16 @@ export default function SearchModal({ isOpen, onClose }) {
 
     setRecentSearches(updated);
 
-    localStorage.setItem("recentSearches", JSON.stringify(updated));
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem("recentSearches", JSON.stringify(updated));
+    }
   };
 
   const clearRecentSearches = () => {
     setRecentSearches([]);
-    localStorage.removeItem("recentSearches");
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.removeItem("recentSearches");
+    }
   };
 
   const handleNavigate = (href) => {
@@ -190,7 +196,8 @@ export default function SearchModal({ isOpen, onClose }) {
               <button
                 onClick={clearRecentSearches}
                 className="text-xs text-red-400 hover:text-red-300"
-               aria-label="Action button">
+                aria-label="Action button"
+              >
                 Clear All
               </button>
             </div>

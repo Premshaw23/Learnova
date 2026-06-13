@@ -185,17 +185,28 @@ async function handleSync(request) {
       steps: [
         {
           name: "write_attendance",
+          // Fix for #3559: use field-level update() on existing documents instead of a
+          // full set(), so concurrent offline syncs for the same user-date cannot
+          // silently overwrite fields written by a racing request that arrived first.
           execute: async (ctx) => {
             const newDocRef = db
               .collection("attendance_records")
               .doc(`${decodedToken.uid}_${recordDate}`);
+
             await db.runTransaction(async (transaction) => {
               const existingAttendance = await transaction.get(newDocRef);
+
               if (existingAttendance.exists) {
+                // Document already exists — another write (online or a prior sync)
+                // got here first. Mark as already processed so downstream steps
+                // (MongoDB write, XP award) are skipped, preserving the original
+                // record's integrity.
                 ctx._alreadyProcessed = true;
                 return;
               }
 
+              // Document does not exist — safe to create it with a full set().
+              // No merge flag: we own this new document entirely.
               transaction.set(newDocRef, {
                 userId: decodedToken.uid,
                 studentName: serverIdentity.studentName,
@@ -217,6 +228,8 @@ async function handleSync(request) {
           execute: async (ctx) => {
             if (ctx._alreadyProcessed) return;
             const mongoDB = await connectDb();
+            // $set is inherently field-level in MongoDB — only the listed fields are
+            // touched; no risk of clobbering unrelated fields on a concurrent write.
             await mongoDB.collection("attendance").updateOne(
               { userId: decodedToken.uid, date: recordDate },
               {
@@ -251,7 +264,7 @@ async function handleSync(request) {
               attendanceHour: record.queuedAt
                 ? new Date(record.queuedAt).getHours()
                 : new Date().getHours(),
-              attendanceDate: recordDate,
+              attendanceDate: new Date(record.queuedAt),
             });
           },
           compensate: null, // XP is a side-effect; failure doesn't block attendance

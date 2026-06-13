@@ -1,5 +1,6 @@
 import { connectDb } from "@/lib/mongodb";
-import { requireStudent } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
+import { getUserProfile } from "@/lib/firebase-admin";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { ValidationError, AppError, ForbiddenError } from "@/lib/errors";
@@ -41,7 +42,8 @@ const exceptionCreateSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (request) => {
-  const { payload: decodedToken, profile } = await requireStudent(request);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `exceptions_create_${ip}_${decodedToken.uid}`

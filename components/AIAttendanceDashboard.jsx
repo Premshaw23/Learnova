@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { exportRiskToCSV } from "../utils/exportToCSV";
+import toast from "react-hot-toast";
 
 export default function AIAttendanceDashboard({ riskData, tenantId }) {
   const [isExporting, setIsExporting] = useState(false);
@@ -11,7 +12,7 @@ export default function AIAttendanceDashboard({ riskData, tenantId }) {
         (item) => item.tenantId === tenantId
       );
       if (filteredData.length === 0) {
-        alert("No data available for export.");
+        toast.error("No data available for export.");
         return;
       }
       exportRiskToCSV(filteredData);

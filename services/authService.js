@@ -7,6 +7,10 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   signOut,
+  getMultiFactorResolver,
+  multiFactor,
+  TotpMultiFactorGenerator,
+  TotpSecret,
 } from "firebase/auth";
 import { doc, getDoc, deleteDoc, setDoc } from "firebase/firestore";
 import {
@@ -115,6 +119,10 @@ export const loginWithEmail = async (email, password, selectedRole) => {
 
     return { success: true, userData: { role: userRole } };
   } catch (err) {
+    if (err.code === "auth/multi-factor-auth-required") {
+      const resolver = getMultiFactorResolver(auth, err);
+      return { success: false, needsMFA: true, resolver };
+    }
     return {
       success: false,
       error:
@@ -357,6 +365,10 @@ export const loginWithGoogle = async (
 
     return { success: true, userData: { role: userRole || selectedRole } };
   } catch (err) {
+    if (err.code === "auth/multi-factor-auth-required") {
+      const resolver = getMultiFactorResolver(auth, err);
+      return { success: false, needsMFA: true, resolver };
+    }
     return {
       success: false,
       error:
@@ -405,3 +417,59 @@ export const resetPassword = async (email) => {
     };
   }
 };
+/**
+ * Initiates TOTP enrollment.
+ * @param {Object} user - The authenticated Firebase user.
+ * @returns {Promise<Object>} The TOTP secret and QR code URL.
+ */
+export const enrollTOTP = async (user) => {
+  try {
+    const multiFactorSession = await multiFactor(user).getSession();
+    const tfaSecret = await TotpMultiFactorGenerator.generateSecret(multiFactorSession);
+    const qrCodeUrl = tfaSecret.generateQrCodeUrl(user.email, "Learnova");
+    return { success: true, secret: tfaSecret, qrCodeUrl };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Verifies TOTP code and completes enrollment.
+ * @param {Object} user - The authenticated Firebase user.
+ * @param {Object} tfaSecret - The secret from enrollment.
+ * @param {string} code - The 6-digit TOTP code.
+ * @returns {Promise<Object>} Success or error.
+ */
+export const verifyTOTPEnrollment = async (user, tfaSecret, code) => {
+  try {
+    const multiFactorAssertion = TotpMultiFactorGenerator.assertionForEnrollment(tfaSecret, code);
+    await multiFactor(user).enroll(multiFactorAssertion, "TOTP Authenticator");
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Verifies TOTP code during sign-in using a resolver.
+ * @param {Object} resolver - The resolver from the caught error.
+ * @param {string} code - The 6-digit TOTP code.
+ * @returns {Promise<Object>} Authentication result.
+ */
+export const verifyTOTPSignIn = async (resolver, code) => {
+  try {
+    const enrolledFactor = resolver.hints.find(hint => hint.factorId === TotpMultiFactorGenerator.FACTOR_ID);
+    if (!enrolledFactor) throw new Error("No TOTP factor found.");
+
+    const multiFactorAssertion = TotpMultiFactorGenerator.assertionForSignIn(enrolledFactor.uid, code);
+    const userCredential = await resolver.resolveSignIn(multiFactorAssertion);
+    
+    // Set last login
+    await setDoc(doc(db, "users", userCredential.user.uid), { lastLogin: new Date() }, { merge: true });
+
+    return { success: true, userData: { role: undefined } }; // Client handles role via context
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+};
+

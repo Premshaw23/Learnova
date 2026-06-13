@@ -3,6 +3,7 @@ import { withErrorHandler } from "@/lib/error-handler";
 import { requireParent } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
+import { predictStudentAttendance } from "@/lib/attendanceUtils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -71,6 +72,8 @@ export const GET = withErrorHandler(async (request, context) => {
   // Sort records by date descending
   records.sort((a, b) => new Date(b.date) - new Date(a.date));
 
+  const prediction = predictStudentAttendance(records);
+
   return jsonSuccess(
     {
       stats: {
@@ -88,6 +91,7 @@ export const GET = withErrorHandler(async (request, context) => {
             : 0,
       },
       records,
+      prediction,
     },
     200
   );

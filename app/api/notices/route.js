@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
-import { requireRole } from "@/lib/rbac";
+import { getAdminDb, getUserProfile } from "@/lib/firebase-admin";
+import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
@@ -12,11 +12,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 async function publishNotice(request, validData) {
-  const allowedRoles = ["teacher", "admin", "staff"];
-  const { payload: decodedToken, profile } = await requireRole(
-    request,
-    allowedRoles
-  );
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
@@ -52,9 +49,12 @@ async function publishNotice(request, validData) {
     console.error("Failed to sync notice to MongoDB:", mongoError);
   }
 
-  // Publish to Redis for SSE real-time stream
+  // Publish to Redis for real-time SSE delivery
   try {
-    await publishNoticeToRedis({ ...newNotice, _id: result.id });
+    await publishNoticeToRedis({
+      ...newNotice,
+      _id: result.id,
+    });
   } catch (redisError) {
     console.error("Failed to publish notice to Redis:", redisError);
   }

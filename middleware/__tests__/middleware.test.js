@@ -101,12 +101,20 @@ describe("Middleware Rate Limiting", () => {
 
       // First 5 requests should be allowed
       for (let i = 0; i < 5; i++) {
-        const result = await mod.rateLimit("192.168.1.1", "/api/auth/login", request);
+        const result = await mod.rateLimit(
+          "192.168.1.1",
+          "/api/auth/login",
+          request
+        );
         expect(result.allowed).toBe(true);
       }
 
       // 6th request should be blocked
-      const result = await mod.rateLimit("192.168.1.1", "/api/auth/login", request);
+      const result = await mod.rateLimit(
+        "192.168.1.1",
+        "/api/auth/login",
+        request
+      );
       expect(result.allowed).toBe(false);
       expect(result.retryAfter).toBeGreaterThan(0);
     });
@@ -121,7 +129,11 @@ describe("Middleware Rate Limiting", () => {
       for (let i = 0; i < 5; i++) {
         await mod.rateLimit("192.168.1.1", "/api/auth/login", request);
       }
-      const blocked = await mod.rateLimit("192.168.1.1", "/api/auth/login", request);
+      const blocked = await mod.rateLimit(
+        "192.168.1.1",
+        "/api/auth/login",
+        request
+      );
       expect(blocked.allowed).toBe(false);
     });
   });
@@ -133,8 +145,14 @@ describe("Middleware Rate Limiting", () => {
 
       // Set lastCleanupTime far in the past so cleanup doesn't short-circuit
       mod.resetForTest(now - 10 * 60 * 1000);
-      mod.devRateLimitMap.set("expired_key", { count: 3, resetTime: now - 1000 });
-      mod.devRateLimitMap.set("valid_key", { count: 2, resetTime: now + 60000 });
+      mod.devRateLimitMap.set("expired_key", {
+        count: 3,
+        resetTime: now - 1000,
+      });
+      mod.devRateLimitMap.set("valid_key", {
+        count: 2,
+        resetTime: now + 60000,
+      });
 
       mod.cleanupRateLimitMap();
 

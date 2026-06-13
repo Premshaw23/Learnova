@@ -16,6 +16,7 @@ import {
   triggerOfflineSync,
 } from "@/utils/offlineRequestHandler";
 import { getTodayKeyLocal } from "@/lib/dateUtils";
+import { queueOfflineAttendance, syncOfflineQueue } from "./offlineSyncQueue";
 
 function getTodayKey() {
   return getTodayKeyLocal();
@@ -102,6 +103,23 @@ export async function recordAttendance({
 
   let response;
   try {
+    if (!navigator.onLine) {
+      console.log("[AttendanceService] Device is offline. Queuing attendance in IndexedDB.");
+      await queueOfflineAttendance({
+        userId,
+        studentName,
+        email,
+        confidenceScore: confidenceScore ?? 0,
+        date: todayKey,
+        // Save the token so background sync can use it if needed, or re-fetch it
+      });
+      return {
+        alreadyRecorded: false,
+        newRate: null,
+        queuedOffline: true,
+      };
+    }
+
     response = await fetch("/api/attendance/record", {
       method: "POST",
       headers: {
@@ -117,9 +135,15 @@ export async function recordAttendance({
       }),
     });
   } catch (error) {
-    // If it's a network error, Workbox Background Sync has queued the request
     if (error.message.includes("Failed to fetch") || error.name === "TypeError") {
-      console.warn("Network error during attendance submission. Workbox will sync later.");
+      console.warn("Network error during attendance submission. Queuing to IndexedDB.");
+      await queueOfflineAttendance({
+        userId,
+        studentName,
+        email,
+        confidenceScore: confidenceScore ?? 0,
+        date: todayKey,
+      });
       return {
         alreadyRecorded: false,
         newRate: null,

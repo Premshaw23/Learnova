@@ -37,6 +37,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
+import { safeLocalStorageRemove } from "@/lib/storage";
 import i18n from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/apiClient";
@@ -147,7 +148,6 @@ export default function UniversalSettings() {
                     await updateDoc(doc(db, "users", user.uid), {
                       fcmToken: token,
                     });
-                    console.log("FCM Token saved successfully");
                   }
                 } catch (tokenErr) {
                   console.error("Error getting FCM token:", tokenErr);
@@ -421,35 +421,54 @@ export default function UniversalSettings() {
     setIsLoading(true);
     setError(null);
     try {
-      // Upload avatar separately if one was selected
       let avatarUrl = settings.profile.avatar;
       if (avatarFile) {
-        const formData = new FormData();
-        formData.append("file", avatarFile);
+        try {
+          const formData = new FormData();
+          formData.append("file", avatarFile);
 
-        const uploadResponse = await apiFetch("/api/upload/avatar", {
-          method: "POST",
-          body: formData,
-          credentials: "include", // Include cookies for authentication
-        });
+          const uploadResponse = await apiFetch("/api/upload/avatar", {
+            method: "POST",
+            body: formData,
+            credentials: "include", // Include cookies for authentication
+          });
 
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json().catch(() => ({}));
-          const errorMsg =
-            errorData.error || errorData.message || "Failed to upload avatar";
-          throw new Error(`Avatar upload failed: ${errorMsg}`);
+          const uploadResponseText = await uploadResponse.text().catch(() => "");
+          let uploadData = null;
+
+          if (uploadResponseText) {
+            try {
+              uploadData = JSON.parse(uploadResponseText);
+            } catch (parseError) {
+              console.error("Error parsing avatar upload response:", parseError);
+              throw new Error("Avatar upload returned invalid data.");
+            }
+          }
+
+          if (!uploadResponse.ok) {
+            const errorMsg =
+              uploadData?.error ||
+              uploadData?.message ||
+              uploadResponseText ||
+              "Failed to upload avatar";
+            throw new Error(`Avatar upload failed: ${errorMsg}`);
+          }
+
+          if (!uploadData || !uploadData.url) {
+            throw new Error("Avatar upload completed without a usable image URL.");
+          }
+
+          avatarUrl = uploadData.url;
+          setAvatarFile(null);
+          setAvatarPreview(null);
+        } catch (avatarError) {
+          console.error("Error uploading avatar:", avatarError);
+          toast.error(
+            avatarError?.message || "Avatar upload failed, saving other settings only."
+          );
         }
-
-        const uploadData = await uploadResponse.json();
-        if (!uploadData.url) {
-          throw new Error("No URL returned from avatar upload");
-        }
-        avatarUrl = uploadData.url;
-        setAvatarFile(null);
-        setAvatarPreview(null);
       }
 
-      // Save other settings
       const response = await apiFetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -512,11 +531,9 @@ export default function UniversalSettings() {
   const handleResetToDefaults = async () => {
     try {
       // 1. Clear settings-related keys in localStorage safely
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.removeItem("theme");
-        window.localStorage.removeItem("settings");
-        window.localStorage.removeItem("learnova_settings");
-      }
+      safeLocalStorageRemove("theme");
+      safeLocalStorageRemove("settings");
+      safeLocalStorageRemove("learnova_settings");
 
       // 2. Revert theme in next-themes provider to default 'dark'
       setTheme("dark");
@@ -1499,7 +1516,10 @@ export default function UniversalSettings() {
               >
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left" aria-label="Action button">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <FileText className="h-6 w-6 text-blue-400" />
                       <div>
                         <p className="text-white font-medium">Documentation</p>
@@ -1509,7 +1529,10 @@ export default function UniversalSettings() {
                       </div>
                     </button>
 
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left" aria-label="Action button">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <Mail className="h-6 w-6 text-green-400" />
                       <div>
                         <p className="text-white font-medium">
@@ -1521,7 +1544,10 @@ export default function UniversalSettings() {
                       </div>
                     </button>
 
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left" aria-label="Action button">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <HelpCircle className="h-6 w-6 text-purple-400" />
                       <div>
                         <p className="text-white font-medium">FAQ</p>
@@ -1531,7 +1557,10 @@ export default function UniversalSettings() {
                       </div>
                     </button>
 
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left" aria-label="Action button">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <Globe className="h-6 w-6 text-orange-400" />
                       <div>
                         <p className="text-white font-medium">Community</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useIsMounted } from "@/hooks/useIsMounted";
 import { auth, db } from "@/lib/firebaseConfig";
 import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
@@ -125,6 +126,8 @@ export const useAuth = () => {
   const unsubscribeSnapshotRef = useRef(null);
   const firstSnapshotReceivedRef = useRef(false);
 
+  const isMounted = useIsMounted();
+
   const handleSessionExpired = useCallback(() => {
     if (!isMounted()) return;
     setSessionExpired(true);
@@ -175,7 +178,7 @@ export const useAuth = () => {
                 if (userDoc.exists()) {
                   const profileData = userDoc.data();
                   setUserProfile(profileData);
-                  const token = await firebaseUser.getIdToken();
+                  const token = await firebaseUser.getIdToken(true); 
                   setAuthTokenCookie(token);
                   setCookie("userRole", profileData.role, 7);
                 } else {
@@ -196,6 +199,7 @@ export const useAuth = () => {
             },
             (snapError) => {
               console.warn("Profile snapshot subscription error:", snapError.message);
+              setError("Failed to sync your profile data.");
               if (!firstSnapshotReceivedRef.current) {
                 firstSnapshotReceivedRef.current = true;
                 setProfileLoading(false);
