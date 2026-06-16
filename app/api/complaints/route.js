@@ -35,7 +35,10 @@ export const POST = withErrorHandler(
       try {
         db = await connectDb();
       } catch (error) {
-        throw new AppError("Database connection failed. Please try again.", 503);
+        throw new AppError(
+          "Database connection failed. Please try again.",
+          503
+        );
       }
 
       await db.collection("complaints").insertOne({

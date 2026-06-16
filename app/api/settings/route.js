@@ -61,6 +61,14 @@ const settingsSchema = z
       .object({
         lowAttendanceThreshold: z.number().min(0).max(100).optional(),
         enableAttendanceAutomation: z.boolean().optional(),
+        engagementWeights: z
+          .object({
+            attendance: z.number().min(0).max(1).optional(),
+            activity: z.number().min(0).max(1).optional(),
+            assignment: z.number().min(0).max(1).optional(),
+            academic: z.number().min(0).max(1).optional(),
+          })
+          .optional(),
       })
       .strict()
       .optional(),

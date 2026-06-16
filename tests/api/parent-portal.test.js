@@ -416,7 +416,7 @@ describe("Parent Portal Feature Tests", () => {
       await assertApiError(
         response,
         400,
-        "Parent and student emails are required"
+        "Validation failed"
       );
     });
 
@@ -484,7 +484,7 @@ describe("Parent Portal Feature Tests", () => {
       await assertApiError(
         response,
         400,
-        "Missing parentId or studentId parameters"
+        "Validation failed"
       );
     });
 

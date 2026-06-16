@@ -123,7 +123,8 @@ export function TimerSection({
             className="px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600
               hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] text-white font-semibold
               flex items-center gap-2 shadow-lg shadow-purple-500/20 transition-all duration-300"
-           aria-label="Action button">
+            aria-label="Action button"
+          >
             {isRunning ? (
               <Pause className="w-4 h-4" />
             ) : (
@@ -138,7 +139,8 @@ export function TimerSection({
                 ? "bg-white/10 border-white/10 text-slate-300 hover:text-white hover:bg-white/20"
                 : "bg-white/80 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-white"
             }`}
-           aria-label="Action button">
+            aria-label="Action button"
+          >
             <RotateCcw className="w-4 h-4" />
             Reset
           </button>
@@ -170,7 +172,8 @@ export function TimerSection({
             <button
               type="submit"
               className="px-3 py-1 rounded-xl bg-purple-500/80 text-white text-xs font-semibold hover:bg-purple-500 transition-colors"
-             aria-label="Action button">
+              aria-label="Action button"
+            >
               Set
             </button>
           </form>

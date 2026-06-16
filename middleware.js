@@ -1,24 +1,8 @@
 import { NextResponse } from "next/server";
 import * as jose from "jose";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
 import getApiRouteRule from "@/lib/rbac-policy";
-
-let redisClient;
-
-function getRedisClient() {
-  if (
-    !redisClient &&
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -38,15 +22,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-function getRedis() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
 
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
@@ -59,7 +34,9 @@ const AUTH_RATE_LIMITED_PATHS = [
   "/api/auth/reset-password",
   "/api/auth/verify-email",
   "/api/auth/verify-otp",
+  "/api/auth/verify-otp/callback",
 ];
+
 
 const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
 
@@ -333,6 +310,7 @@ async function verifyIdToken(token) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken: token }),
+        signal: AbortSignal.timeout(5000),
       }
     );
 
@@ -479,40 +457,38 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
-    if (isTokenValid && pathname.startsWith("/api/")) {
-      const sessionId =
-        request.cookies.get("sessionId")?.value ||
-        request.headers.get("x-session-id");
-      if (sessionId) {
-        try {
-          const redis = getRedisClient();
-          if (redis) {
-            const exists = await redis.exists(`session:${sessionId}`);
-            if (exists !== 1) {
-              return NextResponse.json(
-                { error: "Session expired or terminated concurrently" },
-                { status: 401 }
-              );
-            }
+  if (isTokenValid && pathname.startsWith("/api/")) {
+    const sessionId =
+      request.cookies.get("sessionId")?.value ||
+      request.headers.get("x-session-id");
+    if (sessionId) {
+      try {
+        const redis = getRedis();
+        if (redis) {
+          const exists = await redis.exists(`session:${sessionId}`);
+          if (exists !== 1) {
+            return NextResponse.json(
+              { error: "Session expired or terminated concurrently" },
+              { status: 401 }
+            );
           }
-        } catch {
-          // Redis unavailable — continue without session validation
         }
+      } catch {
+        // Redis unavailable — continue without session validation
       }
     }
+  }
 
-    const tokenFromCookie = request.cookies.get("authToken")?.value || null;
-    if (tokenFromCookie) {
-      try {
-        validateCsrfOriginAndReferer(request);
-        validateCsrfRequest(request);
-      } catch (error) {
-        return NextResponse.json(
-          { error: error.message || "Forbidden: invalid CSRF request" },
-          { status: error.statusCode || 403 }
-        );
-      }
+  const tokenFromCookie = request.cookies.get("authToken")?.value || null;
+  if (tokenFromCookie) {
+    try {
+      validateCsrfOriginAndReferer(request);
+      validateCsrfRequest(request);
+    } catch (error) {
+      return NextResponse.json(
+        { error: error.message || "Forbidden: invalid CSRF request" },
+        { status: error.statusCode || 403 }
+      );
     }
   }
 
@@ -677,3 +653,4 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
   ],
 };
+        

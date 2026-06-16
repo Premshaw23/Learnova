@@ -86,7 +86,7 @@ export default function RegisterPage() {
     const loadImage = async () => {
       try {
         const token = await user?.getIdToken();
-        const res = await apiFetch(`/api/images?id=${registeredUser._id}`, {
+        const res = await fetch(`/api/images?id=${registeredUser._id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 
@@ -238,15 +238,14 @@ export default function RegisterPage() {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await apiFetch("/api/register", {
+      const data = await apiFetch("/api/register", {
         method: "POST",
         headers,
         body: formData,
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        // ✅ Check for HTTP success status first
+      if (data.success) {
+        // ✅ Check for success first
         setRegisteredUser(data.data?.user ?? null);
         setName("");
         setRollNo("");

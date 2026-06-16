@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const appDir = path.join(__dirname, '../app');
+const appDir = path.join(__dirname, "../app");
 
 const errorContent = `"use client";
 
@@ -41,15 +41,23 @@ export default function Error({ error, reset }) {
 function walkSync(currentDirPath) {
   if (!fs.existsSync(currentDirPath)) return;
   const entries = fs.readdirSync(currentDirPath, { withFileTypes: true });
-  
+
   let hasPage = false;
   let hasError = false;
 
   for (const entry of entries) {
-    if (entry.name === 'page.js' || entry.name === 'page.jsx' || entry.name === 'page.tsx') {
+    if (
+      entry.name === "page.js" ||
+      entry.name === "page.jsx" ||
+      entry.name === "page.tsx"
+    ) {
       hasPage = true;
     }
-    if (entry.name === 'error.js' || entry.name === 'error.jsx' || entry.name === 'error.tsx') {
+    if (
+      entry.name === "error.js" ||
+      entry.name === "error.jsx" ||
+      entry.name === "error.tsx"
+    ) {
       hasError = true;
     }
     if (entry.isDirectory()) {
@@ -59,9 +67,9 @@ function walkSync(currentDirPath) {
 
   // Only add if it's not the root app dir, has a page, and doesn't have an error.js
   if (hasPage && !hasError && currentDirPath !== appDir) {
-    const errorFilePath = path.join(currentDirPath, 'error.js');
-    fs.writeFileSync(errorFilePath, errorContent, 'utf8');
-    console.log('Added error.js to', currentDirPath);
+    const errorFilePath = path.join(currentDirPath, "error.js");
+    fs.writeFileSync(errorFilePath, errorContent, "utf8");
+    console.log("Added error.js to", currentDirPath);
   }
 }
 

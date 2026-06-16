@@ -79,6 +79,7 @@ import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "fire
 
 import AttendanceRiskDashboard from "@/components/dashboard/AttendanceRiskDashboard";
 import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
+import LiveAttendanceView from "@/components/LiveAttendanceView";
 import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
@@ -876,6 +877,10 @@ const TeacherDashboard = () => {
             </div>
           </div>
 
+          {/* Live Check-Ins */}
+          <LiveAttendanceView title="Live Check-Ins" />
+        </div>
+        <div className="space-y-8">
           {/* Exception Requests */}
           <ExceptionRequestsList
             exceptionRequests={exceptionRequests}
