@@ -822,8 +822,8 @@ export default function UniversalProfile() {
                     Recent Activity
                   </h3>
                   <div className="space-y-4">
-                    {activity && activity.length > 0 ? (
-                      activity.map((item, index) => (
+                    {recentActivity && recentActivity.length > 0 ? (
+                      recentActivity.map((item, index) => (
                         <div
                           key={item.id || index}
                           className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-all duration-300"
