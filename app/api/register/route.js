@@ -5,6 +5,7 @@ import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { AppError, ValidationError, ForbiddenError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/rateLimit";
 import {
@@ -13,6 +14,7 @@ import {
   markIdempotent,
 } from "@/lib/transactionCoordinator";
 import { validateFaceDescriptor } from "@/lib/images/imagesService";
+import { logAuditEvent } from "@/lib/auditLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -231,6 +233,12 @@ export const POST = withErrorHandler(async (req) => {
   // Database
   const db = await connectDb();
 
+  initializeFirebase();
+  const firestoreDb = admin.firestore();
+  const firestoreUserRef = firestoreDb
+    .collection("users")
+    .doc(decodedToken.uid);
+
   const users = db.collection("users");
 
   // Ensure unique indexes exist (idempotent, runs once per process)
@@ -256,32 +264,13 @@ export const POST = withErrorHandler(async (req) => {
   const sagaKey =
     idempotencyKey || `register_${decodedToken.uid}_${Date.now()}`;
 
-  let uploadedBlobUrl = null;
-  let insertedUser = null;
-
+  // Saga steps are ordered to prevent orphaned blobs: the DB insert runs
+  // first so the unique index rejects duplicates BEFORE any blob is uploaded.
   const sagaResult = await executeSaga({
     operationType: "register",
     uid: decodedToken.uid,
     idempotencyKey: sagaKey,
     steps: [
-      {
-        name: "upload_blob",
-        execute: async (ctx) => {
-          const blob = await put(fileName, buffer, {
-            contentType: file.type,
-            access: "public",
-          });
-          ctx._blobUrl = blob.url;
-          return blob;
-        },
-        compensate: async (ctx) => {
-          if (ctx._blobUrl) {
-            try {
-              await del(ctx._blobUrl);
-            } catch {}
-          }
-        },
-      },
       {
         name: "write_mongodb",
         execute: async (ctx) => {
@@ -289,8 +278,9 @@ export const POST = withErrorHandler(async (req) => {
             name: sanitizedName,
             rollNo: sanitizedRollNo,
             email,
-            image: ctx._blobUrl,
             firebaseUid: decodedToken.uid,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
           };
 
           if (faceDescriptor) {
@@ -299,6 +289,7 @@ export const POST = withErrorHandler(async (req) => {
 
           const result = await users.insertOne(user);
 
+          ctx._insertedUserId = result.insertedId;
           ctx._insertedUser = {
             _id: result.insertedId,
             name: user.name,
@@ -307,9 +298,65 @@ export const POST = withErrorHandler(async (req) => {
           };
         },
         compensate: async (ctx) => {
-          if (ctx._insertedUser?._id) {
+          if (ctx._insertedUserId) {
+            await users.deleteOne({ _id: ctx._insertedUserId }).catch((err) => {
+              logger.error("Registration rollback: failed to delete user document", {
+                userId: String(ctx._insertedUserId),
+                error: err.message,
+              });
+            });
+          }
+        },
+      },
+      {
+        name: "upload_blob",
+        execute: async (ctx) => {
+          const blob = await put(fileName, buffer, {
+            contentType: file.type,
+            access: "public",
+          });
+          ctx._blobUrl = blob.url;
+
+          await users.updateOne(
+            { _id: ctx._insertedUserId },
+            { $set: { image: blob.url } }
+          );
+        },
+        compensate: async (ctx) => {
+          if (ctx._blobUrl) {
+            await del(ctx._blobUrl).catch((err) => {
+              logger.error("Registration rollback: failed to delete orphaned blob", {
+                blobUrl: ctx._blobUrl,
+                error: err.message,
+              });
+            });
+          }
+        },
+      },
+      {
+        name: "write_firestore_profile",
+        execute: async (ctx) => {
+          const firestoreProfile = {
+            uid: decodedToken.uid,
+            email,
+            name: sanitizedName,
+            fullName: sanitizedName,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            role: decodedToken.role || "student",
+            registeredViaFace: true,
+          };
+
+          const existingProfile = await firestoreUserRef.get();
+          ctx._firestoreProfileExisted = existingProfile.exists;
+
+          await firestoreUserRef.set(firestoreProfile, { merge: true });
+          ctx._wroteFirestoreProfile = !existingProfile.exists;
+        },
+        compensate: async (ctx) => {
+          if (ctx._wroteFirestoreProfile) {
             try {
-              await users.deleteOne({ _id: ctx._insertedUser._id });
+              await firestoreUserRef.delete();
             } catch {}
           }
         },
@@ -337,6 +384,19 @@ export const POST = withErrorHandler(async (req) => {
   if (idempotencyKey) {
     await markIdempotent(idempotencyKey, resultPayload);
   }
+
+  logAuditEvent({
+    actor: decodedToken,
+    action: "user.register",
+    target: { type: "user", id: decodedToken.uid },
+    details: {
+      email,
+      name: sanitizedName,
+      rollNo: sanitizedRollNo,
+      hasPhoto: !!fileName,
+    },
+    request: req,
+  });
 
   return jsonSuccess(resultPayload, 201);
 });

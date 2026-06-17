@@ -303,7 +303,8 @@ export default function ActivityPage() {
     {
       id: 10,
       title: "Grammar Galaxy",
-      description: "Improve your grammar skills with interactive exercises and quizzes",
+      description:
+        "Improve your grammar skills with interactive exercises and quizzes",
       category: "language",
       level: "elementary",
       duration: "20 min",

@@ -7,10 +7,10 @@ export const POST = withErrorHandler(async (req) => {
   const { sessionId, questionId, answer, timestamp } = await req.json();
 
   if (!sessionId || !questionId || answer === undefined) {
-    return new Response(
-      JSON.stringify({ error: "Missing required fields" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Missing required fields" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const db = await connectDb();
@@ -46,9 +46,7 @@ export const POST = withErrorHandler(async (req) => {
     });
   }
 
-  const quiz = await db
-    .collection("quizzes")
-    .findOne({ _id: session.quizId });
+  const quiz = await db.collection("quizzes").findOne({ _id: session.quizId });
   const questionExists = quiz.questions.some((q) => q._id === questionId);
 
   if (!questionExists) {

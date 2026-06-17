@@ -5,6 +5,7 @@ import CircularProgress from "../ui/CircularProgress";
 import StreakTracker from "../ui/StreakTracker";
 import Image from "next/image";
 
+
 /**
  * Mock data representing courses / AI-generated content
  */
@@ -63,10 +64,25 @@ const MOCK_COURSES = [
  * 2. Empty State (renders the premium EmptyState component when no courses are present)
  * 3. Populated State (renders actual list data)
  */
+const ROADMAPS = {
+  "Web Development": {
+    Beginner: ["HTML", "CSS", "JavaScript", "React", "Node.js"],
+  },
+  "Data Science": {
+    Beginner: ["Python", "NumPy", "Pandas", "Data Visualization", "Machine Learning"],
+  },
+  "Artificial Intelligence": {
+    Beginner: ["Python", "Math Basics", "Machine Learning", "Deep Learning", "LLMs"],
+  },
+};
+
 const Dashboard = () => {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all"); // 'all' (populated) or 'empty' (simulated zero data)
+const [goal, setGoal] = useState("");
+const [level, setLevel] = useState("Beginner");
+const [roadmap, setRoadmap] = useState([]);
 
   useEffect(() => {
     let timer;
@@ -89,10 +105,92 @@ const Dashboard = () => {
   const handleEnrollFirstCourse = () => {
     setActiveTab("all");
   };
+const generateRoadmap = () => {
+  const ROADMAPS = {
+    "Web Development": {
+      Beginner: ["HTML", "CSS", "JavaScript", "React", "Node.js"],
+    },
+    "Data Science": {
+      Beginner: [
+        "Python",
+        "NumPy",
+        "Pandas",
+        "Data Visualization",
+        "Machine Learning",
+      ],
+    },
+    "Artificial Intelligence": {
+      Beginner: [
+        "Python",
+        "Math Basics",
+        "Machine Learning",
+        "Deep Learning",
+        "LLMs",
+      ],
+    },
+  };
+
+  if (!goal) return;
+
+  setRoadmap(ROADMAPS[goal]?.[level] || []);
+};
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-10 text-slate-800 dark:text-slate-100 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-8">
+        {/* AI Roadmap Generator */}
+<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+  <h2 className="text-2xl font-bold mb-4">
+    AI Learning Roadmap Generator
+  </h2>
+
+  <div className="flex flex-wrap gap-4 mb-4">
+    <select
+      value={goal}
+      onChange={(e) => setGoal(e.target.value)}
+      className="border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800"
+    >
+      <option value="">Select Goal</option>
+      <option value="Web Development">Web Development</option>
+      <option value="Data Science">Data Science</option>
+      <option value="Artificial Intelligence">Artificial Intelligence</option>
+    </select>
+
+    <select
+      value={level}
+      onChange={(e) => setLevel(e.target.value)}
+      className="border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800"
+    >
+      <option value="Beginner">Beginner</option>
+      <option value="Intermediate">Intermediate</option>
+      <option value="Advanced">Advanced</option>
+    </select>
+
+    <button
+      onClick={generateRoadmap}
+      className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
+    >
+      Generate Roadmap
+    </button>
+  </div>
+
+  {roadmap.length > 0 && (
+    <div className="space-y-3 mt-4">
+      {roadmap.map((item, index) => (
+        <div
+          key={index}
+          className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+        >
+          <span className="font-bold text-indigo-600">
+            Phase {index + 1}
+          </span>
+          <p className="mt-1">{item}</p>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+        
         {/* Dashboard Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
           <div>

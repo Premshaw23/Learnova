@@ -41,30 +41,39 @@ jobs:
       - name: 🔧 Fix native bindings for Linux CI
         run: |
           set -euo pipefail
+          if [ ! -f "./node_modules/rollup/package.json" ]; then
+            echo "Error: rollup package not found. Ensure npm ci completed successfully."
+            exit 1
+          fi
           fix_native() {
             local pkg="$1" dir="$2"
             mkdir -p "$dir"
             echo "Installing $pkg..."
-            TAR=$(npm pack "$pkg")
+            TAR=$(npm pack "$pkg" | tail -n 1)
+            if [ $? -ne 0 ]; then
+              echo "❌ Failed to pack $pkg"
+              echo "$TAR"
+              return 1
+            fi
             tar -xzf "$TAR" -C "$dir" --strip-components=1
             rm -f "$TAR"
           }
 
           # Rollup
-          RV=$(node -p "require('./node_modules/rollup/package.json').version")
+          RV=$(node -p "require('./node_modules/rollup/package.json').version" | tr -d ' ')
           fix_native "@rollup/rollup-linux-x64-gnu@$RV" node_modules/@rollup/rollup-linux-x64-gnu
 
           # Parcel Watcher
-          PV=$(node -p "require('./node_modules/@parcel/watcher/package.json').version")
+          PV=$(node -p "require('./node_modules/@parcel/watcher/package.json').version" | tr -d ' ')
           fix_native "@parcel/watcher-linux-x64-glibc@$PV" node_modules/@parcel/watcher-linux-x64-glibc
 
           # Lightning CSS (needed by next/font)
-          LV=$(node -p "require('./node_modules/lightningcss/package.json').version")
+          LV=$(node -p "require('./node_modules/lightningcss/package.json').version" | tr -d ' ')
           fix_native "lightningcss-linux-x64-gnu@$LV" node_modules/lightningcss-linux-x64-gnu
           cp node_modules/lightningcss-linux-x64-gnu/*.node node_modules/lightningcss/
 
           # Tailwind CSS Oxide
-          OV=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
+          OV=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version" | tr -d ' ')
           fix_native "@tailwindcss/oxide-linux-x64-gnu@$OV" node_modules/@tailwindcss/oxide-linux-x64-gnu
 
       - name: 🔍 Verify native bindings

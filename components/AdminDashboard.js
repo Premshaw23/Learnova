@@ -243,28 +243,24 @@ const SuperAdminDashboard = () => {
     const fetchStats = async () => {
       try {
         const token = await user.getIdToken();
-        const res = await apiFetch("/api/admin/stats", {
+        const data = await apiFetch("/api/admin/stats", {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         });
 
         if (!isActive) return;
 
-        if (res.ok) {
-          const data = await res.json();
+        if (data) {
           if (data.platformStats) setPlatformStats(data.platformStats);
           if (data.institutes) setInstitutes(data.institutes);
           if (data.systemMetrics) setSystemMetrics(data.systemMetrics);
           if (data.criticalAlerts) setCriticalAlerts(data.criticalAlerts);
           if (data.featureUsage) setFeatureUsage(data.featureUsage);
-        } else {
-          console.error("Failed to fetch admin stats:", res.status);
-          toast.error("Failed to load platform stats. Please refresh.");
         }
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error("Error fetching admin stats:", err);
-        toast.error("Network error loading admin stats.");
+        toast.error(err.message || "Network error loading admin stats.");
       } finally {
         if (isActive) {
           setLoading(false);
@@ -285,18 +281,13 @@ const SuperAdminDashboard = () => {
     setLinksLoading(true);
     try {
       const token = await user.getIdToken();
-      const res = await apiFetch("/api/admin/parent-student-link", {
+      const data = await apiFetch("/api/admin/parent-student-link", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setLinks(data.links || []);
-      } else {
-        toast.error("Failed to load parent-student links");
-      }
+      setLinks(data.links || []);
     } catch (err) {
       console.error(err);
-      toast.error("Error loading links");
+      toast.error(err.message || "Error loading links");
     } finally {
       setLinksLoading(false);
     }
@@ -316,8 +307,8 @@ const SuperAdminDashboard = () => {
     }
     setLinkingSubmitLoading(true);
     try {
-      const token = await user.getIdToken();
-      const res = await apiFetch("/api/admin/parent-student-link", {
+      const token = await user?.getIdToken();
+      await apiFetch("/api/admin/parent-student-link", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -328,18 +319,13 @@ const SuperAdminDashboard = () => {
           studentEmail: studentEmail.trim(),
         }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success("Accounts linked successfully!");
-        setParentEmail("");
-        setStudentEmail("");
-        fetchLinks();
-      } else {
-        toast.error(data.error || "Failed to link accounts");
-      }
+      toast.success("Accounts linked successfully!");
+      setParentEmail("");
+      setStudentEmail("");
+      fetchLinks();
     } catch (err) {
       console.error(err);
-      toast.error("Error creating relationship link");
+      toast.error(err.message || "Error creating relationship link");
     } finally {
       setLinkingSubmitLoading(false);
     }
@@ -354,22 +340,18 @@ const SuperAdminDashboard = () => {
       return;
     try {
       const token = await user.getIdToken();
-      const res = await apiFetch(
+      await apiFetch(
         `/api/admin/parent-student-link?parentId=${parentId}&studentId=${studentId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      if (res.ok) {
-        toast.success("Relationship removed successfully");
-        fetchLinks();
-      } else {
-        toast.error("Failed to delete relationship link");
-      }
+      toast.success("Relationship removed successfully");
+      fetchLinks();
     } catch (err) {
       console.error(err);
-      toast.error("Error deleting link");
+      toast.error(err.message || "Error deleting relationship link");
     }
   };
 
@@ -788,13 +770,14 @@ const SuperAdminDashboard = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Institute Management</h2>
         <div className="flex gap-3">
-          <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center gap-2 shadow-lg transition-all duration-300" aria-label="Action button">
+          <button
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center gap-2 shadow-lg transition-all duration-300"
+            aria-label="Action button"
+          >
             <Building2 className="w-4 h-4" />
             Add New Institute
           </button>
           <ExportDropdown
-            onExport={handleExport}
-            isExporting={isExporting}
             className="px-4 py-2 bg-gray-800/60 text-gray-300 rounded-xl hover:bg-gray-700/60 flex items-center gap-2 border border-gray-600/40 transition-all duration-300"
           >
             <Download className="w-4 h-4" />
@@ -1171,7 +1154,10 @@ const SuperAdminDashboard = () => {
                 15 attempts outside geofence radius
               </div>
             </div>
-            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors" aria-label="Action button">
+            <button
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              aria-label="Action button"
+            >
               Investigate
             </button>
           </div>
@@ -1184,7 +1170,10 @@ const SuperAdminDashboard = () => {
                 GPS spoofing detected - 3 devices
               </div>
             </div>
-            <button className="text-sm text-blue-400 hover:text-blue-300 transition-colors" aria-label="Action button">
+            <button
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              aria-label="Action button"
+            >
               Investigate
             </button>
           </div>
@@ -1231,7 +1220,10 @@ const SuperAdminDashboard = () => {
                 </td>
                 <td className="px-4 py-2 text-gray-300">2025-09-20</td>
                 <td className="px-4 py-2">
-                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors" aria-label="Action button">
+                  <button
+                    className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+                    aria-label="Action button"
+                  >
                     View Report
                   </button>
                 </td>
@@ -1246,7 +1238,10 @@ const SuperAdminDashboard = () => {
                 </td>
                 <td className="px-4 py-2 text-gray-300">2025-09-21</td>
                 <td className="px-4 py-2">
-                  <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors" aria-label="Action button">
+                  <button
+                    className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+                    aria-label="Action button"
+                  >
                     View Report
                   </button>
                 </td>
@@ -1330,14 +1325,16 @@ const SuperAdminDashboard = () => {
             <button
               onClick={handleForceSync}
               className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2 shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all duration-300"
-             aria-label="Action button">
+              aria-label="Action button"
+            >
               <Play className="w-4 h-4" />
               Sync Now
             </button>
             <button
               onClick={handleClearOutbox}
               className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 flex items-center gap-2 border border-red-500/30 transition-all duration-300"
-             aria-label="Action button">
+              aria-label="Action button"
+            >
               <Trash2 className="w-4 h-4" />
               Clear Queue
             </button>

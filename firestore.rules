@@ -16,10 +16,10 @@ service cloud.firestore {
     }
 
     // Users Collection
-    // Anyone authenticated can read user profiles, but users can only edit their own profile
-    // Only teachers/admins can create new teacher profiles (handled via Cloud Functions usually, so blocked here)
+    // Users can read their own profile; teachers can read all profiles for class management
+    // Users can only edit their own profile
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isTeacher());
       allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 

@@ -170,20 +170,11 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
     try {
       const token = await user.getIdToken();
-      const response = await apiFetch("/api/attendance/settings", {
+      const settingsData = await apiFetch("/api/attendance/settings", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        throw new Error(
-          `HTTP ${response.status} ${response.statusText} ${text}`
-        );
-      }
-
-      const settingsData = await response.json();
       setSettings(settingsData);
       setSettingsError(null);
       checkTimeValidity(settingsData.timeWindow);
@@ -408,7 +399,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     setPasscodeError("");
     try {
       const token = await user.getIdToken();
-      const response = await apiFetch("/api/attendance/validate-passcode", {
+      const data = await apiFetch("/api/attendance/validate-passcode", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -416,8 +407,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         },
         body: JSON.stringify({ passcode }),
       });
-      const data = await response.json();
-      if (response.ok && data.valid) {
+      if (data.valid) {
         setCurrentStep(3);
       } else {
         setPasscodeError(
@@ -528,7 +518,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         },
       };
 
-      const response = await apiFetch("/api/exceptions/create", {
+      await apiFetch("/api/exceptions/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -537,21 +527,17 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         body: JSON.stringify(requestData),
       });
 
-      if (response.ok) {
-        setShowExceptionModal(false);
-        toast.success(
-          "Exception request submitted successfully. Your teacher will review it."
-        );
-        setExceptionForm({
-          reason: "",
-          details: "",
-          studentId: "",
-          studentName: "",
-          currentLocation: null, // Reset this too
-        });
-      } else {
-        toast.error("Failed to submit request. Please try again.");
-      }
+      setShowExceptionModal(false);
+      toast.success(
+        "Exception request submitted successfully. Your teacher will review it."
+      );
+      setExceptionForm({
+        reason: "",
+        details: "",
+        studentId: "",
+        studentName: "",
+        currentLocation: null, // Reset this too
+      });
     } catch (error) {
       toast.error("Error submitting request. Please try again.");
     }

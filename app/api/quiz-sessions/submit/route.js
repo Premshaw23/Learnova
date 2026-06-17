@@ -7,10 +7,10 @@ export const POST = withErrorHandler(async (req) => {
   const { sessionId } = await req.json();
 
   if (!sessionId) {
-    return new Response(
-      JSON.stringify({ error: "Session ID is required" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Session ID is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const db = await connectDb();
@@ -46,9 +46,7 @@ export const POST = withErrorHandler(async (req) => {
     });
   }
 
-  const quiz = await db
-    .collection("quizzes")
-    .findOne({ _id: session.quizId });
+  const quiz = await db.collection("quizzes").findOne({ _id: session.quizId });
 
   let correctCount = 0;
   for (const question of quiz.questions) {

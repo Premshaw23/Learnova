@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { connectDb } from "@/lib/mongodb";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "@/lib/rbac";
@@ -16,9 +17,19 @@ export async function POST(req) {
       });
     }
 
+    let objectId;
+    try {
+      objectId = new ObjectId(quizId);
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid Quiz ID format" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const db = await connectDb();
 
-    const quiz = await db.collection("quizzes").findOne({ _id: quizId });
+    const quiz = await db.collection("quizzes").findOne({ _id: objectId });
     if (!quiz) {
       return new Response(JSON.stringify({ error: "Quiz not found" }), {
         status: 404,

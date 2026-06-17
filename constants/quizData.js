@@ -137,14 +137,14 @@ export const quizDatabase = {
       },
       {
         id: 2,
-        question: "Identify the verb in the sentence: 'She runs every morning.'",
+        question:
+          "Identify the verb in the sentence: 'She runs every morning.'",
         options: ["She", "runs", "every", "morning"],
         answer: 1, // runs
       },
       {
         id: 3,
-        question:
-          "Which sentence is grammatically correct?",
+        question: "Which sentence is grammatically correct?",
         options: [
           "He don't like pizza.",
           "They is going to the park.",
@@ -153,7 +153,7 @@ export const quizDatabase = {
         ],
         answer: 2, // She has a cat.
       },
-    ], 
+    ],
   },
   "Junior Coding Quest": {
     category: "coding",
@@ -185,6 +185,7 @@ export const quizDatabase = {
       }
     ]
   }
+};
 };
 
 /**

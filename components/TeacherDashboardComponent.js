@@ -570,7 +570,7 @@ const TeacherDashboard = () => {
 
     const today = dayNames[day];
 
-    setTodayClasses(weeklySchedule[today] || []);
+    setTodayClasses(Array.isArray(weeklySchedule?.[today]) ? weeklySchedule[today] : []);
   }, [weeklySchedule]);
 
   const generatePasscode = async () => {

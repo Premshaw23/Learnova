@@ -24,6 +24,8 @@ export default function ComplaintsTable({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
   const filteredComplaints = useMemo(() => {
     return complaints.filter((c) => {
       const matchesSearch =
@@ -90,6 +92,29 @@ export default function ComplaintsTable({
         </div>
       </div>
 
+      {/* PAGINATION CONTROLS */}
+      {filteredComplaints.length > itemsPerPage && (
+        <div className="flex justify-center gap-2 mt-4">
+          <Button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="cursor-pointer"
+          >
+            Previous
+          </Button>
+          <span className="self-center text-sm text-slate-400">
+            Page {currentPage} of {Math.ceil(filteredComplaints.length / itemsPerPage)}
+          </span>
+          <Button
+            onClick={() => setCurrentPage((p) => Math.min(Math.ceil(filteredComplaints.length / itemsPerPage), p + 1))}
+            disabled={currentPage === Math.ceil(filteredComplaints.length / itemsPerPage)}
+            className="cursor-pointer"
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
       {/* DATA RECORDS LEDGER GRID */}
       <Card className="bg-white/85 dark:bg-slate-950/40 border border-white/10 dark:border-slate-800/80 overflow-hidden shadow-2xl backdrop-blur-xl">
         <div className="overflow-x-auto">
@@ -112,7 +137,7 @@ export default function ComplaintsTable({
               animate="visible"
               variants={{ visible: { transition: { staggerChildren: 0.02 } } }}
             >
-              {filteredComplaints.map((c) => (
+              {(filteredComplaints.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)).map((c) => (
                 <motion.tr
                   key={c.id}
                   onClick={() => onRowClick && onRowClick(c)}

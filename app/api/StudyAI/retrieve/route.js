@@ -1,6 +1,6 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { requireAuth } from "@/lib/rbac";
-
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { connectDb } from "@/lib/mongodb";
 
 import { MemoryVectorStore } from "@langchain/classic/vectorstores/memory";

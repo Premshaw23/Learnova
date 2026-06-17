@@ -24,9 +24,9 @@ export default function CalendarPage() {
   useEffect(() => setMounted(true), []);
   const isDark = mounted ? theme === "dark" : true;
 
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { notices, loading: noticesLoading } = useNotices();
-  
+
   const [activities, setActivities] = useState([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
 
@@ -79,8 +79,10 @@ export default function CalendarPage() {
     // Sort events inside each date by time
     map.forEach((dayEvents) => {
       dayEvents.sort((a, b) => {
-        const timeA = (a.createdAt || a.timestamp || new Date()).getTime?.() || 0;
-        const timeB = (b.createdAt || b.timestamp || new Date()).getTime?.() || 0;
+        const timeA =
+          (a.createdAt || a.timestamp || new Date()).getTime?.() || 0;
+        const timeB =
+          (b.createdAt || b.timestamp || new Date()).getTime?.() || 0;
         return timeB - timeA;
       });
     });
@@ -89,7 +91,8 @@ export default function CalendarPage() {
   }, [notices, activities]);
 
   // Calendar Generation Logic
-  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getDaysInMonth = (year, month) =>
+    new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
   const currentYear = currentDate.getFullYear();
@@ -101,7 +104,7 @@ export default function CalendarPage() {
   const prevMonthDays = getDaysInMonth(currentYear, currentMonth - 1);
 
   const days = [];
-  
+
   // Padding from previous month
   for (let i = 0; i < firstDay; i++) {
     const day = prevMonthDays - firstDay + i + 1;
@@ -165,17 +168,27 @@ export default function CalendarPage() {
 
   const loading = noticesLoading || activitiesLoading;
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (   ← this is the existing line 168, stays as-is
+
   return (
     <>
       <div className="fixed inset-0 -z-10 bg-background">
         {isDark && <DarkVeil />}
       </div>
-      
+
       <div className="min-h-screen relative z-50 flex flex-col">
         <Navbar />
-        
+
         <main className="flex-1 pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-3 mb-8"
@@ -184,8 +197,12 @@ export default function CalendarPage() {
               <CalendarIcon className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground tracking-tight">Unified Calendar</h1>
-              <p className="text-muted-foreground">Keep track of your notices and activities</p>
+              <h1 className="text-3xl font-bold text-foreground tracking-tight">
+                Unified Calendar
+              </h1>
+              <p className="text-muted-foreground">
+                Keep track of your notices and activities
+              </p>
             </div>
           </motion.div>
 
@@ -196,7 +213,8 @@ export default function CalendarPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-2xl font-semibold text-foreground">
-                    {currentDate.toLocaleString('default', { month: 'long' })} {currentYear}
+                    {currentDate.toLocaleString("default", { month: "long" })}{" "}
+                    {currentYear}
                   </h2>
                   <div className="flex items-center gap-2">
                     <button
@@ -222,11 +240,16 @@ export default function CalendarPage() {
 
                 {/* Days of Week */}
                 <div className="grid grid-cols-7 gap-4 mb-4">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                    <div key={day} className="text-center text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                      {day}
-                    </div>
-                  ))}
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div
+                        key={day}
+                        className="text-center text-sm font-semibold text-muted-foreground uppercase tracking-wider"
+                      >
+                        {day}
+                      </div>
+                    )
+                  )}
                 </div>
 
                 {/* Grid */}
@@ -234,9 +257,13 @@ export default function CalendarPage() {
                   {days.map((day, idx) => {
                     const dateStr = formatDateStr(day.date);
                     const dayEvents = eventsByDate.get(dateStr) || [];
-                    const noticesCount = dayEvents.filter(e => e.eventType === 'notice').length;
-                    const activitiesCount = dayEvents.filter(e => e.eventType === 'activity').length;
-                    
+                    const noticesCount = dayEvents.filter(
+                      (e) => e.eventType === "notice"
+                    ).length;
+                    const activitiesCount = dayEvents.filter(
+                      (e) => e.eventType === "activity"
+                    ).length;
+
                     const isSelectedDay = isSelected(day.date);
                     const isTodayDay = isToday(day.date);
 
@@ -248,15 +275,17 @@ export default function CalendarPage() {
                         onClick={() => setSelectedDate(day.date)}
                         className={`
                           relative flex flex-col items-center justify-start p-2 sm:p-3 aspect-square rounded-2xl transition-all
-                          ${day.isCurrentMonth ? 'bg-muted/30 hover:bg-muted/60' : 'bg-transparent opacity-40'}
-                          ${isSelectedDay ? 'ring-2 ring-blue-500 shadow-lg shadow-blue-500/20 bg-blue-500/10 dark:bg-blue-500/20' : 'border border-transparent hover:border-border'}
-                          ${isTodayDay && !isSelectedDay ? 'border-blue-500/50 bg-blue-500/5' : ''}
+                          ${day.isCurrentMonth ? "bg-muted/30 hover:bg-muted/60" : "bg-transparent opacity-40"}
+                          ${isSelectedDay ? "ring-2 ring-blue-500 shadow-lg shadow-blue-500/20 bg-blue-500/10 dark:bg-blue-500/20" : "border border-transparent hover:border-border"}
+                          ${isTodayDay && !isSelectedDay ? "border-blue-500/50 bg-blue-500/5" : ""}
                         `}
                       >
-                        <span className={`text-sm sm:text-base font-semibold ${isTodayDay ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}>
+                        <span
+                          className={`text-sm sm:text-base font-semibold ${isTodayDay ? "text-blue-600 dark:text-blue-400" : "text-foreground"}`}
+                        >
                           {day.date.getDate()}
                         </span>
-                        
+
                         {dayEvents.length > 0 && (
                           <div className="flex items-center gap-1 mt-auto">
                             {noticesCount > 0 && (
@@ -278,7 +307,11 @@ export default function CalendarPage() {
             <div className="lg:col-span-1">
               <div className="bg-card backdrop-blur-xl border border-border rounded-3xl p-6 shadow-xl shadow-black/5 h-full min-h-[500px] flex flex-col">
                 <h3 className="text-xl font-bold text-foreground mb-6 pb-4 border-b border-border">
-                  {selectedDate.toLocaleDateString('default', { weekday: 'long', month: 'short', day: 'numeric' })}
+                  {selectedDate.toLocaleDateString("default", {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                  })}
                 </h3>
 
                 <div className="flex-1 overflow-y-auto pr-2 space-y-4">
@@ -298,19 +331,25 @@ export default function CalendarPage() {
                           className="p-4 rounded-2xl bg-muted/50 border border-border hover:border-blue-500/30 transition-colors group"
                         >
                           <div className="flex items-start gap-3">
-                            <div className={`p-2 rounded-xl mt-0.5 ${event.eventType === 'notice' ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                              {event.eventType === 'notice' ? <Bell className="w-4 h-4" /> : <Activity className="w-4 h-4" />}
+                            <div
+                              className={`p-2 rounded-xl mt-0.5 ${event.eventType === "notice" ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500"}`}
+                            >
+                              {event.eventType === "notice" ? (
+                                <Bell className="w-4 h-4" />
+                              ) : (
+                                <Activity className="w-4 h-4" />
+                              )}
                             </div>
                             <div>
                               <h4 className="font-semibold text-foreground group-hover:text-blue-500 transition-colors">
                                 {event.title}
                               </h4>
-                              {event.eventType === 'notice' && (
+                              {event.eventType === "notice" && (
                                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                                   {event.content}
                                 </p>
                               )}
-                              {event.eventType === 'activity' && (
+                              {event.eventType === "activity" && (
                                 <div className="flex items-center gap-2 mt-2">
                                   <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-md">
                                     {event.type}
@@ -324,7 +363,12 @@ export default function CalendarPage() {
                               )}
                               <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">
                                 <Clock className="w-3.5 h-3.5" />
-                                {new Date(event.createdAt || event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(
+                                  event.createdAt || event.timestamp
+                                ).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
                               </div>
                             </div>
                           </div>
@@ -336,7 +380,9 @@ export default function CalendarPage() {
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                         <CalendarIcon className="w-8 h-8 text-muted-foreground" />
                       </div>
-                      <p className="text-foreground font-medium">No events for this day</p>
+                      <p className="text-foreground font-medium">
+                        No events for this day
+                      </p>
                       <p className="text-sm text-muted-foreground mt-1 max-w-[200px]">
                         Take a break, you're all clear for today!
                       </p>

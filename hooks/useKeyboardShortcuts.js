@@ -89,24 +89,20 @@ const SHORTCUT_MAP = [
  *   A stable array of registered shortcut metadata (useful for rendering a
  *   help overlay).
  */
-export function useKeyboardShortcuts(handlers = {}) {
-  const {
-    onSearch,
-    onHelp,
-    onTheme,
-    onHome,
-    onLeaderboard,
-    onNotifications,
-    onBookmarks,
-    onProfile,
-    onEscape,
-    onCheatSheet,
-    disabled = false,
-    debug = false,
-  } = handlers;
-
-  // Keep a ref to the latest handlers so the event listener never goes stale
-  // without needing to re-register it on every render.
+export function useKeyboardShortcuts({
+  onSearch,
+  onHelp,
+  onEscape,
+  onTheme,
+  onHome,
+  onLeaderboard,
+  onNotifications,
+  onBookmarks,
+  onProfile,
+  onCheatSheet,
+  disabled = false,
+  debug = false,
+} = {}) {
   const handlersRef = useRef({});
   useEffect(() => {
     handlersRef.current = {
@@ -129,7 +125,6 @@ export function useKeyboardShortcuts(handlers = {}) {
   const debugRef = useRef(debug);
   useEffect(() => { debugRef.current = debug; }, [debug]);
 
-  // Detect macOS once so we can display the correct modifier label
   const isMac =
     typeof navigator !== "undefined" &&
     /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
@@ -139,20 +134,18 @@ export function useKeyboardShortcuts(handlers = {}) {
 
     const active = document.activeElement;
     const typing =
-      isUserTyping(active) ||
-      isUserTyping(e.target);
+      isUserTyping(active) || isUserTyping(e.target);
 
     const isModifier = e.metaKey || e.ctrlKey;
     const pressedKey = normaliseKey(e.key);
 
     for (const shortcut of SHORTCUT_MAP) {
-      const keyMatches  = normaliseKey(shortcut.key) === pressedKey;
-      const modMatches  = shortcut.mod ? isModifier : !e.metaKey && !e.ctrlKey;
-      const alwaysFires = !shortcut.mod; // Escape, ?
+      const keyMatches = normaliseKey(shortcut.key) === pressedKey;
+      const modMatches = shortcut.mod ? isModifier : !e.metaKey && !e.ctrlKey;
+      const alwaysFires = !shortcut.mod;
 
       if (!keyMatches || !modMatches) continue;
 
-      // Suppress shortcut while typing, unless it always fires
       if (typing && !alwaysFires) continue;
 
       if (shortcut.mod) e.preventDefault();
@@ -163,7 +156,6 @@ export function useKeyboardShortcuts(handlers = {}) {
         const label = shortcut.mod
           ? shortcutLabel(isMac, shortcut.key)
           : shortcut.key;
-        // eslint-disable-next-line no-console
         console.debug(
           `[useKeyboardShortcuts] ${label} → ${shortcut.prop}`,
           handler ? "✓ handled" : "✗ no handler",
@@ -171,71 +163,20 @@ export function useKeyboardShortcuts(handlers = {}) {
       }
 
       handler?.();
-      break; // Only one shortcut per keydown event
+      break;
     }
-  }, [isMac]); // isMac is stable; handlers are read via ref
-// AFTER (fixed)
-export function useKeyboardShortcuts({
-  onSearch,
-  onHelp,
-  onEscape,
-  onTheme,
-  onHome,
-  onLeaderboard,
-  onNotifications,
-} = {}) {
-  const handleKeyDown = useCallback(
-    (e) => {
-      const active = document.activeElement;
-      const isEditable =
-        active?.tagName === "INPUT" ||
-        active?.tagName === "TEXTAREA" ||
-        active?.tagName === "SELECT" ||
-        active?.isContentEditable ||
-        isUserTyping(e.target);
-
-      if (isEditable && e.key !== "Escape") return;
-
-      const isModifier = e.metaKey || e.ctrlKey;
-
-      if (isModifier && e.key === "k") {
-        e.preventDefault();
-        onSearch?.();
-      } else if (isModifier && e.key === "/") {
-        e.preventDefault();
-        onHelp?.();
-      } else if (isModifier && e.key === "t") {
-        e.preventDefault();
-        onTheme?.();
-      } else if (isModifier && e.key === "h") {
-        e.preventDefault();
-        onHome?.();
-      } else if (isModifier && e.key === "l") {
-        e.preventDefault();
-        onLeaderboard?.();
-      } else if (isModifier && e.key === "n") {
-        e.preventDefault();
-        onNotifications?.();
-      } else if (e.key === "Escape") {
-        onEscape?.();
-      }
-    },
-    [onSearch, onHelp, onEscape, onTheme, onHome, onLeaderboard, onNotifications]
-  );
+  }, [isMac]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // ---------------------------------------------------------------------------
-  // Return metadata so consumers can render a help overlay / cheat-sheet
-  // ---------------------------------------------------------------------------
   const shortcuts = SHORTCUT_MAP.map(({ key, mod, label }) => ({
     key: mod ? shortcutLabel(isMac, key) : key,
     label,
     hasHandler: Boolean(handlersRef.current[
-      SHORTCUT_MAP.find(s => s.key === key && s.mod === mod)?.prop
+      SHORTCUT_MAP.find((s) => s.key === key && s.mod === mod)?.prop
     ]),
   }));
 

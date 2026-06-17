@@ -598,7 +598,10 @@ export default function LeaderboardsPage() {
                     {currentUser.score?.toLocaleString()}
                   </span>
                 </div>
-                <button className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors border border-white/10 hidden sm:block" aria-label="Action button">
+                <button
+                  className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors border border-white/10 hidden sm:block"
+                  aria-label="Action button"
+                >
                   View Full Profile
                 </button>
               </div>

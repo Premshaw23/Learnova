@@ -51,7 +51,7 @@ export default function StressMeter() {
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">
+          <p className="text-sm uppercase tracking-[0.4em] text-slate-700 dark:text-slate-300">
             Wellness
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">

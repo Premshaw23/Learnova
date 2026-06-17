@@ -64,7 +64,7 @@ export default function ForgotPasswordModal({
         className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
           show ? "opacity-100" : "opacity-0"
         }`}
-        onClick={onClose}
+        onClick={isLoading ? undefined : onClose}
         aria-hidden="true"
       />
 
@@ -99,7 +99,7 @@ export default function ForgotPasswordModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={isLoading ? undefined : onClose}
             aria-label="Close modal"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >

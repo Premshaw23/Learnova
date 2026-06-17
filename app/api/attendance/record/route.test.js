@@ -83,6 +83,13 @@ describe("attendance record route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
+    parseJSON.mockResolvedValue({
+      userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
+      confidenceScore: 80,
+      date: "2026-05-25",
+    });
   });
 
   const createMockRequest = (headers = {}, cookies = {}) => {
@@ -269,6 +276,13 @@ describe("attendance record route", () => {
     const { requireAuth } = await import("@/lib/rbac");
     requireAuth.mockResolvedValue({ uid: "user-123" });
     checkRateLimit.mockResolvedValue({ allowed: false });
+    parseJSON.mockResolvedValue({
+      userId: "user-123",
+      studentName: "Test",
+      email: "test@example.com",
+      confidenceScore: 75,
+      date: "2026-05-25",
+    });
 
     const response = await POST(createMockRequest());
     await assertApiError(

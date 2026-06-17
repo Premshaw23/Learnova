@@ -55,17 +55,15 @@ export const POST = withErrorHandler(async (request) => {
 
       // If operation failed and was fully compensated, mark as resolved
       if (op.status === "compensating" && op.fullyCompensated) {
-        await mongoDB
-          .collection("pending_operations")
-          .updateOne(
-            { operationId: op.operationId },
-            {
-              $set: {
-                status: "resolved_by_reconciliation",
-                updatedAt: new Date(),
-              },
-            }
-          );
+        await mongoDB.collection("pending_operations").updateOne(
+          { operationId: op.operationId },
+          {
+            $set: {
+              status: "resolved_by_reconciliation",
+              updatedAt: new Date(),
+            },
+          }
+        );
       }
     }
   } catch (err) {

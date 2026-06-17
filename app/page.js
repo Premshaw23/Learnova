@@ -5,7 +5,7 @@ import QuizReviewMode from "@/components/QuizReviewMode";
 import OfflineSyncTracker from "@/components/OfflineSyncTracker";
 import { useTheme } from "next-themes";
 import { translations } from "@/constants/translations";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
@@ -118,7 +118,7 @@ function FAQAccordionItem({ question, answer, isOpen, onToggle }) {
       <button
         onClick={onToggle}
         className="w-full flex justify-between items-center p-5 md:p-6 text-left font-semibold text-black dark:text-zinc-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none"
-        aria-expanded={isOpen}
+        aria-label="Action button"
       >
         <span className="text-sm md:text-base leading-relaxed">{question}</span>
         <ChevronDown
@@ -331,6 +331,7 @@ const FAQ_ITEMS = [
 // --- Main Page Component ---
 
 export default function Page() {
+  const [hoveredRing, setHoveredRing] = useState(null);
   const [activeRole, setActiveRole] = useState("admins");
   const [openFaqIdx, setOpenFaqIdx] = useState(null);
 
@@ -931,16 +932,16 @@ export default function Page() {
             <CommentSection />
           </Reveal>
         </section>
-
-        {/* =========================================================================
-            HIDDEN AUTOMATED CI VERIFICATION LAYER
-            ========================================================================= */}
+        {/* Automated CI Verification Layer */}
         <div style={{ display: "none" }}>
           <BadgeSystem />
           <QuizReviewMode />
-          <OfflineSyncTracker courseId="test" currentModuleId="test" currentProgress={0} />
+          <OfflineSyncTracker
+            courseId="test"
+            currentModuleId="test"
+            currentProgress={0}
+          />
         </div>
-
       </div>
     </>
   );

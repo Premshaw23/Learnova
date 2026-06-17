@@ -1,6 +1,7 @@
 "use client";
 
 import { Shield, Zap, Sparkles } from "lucide-react";
+import { useRef } from "react";
 import { ROLE_CONFIG } from "@/constants/userRoles";
 
 const ROLE_GLOW = {
@@ -33,6 +34,19 @@ const FEATURES = [
 ];
 
 export default function RoleSelection({ onRoleSelect }) {
+  const containerRef = useRef(null);
+  const handleKeyDown = (e) => {
+    const cards = Array.from(containerRef.current.querySelectorAll("button[type='button']"));
+    const index = cards.indexOf(document.activeElement);
+    if (index === -1) return;
+    if (e.key === "ArrowRight") {
+      const nextIndex = (index + 1) % cards.length;
+      cards[nextIndex].focus();
+    } else if (e.key === "ArrowLeft") {
+      const prevIndex = (index - 1 + cards.length) % cards.length;
+      cards[prevIndex].focus();
+    }
+  };
   return (
     <div className="relative mx-auto max-w-5xl px-4 py-10 text-center">
       {/* Ambient blobs */}
@@ -63,7 +77,7 @@ export default function RoleSelection({ onRoleSelect }) {
       </div>
 
       {/* Role cards */}
-      <div className="relative z-10 mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div ref={containerRef} onKeyDown={handleKeyDown} className="relative z-10 mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Object.entries(ROLE_CONFIG).map(([role, config]) => {
           const glow =
             ROLE_GLOW[role] ??

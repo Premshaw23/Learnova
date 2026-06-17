@@ -95,9 +95,8 @@ export default function NotificationPanel({
             </div>
 
             {/* Unread notices summary link */}
-            {unreadNoticeCount > 0 && (
-              
-                href="/notices"
+{unreadNoticeCount > 0 && (
+              <a href="/notices"
                 className="flex items-center justify-between border-b border-zinc-100/60 dark:border-white/6 px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
               >
                 <div className="flex items-center gap-2">
