@@ -754,7 +754,10 @@ const InstituteDashboard = () => {
             </div>
 
             <div className="flex space-x-2">
-              <button className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl transition-colors text-sm font-medium" aria-label="Action button">
+              <button
+                className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl transition-colors text-sm font-medium"
+                aria-label="Action button"
+              >
                 View Details
               </button>
               <button

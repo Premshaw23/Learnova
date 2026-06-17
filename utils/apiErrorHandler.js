@@ -1,5 +1,5 @@
-import logger from './logger';
-import { AppError } from './appError';
+import logger from "./logger";
+import { AppError } from "./appError";
 
 /**
  * Wraps a Next.js API Route Handler with centralized error handling and logging.

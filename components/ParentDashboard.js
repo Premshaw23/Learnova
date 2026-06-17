@@ -29,6 +29,7 @@ import {
   BookMarked,
   Filter,
   Check,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -55,6 +56,10 @@ import { Navbar } from "./Navbar";
 import { dashboardContentOffsetClass } from "@/components/navigation";
 import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 import ExportDropdown from "@/components/ui/ExportDropdown";
+import EngagementScoreCard from "@/components/EngagementScoreCard";
+import EngagementTrendChart from "@/components/EngagementTrendChart";
+import EngagementBreakdown from "@/components/EngagementBreakdown";
+import { getEngagementCategory } from "@/lib/engagementScore";
 import dynamic from "next/dynamic";
 
 const ParentAchievementsPanel = dynamic(
@@ -120,6 +125,14 @@ const ParentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const tabs = [
+    { id: "overview", label: "Overview", icon: TrendingUp },
+    { id: "child_progress", label: "Progress", icon: Activity },
+    { id: "attendance", label: "Attendance", icon: Calendar },
+    { id: "academics", label: "Academics", icon: BookOpen },
+    { id: "achievements", label: "Achievements", icon: Award },
+    { id: "notices", label: "Notices", icon: Bell },
+  ];
 
   // Linked children
   const [children, setChildren] = useState([]);
@@ -129,6 +142,9 @@ const ParentDashboard = () => {
   const [attendance, setAttendance] = useState(null);
   const [grades, setGrades] = useState([]);
   const [notices, setNotices] = useState([]);
+  const [engagementRecord, setEngagementRecord] = useState(null);
+  const [engagementHistory, setEngagementHistory] = useState([]);
+  const [engagementError, setEngagementError] = useState(null);
 
   // Configurable attendance threshold
   const [threshold, setThreshold] = useState(75);
@@ -180,7 +196,7 @@ const ParentDashboard = () => {
       try {
         const token = await user.getIdToken();
 
-        const [attRes, gradesRes, noticesRes] = await Promise.all([
+        const [attRes, gradesRes, noticesRes, engRes] = await Promise.all([
           apiFetch(`/api/parent/student/${childId}/attendance`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
@@ -188,6 +204,9 @@ const ParentDashboard = () => {
             headers: { Authorization: `Bearer ${token}` },
           }),
           apiFetch(`/api/parent/student/${childId}/notices`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          apiFetch(`/api/engagement-scores?studentId=${childId}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -203,6 +222,14 @@ const ParentDashboard = () => {
         if (noticesRes.ok) {
           const data = await noticesRes.json();
           setNotices(data.notices || []);
+        }
+        if (engRes.ok) {
+          const data = await engRes.json();
+          setEngagementRecord(data.latest || null);
+          setEngagementHistory(data.history || []);
+          setEngagementError(null);
+        } else {
+          setEngagementError("Unable to load engagement data.");
         }
       } catch (err) {
         console.error(err);
@@ -300,6 +327,28 @@ const ParentDashboard = () => {
     return ["All", ...Array.from(categories)];
   }, [notices]);
 
+  const engagementMetrics = useMemo(() => {
+    if (!engagementRecord) {
+      return {
+        overallScore: 0,
+        attendanceScore: 0,
+        activityScore: 0,
+        assignmentScore: 0,
+        academicScore: 0,
+        category: "Unknown",
+      };
+    }
+    const category = getEngagementCategory(engagementRecord.overallScore);
+    return {
+      overallScore: engagementRecord.overallScore,
+      attendanceScore: engagementRecord.attendanceScore,
+      activityScore: engagementRecord.activityScore,
+      assignmentScore: engagementRecord.assignmentScore,
+      academicScore: engagementRecord.academicScore,
+      category,
+    };
+  }, [engagementRecord]);
+
   // Derived mock rewards/achievements count for visual richness
   const mockAchievementsCount = useMemo(() => {
     if (childAttendancePercentage >= 90) return 4;
@@ -381,7 +430,7 @@ const ParentDashboard = () => {
 
   if (children.length === 0) {
     return (
-
+      <>
         <Navbar />
         <div className="max-w-4xl mx-auto pt-32 px-6 text-center space-y-6">
           <div className="w-20 h-20 bg-pink-500/10 border border-pink-500/20 rounded-full flex items-center justify-center mx-auto text-pink-400">
@@ -406,9 +455,9 @@ const ParentDashboard = () => {
             </button>
           </div>
         </div>
-      </div>
-    );
-  }
+    </>
+  );
+}
 
   const getAttendanceRateColor = (rate) => {
     if (rate >= 85) return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
@@ -423,7 +472,7 @@ const ParentDashboard = () => {
   };
 
   return (
-
+    <>
       <Navbar />
 
       {/* ── Main Header / Child Profile Selector ── */}
@@ -558,10 +607,39 @@ const ParentDashboard = () => {
         )}
       </AnimatePresence>
 
+      {/* ── Engagement Score Section ── */}
+      <div className="max-w-7xl mx-auto px-6 mb-8">
+        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <EngagementScoreCard
+            overallScore={engagementMetrics.overallScore}
+            attendanceScore={engagementMetrics.attendanceScore}
+            activityScore={engagementMetrics.activityScore}
+            assignmentScore={engagementMetrics.assignmentScore}
+            academicScore={engagementMetrics.academicScore}
+          />
+          <div className="space-y-6">
+            <EngagementTrendChart history={engagementHistory} />
+            <EngagementBreakdown
+              breakdown={[
+                { label: "Attendance", value: engagementMetrics.attendanceScore },
+                { label: "Activity Participation", value: engagementMetrics.activityScore },
+                { label: "Assignment Submissions", value: engagementMetrics.assignmentScore },
+                { label: "Academic Performance", value: engagementMetrics.academicScore },
+              ]}
+            />
+            {engagementError && (
+              <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-4 text-rose-200 text-sm">
+                {engagementError}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ── Tab Switcher Menu ── */}
       <div className="max-w-7xl mx-auto px-6 mb-8">
         <div className="flex items-center gap-2 border-b border-white/10 pb-2 flex-wrap">
-
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -683,6 +761,118 @@ const ParentDashboard = () => {
                     </div>
                   </motion.div>
                 </div>
+
+                {/* Attendance Insights & Early Warning Card */}
+                {attendance?.prediction && (
+                  <motion.div
+                    variants={cardVariants}
+                    className="bg-white/5 border border-white/10 rounded-3xl p-6 shadow-xl backdrop-blur-md relative overflow-hidden"
+                  >
+                    {/* Background glow decoration */}
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-pink-500/10 to-rose-600/5 rounded-full filter blur-3xl pointer-events-none" />
+                    
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-pink-400" />
+                          <h3 className="text-lg font-bold text-white">Attendance Insights & Early Warnings</h3>
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          AI-powered analysis and projected attendance trends based on recent records.
+                        </p>
+                      </div>
+
+                      {/* Risk Level Badge */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-400 font-semibold font-mono">Risk Level:</span>
+                        {attendance.prediction.riskLevel === "high" && (
+                          <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/25 animate-pulse">
+                            <XCircle className="w-4.5 h-4.5" />
+                            🔴 High Risk
+                          </span>
+                        )}
+                        {attendance.prediction.riskLevel === "moderate" && (
+                          <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/25">
+                            <AlertTriangle className="w-4.5 h-4.5" />
+                            🟡 Moderate Risk
+                          </span>
+                        )}
+                        {attendance.prediction.riskLevel === "low" && (
+                          <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                            <CheckCircle className="w-4.5 h-4.5" />
+                            🟢 Low Risk
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <hr className="border-white/10 my-5" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Projected Percentage Display */}
+                      <div className="bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col items-center justify-center text-center space-y-3">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Projected Attendance</span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-4xl font-extrabold text-white">{attendance.prediction.projectedPercentage}%</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-medium">
+                          Estimated rate if current {attendance.prediction.trend} trend continues.
+                        </p>
+                      </div>
+
+                      {/* Trend Details */}
+                      <div className="bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-center space-y-3">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Trend Analysis</span>
+                        <div className="flex items-center gap-3">
+                          {attendance.prediction.trend === "declining" ? (
+                            <>
+                              <div className="w-9 h-9 rounded-xl bg-rose-500/15 flex items-center justify-center text-rose-400">
+                                <TrendingDown className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-bold text-white capitalize">{attendance.prediction.trend}</h4>
+                                <p className="text-[10px] text-slate-400">Attendance frequency is slowing down.</p>
+                              </div>
+                            </>
+                          ) : attendance.prediction.trend === "improving" ? (
+                            <>
+                              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400">
+                                <TrendingUp className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-bold text-white capitalize">{attendance.prediction.trend}</h4>
+                                <p className="text-[10px] text-slate-400">Recent records show improved frequency!</p>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400">
+                                <Clock className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-bold text-white capitalize">{attendance.prediction.trend}</h4>
+                                <p className="text-[10px] text-slate-400">Stable patterns of class attendance.</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Proactive Recommendations */}
+                      <div className="bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-center space-y-3">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Recommendations</span>
+                        <div className="space-y-2">
+                          {attendance.prediction.recommendations.map((rec, idx) => (
+                            <div key={idx} className="flex items-start gap-2">
+                              <span className="text-pink-400 text-sm mt-0.5">•</span>
+                              <p className="text-xs text-slate-300 leading-relaxed font-medium">{rec}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Analytical Charts Block */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1243,7 +1433,7 @@ const ParentDashboard = () => {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 };
 

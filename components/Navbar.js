@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Activity, Menu, X, User, Settings, Sparkles, Search, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import {
@@ -395,3 +396,4 @@ export function Navbar() {
     </>
   );
 }
+

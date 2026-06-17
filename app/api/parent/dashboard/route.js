@@ -1,14 +1,15 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireAuth } from "@/lib/rbac";
+import { requireParent } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
+import { predictStudentAttendance } from "@/lib/attendanceUtils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const GET = withErrorHandler(async (request) => {
-  const decodedToken = await requireAuth(request);
+  const { payload: decodedToken } = await requireParent(request);
   const parentId = decodedToken.uid;
 
   initFirebaseAdmin();
@@ -95,6 +96,47 @@ export const GET = withErrorHandler(async (request) => {
           studentId,
           message: `Alert: ${studentName}'s attendance has dropped to ${attendanceRateStr}, which is below the 75% required threshold.`,
           type: "low_attendance",
+          createdAt: new Date().toISOString(),
+          read: false,
+        });
+      }
+    }
+
+    // Early warning check: Trigger warning if projected attendance is below 75%
+    const recordsQuery = await db
+      .collection("attendance_records")
+      .where("userId", "==", studentId)
+      .get();
+    
+    const studentRecords = [];
+    recordsQuery.docs.forEach((doc) => {
+      const data = doc.data();
+      studentRecords.push({
+        date: data.date,
+        status: data.status || "present",
+      });
+    });
+
+    const prediction = predictStudentAttendance(studentRecords);
+    if (prediction.riskLevel === "high") {
+      const oneDayAgo = new Date(
+        Date.now() - 24 * 60 * 60 * 1000
+      ).toISOString();
+      const existingWarningAlerts = await db
+        .collection("notifications")
+        .where("recipientId", "==", parentId)
+        .where("studentId", "==", studentId)
+        .where("type", "==", "attendance_warning")
+        .where("createdAt", ">=", oneDayAgo)
+        .limit(1)
+        .get();
+
+      if (existingWarningAlerts.empty) {
+        await db.collection("notifications").add({
+          recipientId: parentId,
+          studentId,
+          message: `Early Warning: ${studentName}'s attendance is projected to drop to ${prediction.projectedPercentage}%, which is below the 75% required threshold.`,
+          type: "attendance_warning",
           createdAt: new Date().toISOString(),
           read: false,
         });

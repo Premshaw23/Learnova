@@ -58,7 +58,7 @@ export default function ActivityPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const isDark = mounted ? theme === "dark" : true;
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const orbRef = useRef(null);
   const mouseMoveRaf = useRef(null);
@@ -303,7 +303,8 @@ export default function ActivityPage() {
     {
       id: 10,
       title: "Grammar Galaxy",
-      description: "Improve your grammar skills with interactive exercises and quizzes",
+      description:
+        "Improve your grammar skills with interactive exercises and quizzes",
       category: "language",
       level: "elementary",
       duration: "20 min",
@@ -414,6 +415,14 @@ export default function ActivityPage() {
         return "text-gray-400";
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>

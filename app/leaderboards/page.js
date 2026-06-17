@@ -185,7 +185,7 @@ const LEADERBOARD_DATA = [
 
 export default function LeaderboardsPage() {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("global");
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -307,6 +307,13 @@ export default function LeaderboardsPage() {
     { id: "friends", label: "Friends", icon: Star },
   ];
 
+  if (authLoading) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+    </div>
+  );
+}
   return (
     <>
       <div className="fixed inset-0 -z-10 bg-background overflow-hidden">
@@ -591,7 +598,10 @@ export default function LeaderboardsPage() {
                     {currentUser.score?.toLocaleString()}
                   </span>
                 </div>
-                <button className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors border border-white/10 hidden sm:block" aria-label="Action button">
+                <button
+                  className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors border border-white/10 hidden sm:block"
+                  aria-label="Action button"
+                >
                   View Full Profile
                 </button>
               </div>

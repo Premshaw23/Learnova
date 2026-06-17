@@ -47,11 +47,17 @@ function timeAgo(date) {
 }
 
 const typeStyles = {
+  assignment_deadline:
+    "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-200",
   attendance:
     "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200",
   notice:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200",
   alert: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
+  attendance_warning:
+    "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
+  low_attendance:
+    "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
 };
 
 export default function NotificationBell() {
@@ -68,7 +74,7 @@ export default function NotificationBell() {
   const hasLoadedRef = useRef(false);
 
   const processNotifications = useCallback((data) => {
-    const fetchedNotifications = extractNotificationsFromResponse(data);
+    const fetchedNotifications = data.notifications || extractNotificationsFromResponse(data);
     if (!fetchedNotifications.length) return;
 
     const currentIds = new Set(
@@ -116,6 +122,29 @@ export default function NotificationBell() {
         headers: { Authorization: `Bearer ${token}` },
       });
       processNotifications(data);
+      const assignmentReminders = [
+  {
+    id: "assignment-1",
+    message: "Math Assignment due tomorrow",
+    type: "assignment_deadline",
+    createdAt: new Date().toISOString(),
+    read: false,
+  },
+  {
+    id: "assignment-2",
+    message: "Science Project due in 3 days",
+    type: "assignment_deadline",
+    createdAt: new Date().toISOString(),
+    read: false,
+  },
+];
+
+processNotifications({
+  notifications: [
+    ...extractNotificationsFromResponse(data),
+    ...assignmentReminders,
+  ],
+});
     } catch (err) {
       setError("Unable to load notifications");
       setNotifications([]);

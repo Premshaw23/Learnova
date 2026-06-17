@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { requireAuth } from "@/lib/rbac";
 import { connectDb } from "@/lib/mongodb";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

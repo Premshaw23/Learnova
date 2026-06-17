@@ -270,7 +270,8 @@ const CodeBlock = ({ language, code }) => {
         <button
           onClick={handleCopy}
           className="hover:text-white transition-colors duration-150 px-2 py-0.5 rounded hover:bg-white/5 cursor-pointer"
-         aria-label="Action button">
+          aria-label="Action button"
+        >
           {copied ? "Copied!" : "Copy"}
         </button>
       </div>

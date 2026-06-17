@@ -270,6 +270,7 @@ export default function ComplaintForm({ onClose, onSubmitComplaint }) {
                 </p>
               </div>
             </div>
+<<<<<<< HEAD
 
         {/* FORM */}
         <form
@@ -390,6 +391,8 @@ export default function ComplaintForm({ onClose, onSubmitComplaint }) {
             >
               Submit Complaint
             </Button>
+=======
+>>>>>>> 1907db6eaba3e6b9ed4d70210bd0fb2cd1753985
           </form>
         </div>
       </Card>

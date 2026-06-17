@@ -7,10 +7,10 @@ export const POST = withErrorHandler(async (req, { params }) => {
   const { sessionId } = await params;
 
   if (!sessionId) {
-    return new Response(
-      JSON.stringify({ error: "Session ID is required" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Session ID is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const db = await connectDb();

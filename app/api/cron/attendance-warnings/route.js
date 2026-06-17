@@ -54,7 +54,6 @@ async function getRecentWarningUserIds(db, userIds, cooldownDate) {
   return new Set(checks.filter(Boolean));
 }
 
-
 async function sendWarningEmails(emailsToSend) {
   const hasEmailConfig =
     process.env.EMAILJS_SERVICE_ID &&
@@ -124,10 +123,9 @@ export async function GET(request) {
     // Ensure the warning_logs collection has a compound index on (userId, createdAt)
     // so the cooldown query does not trigger a full collection scan
     try {
-      await db.collection("warning_logs").createIndex(
-        { userId: 1, createdAt: -1 },
-        { background: true }
-      );
+      await db
+        .collection("warning_logs")
+        .createIndex({ userId: 1, createdAt: -1 }, { background: true });
     } catch {
       // Index may already exist
     }

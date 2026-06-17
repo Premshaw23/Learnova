@@ -178,7 +178,7 @@ export const useAuth = () => {
                 if (userDoc.exists()) {
                   const profileData = userDoc.data();
                   setUserProfile(profileData);
-                  const token = await firebaseUser.getIdToken();
+                  const token = await firebaseUser.getIdToken(true); 
                   setAuthTokenCookie(token);
                   setCookie("userRole", profileData.role, 7);
                 } else {

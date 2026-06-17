@@ -29,7 +29,7 @@ const mockDoc = {
 
 vi.mock("jspdf", () => {
   return {
-    default: vi.fn(() => mockDoc),
+    default: vi.fn(function () { return mockDoc; }),
   };
 });
 

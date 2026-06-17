@@ -5,7 +5,12 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function Error({ error, reset }) {
   useEffect(() => {
-    console.error("Route error:", error);
+    // Conditionally log error information based on the environment
+    if (process.env.NODE_ENV === 'production') {
+      console.error("A client-side error occurred in production.");
+    } else {
+      console.error("Route error:", error);
+    }
   }, [error]);
 
   return (
@@ -18,7 +23,8 @@ export default function Error({ error, reset }) {
           Something went wrong!
         </h2>
         <p className="text-muted-foreground dark:text-gray-400 mb-8 leading-relaxed">
-          We encountered an unexpected error while rendering this section. Our system has logged the issue.
+          We encountered an unexpected error while rendering this section. Our
+          system has logged the issue.
         </p>
         <button
           onClick={() => reset()}

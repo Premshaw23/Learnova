@@ -27,6 +27,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
 import { useIsMounted } from "@/hooks/useIsMounted";
+import EngagementScoreCard from "@/components/EngagementScoreCard";
+import EngagementTrendChart from "@/components/EngagementTrendChart";
+import EngagementBreakdown from "@/components/EngagementBreakdown";
+import { calculateEngagementScore, getEngagementCategory } from "@/lib/engagementScore";
 
 const AchievementSection = dynamic(() => import("./AchievementSection"), {
   ssr: false,
@@ -44,7 +48,6 @@ const AttendanceChart = dynamic(() => import("./AttendanceChart"), {
 });
 
 import { weeklySchedule } from "@/constants/mockData";
-
 import AttendanceAnalytics from "./dashboard/AttendanceAnalytics";
 import StreakCounter from "./gamification/StreakCounter";
 import XpProgressBar from "./gamification/XpProgressBar";
@@ -79,6 +82,8 @@ const DAY_NAMES = [
 
 const ATTENDANCE_WINDOW_START_HOUR = 9;
 const ATTENDANCE_WINDOW_END_MINUTE = 10;
+
+// ── Utility Functions ──────────────────────────────────────────────────────
 
 const getUserInitials = (user) => {
   if (!user?.displayName && !user?.email) {
@@ -141,6 +146,8 @@ const getTodaySchedule = (now, schedule = weeklySchedule) => {
 
 const getScheduleTickKey = (now) =>
   `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}`;
+
+// ── Components ─────────────────────────────────────────────────────────────
 
 const DashboardError = ({ error, onRetry }) => (
   <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -223,6 +230,29 @@ const DashboardHeader = ({ user, currentTime, getInitials }) => (
   </div>
 );
 
+const StatCard = ({ color, label, value }) => {
+  const styles = {
+    green:
+      "from-green-500/20 to-green-600/20 border-green-500/30 text-green-400",
+    red: "from-red-500/20 to-red-600/20 border-red-500/30 text-red-400",
+    yellow:
+      "from-yellow-500/20 to-yellow-600/20 border-yellow-500/30 text-yellow-400",
+    blue: "from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-400",
+  };
+
+  return (
+    <div
+      className={`bg-gradient-to-r ${styles[color]} border rounded-xl p-3 sm:p-4`}
+    >
+      <div className="text-[10px] sm:text-sm opacity-80">{label}</div>
+
+      <div className="text-base sm:text-xl font-bold">{value}</div>
+    </div>
+  );
+};
+
+// ── Main Component ─────────────────────────────────────────────────────────
+
 const StudentDashboard = () => {
   const { user } = useAuth();
 
@@ -242,16 +272,32 @@ const StudentDashboard = () => {
   const [showComplaint, setShowComplaint] = useState(false);
   const [skillPath, setSkillPath] = useState("standard");
   const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(false);
+  const [engagementHistory, setEngagementHistory] = useState([]);
+  const [engagementRecord, setEngagementRecord] = useState(null);
+  const [engagementError, setEngagementError] = useState(null);
+  const [engagementSaved, setEngagementSaved] = useState(false);
   const lastScheduleTickRef = useRef(getScheduleTickKey(new Date()));
 
-<<<<<<< HEAD
-=======
-  const [showComplaint, setShowComplaint] =
-    useState(false);
-
-    const [goal, setGoal] = useState("");
-const [level, setLevel] = useState("Beginner");
-const [roadmap, setRoadmap] = useState([]);
+  const [goal, setGoal] = useState("");
+  const [level, setLevel] = useState("Beginner");
+  const [roadmap, setRoadmap] = useState([]);
+  const [studyGroups] = useState([
+  {
+    name: "Web Development Group",
+    subject: "Web Development",
+    members: 15,
+  },
+  {
+    name: "Data Science Circle",
+    subject: "Data Science",
+    members: 10,
+  },
+  {
+    name: "AI Learners Hub",
+    subject: "Artificial Intelligence",
+    members: 12,
+  },
+]);
   useEffect(() => {
     const fetchGamification = async () => {
       try {
@@ -282,9 +328,6 @@ const [roadmap, setRoadmap] = useState([]);
 
     fetchGamification();
   }, [user]);
-
-  // Attendance stats
->>>>>>> 1c4eca93 (feat: add AI learning roadmap generator)
   const attendanceStats = useMemo(() => {
     const counts = recentActivity.reduce(
       (acc, curr) => {
@@ -324,6 +367,40 @@ const [roadmap, setRoadmap] = useState([]);
     };
   }, [attendanceStats, gamificationData]);
 
+  const activityParticipationScore = useMemo(() => {
+    return Math.min(100, Math.round((recentActivity.length / 10) * 100));
+  }, [recentActivity.length]);
+
+  const assignmentSubmissionScore = useMemo(() => {
+    return Math.min(
+      100,
+      Math.round(
+        (recentActivity.filter((item) => item?.status === "present").length /
+          8) *
+          100
+      )
+    );
+  }, [recentActivity]);
+
+  const academicPerformanceScore = useMemo(() => {
+    const totalXp = gamificationData?.totalXp ?? 0;
+    return Math.min(100, Math.round((totalXp / 1200) * 100));
+  }, [gamificationData]);
+
+  const engagementMetrics = useMemo(() => {
+    return calculateEngagementScore({
+      attendanceScore: attendanceStats?.percentage ?? 0,
+      activityScore: activityParticipationScore,
+      assignmentScore: assignmentSubmissionScore,
+      academicScore: academicPerformanceScore,
+    });
+  }, [
+    attendanceStats?.percentage,
+    activityParticipationScore,
+    assignmentSubmissionScore,
+    academicPerformanceScore,
+  ]);
+
   const scheduleState = useMemo(
     () => getTodaySchedule(scheduleTime, weeklySchedule),
     [scheduleTime]
@@ -333,6 +410,76 @@ const [roadmap, setRoadmap] = useState([]);
   const upcomingClass = scheduleState.upcomingClass;
   const isAttendanceWindow = scheduleState.isAttendanceWindow;
 
+  // ── Effects ────────────────────────────────────────────────────────────
+
+  // Fetch engagement history
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const controller = new AbortController();
+
+    const fetchEngagement = async () => {
+      try {
+        setEngagementError(null);
+        const token = await user.getIdToken();
+        const response = await fetch(
+          `/api/engagement-scores?studentId=${encodeURIComponent(user.uid)}&limit=12`,
+          {
+            signal: controller.signal,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (!response.ok) {
+          throw new Error(`Unable to load engagement data: ${response.status}`);
+        }
+        const payload = await response.json();
+        setEngagementHistory(payload?.data?.history || []);
+        setEngagementRecord(payload?.data?.latest || null);
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          setEngagementError(err.message);
+        }
+      }
+    };
+
+    fetchEngagement();
+
+    return () => controller.abort();
+  }, [user?.uid]);
+
+  // Persist engagement metrics
+  useEffect(() => {
+    if (!user?.uid || engagementSaved || !engagementMetrics) return;
+
+    const persistEngagement = async () => {
+      try {
+        const token = await user.getIdToken();
+        await fetch("/api/engagement-scores", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            studentId: user.uid,
+            attendanceScore: engagementMetrics.attendanceScore,
+            activityScore: engagementMetrics.activityScore,
+            assignmentScore: engagementMetrics.assignmentScore,
+            academicScore: engagementMetrics.academicScore,
+          }),
+        });
+        setEngagementSaved(true);
+      } catch {
+        // Do not block dashboard if persistence fails.
+      }
+    };
+
+    persistEngagement();
+  }, [user?.uid, engagementMetrics, engagementSaved]);
+
+  // Dashboard update loop
   useEffect(() => {
     const loadingTimer = setTimeout(() => {
       if (isMounted()) setLoading(false);
@@ -361,7 +508,7 @@ const [roadmap, setRoadmap] = useState([]);
       clearInterval(timer);
       clearTimeout(loadingTimer);
     };
-  }, []);
+  }, [isMounted]);
 
   const handleEvaluateQuiz = (scoreOutOfFive) => {
     const percentage = (scoreOutOfFive / 5) * 100;
@@ -440,6 +587,8 @@ const generateRoadmap = () => {
     }
   };
 
+  // ── Render ────────────────────────────────────────────────────────────
+
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -451,7 +600,9 @@ const generateRoadmap = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-background relative overflow-x-hidden ${dashboardContentOffsetClass}`}>
+    <div
+      className={`min-h-screen bg-background relative overflow-x-hidden ${dashboardContentOffsetClass}`}
+    >
       <Navbar />
 
       {/* Diagnostic Quiz Section */}
@@ -562,12 +713,79 @@ const generateRoadmap = () => {
   )}
 </div>
 
+{/* Peer Study Group Finder */}
+<div className="mt-6 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+  <h2 className="text-xl font-bold text-white mb-4">
+    Student Peer Study Groups
+  </h2>
+
+  <div className="grid md:grid-cols-3 gap-4">
+    {studyGroups.map((group, index) => (
+      <div
+        key={index}
+        className="p-4 rounded-xl bg-white/5 border border-white/10"
+      >
+        <h3 className="font-semibold text-white">
+          {group.name}
+        </h3>
+
+        <p className="text-sm text-gray-400">
+          Subject: {group.subject}
+        </p>
+
+        <p className="text-sm text-gray-400 mb-3">
+          Members: {group.members}
+        </p>
+
+        <button
+          className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm"
+        >
+          Join Group
+        </button>
+      </div>
+    ))}
+  </div>
+</div>
+
       {/* Attendance Insights */}
       <div className="max-w-7xl mx-auto mt-6 px-6">
         <div className="flex justify-end mb-4">
           <ExportDropdown onExport={handleExportAttendance} />
         </div>
         <AttendanceInsights recentActivity={recentActivity} />
+      </div>
+
+      {/* Engagement Score Section */}
+      <div className="max-w-7xl mx-auto mt-8 px-6">
+        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <EngagementScoreCard
+            overallScore={engagementMetrics.overallScore}
+            attendanceScore={engagementMetrics.attendanceScore}
+            activityScore={engagementMetrics.activityScore}
+            assignmentScore={engagementMetrics.assignmentScore}
+            academicScore={engagementMetrics.academicScore}
+          />
+          <div className="space-y-6">
+            <EngagementTrendChart history={engagementHistory} />
+            <EngagementBreakdown
+              breakdown={[
+                { label: "Attendance", value: engagementMetrics.attendanceScore },
+                {
+                  label: "Activity Participation",
+                  value: engagementMetrics.activityScore,
+                },
+                {
+                  label: "Assignment Submissions",
+                  value: engagementMetrics.assignmentScore,
+                },
+                {
+                  label: "Academic Performance",
+                  value: engagementMetrics.academicScore,
+                },
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Digital Certificates & Achievements */}
