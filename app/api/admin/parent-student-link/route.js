@@ -218,17 +218,16 @@ export const POST = withErrorHandler(async (request) => {
     );
   }
 
-    logAuditEvent({
-      actor: payload,
-      action: "parent_student_link.create",
-      target: { type: "user", id: studentId },
-      details: { parentId, studentId, parentEmail: validatedData.parentEmail, studentEmail: validatedData.studentEmail },
-      request,
-    });
+  logAuditEvent({
+    actor: payload,
+    action: "parent_student_link.create",
+    target: { type: "user", id: studentId },
+    details: { parentId, studentId, parentEmail, studentEmail },
+    request,
+  });
 
     return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
-  })
-);
+});
 
 export const DELETE = withErrorHandler(async (request) => {
   const payload = await requireAuth(request);
