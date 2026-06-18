@@ -6,7 +6,10 @@ import StreakStats from "./StreakStats";
 import HeatmapLegend from "./HeatmapLegend";
 import ActivityTooltip from "./ActivityTooltip";
 import { getStudentActivity } from "@/services/activityService";
-import { calculateCurrentStreak, calculateLongestStreak } from "@/utils/streakUtils";
+import {
+  calculateCurrentStreak,
+  calculateLongestStreak,
+} from "@/utils/streakUtils";
 import { useAuth } from "@/hooks/useAuth";
 
 const getCellClassName = (value) => {
@@ -194,7 +197,10 @@ const LearningHeatmap = () => {
         </p>
       </div>
 
-      <StreakStats currentStreak={currentStreak} longestStreak={longestStreak} />
+      <StreakStats
+        currentStreak={currentStreak}
+        longestStreak={longestStreak}
+      />
 
       <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/80 p-5">
         <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
@@ -213,7 +219,9 @@ const LearningHeatmap = () => {
                   className: `${rect.props.className || ""} cursor-pointer rounded-[3px] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${getCellClassName(value)}`,
                   tabIndex: isFocusable ? 0 : -1,
                   role: "gridcell",
-                  "aria-label": value ? `${value.count} activities on ${value.label}` : "No activity data",
+                  "aria-label": value
+                    ? `${value.count} activities on ${value.label}`
+                    : "No activity data",
                   onMouseEnter: (event) => showTooltip(value, event),
                   onMouseLeave: hideTooltip,
                   onFocus: (event) => showTooltip(value, event),
@@ -226,7 +234,9 @@ const LearningHeatmap = () => {
         </div>
         <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/5 pt-4">
           <p className="text-xs text-slate-400 leading-5 max-w-lg text-center sm:text-left">
-            Each cell represents a calendar day. Deeper shades of violet represent days with high contribution activity (login, viewing material, completing tasks, quizzes).
+            Each cell represents a calendar day. Deeper shades of violet
+            represent days with high contribution activity (login, viewing
+            material, completing tasks, quizzes).
           </p>
           <HeatmapLegend />
         </div>

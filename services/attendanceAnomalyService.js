@@ -10,9 +10,9 @@
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const RISK_THRESHOLDS = {
-  SAFE: 75,       // >= 75% → Safe
-  AT_RISK: 65,    // >= 65% && < 75% → At Risk
-  CRITICAL: 0,    // < 65% → Critical
+  SAFE: 75, // >= 75% → Safe
+  AT_RISK: 65, // >= 65% && < 75% → At Risk
+  CRITICAL: 0, // < 65% → Critical
 };
 
 export const RISK_LEVELS = {
@@ -106,18 +106,23 @@ export function getRiskLevel(rate) {
  * @param {number} student.classesNeeded
  * @returns {string[]} List of alert messages
  */
-export function generateStudentAlerts({ name, currentRate, riskLevel, classesNeeded }) {
+export function generateStudentAlerts({
+  name,
+  currentRate,
+  riskLevel,
+  classesNeeded,
+}) {
   const alerts = [];
 
   if (riskLevel === RISK_LEVELS.CRITICAL) {
     alerts.push(
       `🔴 Critical: ${name}, your attendance is at ${currentRate.toFixed(1)}%. ` +
-      `You need ${classesNeeded} more classes to reach the 75% threshold.`
+        `You need ${classesNeeded} more classes to reach the 75% threshold.`
     );
   } else if (riskLevel === RISK_LEVELS.AT_RISK) {
     alerts.push(
       `🟡 Warning: ${name}, your attendance (${currentRate.toFixed(1)}%) is approaching the minimum. ` +
-      `Attend ${classesNeeded} more class(es) to stay safe.`
+        `Attend ${classesNeeded} more class(es) to stay safe.`
     );
   }
 
@@ -131,7 +136,7 @@ export function generateStudentAlerts({ name, currentRate, riskLevel, classesNee
  * @returns {object|null} Batch anomaly object or null
  */
 export function detectBatchAnomaly(students = [], threshold = 0.4) {
-  if (students.length === 0) return null;
+  if (students.length === 0) return { detected: false };
 
   const atRiskCount = students.filter(
     (s) => s.riskLevel !== RISK_LEVELS.SAFE
@@ -223,8 +228,10 @@ export function analyzeAttendanceAnomalies(students = []) {
     summary: {
       total: profiles.length,
       safe: profiles.filter((p) => p.riskLevel === RISK_LEVELS.SAFE).length,
-      atRisk: profiles.filter((p) => p.riskLevel === RISK_LEVELS.AT_RISK).length,
-      critical: profiles.filter((p) => p.riskLevel === RISK_LEVELS.CRITICAL).length,
+      atRisk: profiles.filter((p) => p.riskLevel === RISK_LEVELS.AT_RISK)
+        .length,
+      critical: profiles.filter((p) => p.riskLevel === RISK_LEVELS.CRITICAL)
+        .length,
     },
   };
 }

@@ -22,12 +22,17 @@ export async function GET(request) {
     const userId = decodedToken.uid;
 
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    const rateLimitResult = await checkRateLimit(`events_stream_${ip}_${userId}`);
+    const rateLimitResult = await checkRateLimit(
+      `events_stream_${ip}_${userId}`
+    );
     if (!rateLimitResult.allowed) {
-      return new Response(JSON.stringify({ error: "Too many connections. Please slow down." }), {
-        status: 429,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Too many connections. Please slow down." }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     let isConnected = true;
@@ -41,7 +46,11 @@ export async function GET(request) {
         const sendEvent = (event, data) => {
           if (!isConnected) return;
           try {
-            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+            controller.enqueue(
+              encoder.encode(
+                `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+              )
+            );
           } catch {
             cleanup();
           }
@@ -53,7 +62,9 @@ export async function GET(request) {
           clearInterval(heartbeatTimer);
           clearInterval(pollInterval);
           if (idleTimer) clearTimeout(idleTimer);
-          try { controller.close(); } catch {}
+          try {
+            controller.close();
+          } catch {}
         };
 
         request.signal.addEventListener("abort", () => cleanup());
@@ -63,15 +74,22 @@ export async function GET(request) {
         const pollForEvents = async () => {
           if (!isConnected) return;
           try {
-            const notifications = await pollEvents("notifications", lastEventTime);
+            const notifications = await pollEvents(
+              "notifications",
+              lastEventTime
+            );
             for (const doc of notifications) {
               if (!isConnected) break;
-              if (doc.payload?.recipientId && String(doc.payload.recipientId) === String(userId)) {
+              if (
+                doc.payload?.recipientId &&
+                String(doc.payload.recipientId) === String(userId)
+              ) {
                 sendEvent("notification", doc.payload);
               } else if (!doc.payload?.recipientId) {
                 sendEvent("notification", doc.payload);
               }
-              const ts = doc._timestamp || new Date(doc.payload?.createdAt).getTime();
+              const ts =
+                doc._timestamp || new Date(doc.payload?.createdAt).getTime();
               if (ts > lastEventTime.getTime()) {
                 lastEventTime = new Date(ts);
               }
@@ -81,7 +99,8 @@ export async function GET(request) {
             for (const doc of attendance) {
               if (!isConnected) break;
               sendEvent("attendance", doc.payload);
-              const ts = doc._timestamp || new Date(doc.payload?.timestamp).getTime();
+              const ts =
+                doc._timestamp || new Date(doc.payload?.timestamp).getTime();
               if (ts > lastEventTime.getTime()) {
                 lastEventTime = new Date(ts);
               }

@@ -57,21 +57,21 @@ export const getUserActivity = async (userId) => {
   const rawActivities = await getUserActivities(userId);
 
   const grouped = rawActivities.reduce((acc, item) => {
-  const timestamp =
-    item.timestamp instanceof Date
-      ? item.timestamp
-      : new Date(item.timestamp);
+    const timestamp =
+      item.timestamp instanceof Date
+        ? item.timestamp
+        : new Date(item.timestamp);
 
-  if (Number.isNaN(timestamp.getTime())) {
+    if (Number.isNaN(timestamp.getTime())) {
+      return acc;
+    }
+
+    const dateKey = timestamp.toISOString().slice(0, 10);
+
+    acc[dateKey] = (acc[dateKey] || 0) + 1;
+
     return acc;
-  }
-
-  const dateKey = timestamp.toISOString().slice(0, 10);
-
-  acc[dateKey] = (acc[dateKey] || 0) + 1;
-
-  return acc;
-}, {});
+  }, {});
 
   return Object.entries(grouped)
     .map(([date, count]) => ({ date, count }))
@@ -135,7 +135,10 @@ export const getStudentActivity = async (studentId) => {
       return realActivities;
     }
   } catch (error) {
-    console.warn("Failed to fetch real student activity, using mock fallback:", error);
+    console.warn(
+      "Failed to fetch real student activity, using mock fallback:",
+      error
+    );
   }
 
   // Fallback to deterministic mock data
@@ -155,7 +158,7 @@ export const getStudentActivity = async (studentId) => {
     date.setDate(today.getDate() - i);
     const dateString = getLocalDateString(date);
     const seed = `${studentId}-${dateString}`;
-    
+
     // Force active state for the last 3 days to guarantee a streak presentation
     if (i <= 2) {
       const countRand = getDeterministicRandom(seed + "-count");
@@ -193,4 +196,3 @@ export const getStudentActivity = async (studentId) => {
 
   return mockActivities.sort((a, b) => a.date.localeCompare(b.date));
 };
-

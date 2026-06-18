@@ -40,9 +40,7 @@ export default function SidebarNavItem({
       >
         <Icon className="h-4 w-4" aria-hidden="true" />
       </span>
-      {!collapsed && (
-        <span className="relative z-10 truncate">{label}</span>
-      )}
+      {!collapsed && <span className="relative z-10 truncate">{label}</span>}
       {!collapsed && isActive && (
         <span className="relative z-10 ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400" />
       )}

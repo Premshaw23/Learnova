@@ -30,7 +30,9 @@ export const POST = withErrorHandler(async (request) => {
 
   initFirebaseAdmin();
   const db = getFirestore();
-  const docRef = db.collection("attendance_records").doc(`${studentId}_${date}`);
+  const docRef = db
+    .collection("attendance_records")
+    .doc(`${studentId}_${date}`);
 
   // Use runTransaction so concurrent teacher overrides for DIFFERENT students
   // in the same class are safely merged (field-level, not full-doc overwrites)

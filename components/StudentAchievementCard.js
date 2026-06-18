@@ -1,6 +1,6 @@
 /**
  * components/StudentAchievementCard.js
- * 
+ *
  * Card component for displaying a student's achievements in teacher/parent view.
  * Shows summary of earned badges and achievement stats.
  */
@@ -41,9 +41,7 @@ const StudentAchievementCard = ({
             🏆
           </div>
           <div className="text-left">
-            <h3 className="font-semibold text-white text-lg">
-              {studentName}
-            </h3>
+            <h3 className="font-semibold text-white text-lg">{studentName}</h3>
             <p className="text-sm text-gray-400">
               {unlockedCount} of {totalBadges} achievements
             </p>
@@ -61,9 +59,7 @@ const StudentAchievementCard = ({
       {/* Stats Row */}
       <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-gray-700/30 pt-4">
         <div className="text-center">
-          <p className="text-2xl font-bold text-yellow-400">
-            {unlockedCount}
-          </p>
+          <p className="text-2xl font-bold text-yellow-400">{unlockedCount}</p>
           <p className="text-xs text-gray-400">Unlocked</p>
         </div>
         <div className="text-center">
@@ -73,9 +69,7 @@ const StudentAchievementCard = ({
           <p className="text-xs text-gray-400">Locked</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-green-400">
-            {attendanceCount}
-          </p>
+          <p className="text-2xl font-bold text-green-400">{attendanceCount}</p>
           <p className="text-xs text-gray-400">Days Present</p>
         </div>
       </div>

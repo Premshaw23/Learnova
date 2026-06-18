@@ -1,13 +1,16 @@
 /**
  * app/api/student/achievements/route.js
- * 
+ *
  * API endpoints for managing student achievements and badges.
  * Handles fetching, updating, and calculating badge progress.
  */
 
 import { verifyFirebaseToken, initializeFirebase } from "@/lib/firebase-admin";
 import { connectDb } from "@/lib/mongodb";
-import { getBadgesWithProgress, getNewlyUnlockedBadges } from "@/lib/badgeEngine";
+import {
+  getBadgesWithProgress,
+  getNewlyUnlockedBadges,
+} from "@/lib/badgeEngine";
 import admin from "firebase-admin";
 
 /**
@@ -28,10 +31,10 @@ export async function GET(request) {
     const { valid, decodedToken, reason } = await verifyFirebaseToken(token);
 
     if (!valid) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token", reason }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid token", reason }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const userId = decodedToken.uid;
@@ -56,10 +59,16 @@ export async function GET(request) {
     const earnedBadges = existingBadges?.badges || [];
 
     // Calculate badges with progress
-    const badgesWithProgress = getBadgesWithProgress(attendanceRecords, earnedBadges);
+    const badgesWithProgress = getBadgesWithProgress(
+      attendanceRecords,
+      earnedBadges
+    );
 
     // Get newly unlocked badges
-    const newlyUnlocked = getNewlyUnlockedBadges(attendanceRecords, earnedBadges);
+    const newlyUnlocked = getNewlyUnlockedBadges(
+      attendanceRecords,
+      earnedBadges
+    );
 
     return new Response(
       JSON.stringify({
@@ -77,7 +86,10 @@ export async function GET(request) {
   } catch (error) {
     console.error("Error fetching achievements:", error);
     return new Response(
-      JSON.stringify({ error: "Failed to fetch achievements", details: error.message }),
+      JSON.stringify({
+        error: "Failed to fetch achievements",
+        details: error.message,
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -101,20 +113,20 @@ export async function POST(request) {
     const { valid, decodedToken, reason } = await verifyFirebaseToken(token);
 
     if (!valid) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token", reason }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid token", reason }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const userId = decodedToken.uid;
     const { badges } = await request.json();
 
     if (!badges || !Array.isArray(badges)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid badges array" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid badges array" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // Save to MongoDB
@@ -146,7 +158,10 @@ export async function POST(request) {
   } catch (error) {
     console.error("Error saving achievements:", error);
     return new Response(
-      JSON.stringify({ error: "Failed to save achievements", details: error.message }),
+      JSON.stringify({
+        error: "Failed to save achievements",
+        details: error.message,
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

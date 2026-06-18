@@ -54,13 +54,22 @@ function Reveal({ children, className = "", delay = 0 }) {
   );
 }
 
-function SectionBadge({ icon: Icon, text, gradient, borderClass, iconClass, textClass }) {
+function SectionBadge({
+  icon: Icon,
+  text,
+  gradient,
+  borderClass,
+  iconClass,
+  textClass,
+}) {
   return (
     <div
       className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-gradient-to-r ${gradient} ${borderClass}`}
     >
       <Icon className={`w-3.5 h-3.5 ${iconClass}`} />
-      <span className={`text-xs font-semibold tracking-wide uppercase ${textClass}`}>
+      <span
+        className={`text-xs font-semibold tracking-wide uppercase ${textClass}`}
+      >
         {text}
       </span>
     </div>
@@ -80,9 +89,13 @@ function AnimatedCounter({ value, suffix = "", duration = 2 }) {
 
       const step = (timestamp) => {
         if (!startTime) startTime = timestamp;
-        const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
+        const progress = Math.min(
+          (timestamp - startTime) / (duration * 1000),
+          1
+        );
         const easeProgress = progress * (2 - progress); // Ease out quadratic
-        const currentValue = startValue + easeProgress * (endValue - startValue);
+        const currentValue =
+          startValue + easeProgress * (endValue - startValue);
 
         setCount(currentValue);
 
@@ -192,7 +205,8 @@ const FEATURES = [
   {
     icon: UserCheck,
     title: "Face Recognition Attendance",
-    description: "Eliminate manual roll calls and proxy lists. Secure, split-second AI face matching verifies student attendance instantly.",
+    description:
+      "Eliminate manual roll calls and proxy lists. Secure, split-second AI face matching verifies student attendance instantly.",
     color: "text-emerald-500",
     bg: "bg-emerald-500/10",
     border: "border-emerald-500/20",
@@ -201,7 +215,8 @@ const FEATURES = [
   {
     icon: MessageSquare,
     title: "AI Chatbot Assistant",
-    description: "A 24/7 smart assistant integrated directly to help students plan studies, resolve course queries, and retrieve campus facts.",
+    description:
+      "A 24/7 smart assistant integrated directly to help students plan studies, resolve course queries, and retrieve campus facts.",
     color: "text-purple-500",
     bg: "bg-purple-500/10",
     border: "border-purple-500/20",
@@ -210,7 +225,8 @@ const FEATURES = [
   {
     icon: Users,
     title: "Parent Engagement Portal",
-    description: "Keep guardians updated with direct performance indicators, attendance threshold warnings, and direct messaging channels.",
+    description:
+      "Keep guardians updated with direct performance indicators, attendance threshold warnings, and direct messaging channels.",
     color: "text-blue-500",
     bg: "bg-blue-500/10",
     border: "border-blue-500/20",
@@ -219,7 +235,8 @@ const FEATURES = [
   {
     icon: Award,
     title: "Gamified Activity Center",
-    description: "Engage students with dynamic revision challenges, attendance streak trackers, daily wellness goals, and badge awards.",
+    description:
+      "Engage students with dynamic revision challenges, attendance streak trackers, daily wellness goals, and badge awards.",
     color: "text-pink-500",
     bg: "bg-pink-500/10",
     border: "border-pink-500/20",
@@ -228,7 +245,8 @@ const FEATURES = [
   {
     icon: Bell,
     title: "Smart Notice Board",
-    description: "Instantly broadcast critical events, alerts, and guidelines. Supports searchable tag filtration and immediate compliance synch.",
+    description:
+      "Instantly broadcast critical events, alerts, and guidelines. Supports searchable tag filtration and immediate compliance synch.",
     color: "text-amber-500",
     bg: "bg-amber-500/10",
     border: "border-amber-500/20",
@@ -237,7 +255,8 @@ const FEATURES = [
   {
     icon: BarChart3,
     title: "Advanced Analytics Dashboard",
-    description: "Equip educators and campus administrators with predictive failure indicators, syllabus velocity, and audit reports.",
+    description:
+      "Equip educators and campus administrators with predictive failure indicators, syllabus velocity, and audit reports.",
     color: "text-cyan-500",
     bg: "bg-cyan-500/10",
     border: "border-cyan-500/20",
@@ -285,21 +304,24 @@ const TESTIMONIALS = [
   {
     name: "Aarav Sharma",
     role: "CS Student, NIT",
-    review: "Learnova completely reshaped how I coordinate my class schedules and track my attendance threshold. The AI planner keeps me highly focused.",
+    review:
+      "Learnova completely reshaped how I coordinate my class schedules and track my attendance threshold. The AI planner keeps me highly focused.",
     rating: 5,
     avatarText: "AS",
   },
   {
     name: "Priya Mehta",
     role: "Senior Math Educator",
-    review: "Recording attendance is now a breeze instead of a chore. The biometric facial matching has saved me hundreds of hours of manual entry.",
+    review:
+      "Recording attendance is now a breeze instead of a chore. The biometric facial matching has saved me hundreds of hours of manual entry.",
     rating: 5,
     avatarText: "PM",
   },
   {
     name: "Rohan Kulkarni",
     role: "Director of Operations",
-    review: "The institutional metrics dashboards and integrated notice boards make multi-department coordination flawless and efficient.",
+    review:
+      "The institutional metrics dashboards and integrated notice boards make multi-department coordination flawless and efficient.",
     rating: 5,
     avatarText: "RK",
   },
@@ -322,7 +344,8 @@ const FAQ_ITEMS = [
       "Yes. Any log created by educators, face scanners, or admins propagates in real-time across the parent, student, and administrator views, keeping everyone on the same page.",
   },
   {
-    question: "What metrics are tracked in the student wellness and streak tracker?",
+    question:
+      "What metrics are tracked in the student wellness and streak tracker?",
     answer:
       "Students can log daily reflection journals, mental focus goals, and hydration targets. By maintaining active class attendance and finishing daily tasks, they progress their engagement streaks to earn custom rewards.",
   },
@@ -352,7 +375,6 @@ export default function Page() {
     <>
       <Navbar />
       <div className="min-h-screen bg-background text-foreground selection:bg-purple-500/30 relative overflow-hidden">
-        
         {/* Glowing Background Blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
           <motion.div
@@ -424,7 +446,10 @@ export default function Page() {
 
               <Reveal delay={0.2}>
                 <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">
-                  Learnova is a premium, AI-driven educational ecosystem that automates attendance via face recognition, tracks syllabus progress, and creates streamlined links between teachers, parents, and students.
+                  Learnova is a premium, AI-driven educational ecosystem that
+                  automates attendance via face recognition, tracks syllabus
+                  progress, and creates streamlined links between teachers,
+                  parents, and students.
                 </p>
               </Reveal>
 
@@ -472,7 +497,6 @@ export default function Page() {
               <Reveal delay={0.2} className="w-full max-w-[500px]">
                 {/* Dashboard Frame */}
                 <div className="relative w-full aspect-[4/3] bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-gray-200/50 dark:border-white/5 rounded-3xl p-5 shadow-2xl flex flex-col justify-between overflow-hidden group">
-                  
                   {/* Dashboard Header Bar */}
                   <div className="flex items-center justify-between pb-3 border-b border-gray-200/40 dark:border-white/[0.03]">
                     <div className="flex gap-1.5">
@@ -508,7 +532,7 @@ export default function Page() {
                   </div>
 
                   {/* Floating elements inside hero frame */}
-                  
+
                   {/* Floating Card 1: Face Scan */}
                   <motion.div
                     variants={floatVariant(0)}
@@ -520,13 +544,21 @@ export default function Page() {
                       {/* Scanline simulation */}
                       <motion.div
                         animate={{ top: ["0%", "100%", "0%"] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
                         className="absolute left-0 w-full h-[2px] bg-emerald-400"
                       />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-zinc-900 dark:text-zinc-50 leading-tight">Alice Smith</p>
-                      <span className="text-[10px] font-semibold text-emerald-500">Verified Match</span>
+                      <p className="text-xs font-bold text-zinc-900 dark:text-zinc-50 leading-tight">
+                        Alice Smith
+                      </p>
+                      <span className="text-[10px] font-semibold text-emerald-500">
+                        Verified Match
+                      </span>
                     </div>
                   </motion.div>
 
@@ -537,8 +569,12 @@ export default function Page() {
                     className="absolute top-36 right-6 w-[210px] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-3 shadow-lg space-y-2"
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-[10px] text-white font-bold">L</div>
-                      <span className="text-[10px] font-bold text-muted-foreground">Learnova AI</span>
+                      <div className="w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-[10px] text-white font-bold">
+                        L
+                      </div>
+                      <span className="text-[10px] font-bold text-muted-foreground">
+                        Learnova AI
+                      </span>
                     </div>
                     <p className="text-[10px] leading-relaxed text-zinc-700 dark:text-zinc-300">
                       "Personalized study plan created successfully! ⚡"
@@ -555,8 +591,12 @@ export default function Page() {
                       <Zap className="w-4.5 h-4.5 text-pink-500 fill-pink-500/20" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-zinc-900 dark:text-zinc-50">5-Day Streak</p>
-                      <span className="text-[9px] font-bold text-pink-500 uppercase tracking-wider">Active Studier</span>
+                      <p className="text-xs font-bold text-zinc-900 dark:text-zinc-50">
+                        5-Day Streak
+                      </p>
+                      <span className="text-[9px] font-bold text-pink-500 uppercase tracking-wider">
+                        Active Studier
+                      </span>
                     </div>
                   </motion.div>
 
@@ -570,11 +610,14 @@ export default function Page() {
                       <Users className="w-4.5 h-4.5 text-blue-500" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold text-zinc-900 dark:text-zinc-50 leading-tight">Parent Portal</p>
-                      <span className="text-[9px] text-blue-500 font-semibold block truncate">Status Synced</span>
+                      <p className="text-[10px] font-bold text-zinc-900 dark:text-zinc-50 leading-tight">
+                        Parent Portal
+                      </p>
+                      <span className="text-[9px] text-blue-500 font-semibold block truncate">
+                        Status Synced
+                      </span>
                     </div>
                   </motion.div>
-
                 </div>
               </Reveal>
             </div>
@@ -584,10 +627,15 @@ export default function Page() {
         {/* =========================================================================
             STATISTICS SECTION
             ========================================================================= */}
-        <section id="stats" className="py-16 bg-gray-50/50 dark:bg-zinc-950/40 border-y border-gray-200/50 dark:border-white/[0.02]">
+        <section
+          id="stats"
+          className="py-16 bg-gray-50/50 dark:bg-zinc-950/40 border-y border-gray-200/50 dark:border-white/[0.02]"
+        >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <Reveal className="text-center max-w-xl mx-auto mb-12">
-              <h2 className="text-sm font-black uppercase tracking-widest text-indigo-500">Learnova in Numbers</h2>
+              <h2 className="text-sm font-black uppercase tracking-widest text-indigo-500">
+                Learnova in Numbers
+              </h2>
               <p className="text-xl font-bold text-black dark:text-white mt-1">
                 Providing global excellence in campus automation
               </p>
@@ -599,11 +647,16 @@ export default function Page() {
                 return (
                   <Reveal key={idx} delay={idx * 0.08}>
                     <div className="h-full bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md border border-gray-200/50 dark:border-white/5 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                      <div className={`p-3 rounded-xl ${stat.bg} ${stat.color} mb-4`}>
+                      <div
+                        className={`p-3 rounded-xl ${stat.bg} ${stat.color} mb-4`}
+                      >
                         <IconComponent className="w-5 h-5" />
                       </div>
                       <div className="text-3xl font-extrabold text-zinc-900 dark:text-white">
-                        <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                        <AnimatedCounter
+                          value={stat.value}
+                          suffix={stat.suffix}
+                        />
                       </div>
                       <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mt-2">
                         {stat.label}
@@ -619,8 +672,10 @@ export default function Page() {
         {/* =========================================================================
             FEATURE SHOWCASE SECTION
             ========================================================================= */}
-        <section id="features" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
+        <section
+          id="features"
+          className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative"
+        >
           <Reveal className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <SectionBadge
               icon={Zap}
@@ -634,7 +689,8 @@ export default function Page() {
               Intelligent Frameworks Built for Modern Classrooms
             </h2>
             <p className="text-muted-foreground">
-              Simplify complex department operations with an interconnected ecosystem built on cutting-edge design paradigms.
+              Simplify complex department operations with an interconnected
+              ecosystem built on cutting-edge design paradigms.
             </p>
           </Reveal>
 
@@ -643,13 +699,16 @@ export default function Page() {
               const IconComp = feat.icon;
               return (
                 <Reveal key={i} delay={i * 0.08}>
-                  <div className={`group relative h-full p-8 bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md border border-gray-200/60 dark:border-white/5 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 flex flex-col justify-between overflow-hidden cursor-default ${feat.glow}`}>
-                    
+                  <div
+                    className={`group relative h-full p-8 bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md border border-gray-200/60 dark:border-white/5 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 flex flex-col justify-between overflow-hidden cursor-default ${feat.glow}`}
+                  >
                     {/* Hover glow highlight */}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/5 to-blue-500/5 rounded-full blur-2xl pointer-events-none group-hover:scale-150 transition-transform duration-700" />
-                    
+
                     <div>
-                      <div className={`w-12 h-12 ${feat.bg} ${feat.border} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300`}>
+                      <div
+                        className={`w-12 h-12 ${feat.bg} ${feat.border} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300`}
+                      >
                         <IconComp className={`w-5 h-5 ${feat.color}`} />
                       </div>
                       <h3 className="text-xl font-bold text-black dark:text-white mb-3 leading-snug">
@@ -674,10 +733,12 @@ export default function Page() {
         {/* =========================================================================
             ROLE-BASED TAILORED WORKFLOWS
             ========================================================================= */}
-        <section id="roles" className="py-24 bg-gray-50/30 dark:bg-zinc-950/20 border-y border-gray-200/50 dark:border-white/[0.02] relative">
+        <section
+          id="roles"
+          className="py-24 bg-gray-50/30 dark:bg-zinc-950/20 border-y border-gray-200/50 dark:border-white/[0.02] relative"
+        >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-12 gap-12 items-center">
-              
               {/* Left Column: Toggles */}
               <Reveal className="lg:col-span-5 space-y-6">
                 <SectionBadge
@@ -692,7 +753,8 @@ export default function Page() {
                   One Platform. Optimized Roles.
                 </h2>
                 <p className="text-muted-foreground">
-                  Select your perspective to explore how our specialized UI architecture satisfies institutional demands across roles.
+                  Select your perspective to explore how our specialized UI
+                  architecture satisfies institutional demands across roles.
                 </p>
 
                 {/* Tab Switcher */}
@@ -705,10 +767,16 @@ export default function Page() {
                       <motion.span
                         layoutId="active-role-bg"
                         className="absolute inset-0 rounded-xl bg-white dark:bg-zinc-800 text-black dark:text-white shadow-md border border-gray-200/20 dark:border-white/5"
-                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 380,
+                          damping: 30,
+                        }}
                       />
                     )}
-                    <span className={`relative z-20 ${activeRole === "admins" ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground hover:text-foreground"}`}>
+                    <span
+                      className={`relative z-20 ${activeRole === "admins" ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground hover:text-foreground"}`}
+                    >
                       Admins
                     </span>
                   </button>
@@ -721,10 +789,16 @@ export default function Page() {
                       <motion.span
                         layoutId="active-role-bg"
                         className="absolute inset-0 rounded-xl bg-white dark:bg-zinc-800 text-black dark:text-white shadow-md border border-gray-200/20 dark:border-white/5"
-                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 380,
+                          damping: 30,
+                        }}
                       />
                     )}
-                    <span className={`relative z-20 ${activeRole === "educators" ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground hover:text-foreground"}`}>
+                    <span
+                      className={`relative z-20 ${activeRole === "educators" ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground hover:text-foreground"}`}
+                    >
                       Educators
                     </span>
                   </button>
@@ -737,10 +811,16 @@ export default function Page() {
                       <motion.span
                         layoutId="active-role-bg"
                         className="absolute inset-0 rounded-xl bg-white dark:bg-zinc-800 text-black dark:text-white shadow-md border border-gray-200/20 dark:border-white/5"
-                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 380,
+                          damping: 30,
+                        }}
                       />
                     )}
-                    <span className={`relative z-20 ${activeRole === "students" ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground hover:text-foreground"}`}>
+                    <span
+                      className={`relative z-20 ${activeRole === "students" ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground hover:text-foreground"}`}
+                    >
                       Students
                     </span>
                   </button>
@@ -759,7 +839,7 @@ export default function Page() {
                     className="p-8 md:p-10 bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md border border-gray-200/60 dark:border-white/5 rounded-3xl shadow-xl relative overflow-hidden"
                   >
                     <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-                    
+
                     <h3 className="text-2xl font-bold text-black dark:text-white mb-4 leading-snug">
                       {ROLE_DATA[activeRole].title}
                     </h3>
@@ -781,7 +861,6 @@ export default function Page() {
                   </motion.div>
                 </AnimatePresence>
               </div>
-
             </div>
           </div>
         </section>
@@ -789,8 +868,10 @@ export default function Page() {
         {/* =========================================================================
             TESTIMONIALS & TRUST SECTION
             ========================================================================= */}
-        <section id="testimonials" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+        <section
+          id="testimonials"
+          className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        >
           <Reveal className="text-center max-w-3xl mx-auto mb-16 space-y-4">
             <SectionBadge
               icon={Sparkles}
@@ -804,7 +885,8 @@ export default function Page() {
               Trusted by Leading Instructors & Students
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Read how Learnova enables efficient campus workflows and automated, precise attendance logging across organizations.
+              Read how Learnova enables efficient campus workflows and
+              automated, precise attendance logging across organizations.
             </p>
           </Reveal>
 
@@ -819,13 +901,16 @@ export default function Page() {
                       </div>
                       <div className="flex gap-0.5">
                         {[...Array(item.rating)].map((_, i) => (
-                          <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <Star
+                            key={i}
+                            className="w-4 h-4 fill-yellow-400 text-yellow-400"
+                          />
                         ))}
                       </div>
                     </div>
 
                     <Quote className="w-8 h-8 text-indigo-500 mb-4 opacity-50" />
-                    
+
                     <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed italic mb-6">
                       "{item.review}"
                     </p>
@@ -851,9 +936,11 @@ export default function Page() {
         {/* =========================================================================
             FAQ SECTION
             ========================================================================= */}
-        <section id="faqs" className="py-24 bg-gray-50/50 dark:bg-zinc-950/40 border-y border-gray-200/50 dark:border-white/[0.02]">
+        <section
+          id="faqs"
+          className="py-24 bg-gray-50/50 dark:bg-zinc-950/40 border-y border-gray-200/50 dark:border-white/[0.02]"
+        >
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            
             <Reveal className="text-center max-w-2xl mx-auto mb-16 space-y-4">
               <SectionBadge
                 icon={HelpCircle}
@@ -867,7 +954,8 @@ export default function Page() {
                 Frequently Asked Questions
               </h2>
               <p className="text-muted-foreground text-sm md:text-base">
-                Got structural questions about platform functionalities? Look through our documented answers below.
+                Got structural questions about platform functionalities? Look
+                through our documented answers below.
               </p>
             </Reveal>
 
@@ -893,7 +981,6 @@ export default function Page() {
         <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <Reveal>
             <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-900 dark:via-indigo-950 dark:to-purple-900 px-8 py-12 md:py-16 md:px-12 text-center text-white shadow-2xl">
-              
               {/* Ambient shapes in card */}
               <div className="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
               <div className="absolute -bottom-12 -right-12 w-64 h-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
@@ -903,7 +990,9 @@ export default function Page() {
                   Ready to Modernize Your Campus?
                 </h2>
                 <p className="text-indigo-100 text-sm sm:text-base leading-relaxed">
-                  Join hundreds of forward-thinking schools, academies, teachers, and students using Learnova daily to automate attendance, plan curriculums, and scale academic interaction.
+                  Join hundreds of forward-thinking schools, academies,
+                  teachers, and students using Learnova daily to automate
+                  attendance, plan curriculums, and scale academic interaction.
                 </p>
                 <div className="pt-4 flex flex-wrap gap-4 justify-center">
                   <Link
@@ -927,7 +1016,10 @@ export default function Page() {
         {/* =========================================================================
             COMMENTS SECTION
             ========================================================================= */}
-        <section id="comments" className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section
+          id="comments"
+          className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        >
           <Reveal>
             <CommentSection />
           </Reveal>

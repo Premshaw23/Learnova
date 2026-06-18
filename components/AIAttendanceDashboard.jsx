@@ -57,7 +57,9 @@ export default function AIAttendanceDashboard({ riskData = [], tenantId }) {
       {/* Toolbar */}
       <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl px-6 py-4 shadow-xl">
         <div>
-          <h2 className="text-xl font-bold text-white">AI Attendance Risk Analysis</h2>
+          <h2 className="text-xl font-bold text-white">
+            AI Attendance Risk Analysis
+          </h2>
           <p className="text-xs text-slate-400 mt-0.5">
             Powered by rolling-average anomaly detection
           </p>

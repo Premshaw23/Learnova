@@ -30,11 +30,17 @@ const SmartNoticeBoard = () => {
 
   // ── Consume the shared pooled subscription from FirestoreContext ──────────
   // No local onSnapshot — notices arrive from the global singleton listener.
-  const { notices: rawNotices, loading: noticesLoading, error: noticesError } = useNotices();
+  const {
+    notices: rawNotices,
+    loading: noticesLoading,
+    error: noticesError,
+  } = useNotices();
 
   // feat #2184: show create form for teachers/admins/staff
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const canCreateNotice = ["teacher", "admin", "staff"].includes(userProfile?.role);
+  const canCreateNotice = ["teacher", "admin", "staff"].includes(
+    userProfile?.role
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -64,8 +70,8 @@ const SmartNoticeBoard = () => {
           n.createdAt instanceof Date
             ? n.createdAt
             : n.createdAt?.toDate
-            ? n.createdAt.toDate()
-            : new Date(n.createdAt || Date.now()),
+              ? n.createdAt.toDate()
+              : new Date(n.createdAt || Date.now()),
       })),
     [rawNotices]
   );
@@ -78,7 +84,11 @@ const SmartNoticeBoard = () => {
       title: notice?.title || "Untitled",
       timestamp: notice?.createdAt || new Date(),
       user: notice?.author || "System",
-      type: notice?.isPinned ? "pin" : notice?.priority === "high" ? "urgent" : "create",
+      type: notice?.isPinned
+        ? "pin"
+        : notice?.priority === "high"
+          ? "urgent"
+          : "create",
     }));
   }, [activity, notices]);
 
@@ -112,7 +122,10 @@ const SmartNoticeBoard = () => {
     async (state) => {
       const stateArray = [...state];
       try {
-        localStorage.setItem(`readNotices_${userId}`, JSON.stringify(stateArray));
+        localStorage.setItem(
+          `readNotices_${userId}`,
+          JSON.stringify(stateArray)
+        );
       } catch (err) {
         console.error("Failed to save read state locally:", err);
       }
@@ -182,11 +195,25 @@ const SmartNoticeBoard = () => {
     if (dateRange !== "all") count++;
     if (showOnlyUnread) count++;
     return count;
-  }, [selectedCategory, selectedPriority, selectedTags, dateRange, showOnlyUnread]);
+  }, [
+    selectedCategory,
+    selectedPriority,
+    selectedTags,
+    dateRange,
+    showOnlyUnread,
+  ]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory, selectedPriority, selectedTags, dateRange, showOnlyUnread, sortOrder]);
+  }, [
+    searchQuery,
+    selectedCategory,
+    selectedPriority,
+    selectedTags,
+    dateRange,
+    showOnlyUnread,
+    sortOrder,
+  ]);
 
   const filteredNotices = useMemo(() => {
     const queryText = searchQuery.trim().toLowerCase();
@@ -202,31 +229,58 @@ const SmartNoticeBoard = () => {
         `.toLowerCase();
 
         if (queryText && !haystack.includes(queryText)) return false;
-        if (selectedCategory !== "all" && notice?.category !== selectedCategory) return false;
-        if (selectedPriority !== "all" && notice?.priority !== selectedPriority) return false;
-        if (selectedTags.length > 0 && !selectedTags.every((tag) => notice?.tags?.includes(tag))) return false;
+        if (selectedCategory !== "all" && notice?.category !== selectedCategory)
+          return false;
+        if (selectedPriority !== "all" && notice?.priority !== selectedPriority)
+          return false;
+        if (
+          selectedTags.length > 0 &&
+          !selectedTags.every((tag) => notice?.tags?.includes(tag))
+        )
+          return false;
         if (showOnlyUnread && readNotices.has(notice.id)) return false;
 
         const noticeTime = new Date(notice?.createdAt).getTime();
-        if (dateRange === "today") return now - noticeTime <= 24 * 60 * 60 * 1000;
-        if (dateRange === "7d") return now - noticeTime <= 7 * 24 * 60 * 60 * 1000;
-        if (dateRange === "30d") return now - noticeTime <= 30 * 24 * 60 * 60 * 1000;
+        if (dateRange === "today")
+          return now - noticeTime <= 24 * 60 * 60 * 1000;
+        if (dateRange === "7d")
+          return now - noticeTime <= 7 * 24 * 60 * 60 * 1000;
+        if (dateRange === "30d")
+          return now - noticeTime <= 30 * 24 * 60 * 60 * 1000;
         return true;
       })
       .sort((a, b) => {
         if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
         if (sortOrder === "oldest") {
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          return (
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
         }
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
       });
-  }, [notices, searchQuery, selectedCategory, selectedPriority, selectedTags, dateRange, sortOrder, showOnlyUnread, readNotices]);
+  }, [
+    notices,
+    searchQuery,
+    selectedCategory,
+    selectedPriority,
+    selectedTags,
+    dateRange,
+    sortOrder,
+    showOnlyUnread,
+    readNotices,
+  ]);
 
   const totalPages = Math.ceil(filteredNotices.length / itemsPerPage);
-  const safeCurrentPage = currentPage > totalPages && totalPages > 0 ? totalPages : currentPage;
+  const safeCurrentPage =
+    currentPage > totalPages && totalPages > 0 ? totalPages : currentPage;
   const indexOfLastItem = safeCurrentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const paginatedNotices = filteredNotices.slice(indexOfFirstItem, indexOfLastItem);
+  const paginatedNotices = filteredNotices.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
 
   const unreadCount = useMemo(() => {
     return notices.filter((notice) => !readNotices.has(notice.id)).length;
@@ -245,7 +299,9 @@ const SmartNoticeBoard = () => {
 
   const handleTagToggle = useCallback((tag) => {
     setSelectedTags((current) =>
-      current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]
+      current.includes(tag)
+        ? current.filter((item) => item !== tag)
+        : [...current, tag]
     );
   }, []);
 
@@ -308,13 +364,32 @@ const SmartNoticeBoard = () => {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {[
                 { label: "Total", value: notices.length, color: "text-white" },
-                { label: "Unread", value: unreadCount, color: "text-emerald-400" },
-                { label: "Pinned", value: notices.filter((n) => n.isPinned).length, color: "text-yellow-400" },
-                { label: "High", value: notices.filter((n) => n.priority === "high").length, color: "text-red-400" },
+                {
+                  label: "Unread",
+                  value: unreadCount,
+                  color: "text-emerald-400",
+                },
+                {
+                  label: "Pinned",
+                  value: notices.filter((n) => n.isPinned).length,
+                  color: "text-yellow-400",
+                },
+                {
+                  label: "High",
+                  value: notices.filter((n) => n.priority === "high").length,
+                  color: "text-red-400",
+                },
               ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4 text-center">
-                  <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-                  <p className="mt-2 text-xs uppercase tracking-widest text-slate-400">{stat.label}</p>
+                <div
+                  key={stat.label}
+                  className="rounded-2xl border border-slate-700 bg-slate-800/70 p-4 text-center"
+                >
+                  <p className={`text-3xl font-bold ${stat.color}`}>
+                    {stat.value}
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-widest text-slate-400">
+                    {stat.label}
+                  </p>
                 </div>
               ))}
             </div>
@@ -351,7 +426,9 @@ const SmartNoticeBoard = () => {
         {activeTab === "overview" ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Recent Notice Activity</h2>
+              <h2 className="text-2xl font-bold text-white">
+                Recent Notice Activity
+              </h2>
               <span className="text-xs text-indigo-300 uppercase tracking-widest font-semibold bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full">
                 Live Feed
               </span>
@@ -367,7 +444,10 @@ const SmartNoticeBoard = () => {
                     <div>
                       <p className="text-white font-medium">{item?.title}</p>
                       <p className="text-slate-400 text-xs mt-1">
-                        By <span className="text-slate-300 font-semibold">{item?.user}</span>
+                        By{" "}
+                        <span className="text-slate-300 font-semibold">
+                          {item?.user}
+                        </span>
                         {" • "}
                         {getRelativeTime(item?.timestamp)}
                       </p>
@@ -380,7 +460,9 @@ const SmartNoticeBoard = () => {
               </div>
             ) : (
               <div className="text-center py-16 bg-slate-950/40 rounded-2xl border border-dashed border-slate-800">
-                <p className="text-slate-500 text-base">No recent activity available</p>
+                <p className="text-slate-500 text-base">
+                  No recent activity available
+                </p>
                 <p className="text-slate-600 text-xs mt-1">
                   Check back later for system logs and notice actions.
                 </p>
@@ -421,7 +503,10 @@ const SmartNoticeBoard = () => {
             {/* Notices */}
             <main>
               {filteredNotices.length === 0 ? (
-                <EmptyNoticeState query={searchQuery} onResetFilters={handleClearFilters} />
+                <EmptyNoticeState
+                  query={searchQuery}
+                  onResetFilters={handleClearFilters}
+                />
               ) : (
                 <>
                   <motion.div layout className="grid gap-5 lg:grid-cols-2">
@@ -441,7 +526,9 @@ const SmartNoticeBoard = () => {
                               notice={notice}
                               isRead={isRead}
                               onToggleRead={() =>
-                                isRead ? markAsUnread(notice.id) : markAsRead(notice.id)
+                                isRead
+                                  ? markAsUnread(notice.id)
+                                  : markAsRead(notice.id)
                               }
                               searchQuery={searchQuery}
                               getRelativeTime={getRelativeTime}
@@ -457,25 +544,33 @@ const SmartNoticeBoard = () => {
                     <div className="mt-8 flex items-center justify-between border-t border-slate-800 pt-6">
                       <p className="text-sm text-slate-400">
                         Showing{" "}
-                        <span className="font-semibold text-white">{indexOfFirstItem + 1}</span>
+                        <span className="font-semibold text-white">
+                          {indexOfFirstItem + 1}
+                        </span>
                         {" to "}
                         <span className="font-semibold text-white">
                           {Math.min(indexOfLastItem, filteredNotices.length)}
                         </span>
                         {" of "}
-                        <span className="font-semibold text-white">{filteredNotices.length}</span>
+                        <span className="font-semibold text-white">
+                          {filteredNotices.length}
+                        </span>
                         {" notices"}
                       </p>
                       <div className="flex gap-3">
                         <button
-                          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                          onClick={() =>
+                            setCurrentPage((p) => Math.max(p - 1, 1))
+                          }
                           disabled={safeCurrentPage === 1}
                           className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm font-medium transition-all hover:bg-slate-800 disabled:opacity-40"
                         >
                           Previous
                         </button>
                         <button
-                          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                          onClick={() =>
+                            setCurrentPage((p) => Math.min(p + 1, totalPages))
+                          }
                           disabled={safeCurrentPage === totalPages}
                           className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm font-medium transition-all hover:bg-slate-800 disabled:opacity-40"
                         >

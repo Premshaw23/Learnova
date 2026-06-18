@@ -15,36 +15,26 @@ vi.mock("next/link", () => ({
 // Mock Framer Motion
 vi.mock("framer-motion", () => ({
   motion: {
-    div: ({ children, ...props }) => (
-      <div {...props}>
-        {children}
-      </div>
-    ),
+    div: ({ children, ...props }) => <div {...props}>{children}</div>,
   },
 }));
 
 // Mock Lucide Icon
 vi.mock("lucide-react", () => ({
-  BookOpen: (props) => (
-    <svg data-testid="book-open-icon" {...props} />
-  ),
+  BookOpen: (props) => <svg data-testid="book-open-icon" {...props} />,
 }));
 
 describe("NavbarBrand", () => {
   test("renders Learnova brand text", () => {
     render(<NavbarBrand />);
 
-    expect(
-      screen.getByText("Learnova")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Learnova")).toBeInTheDocument();
   });
 
   test("renders Premium label", () => {
     render(<NavbarBrand />);
 
-    expect(
-      screen.getByText("Premium")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Premium")).toBeInTheDocument();
   });
 
   test("renders accessible home link", () => {
@@ -61,18 +51,14 @@ describe("NavbarBrand", () => {
   test("renders book icon", () => {
     render(<NavbarBrand />);
 
-    expect(
-      screen.getByTestId("book-open-icon")
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("book-open-icon")).toBeInTheDocument();
   });
 
   test("calls onNavigate when clicked", async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
 
-    render(
-      <NavbarBrand onNavigate={onNavigate} />
-    );
+    render(<NavbarBrand onNavigate={onNavigate} />);
 
     await user.click(
       screen.getByRole("link", {

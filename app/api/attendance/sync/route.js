@@ -279,7 +279,10 @@ async function handleSync(request) {
                 attendanceDate: new Date(record.queuedAt),
               });
             } catch (xpError) {
-              console.error("Failed to award XP after attendance sync:", xpError);
+              console.error(
+                "Failed to award XP after attendance sync:",
+                xpError
+              );
             }
           },
           compensate: null,

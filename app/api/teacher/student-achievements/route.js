@@ -1,6 +1,6 @@
 /**
  * app/api/teacher/student-achievements/route.js
- * 
+ *
  * API endpoint for teachers to view student achievements
  * Allows teachers to see which badges their students have earned
  */
@@ -27,10 +27,10 @@ export async function GET(request) {
     const { valid, decodedToken } = await verifyFirebaseToken(token);
 
     if (!valid) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // Verify user is a teacher
@@ -89,7 +89,10 @@ export async function GET(request) {
   } catch (error) {
     console.error("Error fetching student achievements:", error);
     return new Response(
-      JSON.stringify({ error: "Failed to fetch achievements", details: error.message }),
+      JSON.stringify({
+        error: "Failed to fetch achievements",
+        details: error.message,
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

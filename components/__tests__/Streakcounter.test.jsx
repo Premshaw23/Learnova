@@ -13,9 +13,7 @@ describe("StreakCounter", () => {
   test("renders attendance streak label", () => {
     render(<StreakCounter currentStreak={5} />);
 
-    expect(
-      screen.getByText(/attendance streak/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/attendance streak/i)).toBeInTheDocument();
   });
 
   test("renders fire emoji indicator", () => {

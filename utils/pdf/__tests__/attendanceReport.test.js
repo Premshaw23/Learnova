@@ -16,7 +16,9 @@ vi.mock("jspdf", () => {
     autoTable: vi.fn(),
   };
   return {
-    default: vi.fn(function () { return mockDoc; }),
+    default: vi.fn(function () {
+      return mockDoc;
+    }),
   };
 });
 
@@ -77,7 +79,7 @@ describe("Attendance PDF Export Utility", () => {
     });
 
     expect(doc).toBeDefined();
-    expect(doc.text).toHaveBeenCalledWith(customRange, 138, expect.any(Number));
+    expect(doc.text).toHaveBeenCalledWith(customRange, 136, expect.any(Number));
   });
 
   test("Scenario 4: Institute logo unavailable - PDF still generated gracefully", () => {

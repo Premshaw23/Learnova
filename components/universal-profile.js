@@ -105,10 +105,16 @@ export default function UniversalProfile() {
       website: "",
       linkedin: "",
       twitter: "",
-    }
+    },
   });
 
-  const { register, handleSubmit, reset, watch, formState: { errors, isDirty } } = methods;
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors, isDirty },
+  } = methods;
   const formData = watch();
   const isProfileDirty = isDirty;
 
@@ -163,7 +169,9 @@ export default function UniversalProfile() {
             email: data.email || user.email || "",
             phone: data.phone || "",
             location: data.location || "",
-            bio: data.bio || "Passionate learner exploring the world of knowledge through Learnova.",
+            bio:
+              data.bio ||
+              "Passionate learner exploring the world of knowledge through Learnova.",
             website: data.website || "",
             linkedin: data.linkedin || "",
             twitter: data.twitter || "",
@@ -570,112 +578,114 @@ export default function UniversalProfile() {
   return (
     <FormProvider {...methods}>
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 text-white">
-      <Navbar />
+        <Navbar />
 
-      <div className="relative max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-black/20 backdrop-blur-2xl rounded-3xl border border-white/10 p-6">
-          <div className="flex flex-col md:flex-row gap-8">
-            {/* Profile Image */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="relative">
-                {getUserPhoto() && !imageError ? (
-                  <Image
-                    src={getUserPhoto()}
-                    alt={`${getUserDisplayName()} profile photo`}
-                    width={120}
-                    height={120}
-                    onError={() => setImageError(true)}
-                    className="w-28 h-28 rounded-full object-cover border-4 border-white/20"
-                  />
-                ) : (
-                  <div
-                    className={`w-28 h-28 rounded-full bg-gradient-to-br ${roleConfig.color} flex items-center justify-center border-4 border-white/20`}
+        <div className="relative max-w-7xl mx-auto px-4 py-8">
+          <div className="bg-black/20 backdrop-blur-2xl rounded-3xl border border-white/10 p-6">
+            <div className="flex flex-col md:flex-row gap-8">
+              {/* Profile Image */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative">
+                  {getUserPhoto() && !imageError ? (
+                    <Image
+                      src={getUserPhoto()}
+                      alt={`${getUserDisplayName()} profile photo`}
+                      width={120}
+                      height={120}
+                      onError={() => setImageError(true)}
+                      className="w-28 h-28 rounded-full object-cover border-4 border-white/20"
+                    />
+                  ) : (
+                    <div
+                      className={`w-28 h-28 rounded-full bg-gradient-to-br ${roleConfig.color} flex items-center justify-center border-4 border-white/20`}
+                    >
+                      <span className="text-3xl font-bold">
+                        {getUserInitials(getUserDisplayName())}
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleImageUpload}
+                    className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-2"
+                    title="Change photo"
+                    aria-label="Change photo"
                   >
-                    <span className="text-3xl font-bold">
-                      {getUserInitials(getUserDisplayName())}
-                    </span>
+                    <Camera className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleFileChange}
+                  />
+                </div>
+
+                {/* Preview confirm/cancel */}
+                {previewUrl && (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleConfirmUpload}
+                      className="text-xs bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full"
+                      aria-label="Action button"
+                    >
+                      Save Photo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelPreview}
+                      className="text-xs bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded-full"
+                      aria-label="Action button"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={handleImageUpload}
-                  className="absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 rounded-full p-2"
-                  title="Change photo"
-                  aria-label="Change photo"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleFileChange}
-                />
+
+                {/* Remove photo */}
+                {!previewUrl && (avatarUrl || user?.photoURL) && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    className="text-xs text-red-400 hover:text-red-300 underline"
+                    aria-label="Action button"
+                  >
+                    Remove photo
+                  </button>
+                )}
               </div>
 
-              {/* Preview confirm/cancel */}
-              {previewUrl && (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleConfirmUpload}
-                    className="text-xs bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full"
-                    aria-label="Action button"
-                  >
-                    Save Photo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancelPreview}
-                    className="text-xs bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded-full"
-                    aria-label="Action button"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
+              {/* Profile Info */}
+              <div className="flex-1">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    {isEditing ? (
+                      <FormField name="displayName">
+                        <input
+                          className="bg-transparent border-b border-white/20 text-3xl font-bold outline-none"
+                          {...register("displayName", {
+                            required: "Display name is required",
+                          })}
+                        />
+                      </FormField>
+                    ) : (
+                      <h1 className="text-3xl font-bold flex items-center">
+                        {getUserDisplayName()}
 
-              {/* Remove photo */}
-              {!previewUrl && (avatarUrl || user?.photoURL) && (
-                <button
-                  type="button"
-                  onClick={handleRemovePhoto}
-                  className="text-xs text-red-400 hover:text-red-300 underline"
-                  aria-label="Action button"
-                >
-                  Remove photo
-                </button>
-              )}
-            </div>
+                        <Sparkles className="ml-3 w-6 h-6 text-yellow-400" />
+                      </h1>
+                    )}
 
-            {/* Profile Info */}
-            <div className="flex-1">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  {isEditing ? (
-                    <FormField name="displayName">
-                      <input
-                        className="bg-transparent border-b border-white/20 text-3xl font-bold outline-none"
-                        {...register("displayName", { required: "Display name is required" })}
-                      />
-                    </FormField>
-                  ) : (
-                    <h1 className="text-3xl font-bold flex items-center">
-                      {getUserDisplayName()}
+                    <div className="flex items-center mt-2 text-white/70">
+                      <roleConfig.icon className="w-4 h-4 mr-2 text-green-400" />
 
-                      <Sparkles className="ml-3 w-6 h-6 text-yellow-400" />
-                    </h1>
-                  )}
-
-                  <div className="flex items-center mt-2 text-white/70">
-                    <roleConfig.icon className="w-4 h-4 mr-2 text-green-400" />
-
-                    <span>{roleConfig.label}</span>
+                      <span>{roleConfig.label}</span>
+                    </div>
                   </div>
-                </div>
 
-                <div>
+                  <div>
                     {isEditing ? (
                       <div className="flex gap-3">
                         <Button
@@ -683,304 +693,308 @@ export default function UniversalProfile() {
                           disabled={isSaving}
                           className="bg-green-600 hover:bg-green-700"
                         >
-                        <Save className="w-4 h-4 mr-2" />
+                          <Save className="w-4 h-4 mr-2" />
 
-                        {isSaving ? "Saving..." : "Save"}
-                      </Button>
+                          {isSaving ? "Saving..." : "Save"}
+                        </Button>
 
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setIsEditing(false);
+                            reset();
+                          }}
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
                       <Button
-                        variant="outline"
-                        onClick={() => {
-                          setIsEditing(false);
-                          reset();
-                        }}
+                        onClick={() => setIsEditing(true)}
+                        className="bg-blue-600 hover:bg-blue-700"
                       >
-                        <X className="w-4 h-4 mr-2" />
-                        Cancel
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        Edit Profile
                       </Button>
-                    </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bio */}
+                <div className="mt-6">
+                  {isEditing ? (
+                    <FormField name="bio">
+                      <textarea
+                        rows={4}
+                        className="w-full bg-white/5 border border-white/20 rounded-xl p-4 outline-none"
+                        {...register("bio")}
+                      />
+                    </FormField>
                   ) : (
-                    <Button
-                      onClick={() => setIsEditing(true)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Edit3 className="w-4 h-4 mr-2" />
-                      Edit Profile
-                    </Button>
+                    <p className="text-white/70">{formData.bio}</p>
                   )}
                 </div>
-              </div>
 
-              {/* Bio */}
-              <div className="mt-6">
-                {isEditing ? (
-                  <FormField name="bio">
-                    <textarea
-                      rows={4}
-                      className="w-full bg-white/5 border border-white/20 rounded-xl p-4 outline-none"
-                      {...register("bio")}
-                    />
-                  </FormField>
-                ) : (
-                  <p className="text-white/70">{formData.bio}</p>
-                )}
-              </div>
+                {/* Contact Info */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8">
+                  {[
+                    {
+                      icon: Mail,
+                      label: "Email",
+                      value: user.email || "Not provided",
+                    },
 
-              {/* Contact Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8">
-                {[
-                  {
-                    icon: Mail,
-                    label: "Email",
-                    value: user.email || "Not provided",
-                  },
+                    {
+                      icon: Phone,
+                      label: "Phone",
+                      value: formData.phone || "Not provided",
+                    },
 
-                  {
-                    icon: Phone,
-                    label: "Phone",
-                    value: formData.phone || "Not provided",
-                  },
+                    {
+                      icon: MapPin,
+                      label: "Location",
+                      value: formData.location || "Not provided",
+                    },
 
-                  {
-                    icon: MapPin,
-                    label: "Location",
-                    value: formData.location || "Not provided",
-                  },
+                    {
+                      icon: Calendar,
+                      label: "Member Since",
+                      value: getMemberSince(),
+                    },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-4">
+                      <item.icon className="w-5 h-5 text-blue-400" />
 
-                  {
-                    icon: Calendar,
-                    label: "Member Since",
-                    value: getMemberSince(),
-                  },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center gap-4">
-                    <item.icon className="w-5 h-5 text-blue-400" />
+                      <div>
+                        <p className="text-xs text-white/50 uppercase">
+                          {item.label}
+                        </p>
 
-                    <div>
-                      <p className="text-xs text-white/50 uppercase">
-                        {item.label}
-                      </p>
-
-                      <p className="text-sm">{item.value}</p>
+                        <p className="text-sm">{item.value}</p>
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+            {[
+              {
+                id: "courses",
+                label: "Courses",
+                icon: BookOpen,
+              },
+
+              {
+                id: "attendance",
+                label: "Attendance",
+                icon: UserCheck,
+              },
+
+              {
+                id: "hours",
+                label: "Study Hours",
+                icon: Clock,
+              },
+
+              {
+                id: "awards",
+                label: "Awards",
+                icon: Award,
+              },
+            ].map((stat) => (
+              <div
+                key={stat.id}
+                className="bg-black/20 border border-white/10 rounded-2xl p-6"
+              >
+                <stat.icon className="w-8 h-8 text-blue-400 mb-4" />
+
+                <h3 className="text-3xl font-bold">
+                  {stats?.[stat.id] || "0"}
+                </h3>
+
+                <p className="text-white/60 mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8">
+            <ActivityHeatmap />
+          </div>
+
+          {/* Tabs */}
+          <div className="bg-black/20 border border-white/10 rounded-3xl mt-8 overflow-hidden">
+            <div className="border-b border-white/10">
+              <div className="flex overflow-x-auto px-6 py-4 gap-8">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 pb-2 border-b-2 transition-all ${
+                      activeTab === tab.id
+                        ? "border-blue-400 text-blue-400"
+                        : "border-transparent text-white/60"
+                    }`}
+                  >
+                    <tab.icon className="w-5 h-5" />
+
+                    {tab.label}
+                  </button>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-          {[
-            {
-              id: "courses",
-              label: "Courses",
-              icon: BookOpen,
-            },
+            <div className="p-8">
+              {activeTab === "overview" && (
+                <div>
+                  <h3 className="text-2xl font-bold mb-6">Recent Activity</h3>
 
-            {
-              id: "attendance",
-              label: "Attendance",
-              icon: UserCheck,
-            },
+                  <div className="space-y-4">
+                    {recentActivity.map((item) => (
+                      <div
+                        key={item.id}
+                        className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between"
+                      >
+                        <div>
+                          <h4 className="font-medium">{item.title}</h4>
 
-            {
-              id: "hours",
-              label: "Study Hours",
-              icon: Clock,
-            },
-
-            {
-              id: "awards",
-              label: "Awards",
-              icon: Award,
-            },
-          ].map((stat) => (
-            <div
-              key={stat.id}
-              className="bg-black/20 border border-white/10 rounded-2xl p-6"
-            >
-              <stat.icon className="w-8 h-8 text-blue-400 mb-4" />
-
-              <h3 className="text-3xl font-bold">{stats?.[stat.id] || "0"}</h3>
-
-              <p className="text-white/60 mt-1">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8">
-          <ActivityHeatmap />
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-black/20 border border-white/10 rounded-3xl mt-8 overflow-hidden">
-          <div className="border-b border-white/10">
-            <div className="flex overflow-x-auto px-6 py-4 gap-8">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 pb-2 border-b-2 transition-all ${
-                    activeTab === tab.id
-                      ? "border-blue-400 text-blue-400"
-                      : "border-transparent text-white/60"
-                  }`}
-                >
-                  <tab.icon className="w-5 h-5" />
-
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-8">
-            {activeTab === "overview" && (
-              <div>
-                <h3 className="text-2xl font-bold mb-6">Recent Activity</h3>
-
-                <div className="space-y-4">
-                  {recentActivity.map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between"
-                    >
-                      <div>
-                        <h4 className="font-medium">{item.title}</h4>
-
-                        <p className="text-sm text-white/60">{item.time}</p>
-                      </div>
-
-                      <div className="text-sm text-blue-400">
-                        {item.progress}%
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === "activity" && (
-              <div>
-                <h3 className="text-2xl font-bold mb-6">Detailed Activity</h3>
-                <div className="relative border-l border-white/10 ml-4 space-y-8 pb-4">
-                  {recentActivity.map((item) => (
-                    <div key={item.id} className="relative pl-8">
-                      <div className="absolute -left-3 top-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center border-4 border-gray-900">
-                        <Activity className="w-3 h-3 text-white" />
-                      </div>
-                      <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-semibold text-lg">
-                            {item.title}
-                          </h4>
-                          <span className="text-xs text-white/50 bg-black/30 px-2 py-1 rounded-full">
-                            {item.time}
-                          </span>
+                          <p className="text-sm text-white/60">{item.time}</p>
                         </div>
-                        <p className="text-white/70 text-sm mb-3">
-                          {item.type === "course" &&
-                            "Completed a module with excellent accuracy."}
-                          {item.type === "achievement" &&
-                            "Unlocked a new milestone in your learning journey."}
-                          {item.type === "attendance" &&
-                            "Successfully marked presence using GPS validation."}
-                        </p>
-                        <div className="w-full bg-black/40 rounded-full h-1.5">
-                          <div
-                            className="bg-blue-400 h-1.5 rounded-full"
-                            style={{ width: `${item.progress}%` }}
-                          ></div>
+
+                        <div className="text-sm text-blue-400">
+                          {item.progress}%
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === "settings" && (
-              <div>
-                <h3 className="text-2xl font-bold mb-6">Account Settings</h3>
-                <div className="space-y-6">
-                  {/* Email Notifications */}
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-blue-500/20 p-3 rounded-lg">
-                        <Bell className="w-6 h-6 text-blue-400" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Email Notifications</h4>
-                        <p className="text-sm text-white/60">
-                          Receive daily summaries and alerts via email.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleToggleSetting("emailNotifications")}
-                      className={`w-12 h-6 rounded-full transition-colors relative ${settings.emailNotifications ? "bg-blue-500" : "bg-gray-600"}`}
-                    >
-                      <div
-                        className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.emailNotifications ? "translate-x-7" : "translate-x-1"}`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Push Notifications */}
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-purple-500/20 p-3 rounded-lg">
-                        <Smartphone className="w-6 h-6 text-purple-400" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Push Notifications</h4>
-                        <p className="text-sm text-white/60">
-                          Receive real-time alerts on your devices.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleToggleSetting("pushNotifications")}
-                      className={`w-12 h-6 rounded-full transition-colors relative ${settings.pushNotifications ? "bg-purple-500" : "bg-gray-600"}`}
-                    >
-                      <div
-                        className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.pushNotifications ? "translate-x-7" : "translate-x-1"}`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Public Profile */}
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-green-500/20 p-3 rounded-lg">
-                        <Eye className="w-6 h-6 text-green-400" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Public Profile</h4>
-                        <p className="text-sm text-white/60">
-                          Allow others to view your profile and achievements.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleToggleSetting("publicProfile")}
-                      className={`w-12 h-6 rounded-full transition-colors relative ${settings.publicProfile ? "bg-green-500" : "bg-gray-600"}`}
-                    >
-                      <div
-                        className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.publicProfile ? "translate-x-7" : "translate-x-1"}`}
-                      />
-                    </button>
+                    ))}
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {activeTab === "activity" && (
+                <div>
+                  <h3 className="text-2xl font-bold mb-6">Detailed Activity</h3>
+                  <div className="relative border-l border-white/10 ml-4 space-y-8 pb-4">
+                    {recentActivity.map((item) => (
+                      <div key={item.id} className="relative pl-8">
+                        <div className="absolute -left-3 top-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center border-4 border-gray-900">
+                          <Activity className="w-3 h-3 text-white" />
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-colors">
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-semibold text-lg">
+                              {item.title}
+                            </h4>
+                            <span className="text-xs text-white/50 bg-black/30 px-2 py-1 rounded-full">
+                              {item.time}
+                            </span>
+                          </div>
+                          <p className="text-white/70 text-sm mb-3">
+                            {item.type === "course" &&
+                              "Completed a module with excellent accuracy."}
+                            {item.type === "achievement" &&
+                              "Unlocked a new milestone in your learning journey."}
+                            {item.type === "attendance" &&
+                              "Successfully marked presence using GPS validation."}
+                          </p>
+                          <div className="w-full bg-black/40 rounded-full h-1.5">
+                            <div
+                              className="bg-blue-400 h-1.5 rounded-full"
+                              style={{ width: `${item.progress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "settings" && (
+                <div>
+                  <h3 className="text-2xl font-bold mb-6">Account Settings</h3>
+                  <div className="space-y-6">
+                    {/* Email Notifications */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-blue-500/20 p-3 rounded-lg">
+                          <Bell className="w-6 h-6 text-blue-400" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">Email Notifications</h4>
+                          <p className="text-sm text-white/60">
+                            Receive daily summaries and alerts via email.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleToggleSetting("emailNotifications")
+                        }
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.emailNotifications ? "bg-blue-500" : "bg-gray-600"}`}
+                      >
+                        <div
+                          className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.emailNotifications ? "translate-x-7" : "translate-x-1"}`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Push Notifications */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-purple-500/20 p-3 rounded-lg">
+                          <Smartphone className="w-6 h-6 text-purple-400" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">Push Notifications</h4>
+                          <p className="text-sm text-white/60">
+                            Receive real-time alerts on your devices.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleToggleSetting("pushNotifications")}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.pushNotifications ? "bg-purple-500" : "bg-gray-600"}`}
+                      >
+                        <div
+                          className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.pushNotifications ? "translate-x-7" : "translate-x-1"}`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Public Profile */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-green-500/20 p-3 rounded-lg">
+                          <Eye className="w-6 h-6 text-green-400" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">Public Profile</h4>
+                          <p className="text-sm text-white/60">
+                            Allow others to view your profile and achievements.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleToggleSetting("publicProfile")}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.publicProfile ? "bg-green-500" : "bg-gray-600"}`}
+                      >
+                        <div
+                          className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.publicProfile ? "translate-x-7" : "translate-x-1"}`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-      </FormProvider>
+    </FormProvider>
   );
 }

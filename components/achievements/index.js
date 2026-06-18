@@ -1,6 +1,6 @@
 /**
  * components/achievements/index.js
- * 
+ *
  * Barrel export for all achievement-related components and utilities.
  * Simplifies imports throughout the application.
  */

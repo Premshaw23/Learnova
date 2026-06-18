@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useState, useEffect, useRef, useContext, useCallback } from "react";
+import {
+  createContext,
+  useState,
+  useEffect,
+  useRef,
+  useContext,
+  useCallback,
+} from "react";
 import { rtdb, isMockAuthMode, MOCK_USER } from "@/lib/firebaseConfig";
 import { ref, onValue, off, push, serverTimestamp } from "firebase/database";
 import { AuthContext } from "@/contexts/AuthContext";
@@ -14,9 +21,10 @@ export function NotificationProvider({ children }) {
   const timersRef = useRef(new Map());
 
   const addNotification = useCallback((notification) => {
-    const id = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `notif_${Math.random().toString(36).substr(2, 9)}_${Math.random().toString(36).substr(2, 9)}`;
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `notif_${Math.random().toString(36).substr(2, 9)}_${Math.random().toString(36).substr(2, 9)}`;
 
     const newNotification = {
       id,
@@ -27,7 +35,7 @@ export function NotificationProvider({ children }) {
 
     setNotifications((prev) => {
       // Avoid duplicates
-      if (prev.some(n => n.id === id)) return prev;
+      if (prev.some((n) => n.id === id)) return prev;
       return [...prev, newNotification];
     });
 
@@ -46,11 +54,23 @@ export function NotificationProvider({ children }) {
       // Simulate real-time events in mock mode
       const interval = setInterval(() => {
         const mockEvents = [
-          { message: "New Quiz Result: You scored 95% in Next.js Advanced!", type: "success" },
-          { message: "New Assignment: 'React Server Components' is now available.", type: "info" },
-          { message: "Deadline approaching: 'Tailwind CSS' assignment due in 2 hours.", type: "warning" },
+          {
+            message: "New Quiz Result: You scored 95% in Next.js Advanced!",
+            type: "success",
+          },
+          {
+            message:
+              "New Assignment: 'React Server Components' is now available.",
+            type: "info",
+          },
+          {
+            message:
+              "Deadline approaching: 'Tailwind CSS' assignment due in 2 hours.",
+            type: "warning",
+          },
         ];
-        const randomEvent = mockEvents[Math.floor(Math.random() * mockEvents.length)];
+        const randomEvent =
+          mockEvents[Math.floor(Math.random() * mockEvents.length)];
         addNotification(randomEvent);
       }, 30000); // Every 30 seconds
 

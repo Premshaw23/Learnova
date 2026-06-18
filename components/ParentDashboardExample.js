@@ -1,9 +1,9 @@
 /**
  * components/ParentDashboardExample.js
- * 
+ *
  * Example component showing how to integrate achievements in a parent dashboard.
  * Parents can view their child's achievements and progress.
- * 
+ *
  * NOTE: This is an example component. Implement according to your requirements.
  */
 
@@ -93,7 +93,9 @@ const ParentDashboardAchievements = ({ childId, childName }) => {
           whileHover={{ scale: 1.05 }}
           className="bg-gradient-to-br from-yellow-500/20 to-amber-600/20 border border-yellow-500/30 rounded-lg p-4"
         >
-          <p className="text-yellow-400 text-sm font-semibold">Badges Unlocked</p>
+          <p className="text-yellow-400 text-sm font-semibold">
+            Badges Unlocked
+          </p>
           <p className="text-3xl font-bold text-white mt-2">
             {stats.unlockedBadges}/{stats.totalBadges}
           </p>
@@ -193,10 +195,10 @@ const ParentDashboardAchievements = ({ childId, childName }) => {
 
 /**
  * Example: Parent Dashboard Integration
- * 
+ *
  * Usage:
- * <ParentDashboardAchievements 
- *   childId="student-uid" 
+ * <ParentDashboardAchievements
+ *   childId="student-uid"
  *   childName="John Doe"
  * />
  */

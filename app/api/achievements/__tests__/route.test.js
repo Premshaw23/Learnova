@@ -95,7 +95,9 @@ describe("Achievements API", () => {
       profile: { instituteId: "inst-1" },
     });
 
-    const request = { url: "http://localhost/api/achievements/student/student-1" };
+    const request = {
+      url: "http://localhost/api/achievements/student/student-1",
+    };
     const response = await getStudentAchievements(request, {
       params: Promise.resolve({ studentId: "student-1" }),
     });
@@ -122,9 +124,12 @@ describe("Achievements API", () => {
   });
 
   it("parent blocked from unlinked student returns 403", async () => {
-    const { assertParentAccess } = await import("@/lib/services/achievementAccess");
+    const { assertParentAccess } =
+      await import("@/lib/services/achievementAccess");
     assertParentAccess.mockRejectedValue(
-      new ForbiddenError("Access Denied: You are not authorized to view this student's records.")
+      new ForbiddenError(
+        "Access Denied: You are not authorized to view this student's records."
+      )
     );
 
     requireRole.mockResolvedValue({
@@ -132,7 +137,9 @@ describe("Achievements API", () => {
       profile: {},
     });
 
-    const request = { url: "http://localhost/api/achievements/student/student-2" };
+    const request = {
+      url: "http://localhost/api/achievements/student/student-2",
+    };
     const response = await getStudentAchievements(request, {
       params: Promise.resolve({ studentId: "student-2" }),
     });
@@ -147,7 +154,10 @@ describe("Achievements API", () => {
     });
 
     const { parseJSON } = await import("@/lib/error-handler");
-    parseJSON.mockResolvedValue({ verificationStatus: "Verified", remarks: "Looks good" });
+    parseJSON.mockResolvedValue({
+      verificationStatus: "Verified",
+      remarks: "Looks good",
+    });
 
     const request = {
       headers: { get: () => "127.0.0.1" },

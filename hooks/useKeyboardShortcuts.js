@@ -45,16 +45,16 @@ function shortcutLabel(useMeta, key) {
 // if/else blocks.  The `mod` flag indicates whether Ctrl/Cmd is required.
 // ---------------------------------------------------------------------------
 const SHORTCUT_MAP = [
-  { key: "k",      mod: true,  prop: "onSearch",        label: "Search"        },
-  { key: "/",      mod: true,  prop: "onHelp",          label: "Help"          },
-  { key: "t",      mod: true,  prop: "onTheme",         label: "Toggle Theme"  },
-  { key: "h",      mod: true,  prop: "onHome",          label: "Home"          },
-  { key: "l",      mod: true,  prop: "onLeaderboard",   label: "Leaderboard"   },
-  { key: "n",      mod: true,  prop: "onNotifications", label: "Notifications" },
-  { key: "b",      mod: true,  prop: "onBookmarks",     label: "Bookmarks"     },
-  { key: "p",      mod: true,  prop: "onProfile",       label: "Profile"       },
-  { key: "Escape", mod: false, prop: "onEscape",        label: "Clear / Close" },
-  { key: "?",      mod: false, prop: "onCheatSheet",    label: "Cheat Sheet"   },
+  { key: "k", mod: true, prop: "onSearch", label: "Search" },
+  { key: "/", mod: true, prop: "onHelp", label: "Help" },
+  { key: "t", mod: true, prop: "onTheme", label: "Toggle Theme" },
+  { key: "h", mod: true, prop: "onHome", label: "Home" },
+  { key: "l", mod: true, prop: "onLeaderboard", label: "Leaderboard" },
+  { key: "n", mod: true, prop: "onNotifications", label: "Notifications" },
+  { key: "b", mod: true, prop: "onBookmarks", label: "Bookmarks" },
+  { key: "p", mod: true, prop: "onProfile", label: "Profile" },
+  { key: "Escape", mod: false, prop: "onEscape", label: "Clear / Close" },
+  { key: "?", mod: false, prop: "onCheatSheet", label: "Cheat Sheet" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -120,52 +120,58 @@ export function useKeyboardShortcuts({
   });
 
   const disabledRef = useRef(disabled);
-  useEffect(() => { disabledRef.current = disabled; }, [disabled]);
+  useEffect(() => {
+    disabledRef.current = disabled;
+  }, [disabled]);
 
   const debugRef = useRef(debug);
-  useEffect(() => { debugRef.current = debug; }, [debug]);
+  useEffect(() => {
+    debugRef.current = debug;
+  }, [debug]);
 
   const isMac =
     typeof navigator !== "undefined" &&
     /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
 
-  const handleKeyDown = useCallback((e) => {
-    if (disabledRef.current) return;
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (disabledRef.current) return;
 
-    const active = document.activeElement;
-    const typing =
-      isUserTyping(active) || isUserTyping(e.target);
+      const active = document.activeElement;
+      const typing = isUserTyping(active) || isUserTyping(e.target);
 
-    const isModifier = e.metaKey || e.ctrlKey;
-    const pressedKey = normaliseKey(e.key);
+      const isModifier = e.metaKey || e.ctrlKey;
+      const pressedKey = normaliseKey(e.key);
 
-    for (const shortcut of SHORTCUT_MAP) {
-      const keyMatches = normaliseKey(shortcut.key) === pressedKey;
-      const modMatches = shortcut.mod ? isModifier : !e.metaKey && !e.ctrlKey;
-      const alwaysFires = !shortcut.mod;
+      for (const shortcut of SHORTCUT_MAP) {
+        const keyMatches = normaliseKey(shortcut.key) === pressedKey;
+        const modMatches = shortcut.mod ? isModifier : !e.metaKey && !e.ctrlKey;
+        const alwaysFires = !shortcut.mod;
 
-      if (!keyMatches || !modMatches) continue;
+        if (!keyMatches || !modMatches) continue;
 
-      if (typing && !alwaysFires) continue;
+        if (typing && !alwaysFires) continue;
 
-      if (shortcut.mod) e.preventDefault();
+        if (shortcut.mod) e.preventDefault();
 
-      const handler = handlersRef.current[shortcut.prop];
+        const handler = handlersRef.current[shortcut.prop];
 
-      if (debugRef.current) {
-        const label = shortcut.mod
-          ? shortcutLabel(isMac, shortcut.key)
-          : shortcut.key;
-        console.debug(
-          `[useKeyboardShortcuts] ${label} → ${shortcut.prop}`,
-          handler ? "✓ handled" : "✗ no handler",
-        );
+        if (debugRef.current) {
+          const label = shortcut.mod
+            ? shortcutLabel(isMac, shortcut.key)
+            : shortcut.key;
+          console.debug(
+            `[useKeyboardShortcuts] ${label} → ${shortcut.prop}`,
+            handler ? "✓ handled" : "✗ no handler"
+          );
+        }
+
+        handler?.();
+        break;
       }
-
-      handler?.();
-      break;
-    }
-  }, [isMac]);
+    },
+    [isMac]
+  );
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -175,9 +181,11 @@ export function useKeyboardShortcuts({
   const shortcuts = SHORTCUT_MAP.map(({ key, mod, label }) => ({
     key: mod ? shortcutLabel(isMac, key) : key,
     label,
-    hasHandler: Boolean(handlersRef.current[
-      SHORTCUT_MAP.find((s) => s.key === key && s.mod === mod)?.prop
-    ]),
+    hasHandler: Boolean(
+      handlersRef.current[
+        SHORTCUT_MAP.find((s) => s.key === key && s.mod === mod)?.prop
+      ]
+    ),
   }));
 
   return { shortcuts };

@@ -3,7 +3,10 @@ import { connectDb } from "@/lib/mongodb";
 import { requireAuth, requireRole } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { success, jsonError } from "@/lib/api-response";
-import { calculateEngagementScore, getEngagementTrend } from "@/lib/engagementScore";
+import {
+  calculateEngagementScore,
+  getEngagementTrend,
+} from "@/lib/engagementScore";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,7 +29,10 @@ const engagementScoreSchema = z.object({
 
 const querySchema = z.object({
   studentId: z.string().optional(),
-  limit: z.preprocess((value) => Number(value), z.number().int().min(1).max(50).optional()),
+  limit: z.preprocess(
+    (value) => Number(value),
+    z.number().int().min(1).max(50).optional()
+  ),
   top: z.union([z.string(), z.boolean()]).optional(),
 });
 
@@ -65,7 +71,10 @@ export const GET = withErrorHandler(async (request) => {
   const targetStudentId = studentId || decodedToken.uid;
 
   if (role === "student" && targetStudentId !== decodedToken.uid) {
-    return jsonError("Forbidden: students may only view their own engagement data", 403);
+    return jsonError(
+      "Forbidden: students may only view their own engagement data",
+      403
+    );
   }
 
   const scoresCursor = db
@@ -90,10 +99,20 @@ export const POST = withErrorHandler(async (request) => {
     return jsonError("Invalid engagement score payload", 400);
   }
 
-  const { studentId, attendanceScore, activityScore, assignmentScore, academicScore, weights } = parsed.data;
+  const {
+    studentId,
+    attendanceScore,
+    activityScore,
+    assignmentScore,
+    academicScore,
+    weights,
+  } = parsed.data;
 
   if (decodedToken.role === "student" && decodedToken.uid !== studentId) {
-    return jsonError("Forbidden: students may only create their own engagement score", 403);
+    return jsonError(
+      "Forbidden: students may only create their own engagement score",
+      403
+    );
   }
 
   const scorePayload = calculateEngagementScore(

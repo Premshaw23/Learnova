@@ -14,27 +14,27 @@ export default function ThemeToggle() {
   }, []);
 
   useEffect(() => {
-  if (!mounted) return;
+    if (!mounted) return;
 
-  const autoThemeEnabled = localStorage.getItem("autoTheme") === "true";
+    const autoThemeEnabled = localStorage.getItem("autoTheme") === "true";
 
-  if (!autoThemeEnabled) return;
+    if (!autoThemeEnabled) return;
 
-  const hour = new Date().getHours();
+    const hour = new Date().getHours();
 
-  if (hour >= 19 || hour < 7) {
-    setTheme("dark");
-  } else {
-    setTheme("light");
-  }
-}, [mounted, setTheme]);
+    if (hour >= 19 || hour < 7) {
+      setTheme("dark");
+    } else {
+      setTheme("light");
+    }
+  }, [mounted, setTheme]);
 
   if (!mounted) {
     const autoThemeEnabled =
-  typeof window !== "undefined" &&
-  localStorage.getItem("autoTheme") === "true";
+      typeof window !== "undefined" &&
+      localStorage.getItem("autoTheme") === "true";
 
-return (
+    return (
       <div
         className="w-10 h-10 rounded-full border border-border/50 animate-pulse bg-muted"
         aria-hidden="true"
@@ -43,50 +43,44 @@ return (
   }
 
   const autoThemeEnabled =
-  typeof window !== "undefined" &&
-  localStorage.getItem("autoTheme") === "true";
+    typeof window !== "undefined" &&
+    localStorage.getItem("autoTheme") === "true";
 
-return (
-  <div className="flex items-center gap-2">
-    <button
-      onClick={() => {
-        const current =
-          localStorage.getItem("autoTheme") === "true";
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => {
+          const current = localStorage.getItem("autoTheme") === "true";
 
-        localStorage.setItem(
-          "autoTheme",
-          (!current).toString()
-        );
+          localStorage.setItem("autoTheme", (!current).toString());
 
-        window.location.reload();
-      }}
-      className="px-2 py-1 text-xs rounded border"
-    >
-      {autoThemeEnabled ? "Auto" : "Manual"}
-    </button>
+          window.location.reload();
+        }}
+        className="px-2 py-1 text-xs rounded border"
+      >
+        {autoThemeEnabled ? "Auto" : "Manual"}
+      </button>
 
-    <button
-      onClick={() =>
-        setTheme(theme === "dark" ? "light" : "dark")
-      }
-      className="relative w-10 h-10 flex items-center justify-center rounded-full border border-border/50 bg-background/50 hover:bg-muted transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      aria-label="Toggle theme"
-    >
-      <Sun
-        className={`w-5 h-5 transition-transform duration-300 ${
-          theme === "dark"
-            ? "scale-0 rotate-90 absolute"
-            : "scale-100 rotate-0 text-amber-500"
-        }`}
-      />
-      <Moon
-        className={`w-5 h-5 transition-transform duration-300 ${
-          theme === "dark"
-            ? "scale-100 rotate-0 text-blue-400"
-            : "scale-0 -rotate-90 absolute"
-        }`}
-      />
-    </button>
-  </div>
-);
+      <button
+        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        className="relative w-10 h-10 flex items-center justify-center rounded-full border border-border/50 bg-background/50 hover:bg-muted transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        aria-label="Toggle theme"
+      >
+        <Sun
+          className={`w-5 h-5 transition-transform duration-300 ${
+            theme === "dark"
+              ? "scale-0 rotate-90 absolute"
+              : "scale-100 rotate-0 text-amber-500"
+          }`}
+        />
+        <Moon
+          className={`w-5 h-5 transition-transform duration-300 ${
+            theme === "dark"
+              ? "scale-100 rotate-0 text-blue-400"
+              : "scale-0 -rotate-90 absolute"
+          }`}
+        />
+      </button>
+    </div>
+  );
 }

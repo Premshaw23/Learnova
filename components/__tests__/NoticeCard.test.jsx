@@ -30,8 +30,12 @@ const mockPdfInstance = vi.hoisted(() => ({
 }));
 
 vi.mock("jspdf", () => ({
-  default: vi.fn(function () { return mockPdfInstance; }),
-  jsPDF: vi.fn(function () { return mockPdfInstance; }),
+  default: vi.fn(function () {
+    return mockPdfInstance;
+  }),
+  jsPDF: vi.fn(function () {
+    return mockPdfInstance;
+  }),
 }));
 
 const baseNotice = {

@@ -31,6 +31,30 @@ vi.mock("@/lib/mongodb", () => ({
 
 vi.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: vi.fn(),
+  initializeFirebase: vi.fn(),
+}));
+
+vi.mock("firebase-admin", () => ({
+  default: {
+    firestore: vi.fn(() => ({
+      collection: vi.fn(() => ({
+        doc: vi.fn(() => ({
+          get: vi.fn().mockResolvedValue({ exists: false }),
+          set: vi.fn().mockResolvedValue({}),
+          delete: vi.fn().mockResolvedValue({}),
+        })),
+      })),
+    })),
+  },
+  firestore: vi.fn(() => ({
+    collection: vi.fn(() => ({
+      doc: vi.fn(() => ({
+        get: vi.fn().mockResolvedValue({ exists: false }),
+        set: vi.fn().mockResolvedValue({}),
+        delete: vi.fn().mockResolvedValue({}),
+      })),
+    })),
+  })),
 }));
 
 describe("POST /api/register - Authentication, Rollback, and Validation Security Tests", () => {
@@ -268,8 +292,8 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
     expect(response.status).toBe(500);
     expect(body.error).toBe("Registration failed. Please try again.");
-    expect(put).toHaveBeenCalled();
-    expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
+    expect(put).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
   });
 
   test("handles MongoDB unique index duplicate key error (E11000) by returning 409 and rolling back blob upload", async () => {
@@ -295,7 +319,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
     expect(response.status).toBe(409);
     expect(body.error).toBe("User already registered");
-    expect(put).toHaveBeenCalled();
-    expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
+    expect(put).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
   });
 });

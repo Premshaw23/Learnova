@@ -1,6 +1,6 @@
 /**
  * components/BadgeCard.js
- * 
+ *
  * Displays a single badge with progress and unlock animations.
  * Supports both locked and unlocked states with responsive design.
  */
@@ -53,7 +53,8 @@ const BadgeCard = ({
   };
 
   const config = sizeConfig[size] || sizeConfig.default;
-  const { unlocked, icon, name, description, progress, current, criteria } = badge;
+  const { unlocked, icon, name, description, progress, current, criteria } =
+    badge;
 
   return (
     <motion.div
@@ -178,7 +179,9 @@ const BadgeCard = ({
                 transition={{ duration: 0.8, delay: 0.2 }}
               />
             </div>
-            <p className={`${config.progress} text-gray-100 mt-1 text-center font-semibold`}>
+            <p
+              className={`${config.progress} text-gray-100 mt-1 text-center font-semibold`}
+            >
               {formatBadgeProgress(badge)}
             </p>
           </motion.div>

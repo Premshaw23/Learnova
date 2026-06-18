@@ -67,6 +67,7 @@ vi.mock("../../../lib/mongodb", () => {
   return {
     __esModule: true,
     default: Promise.resolve(mockClient),
+    connectDb: vi.fn().mockResolvedValue(mockDb),
   };
 });
 

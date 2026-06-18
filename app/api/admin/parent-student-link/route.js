@@ -226,7 +226,7 @@ export const POST = withErrorHandler(async (request) => {
     request,
   });
 
-    return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
+  return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
 });
 
 export const DELETE = withErrorHandler(async (request) => {

@@ -315,7 +315,11 @@ export default function ActivityGame() {
         // Update database progress to 100%
         await updateActivityProgress(activityData.id, 100);
         // Increment the student's Assignments Done stat by 1 (best-effort)
-        const statResult = await updateUserStat(user.uid, "Assignments Done", 1);
+        const statResult = await updateUserStat(
+          user.uid,
+          "Assignments Done",
+          1
+        );
         if (statResult?.success === false) {
           console.warn("Stats update failed:", statResult.error);
         }

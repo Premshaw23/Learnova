@@ -47,9 +47,7 @@ async function uploadAttachment(request) {
   }
 
   // Sanitise filename — strip path traversal characters
-  const safeName = file.name
-    .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .slice(0, 128);
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 128);
 
   const blob = await put(`notices/${Date.now()}_${safeName}`, file, {
     access: "public",

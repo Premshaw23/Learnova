@@ -48,7 +48,10 @@ export const PUT = withErrorHandler(async (request, context) => {
   }
 
   const achievement = await updateAchievement(achievementId, validation.data);
-  return jsonSuccess({ achievement, message: "Achievement updated successfully" });
+  return jsonSuccess({
+    achievement,
+    message: "Achievement updated successfully",
+  });
 });
 
 export const DELETE = withErrorHandler(async (request, context) => {
@@ -66,7 +69,9 @@ export const DELETE = withErrorHandler(async (request, context) => {
   if (decodedToken.role !== "admin") {
     await assertInstituteScope(profile, existing.studentId, decodedToken.role);
     if (existing.issuedBy?.uid !== decodedToken.uid) {
-      throw new ForbiddenError("Forbidden: You can only delete achievements you created.");
+      throw new ForbiddenError(
+        "Forbidden: You can only delete achievements you created."
+      );
     }
   }
 

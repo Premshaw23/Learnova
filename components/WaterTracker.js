@@ -32,7 +32,11 @@ export default function WaterTracker() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const normalized = normalizeWaterGlasses(glasses, DEFAULT_WATER_GLASSES, goal);
+    const normalized = normalizeWaterGlasses(
+      glasses,
+      DEFAULT_WATER_GLASSES,
+      goal
+    );
     safeLocalStorageSet("learnova-wellness-water", normalized);
 
     // Also update today's snapshot so the timeline stays in sync

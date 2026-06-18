@@ -38,7 +38,9 @@ function AuthPageContent() {
 
   const [showRoleSelection, setShowRoleSelection] = useState(!isDirect);
   const [isLogin, setIsLogin] = useState(mode !== "signup");
-  const [selectedRole, setSelectedRole] = useState(isDirect ? USER_ROLES.STUDENT : "");
+  const [selectedRole, setSelectedRole] = useState(
+    isDirect ? USER_ROLES.STUDENT : ""
+  );
 
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -71,27 +73,27 @@ function AuthPageContent() {
     setErrors({});
   };
 
- const handleSubmit = async (formData) => {
-  // Validate role selection before proceeding with authentication
-  if (!selectedRole) {
-    setErrors({
-      role: "Please select your role before proceeding with authentication",
-      submit: "Role selection is required. Please go back and select a role."
-    });
-    return;
-  }
+  const handleSubmit = async (formData) => {
+    // Validate role selection before proceeding with authentication
+    if (!selectedRole) {
+      setErrors({
+        role: "Please select your role before proceeding with authentication",
+        submit: "Role selection is required. Please go back and select a role.",
+      });
+      return;
+    }
 
-  const { email, password, fullName, instituteName, inviteCode } = formData;
+    const { email, password, fullName, instituteName, inviteCode } = formData;
 
-  const { isValid, errors: validationErrors } = validateForm(
-    formData,
-    isLogin
-  );
+    const { isValid, errors: validationErrors } = validateForm(
+      formData,
+      isLogin
+    );
 
-  if (!isValid) {
-    setErrors(validationErrors);
-    return;
-  }
+    if (!isValid) {
+      setErrors(validationErrors);
+      return;
+    }
 
     setIsLoading(true);
     setErrors({});

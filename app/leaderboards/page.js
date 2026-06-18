@@ -308,12 +308,12 @@ export default function LeaderboardsPage() {
   ];
 
   if (authLoading) {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-    </div>
-  );
-}
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
   return (
     <>
       <div className="fixed inset-0 -z-10 bg-background overflow-hidden">

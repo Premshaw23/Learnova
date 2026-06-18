@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, test, expect } from "vitest";
-import LazyImage from "./LazyImage";
+import LazyImage from "../LazyImage";
 
 describe("LazyImage", () => {
   test("renders image with provided src and alt", () => {
@@ -88,11 +88,7 @@ describe("LazyImage", () => {
 
   test("passes additional props to image element", () => {
     render(
-      <LazyImage
-        src="/image.jpg"
-        alt="Test image"
-        data-testid="lazy-image"
-      />
+      <LazyImage src="/image.jpg" alt="Test image" data-testid="lazy-image" />
     );
 
     const image = screen.getByTestId("lazy-image");

@@ -46,13 +46,27 @@ const RiskBadge = ({ level }) => {
 
 const TrendBadge = ({ trend }) => {
   const config = {
-    [TREND_DIRECTIONS.IMPROVING]: { icon: "↗", label: "Improving", cls: "text-emerald-400" },
-    [TREND_DIRECTIONS.DECLINING]: { icon: "↘", label: "Declining", cls: "text-rose-400" },
-    [TREND_DIRECTIONS.STABLE]:    { icon: "→", label: "Stable",    cls: "text-slate-400" },
+    [TREND_DIRECTIONS.IMPROVING]: {
+      icon: "↗",
+      label: "Improving",
+      cls: "text-emerald-400",
+    },
+    [TREND_DIRECTIONS.DECLINING]: {
+      icon: "↘",
+      label: "Declining",
+      cls: "text-rose-400",
+    },
+    [TREND_DIRECTIONS.STABLE]: {
+      icon: "→",
+      label: "Stable",
+      cls: "text-slate-400",
+    },
   };
   const { icon, label, cls } = config[trend] || config[TREND_DIRECTIONS.STABLE];
   return (
-    <span className={`inline-flex items-center gap-1 text-sm font-medium ${cls}`}>
+    <span
+      className={`inline-flex items-center gap-1 text-sm font-medium ${cls}`}
+    >
       <span className="text-base leading-none">{icon}</span>
       {label}
     </span>
@@ -61,7 +75,11 @@ const TrendBadge = ({ trend }) => {
 
 const RiskScoreBar = ({ score }) => {
   const color =
-    score >= 50 ? "bg-rose-500" : score >= 30 ? "bg-amber-400" : "bg-emerald-500";
+    score >= 50
+      ? "bg-rose-500"
+      : score >= 30
+        ? "bg-amber-400"
+        : "bg-emerald-500";
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-1">
@@ -85,7 +103,9 @@ const SummaryCard = ({ label, value, color }) => (
     className={`flex flex-col items-center justify-center rounded-2xl border p-4 gap-1 ${color}`}
   >
     <span className="text-3xl font-bold">{value}</span>
-    <span className="text-xs uppercase tracking-widest opacity-70">{label}</span>
+    <span className="text-xs uppercase tracking-widest opacity-70">
+      {label}
+    </span>
   </div>
 );
 
@@ -95,7 +115,9 @@ const BatchAnomalyBanner = ({ batchAnomaly }) => {
     <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-200">
       <span className="mt-0.5 text-xl leading-none">⚠️</span>
       <div>
-        <p className="font-semibold text-amber-100">Batch-Level Anomaly Detected</p>
+        <p className="font-semibold text-amber-100">
+          Batch-Level Anomaly Detected
+        </p>
         <p className="mt-0.5 text-amber-300/80">{batchAnomaly.message}</p>
       </div>
     </div>
@@ -120,9 +142,7 @@ const AlertsPanel = ({ alerts }) => {
 
 const StudentRow = ({ profile, isExpanded, onToggle }) => {
   return (
-    <div
-      className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden transition-all duration-300"
-    >
+    <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden transition-all duration-300">
       {/* Header row */}
       <button
         onClick={onToggle}
@@ -138,7 +158,9 @@ const StudentRow = ({ profile, isExpanded, onToggle }) => {
           <TrendBadge trend={profile.trend} />
           <RiskBadge level={profile.riskLevel} />
         </div>
-        <div className="ml-2 text-slate-500 text-sm">{isExpanded ? "▲" : "▼"}</div>
+        <div className="ml-2 text-slate-500 text-sm">
+          {isExpanded ? "▲" : "▼"}
+        </div>
       </button>
 
       {/* Mobile badges */}
@@ -154,18 +176,28 @@ const StudentRow = ({ profile, isExpanded, onToggle }) => {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-400">
             <div>
-              <p className="uppercase tracking-wider mb-1 opacity-60">Classes Needed</p>
+              <p className="uppercase tracking-wider mb-1 opacity-60">
+                Classes Needed
+              </p>
               <p className="text-white font-semibold text-sm">
                 {profile.classesNeeded > 0 ? `+${profile.classesNeeded}` : "—"}
               </p>
             </div>
             <div>
-              <p className="uppercase tracking-wider mb-1 opacity-60">Subjects at Risk</p>
-              <p className="text-white font-semibold text-sm">{profile.subjectsAtRisk}</p>
+              <p className="uppercase tracking-wider mb-1 opacity-60">
+                Subjects at Risk
+              </p>
+              <p className="text-white font-semibold text-sm">
+                {profile.subjectsAtRisk}
+              </p>
             </div>
             <div>
-              <p className="uppercase tracking-wider mb-1 opacity-60">Risk Score</p>
-              <p className="text-white font-semibold text-sm">{profile.riskScore}/100</p>
+              <p className="uppercase tracking-wider mb-1 opacity-60">
+                Risk Score
+              </p>
+              <p className="text-white font-semibold text-sm">
+                {profile.riskScore}/100
+              </p>
             </div>
           </div>
 
@@ -182,8 +214,8 @@ const StudentRow = ({ profile, isExpanded, onToggle }) => {
                     rate >= 75
                       ? "bg-emerald-500"
                       : rate >= 65
-                      ? "bg-amber-400"
-                      : "bg-rose-500";
+                        ? "bg-amber-400"
+                        : "bg-rose-500";
                   return (
                     <div
                       key={i}
@@ -248,17 +280,19 @@ export default function AttendanceAnomalyDashboard({
   }, [profiles, filter, sortBy]);
 
   const filterOptions = [
-    { value: "ALL",                   label: "All Students" },
-    { value: RISK_LEVELS.CRITICAL,    label: "🔴 Critical" },
-    { value: RISK_LEVELS.AT_RISK,     label: "🟡 At Risk" },
-    { value: RISK_LEVELS.SAFE,        label: "🟢 Safe" },
+    { value: "ALL", label: "All Students" },
+    { value: RISK_LEVELS.CRITICAL, label: "🔴 Critical" },
+    { value: RISK_LEVELS.AT_RISK, label: "🟡 At Risk" },
+    { value: RISK_LEVELS.SAFE, label: "🟢 Safe" },
   ];
 
   if (students.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 bg-black/40 py-16 px-8 text-center">
         <div className="text-4xl">📊</div>
-        <p className="text-lg font-semibold text-white">No attendance data available</p>
+        <p className="text-lg font-semibold text-white">
+          No attendance data available
+        </p>
         <p className="text-sm text-slate-400">
           Student attendance records will appear here once data is loaded.
         </p>
@@ -360,7 +394,8 @@ export default function AttendanceAnomalyDashboard({
 
       {/* Footer note */}
       <p className="text-[11px] text-slate-600 text-center">
-        Risk scores are computed using rolling-average trend analysis. Thresholds: 🟢 ≥75% · 🟡 ≥65% · 🔴 &lt;65%
+        Risk scores are computed using rolling-average trend analysis.
+        Thresholds: 🟢 ≥75% · 🟡 ≥65% · 🔴 &lt;65%
       </p>
     </div>
   );

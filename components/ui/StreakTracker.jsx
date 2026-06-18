@@ -3,7 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {normalizeStreakCount,getStreakBadge,getNextMilestone,} from "@/lib/streakUtils";
+import {
+  normalizeStreakCount,
+  getStreakBadge,
+  getNextMilestone,
+} from "@/lib/streakUtils";
 
 /**
  * StreakTracker Component
@@ -14,7 +18,6 @@ export default function StreakTracker({ className }) {
   const [streak, setStreak] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [badge, setBadge] = useState("");
-  
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -69,22 +72,19 @@ export default function StreakTracker({ className }) {
       setStreak(currentStreak);
       setIsActive(currentStreak > 0);
       if (currentStreak >= 100) {
-  setBadge("🏆 Learning Master");
-} else if (currentStreak >= 30) {
-  setBadge("🥇 Study Champion");
-} else if (currentStreak >= 7) {
-  setBadge("🎖 Consistent Learner");
-}
+        setBadge("🏆 Learning Master");
+      } else if (currentStreak >= 30) {
+        setBadge("🥇 Study Champion");
+      } else if (currentStreak >= 7) {
+        setBadge("🎖 Consistent Learner");
+      }
     } catch (error) {
       console.error("Failed to update daily streak:", error);
     }
   }, []);
 
   const nextMilestone =
-  streak < 7 ? 7 :
-  streak < 30 ? 30 :
-  streak < 100 ? 100 :
-  null;
+    streak < 7 ? 7 : streak < 30 ? 30 : streak < 100 ? 100 : null;
 
   return (
     <div
@@ -110,21 +110,17 @@ export default function StreakTracker({ className }) {
         )}
       />
       <div className="flex flex-col">
-  <span>
-    {streak} Day{streak !== 1 ? "s" : ""} Streak
-  </span>
+        <span>
+          {streak} Day{streak !== 1 ? "s" : ""} Streak
+        </span>
 
-  {badge && (
-    <span className="text-[10px] font-medium">
-      {badge}
-    </span>
-  )}
-  {nextMilestone && (
-    <span className="text-[10px] opacity-70">
-      {nextMilestone - streak} days to {nextMilestone}-day milestone
-    </span>
-  )}
-</div>
+        {badge && <span className="text-[10px] font-medium">{badge}</span>}
+        {nextMilestone && (
+          <span className="text-[10px] opacity-70">
+            {nextMilestone - streak} days to {nextMilestone}-day milestone
+          </span>
+        )}
+      </div>
     </div>
   );
 }

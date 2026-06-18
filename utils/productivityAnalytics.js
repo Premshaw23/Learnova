@@ -208,7 +208,10 @@ export function getProductivityImprovement(sessions = []) {
 
   const improvement = Math.round(((secondAvg - firstAvg) / firstAvg) * 100);
 
-  return Math.max(-MAX_IMPROVEMENT_PERCENT, Math.min(MAX_IMPROVEMENT_PERCENT, improvement));
+  return Math.max(
+    -MAX_IMPROVEMENT_PERCENT,
+    Math.min(MAX_IMPROVEMENT_PERCENT, improvement)
+  );
 }
 
 /**

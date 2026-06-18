@@ -823,7 +823,8 @@ export default function LearnovaChatbot() {
     const container = chatContainerRef.current;
     if (!container) return;
 
-    const focusableSelector = 'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])';
+    const focusableSelector =
+      'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])';
     const handleTabKey = (e) => {
       const focusable = container.querySelectorAll(focusableSelector);
       if (focusable.length === 0) return;
@@ -898,7 +899,9 @@ export default function LearnovaChatbot() {
 
   if (!isOpen) {
     return (
-      <div className={`fixed z-50 transition-all duration-300 right-4 md:right-6 ${isScrolling ? 'bottom-16 opacity-40 scale-90 md:bottom-6 md:opacity-100 md:scale-100' : 'bottom-32 md:bottom-6 opacity-100 scale-100'}`}>
+      <div
+        className={`fixed z-50 transition-all duration-300 right-4 md:right-6 ${isScrolling ? "bottom-16 opacity-40 scale-90 md:bottom-6 md:opacity-100 md:scale-100" : "bottom-32 md:bottom-6 opacity-100 scale-100"}`}
+      >
         <button
           onClick={() => setIsOpen(true)}
           className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300 group cursor-pointer"
@@ -922,7 +925,9 @@ export default function LearnovaChatbot() {
       role="dialog"
       aria-label="Nova AI Chat"
       className={`fixed z-50 flex flex-col ${themeTokens.bg} shadow-2xl transition-all duration-300 border ${themeTokens.border} ${
-        isMinimized ? "bottom-32 md:bottom-6 right-4 md:right-6 w-72 h-16 overflow-hidden rounded-xl" : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
+        isMinimized
+          ? "bottom-32 md:bottom-6 right-4 md:right-6 w-72 h-16 overflow-hidden rounded-xl"
+          : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
       }`}
     >
       {/* Header */}
@@ -1157,7 +1162,11 @@ export default function LearnovaChatbot() {
               ))}
 
               {isLoading && (
-                <div aria-live="polite" aria-atomic="true" className="flex justify-start items-center space-x-2.5 animate-pulse select-none">
+                <div
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="flex justify-start items-center space-x-2.5 animate-pulse select-none"
+                >
                   <div className={`p-2 rounded-xl ${themeTokens.botAvatar}`}>
                     <Bot size={16} />
                   </div>

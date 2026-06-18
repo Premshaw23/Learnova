@@ -328,7 +328,7 @@ export default function ActivityPage() {
       icon: Zap,
       gradient: "from-emerald-500 to-teal-600",
       type: "quiz",
-    }
+    },
   ];
 
   const normalizedQuery = searchQuery.trim().toLowerCase();

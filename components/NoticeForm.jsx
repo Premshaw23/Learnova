@@ -2,7 +2,7 @@
 
 /**
  * NoticeForm.jsx
- * 
+ *
  * Modal form for creating a new notice with audience targeting.
  * Part of feat #2184 — Notice Board upgrades.
  */
@@ -13,7 +13,13 @@ import { X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 const ROLES = ["student", "teacher", "institute", "admin", "staff"];
-const CATEGORIES = ["academic", "administrative", "financial", "general", "technical"];
+const CATEGORIES = [
+  "academic",
+  "administrative",
+  "financial",
+  "general",
+  "technical",
+];
 const PRIORITIES = ["low", "medium", "high"];
 
 export default function NoticeForm({ onClose, onSuccess }) {

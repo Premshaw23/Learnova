@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
@@ -387,15 +387,6 @@ export default function FaceRecognizer({ authUser }) {
   };
 
   const processVideo = async (signal) => {
-    if (
-      !videoRef.current ||
-      !canvasRef.current ||
-      !faceMatcherRef.current ||
-      !isMounted.current ||
-      signal?.aborted
-    ) {
-      return;
-    const processVideo = async (signal) => {
       if (
         !videoRef.current ||
         !canvasRef.current ||
@@ -868,5 +859,4 @@ export default function FaceRecognizer({ authUser }) {
         )}
       </div>
     );
-  };
 }

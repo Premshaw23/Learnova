@@ -68,7 +68,9 @@ export const recalculateAttendanceRate = async (userId) => {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const error = new Error(err.error || "Failed to recalculate attendance rate");
+      const error = new Error(
+        err.error || "Failed to recalculate attendance rate"
+      );
       console.error("Error recalculating attendance rate:", error);
       return null;
     }

@@ -107,7 +107,7 @@ export const GET = withErrorHandler(async (request) => {
       .collection("attendance_records")
       .where("userId", "==", studentId)
       .get();
-    
+
     const studentRecords = [];
     recordsQuery.docs.forEach((doc) => {
       const data = doc.data();

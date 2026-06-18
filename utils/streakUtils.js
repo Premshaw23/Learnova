@@ -1,6 +1,6 @@
 /**
  * Streak Calculation Utilities
- * 
+ *
  * Consecutive calendar days form a streak.
  * Current streak ends today or yesterday.
  * Longest streak is the maximum consecutive run.
@@ -104,7 +104,7 @@ export function calculateLongestStreak(activityDates) {
     } else {
       currentStreak = 1;
     }
-    
+
     longestStreak = Math.max(longestStreak, currentStreak);
     prevTimestamp = ts;
   }

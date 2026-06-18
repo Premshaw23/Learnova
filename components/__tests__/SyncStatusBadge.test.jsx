@@ -28,9 +28,7 @@ describe("SyncStatusBadge", () => {
   });
 
   test("renders spinner icon when retrying", () => {
-    const { container } = render(
-      <SyncStatusBadge syncState="retrying" />
-    );
+    const { container } = render(<SyncStatusBadge syncState="retrying" />);
 
     const spinner = container.querySelector("svg");
 
@@ -38,9 +36,7 @@ describe("SyncStatusBadge", () => {
   });
 
   test("does not render spinner for non-retrying states", () => {
-    const { container } = render(
-      <SyncStatusBadge syncState="online" />
-    );
+    const { container } = render(<SyncStatusBadge syncState="online" />);
 
     const spinner = container.querySelector("svg");
 

@@ -164,7 +164,9 @@ export const exportAttendancePDF = (data, options = {}) => {
 
     doc.autoTable({
       startY,
-      head: [["Date", "Student Name", "Roll No", "Status", "Check-in", "Conf."]],
+      head: [
+        ["Date", "Student Name", "Roll No", "Status", "Check-in", "Conf."],
+      ],
       body,
       theme: "grid",
       headStyles: { fillColor: LEARNOVA_PURPLE, fontSize: 9 },
@@ -174,8 +176,7 @@ export const exportAttendancePDF = (data, options = {}) => {
       didParseCell: (hookData) => {
         if (hookData.section === "body" && hookData.column.index === 3) {
           const val = (hookData.cell.raw || "").toUpperCase();
-          if (val === "PRESENT")
-            hookData.cell.styles.textColor = [22, 163, 74];
+          if (val === "PRESENT") hookData.cell.styles.textColor = [22, 163, 74];
           else if (val === "ABSENT")
             hookData.cell.styles.textColor = [220, 38, 38];
           else if (val === "LATE")

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { loadDocument, loadFromPaste } from "./DocumentLoader";
 import { splitDocuments } from "./TextSplitter";
 import { buildRetriever } from "./Retriever";
@@ -789,13 +790,13 @@ export default function StudyAIPage() {
               </div>
 
               <div style={{ display: "flex", gap: "8px" }}>
-                <a
+                <Link
                   href="/"
                   className="clear-btn"
                   style={{ textDecoration: "none" }}
                 >
                   ← Home
-                </a>
+                </Link>
                 {messages.length > 0 && (
                   <button className="clear-btn" onClick={handleClear}>
                     Clear chat

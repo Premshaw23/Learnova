@@ -2,7 +2,13 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
-import { GraduationCap, ArrowLeft, Home, AlertTriangle, RefreshCw } from "lucide-react";
+import {
+  GraduationCap,
+  ArrowLeft,
+  Home,
+  AlertTriangle,
+  RefreshCw,
+} from "lucide-react";
 
 export default function Error({ error, reset }) {
   useEffect(() => {
@@ -18,10 +24,38 @@ export default function Error({ error, reset }) {
         <div className="absolute bottom-1/4 right-1/4 h-[35rem] w-[35rem] translate-x-1/2 translate-y-1/2 rounded-full bg-orange-500/10 dark:bg-orange-500/5 blur-3xl" />
         <div className="absolute inset-0 overflow-hidden">
           {[
-            { id: 1, left: "15%", top: "25%", size: 6, delay: "0s", duration: "10s" },
-            { id: 2, left: "75%", top: "70%", size: 10, delay: "2s", duration: "15s" },
-            { id: 3, left: "80%", top: "20%", size: 8, delay: "4s", duration: "12s" },
-            { id: 4, left: "25%", top: "75%", size: 5, delay: "1s", duration: "8s" },
+            {
+              id: 1,
+              left: "15%",
+              top: "25%",
+              size: 6,
+              delay: "0s",
+              duration: "10s",
+            },
+            {
+              id: 2,
+              left: "75%",
+              top: "70%",
+              size: 10,
+              delay: "2s",
+              duration: "15s",
+            },
+            {
+              id: 3,
+              left: "80%",
+              top: "20%",
+              size: 8,
+              delay: "4s",
+              duration: "12s",
+            },
+            {
+              id: 4,
+              left: "25%",
+              top: "75%",
+              size: 5,
+              delay: "1s",
+              duration: "8s",
+            },
           ].map((p) => (
             <div
               key={p.id}
@@ -56,7 +90,8 @@ export default function Error({ error, reset }) {
             Something went wrong on our end
           </h2>
           <p className="max-w-md mx-auto text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">
-            We encountered an unexpected issue. Our team has been notified, but you can try again or head back to safety.
+            We encountered an unexpected issue. Our team has been notified, but
+            you can try again or head back to safety.
           </p>
         </div>
 

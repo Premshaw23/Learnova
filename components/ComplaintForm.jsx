@@ -21,12 +21,12 @@ export default function ComplaintForm({ onClose, onSubmitComplaint }) {
     priority: "Medium",
     description: "",
   });
-  
+
   const MAX_LENGTH = 100;
   const getCounterColor = (length) => {
-    if (length >= MAX_LENGTH) return "text-red-500 font-semibold";     // error-red
+    if (length >= MAX_LENGTH) return "text-red-500 font-semibold"; // error-red
     if (length >= MAX_LENGTH - 15) return "text-amber-500 font-medium"; // warning-amber
-    return "text-neutral-400";                                         // default subtle
+    return "text-neutral-400"; // default subtle
   };
 
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -83,7 +83,8 @@ export default function ComplaintForm({ onClose, onSubmitComplaint }) {
                 type="button"
                 onClick={onClose}
                 className="flex items-center gap-2 mb-8 text-xs font-bold uppercase tracking-widest bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-2xl transition border border-white/10 cursor-pointer"
-               aria-label="Action button">
+                aria-label="Action button"
+              >
                 <ArrowLeft size={14} /> Back
               </button>
               <p className="text-xs uppercase tracking-[0.3em] text-indigo-200 font-semibold">

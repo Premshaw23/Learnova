@@ -43,7 +43,11 @@ function formatDateLabel(dateKey) {
   if (dateKey === yesterdayKey) return "Yesterday";
 
   const date = new Date(dateKey);
-  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 /** Read a raw localStorage value and parse it, bypassing any caching layer */
@@ -61,21 +65,24 @@ function buildTimeline() {
   const today = getTodayKey();
 
   // Always read today's live values directly from localStorage — never use snapshots for today
-  const currentMood  = readLiveValue("learnova-wellness-mood");
+  const currentMood = readLiveValue("learnova-wellness-mood");
   const currentStress = readLiveValue("learnova-wellness-stress");
-  const currentWater  = readLiveValue("learnova-wellness-water");
-  const reflection    = readLiveValue("learnova-wellness-reflections");
-  const moodHistory   = readLiveValue("learnova-wellness-mood-history") ?? [];
+  const currentWater = readLiveValue("learnova-wellness-water");
+  const reflection = readLiveValue("learnova-wellness-reflections");
+  const moodHistory = readLiveValue("learnova-wellness-mood-history") ?? [];
 
   // Load snapshots for past days only
   const snapshots = readLiveValue("learnova-wellness-snapshots") ?? {};
 
   // Build today's entry purely from live keys — ignore whatever is in snapshots[today]
   const todayEntry = {
-    mood:          currentMood  || null,
-    stress:        currentStress !== null ? Number(currentStress) : null,
-    water:         currentWater  !== null ? Number(currentWater)  : null,
-    hasReflection: !!(reflection && (reflection.wentWell || reflection.proudOf)),
+    mood: currentMood || null,
+    stress: currentStress !== null ? Number(currentStress) : null,
+    water: currentWater !== null ? Number(currentWater) : null,
+    hasReflection: !!(
+      reflection &&
+      (reflection.wentWell || reflection.proudOf)
+    ),
   };
 
   // Persist the fresh today entry back so other components can read it
@@ -106,7 +113,12 @@ function buildTimeline() {
   return getLast7Days().map((dateKey) => ({
     dateKey,
     label: formatDateLabel(dateKey),
-    ...(snapshots[dateKey] || { mood: null, stress: null, water: null, hasReflection: false }),
+    ...(snapshots[dateKey] || {
+      mood: null,
+      stress: null,
+      water: null,
+      hasReflection: false,
+    }),
   }));
 }
 
@@ -144,12 +156,15 @@ export default function WellnessJourneyTimeline() {
       const avgStress =
         stressDays.length > 0
           ? Math.round(
-              stressDays.reduce((sum, d) => sum + d.stress, 0) / stressDays.length
+              stressDays.reduce((sum, d) => sum + d.stress, 0) /
+                stressDays.length
             )
           : null;
 
       // Best hydration day
-      const waterDays = daysWithData.filter((d) => d.water !== null && d.water > 0);
+      const waterDays = daysWithData.filter(
+        (d) => d.water !== null && d.water > 0
+      );
       const bestWaterDay =
         waterDays.length > 0
           ? waterDays.reduce((best, d) => (d.water > best.water ? d : best))
@@ -160,9 +175,10 @@ export default function WellnessJourneyTimeline() {
       if (stressDays.length >= 4) {
         const half = Math.floor(stressDays.length / 2);
         const recent = stressDays.slice(0, half);
-        const older  = stressDays.slice(half);
-        const recentAvg = recent.reduce((s, d) => s + d.stress, 0) / recent.length;
-        const olderAvg  = older.reduce((s, d)  => s + d.stress, 0) / older.length;
+        const older = stressDays.slice(half);
+        const recentAvg =
+          recent.reduce((s, d) => s + d.stress, 0) / recent.length;
+        const olderAvg = older.reduce((s, d) => s + d.stress, 0) / older.length;
         if (recentAvg < olderAvg - 5) stressTrend = "improving";
         else if (recentAvg > olderAvg + 5) stressTrend = "increasing";
       }
@@ -250,8 +266,8 @@ export default function WellnessJourneyTimeline() {
                             day.stress >= 70
                               ? "bg-orange-500/10 text-orange-700 dark:text-orange-300"
                               : day.stress >= 35
-                              ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-300"
-                              : "bg-green-500/10 text-green-700 dark:text-green-300"
+                                ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-300"
+                                : "bg-green-500/10 text-green-700 dark:text-green-300"
                           }`}
                         >
                           Stress {day.stress}%
@@ -288,7 +304,9 @@ export default function WellnessJourneyTimeline() {
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl bg-white/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 p-4">
-              <p className="text-sm text-slate-500 dark:text-slate-400">Most Frequent Mood</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Most Frequent Mood
+              </p>
               <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
                 {insights.topMood
                   ? `${MOOD_EMOJIS[insights.topMood]} ${MOOD_LABELS[insights.topMood]}`
@@ -297,14 +315,18 @@ export default function WellnessJourneyTimeline() {
             </div>
 
             <div className="rounded-2xl bg-white/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 p-4">
-              <p className="text-sm text-slate-500 dark:text-slate-400">Average Stress</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Average Stress
+              </p>
               <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
                 {insights.avgStress !== null ? `${insights.avgStress}%` : "N/A"}
               </p>
             </div>
 
             <div className="rounded-2xl bg-white/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 p-4">
-              <p className="text-sm text-slate-500 dark:text-slate-400">Best Hydration</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Best Hydration
+              </p>
               <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
                 {insights.bestWaterDay
                   ? `${insights.bestWaterDay.water} glasses (${formatDateLabel(
@@ -315,16 +337,20 @@ export default function WellnessJourneyTimeline() {
             </div>
 
             <div className="rounded-2xl bg-white/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 p-4">
-              <p className="text-sm text-slate-500 dark:text-slate-400">Stress Trend</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Stress Trend
+              </p>
               <p className="mt-2 flex items-center gap-1.5 text-2xl font-bold text-slate-900 dark:text-slate-100">
                 {insights.stressTrend === "improving" && (
                   <>
-                    <TrendingDown className="h-6 w-6 text-green-500" /> Improving
+                    <TrendingDown className="h-6 w-6 text-green-500" />{" "}
+                    Improving
                   </>
                 )}
                 {insights.stressTrend === "increasing" && (
                   <>
-                    <TrendingUp className="h-6 w-6 text-orange-500" /> Increasing
+                    <TrendingUp className="h-6 w-6 text-orange-500" />{" "}
+                    Increasing
                   </>
                 )}
                 {insights.stressTrend === "neutral" && (

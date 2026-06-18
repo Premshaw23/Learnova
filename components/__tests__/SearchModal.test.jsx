@@ -23,6 +23,27 @@ describe("SearchModal Keyboard Events and Propagation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    const store = {};
+    const mockLocalStorage = {
+      getItem: vi.fn((key) => store[key] || null),
+      setItem: vi.fn((key, value) => {
+        store[key] = String(value);
+      }),
+      removeItem: vi.fn((key) => {
+        delete store[key];
+      }),
+      clear: vi.fn(() => {
+        for (const key in store) {
+          delete store[key];
+        }
+      }),
+    };
+    Object.defineProperty(window, "localStorage", {
+      value: mockLocalStorage,
+      configurable: true,
+      writable: true,
+    });
   });
 
   test("renders search modal and shifts focus to input on open", async () => {

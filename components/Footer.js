@@ -101,7 +101,7 @@ export default function Footer() {
   }, []);
 
   const [hoveredBrandLetter, setHoveredBrandLetter] = useState(null);
-// Navigation links displayed in the footer
+  // Navigation links displayed in the footer
   const quickLinks = [
     { label: "Home", href: "/" },
     { label: "Productivity", href: "/productivity" },
@@ -119,14 +119,14 @@ export default function Footer() {
     },
     { label: "Discord Server", href: "https://discord.gg/", external: true },
   ];
-// Landing page section shortcuts
+  // Landing page section shortcuts
   const sectionLinks = [
     { label: "Mission", href: "/#mission" },
     { label: "Values", href: "/#values" },
     { label: "Productivity", href: "/#productivity" },
     { label: "Impact", href: "/#impact" },
   ];
-// Social media and community links
+  // Social media and community links
   const socialLinks = [
     {
       icon: Github,
@@ -148,7 +148,7 @@ export default function Footer() {
       glow: "red",
     },
   ];
-// Individual letters used for animated Learnova branding
+  // Individual letters used for animated Learnova branding
   const brandLetters = "LEARNOVA".split("");
 
   /* Main footer container */

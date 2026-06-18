@@ -183,7 +183,9 @@ export default function TeacherAchievementPanel() {
     }
   };
 
-  const pending = achievements.filter((a) => a.verificationStatus === "Pending");
+  const pending = achievements.filter(
+    (a) => a.verificationStatus === "Pending"
+  );
 
   if (loading) {
     return (
@@ -203,7 +205,9 @@ export default function TeacherAchievementPanel() {
             <Award className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Achievement Management</h3>
+            <h3 className="text-lg font-bold text-white">
+              Achievement Management
+            </h3>
             <p className="text-xs text-gray-400">
               Upload, assign, and verify student certificates
             </p>
@@ -227,10 +231,14 @@ export default function TeacherAchievementPanel() {
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Student</label>
+              <label className="text-xs text-gray-400 mb-1 block">
+                Student
+              </label>
               <select
                 value={form.studentId}
-                onChange={(e) => setForm({ ...form, studentId: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, studentId: e.target.value })
+                }
                 required
                 className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white"
               >
@@ -243,7 +251,9 @@ export default function TeacherAchievementPanel() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Category</label>
+              <label className="text-xs text-gray-400 mb-1 block">
+                Category
+              </label>
               <select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -270,23 +280,31 @@ export default function TeacherAchievementPanel() {
               <input
                 type="date"
                 value={form.achievementDate}
-                onChange={(e) => setForm({ ...form, achievementDate: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, achievementDate: e.target.value })
+                }
                 className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white"
               />
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Description</label>
+            <label className="text-xs text-gray-400 mb-1 block">
+              Description
+            </label>
             <textarea
               value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
               required
               rows={3}
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white resize-none"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Certificate (PDF/PNG/JPG)</label>
+            <label className="text-xs text-gray-400 mb-1 block">
+              Certificate (PDF/PNG/JPG)
+            </label>
             <label className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-dashed border-white/20 rounded-xl cursor-pointer hover:bg-white/10 transition">
               <Upload className="w-4 h-4 text-gray-400" />
               <span className="text-sm text-gray-400">
@@ -297,7 +315,10 @@ export default function TeacherAchievementPanel() {
                 accept=".pdf,.png,.jpg,.jpeg"
                 className="hidden"
                 onChange={(e) =>
-                  setForm({ ...form, certificateFile: e.target.files?.[0] || null })
+                  setForm({
+                    ...form,
+                    certificateFile: e.target.files?.[0] || null,
+                  })
                 }
               />
             </label>
@@ -307,7 +328,11 @@ export default function TeacherAchievementPanel() {
             disabled={submitting}
             className="flex items-center gap-2 px-6 py-2.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 rounded-xl text-sm font-medium transition disabled:opacity-50"
           >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {submitting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
             Create Achievement
           </button>
         </motion.form>
@@ -319,7 +344,9 @@ export default function TeacherAchievementPanel() {
           { label: "Pending", value: pending.length },
           {
             label: "Verified",
-            value: achievements.filter((a) => a.verificationStatus === "Verified").length,
+            value: achievements.filter(
+              (a) => a.verificationStatus === "Verified"
+            ).length,
           },
         ].map((s) => (
           <div
@@ -394,7 +421,12 @@ export default function TeacherAchievementPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {achievements.map((a, i) => (
           <div key={a.achievementId} className="relative">
-            <AchievementCard achievement={a} index={i} showStudent onPreview={setPreview} />
+            <AchievementCard
+              achievement={a}
+              index={i}
+              showStudent
+              onPreview={setPreview}
+            />
             {a.verificationStatus === "Pending" && (
               <div className="flex gap-2 mt-2">
                 <button
@@ -424,8 +456,12 @@ export default function TeacherAchievementPanel() {
       {verifyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#0B1120]/95 border border-white/10 rounded-2xl p-6 max-w-md w-full">
-            <h4 className="text-white font-semibold mb-2">Verify: {verifyModal.title}</h4>
-            <p className="text-xs text-gray-400 mb-4">Student: {verifyModal.studentName}</p>
+            <h4 className="text-white font-semibold mb-2">
+              Verify: {verifyModal.title}
+            </h4>
+            <p className="text-xs text-gray-400 mb-4">
+              Student: {verifyModal.studentName}
+            </p>
             <textarea
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
@@ -460,7 +496,10 @@ export default function TeacherAchievementPanel() {
       )}
 
       {preview && (
-        <CertificatePreviewModal achievement={preview} onClose={() => setPreview(null)} />
+        <CertificatePreviewModal
+          achievement={preview}
+          onClose={() => setPreview(null)}
+        />
       )}
     </div>
   );

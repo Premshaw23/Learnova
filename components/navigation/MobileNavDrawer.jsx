@@ -3,13 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Search,
-  Keyboard,
-  LogOut,
-  Sparkles,
-} from "lucide-react";
+import { X, Search, Keyboard, LogOut, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import {
@@ -148,7 +142,10 @@ export default function MobileNavDrawer({
                     onClick={onClose}
                     className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium text-zinc-700 transition-colors duration-200 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
                   >
-                    <item.icon className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+                    <item.icon
+                      className="h-4 w-4 text-zinc-400"
+                      aria-hidden="true"
+                    />
                     {item.label}
                   </Link>
                 ))}
@@ -168,7 +165,10 @@ export default function MobileNavDrawer({
                   <LogOut className="mr-2 h-4 w-4" /> Logout
                 </Button>
               ) : (
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
                   <Button
                     asChild
                     size="default"
@@ -176,7 +176,8 @@ export default function MobileNavDrawer({
                   >
                     <Link href="/auth" onClick={onClose}>
                       <span className="flex items-center gap-2">
-                        Get Started <Sparkles className="h-4 w-4 text-indigo-200" />
+                        Get Started{" "}
+                        <Sparkles className="h-4 w-4 text-indigo-200" />
                       </span>
                     </Link>
                   </Button>
@@ -190,7 +191,9 @@ export default function MobileNavDrawer({
                 <button
                   onClick={() => {
                     onClose();
-                    window.dispatchEvent(new CustomEvent("learnova:open-search"));
+                    window.dispatchEvent(
+                      new CustomEvent("learnova:open-search")
+                    );
                   }}
                   className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition-colors hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 rounded"
                 >

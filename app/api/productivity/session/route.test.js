@@ -1,25 +1,28 @@
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { POST, GET } from "./route";
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
+import { requireRole, requireAuth } from "@/lib/rbac";
 import { awardXp } from "@/lib/gamification-service";
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
 }));
 
-jest.mock("@/lib/rbac", () => ({
-  requireRole: jest.fn(),
+vi.mock("@/lib/rbac", () => ({
+  requireRole: vi.fn(),
+  requireAuth: vi.fn(),
 }));
 
-jest.mock("@/lib/error-handler", () => ({
+vi.mock("@/lib/error-handler", () => ({
   withErrorHandler: (handler) => handler,
+  parseJSON: vi.fn((request) => request.json()),
 }));
 
-jest.mock("@/lib/gamification-service", () => ({
-  awardXp: jest.fn(),
+vi.mock("@/lib/gamification-service", () => ({
+  awardXp: vi.fn(),
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -33,19 +36,20 @@ describe("POST /api/productivity/session", () => {
   let mockCollection;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     mockCollection = {
-      insertOne: jest.fn().mockResolvedValue({ insertedId: "session-123" }),
-      find: jest.fn(),
+      insertOne: vi.fn().mockResolvedValue({ insertedId: "session-123" }),
+      find: vi.fn(),
     };
 
     mockDb = {
-      collection: jest.fn(() => mockCollection),
+      collection: vi.fn(() => mockCollection),
     };
 
     connectDb.mockResolvedValue(mockDb);
     requireRole.mockResolvedValue({ payload: { uid: "user-123" } });
+    requireAuth.mockResolvedValue({ uid: "user-123" });
   });
 
   test("successfully records a focus session and awards XP", async () => {
@@ -57,6 +61,9 @@ describe("POST /api/productivity/session", () => {
         completedAt: new Date().toISOString(),
         type: "focus",
       }),
+      headers: {
+        get: () => "127.0.0.1",
+      },
     };
 
     const response = await POST(request);
@@ -66,7 +73,11 @@ describe("POST /api/productivity/session", () => {
     expect(body.success).toBe(true);
     expect(body.xpAwarded).toBe(15);
     expect(mockCollection.insertOne).toHaveBeenCalled();
-    expect(awardXp).toHaveBeenCalledWith("user-123", "focus_session_completed", {});
+    expect(awardXp).toHaveBeenCalledWith(
+      "user-123",
+      "focus_session_completed",
+      {}
+    );
   });
 
   test("records a break session and does not award XP", async () => {
@@ -76,6 +87,9 @@ describe("POST /api/productivity/session", () => {
         completedAt: new Date().toISOString(),
         type: "break",
       }),
+      headers: {
+        get: () => "127.0.0.1",
+      },
     };
 
     const response = await POST(request);
@@ -95,6 +109,9 @@ describe("POST /api/productivity/session", () => {
         completedAt: "invalid-date",
         type: "invalid-type",
       }),
+      headers: {
+        get: () => "127.0.0.1",
+      },
     };
 
     await expect(POST(request)).rejects.toThrow();

@@ -75,7 +75,15 @@ import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
 
 import { db } from "@/lib/firebaseConfig";
 
-import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 
 import AttendanceRiskDashboard from "@/components/dashboard/AttendanceRiskDashboard";
 import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
@@ -84,7 +92,10 @@ import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
 import { apiFetch } from "@/lib/apiClient";
-import { syncOfflineQueue, getPendingRecordsCount } from "@/services/offlineSyncQueue";
+import {
+  syncOfflineQueue,
+  getPendingRecordsCount,
+} from "@/services/offlineSyncQueue";
 import { auth } from "@/lib/firebaseConfig";
 
 const AttendanceTrendsChart = dynamic(
@@ -158,8 +169,10 @@ const TeacherDashboard = () => {
       const count = await getPendingRecordsCount();
       if (count === 0) return;
 
-      toast.loading(`Syncing ${count} offline attendance records...`, { id: 'offline-sync' });
-      
+      toast.loading(`Syncing ${count} offline attendance records...`, {
+        id: "offline-sync",
+      });
+
       const token = await user.getIdToken();
       const result = await syncOfflineQueue(async (record) => {
         try {
@@ -178,14 +191,18 @@ const TeacherDashboard = () => {
       });
 
       if (result.success) {
-        toast.success(`Successfully synced ${result.synced} records`, { id: 'offline-sync' });
+        toast.success(`Successfully synced ${result.synced} records`, {
+          id: "offline-sync",
+        });
       } else {
-        toast.error(`Failed to sync ${result.failed} records`, { id: 'offline-sync' });
+        toast.error(`Failed to sync ${result.failed} records`, {
+          id: "offline-sync",
+        });
       }
     };
 
     window.addEventListener("online", handleOnlineSync);
-    
+
     // Attempt sync on mount if online
     if (navigator.onLine && user) {
       handleOnlineSync();
@@ -654,7 +671,9 @@ const TeacherDashboard = () => {
 
     const today = dayNames[day];
 
-    setTodayClasses(Array.isArray(weeklySchedule?.[today]) ? weeklySchedule[today] : []);
+    setTodayClasses(
+      Array.isArray(weeklySchedule?.[today]) ? weeklySchedule[today] : []
+    );
   }, [weeklySchedule]);
 
   const generatePasscode = async () => {
@@ -1057,7 +1076,10 @@ const TeacherDashboard = () => {
                 </div>
               </ExportDropdown>
 
-              <button className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Upload schedule">
+              <button
+                className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+                aria-label="Upload schedule"
+              >
                 <div className="flex items-center space-x-3">
                   <Upload className="w-5 h-5 text-green-400" />
                   <div>
@@ -1069,7 +1091,10 @@ const TeacherDashboard = () => {
                 </div>
               </button>
 
-              <button className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Send notification">
+              <button
+                className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+                aria-label="Send notification"
+              >
                 <div className="flex items-center space-x-3">
                   <Bell className="w-5 h-5 text-orange-400" />
                   <div>
@@ -1244,7 +1269,9 @@ const TeacherDashboard = () => {
   );
 
   return (
-    <div className={`min-h-screen bg-background relative overflow-hidden ${dashboardContentOffsetClass}`}>
+    <div
+      className={`min-h-screen bg-background relative overflow-hidden ${dashboardContentOffsetClass}`}
+    >
       {/* Premium Navbar */}
       <Navbar />
       {/* Animated Gradient Backgrounds */}
@@ -1346,13 +1373,14 @@ const TeacherDashboard = () => {
                   <button
                     onClick={generatePasscode}
                     className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
-                   aria-label="Action button">
+                    aria-label="Action button"
+                  >
                     <Key className="w-3 h-3" />
                     Generate Passcode
                   </button>
                 )}
                 <button
-                  onClick={() => handleAttendanceExport('csv')}
+                  onClick={() => handleAttendanceExport("csv")}
                   className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
                   aria-label="Export attendance data as CSV"
                 >

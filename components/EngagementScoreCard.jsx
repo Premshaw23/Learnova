@@ -16,10 +16,10 @@ const EngagementScoreCard = ({
     overallScore >= 90
       ? "#34D399"
       : overallScore >= 75
-      ? "#60A5FA"
-      : overallScore >= 60
-      ? "#FBBF24"
-      : "#F87171";
+        ? "#60A5FA"
+        : overallScore >= 60
+          ? "#FBBF24"
+          : "#F87171";
 
   return (
     <section className="bg-card/50 dark:bg-slate-950/80 border border-border rounded-3xl p-6 shadow-lg shadow-slate-900/5">
@@ -43,7 +43,9 @@ const EngagementScoreCard = ({
             <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">
               Overall Engagement
             </p>
-            <h2 className="text-3xl font-semibold text-foreground">{category}</h2>
+            <h2 className="text-3xl font-semibold text-foreground">
+              {category}
+            </h2>
             <p className="text-sm text-muted-foreground mt-1">
               Engagement score is normalized to 100, blending attendance,
               activity participation, assignments and academic performance.
@@ -52,25 +54,33 @@ const EngagementScoreCard = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-slate-900/70 p-3 border border-white/10">
-              <p className="text-xs uppercase text-muted-foreground">Attendance</p>
+              <p className="text-xs uppercase text-muted-foreground">
+                Attendance
+              </p>
               <p className="mt-2 text-xl font-semibold text-white">
                 {Math.round(attendanceScore)}%
               </p>
             </div>
             <div className="rounded-2xl bg-slate-900/70 p-3 border border-white/10">
-              <p className="text-xs uppercase text-muted-foreground">Activity</p>
+              <p className="text-xs uppercase text-muted-foreground">
+                Activity
+              </p>
               <p className="mt-2 text-xl font-semibold text-white">
                 {Math.round(activityScore)}%
               </p>
             </div>
             <div className="rounded-2xl bg-slate-900/70 p-3 border border-white/10">
-              <p className="text-xs uppercase text-muted-foreground">Assignments</p>
+              <p className="text-xs uppercase text-muted-foreground">
+                Assignments
+              </p>
               <p className="mt-2 text-xl font-semibold text-white">
                 {Math.round(assignmentScore)}%
               </p>
             </div>
             <div className="rounded-2xl bg-slate-900/70 p-3 border border-white/10">
-              <p className="text-xs uppercase text-muted-foreground">Academic</p>
+              <p className="text-xs uppercase text-muted-foreground">
+                Academic
+              </p>
               <p className="mt-2 text-xl font-semibold text-white">
                 {Math.round(academicScore)}%
               </p>

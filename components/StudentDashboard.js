@@ -30,7 +30,10 @@ import { useIsMounted } from "@/hooks/useIsMounted";
 import EngagementScoreCard from "@/components/EngagementScoreCard";
 import EngagementTrendChart from "@/components/EngagementTrendChart";
 import EngagementBreakdown from "@/components/EngagementBreakdown";
-import { calculateEngagementScore, getEngagementCategory } from "@/lib/engagementScore";
+import {
+  calculateEngagementScore,
+  getEngagementCategory,
+} from "@/lib/engagementScore";
 
 const AchievementSection = dynamic(() => import("./AchievementSection"), {
   ssr: false,
@@ -288,94 +291,94 @@ const StudentDashboard = () => {
   const [level, setLevel] = useState("Beginner");
   const [roadmap, setRoadmap] = useState([]);
   const [studyGroups] = useState([
-  {
-    name: "Web Development Group",
-    subject: "Web Development",
-    members: 15,
-  },
-  {
-    name: "Data Science Circle",
-    subject: "Data Science",
-    members: 10,
-  },
-  {
-    name: "AI Learners Hub",
-    subject: "Artificial Intelligence",
-    members: 12,
-  },
-]);
+    {
+      name: "Web Development Group",
+      subject: "Web Development",
+      members: 15,
+    },
+    {
+      name: "Data Science Circle",
+      subject: "Data Science",
+      members: 10,
+    },
+    {
+      name: "AI Learners Hub",
+      subject: "Artificial Intelligence",
+      members: 12,
+    },
+  ]);
 
-const [events] = useState([
-  {
-    title: "Mathematics Class",
-    date: "10 June",
-    type: "Class",
-    color: "text-blue-400",
-  },
-  {
-    title: "Physics Assignment",
-    date: "12 June",
-    type: "Assignment",
-    color: "text-yellow-400",
-  },
-  {
-    title: "Mid-Term Examination",
-    date: "20 June",
-    type: "Exam",
-    color: "text-red-400",
-  },
-  {
-    title: "Summer Holiday",
-    date: "25 June",
-    type: "Holiday",
-    color: "text-green-400",
-  },
-]);
+  const [events] = useState([
+    {
+      title: "Mathematics Class",
+      date: "10 June",
+      type: "Class",
+      color: "text-blue-400",
+    },
+    {
+      title: "Physics Assignment",
+      date: "12 June",
+      type: "Assignment",
+      color: "text-yellow-400",
+    },
+    {
+      title: "Mid-Term Examination",
+      date: "20 June",
+      type: "Exam",
+      color: "text-red-400",
+    },
+    {
+      title: "Summer Holiday",
+      date: "25 June",
+      type: "Holiday",
+      color: "text-green-400",
+    },
+  ]);
 
-const [performanceData] = useState([
-  {
-    subject: "Mathematics",
-    currentScore: 88,
-    previousScore: 80,
-  },
-  {
-    subject: "Science",
-    currentScore: 92,
-    previousScore: 85,
-  },
-  {
-    subject: "Programming",
-    currentScore: 95,
-    previousScore: 90,
-  },
-]);
+  const [performanceData] = useState([
+    {
+      subject: "Mathematics",
+      currentScore: 88,
+      previousScore: 80,
+    },
+    {
+      subject: "Science",
+      currentScore: 92,
+      previousScore: 85,
+    },
+    {
+      subject: "Programming",
+      currentScore: 95,
+      previousScore: 90,
+    },
+  ]);
 
-const [teacherFeedback] = useState([
-  {
-    subject: "Mathematics",
-    teacher: "Mr. Sharma",
-    rating: "⭐⭐⭐⭐⭐",
-    comment: "Excellent understanding of concepts and problem solving.",
-    recommendation: "Try advanced mathematical challenges.",
-    status: "Acknowledged",
-  },
-  {
-    subject: "Science",
-    teacher: "Mrs. Patel",
-    rating: "⭐⭐⭐⭐",
-    comment: "Good classroom participation and practical skills.",
-    recommendation: "Focus more on written explanations.",
-    status: "Pending",
-  },
-  {
-    subject: "Programming",
-    teacher: "Mr. Johnson",
-    rating: "⭐⭐⭐⭐⭐",
-    comment: "Shows excellent coding skills and creativity.",
-    recommendation: "Start contributing to real-world projects.",
-    status: "Acknowledged",
-  },
-]);
+  const [teacherFeedback] = useState([
+    {
+      subject: "Mathematics",
+      teacher: "Mr. Sharma",
+      rating: "⭐⭐⭐⭐⭐",
+      comment: "Excellent understanding of concepts and problem solving.",
+      recommendation: "Try advanced mathematical challenges.",
+      status: "Acknowledged",
+    },
+    {
+      subject: "Science",
+      teacher: "Mrs. Patel",
+      rating: "⭐⭐⭐⭐",
+      comment: "Good classroom participation and practical skills.",
+      recommendation: "Focus more on written explanations.",
+      status: "Pending",
+    },
+    {
+      subject: "Programming",
+      teacher: "Mr. Johnson",
+      rating: "⭐⭐⭐⭐⭐",
+      comment: "Shows excellent coding skills and creativity.",
+      recommendation: "Start contributing to real-world projects.",
+      status: "Acknowledged",
+    },
+  ]);
 
   useEffect(() => {
     const fetchGamification = async () => {
@@ -384,24 +387,18 @@ const [teacherFeedback] = useState([
 
         const token = await user.getIdToken();
 
-        const res = await fetch(
-          "/api/student/gamification",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const res = await fetch("/api/student/gamification", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (res.ok) {
           const data = await res.json();
           setGamificationData(data);
         }
       } catch (err) {
-        console.error(
-          "Failed to load gamification data",
-          err
-        );
+        console.error("Failed to load gamification data", err);
       }
     };
 
@@ -601,35 +598,35 @@ const [teacherFeedback] = useState([
     }
     setShowDiagnosticQuiz(false);
   };
-const generateRoadmap = () => {
-  const ROADMAPS = {
-    "Web Development": {
-      Beginner: ["HTML", "CSS", "JavaScript", "React", "Node.js"],
-    },
-    "Data Science": {
-      Beginner: [
-        "Python",
-        "NumPy",
-        "Pandas",
-        "Data Visualization",
-        "Machine Learning",
-      ],
-    },
-    "Artificial Intelligence": {
-      Beginner: [
-        "Python",
-        "Math Basics",
-        "Machine Learning",
-        "Deep Learning",
-        "LLMs",
-      ],
-    },
+  const generateRoadmap = () => {
+    const ROADMAPS = {
+      "Web Development": {
+        Beginner: ["HTML", "CSS", "JavaScript", "React", "Node.js"],
+      },
+      "Data Science": {
+        Beginner: [
+          "Python",
+          "NumPy",
+          "Pandas",
+          "Data Visualization",
+          "Machine Learning",
+        ],
+      },
+      "Artificial Intelligence": {
+        Beginner: [
+          "Python",
+          "Math Basics",
+          "Machine Learning",
+          "Deep Learning",
+          "LLMs",
+        ],
+      },
+    };
+
+    if (!goal) return;
+
+    setRoadmap(ROADMAPS[goal]?.[level] || []);
   };
-
-  if (!goal) return;
-
-  setRoadmap(ROADMAPS[goal]?.[level] || []);
-};
 
   const handleExportAttendance = (format) => {
     if (!recentActivity || recentActivity.length === 0) {
@@ -748,87 +745,83 @@ const generateRoadmap = () => {
         <LearningHeatmap />
       </div>
       <div className="mt-6 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-  <h2 className="text-xl font-bold text-white mb-4">
-    AI Learning Roadmap Generator
-  </h2>
+        <h2 className="text-xl font-bold text-white mb-4">
+          AI Learning Roadmap Generator
+        </h2>
 
-  <div className="flex flex-wrap gap-4 mb-4">
-    <select
-      value={goal}
-      onChange={(e) => setGoal(e.target.value)}
-      className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20"
-    >
-      <option value="">Select Goal</option>
-      <option value="Web Development">Web Development</option>
-      <option value="Data Science">Data Science</option>
-      <option value="Artificial Intelligence">Artificial Intelligence</option>
-    </select>
+        <div className="flex flex-wrap gap-4 mb-4">
+          <select
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20"
+          >
+            <option value="">Select Goal</option>
+            <option value="Web Development">Web Development</option>
+            <option value="Data Science">Data Science</option>
+            <option value="Artificial Intelligence">
+              Artificial Intelligence
+            </option>
+          </select>
 
-    <select
-      value={level}
-      onChange={(e) => setLevel(e.target.value)}
-      className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20"
-    >
-      <option value="Beginner">Beginner</option>
-      <option value="Intermediate">Intermediate</option>
-      <option value="Advanced">Advanced</option>
-    </select>
+          <select
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+            className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20"
+          >
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+          </select>
 
-    <button
-      onClick={generateRoadmap}
-      className="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white"
-    >
-      Generate Roadmap
-    </button>
-  </div>
-
-  {roadmap.length > 0 && (
-    <div className="space-y-2">
-      {roadmap.map((item, index) => (
-        <div
-          key={index}
-          className="p-3 rounded-lg bg-white/5 border border-white/10 text-white"
-        >
-          Phase {index + 1}: {item}
+          <button
+            onClick={generateRoadmap}
+            className="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white"
+          >
+            Generate Roadmap
+          </button>
         </div>
-      ))}
-    </div>
-  )}
-</div>
 
-{/* Peer Study Group Finder */}
-<div className="mt-6 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-  <h2 className="text-xl font-bold text-white mb-4">
-    Student Peer Study Groups
-  </h2>
-
-  <div className="grid md:grid-cols-3 gap-4">
-    {studyGroups.map((group, index) => (
-      <div
-        key={index}
-        className="p-4 rounded-xl bg-white/5 border border-white/10"
-      >
-        <h3 className="font-semibold text-white">
-          {group.name}
-        </h3>
-
-        <p className="text-sm text-gray-400">
-          Subject: {group.subject}
-        </p>
-
-        <p className="text-sm text-gray-400 mb-3">
-          Members: {group.members}
-        </p>
-
-        <button
-          className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm"
-        >
-          Join Group
-        </button>
+        {roadmap.length > 0 && (
+          <div className="space-y-2">
+            {roadmap.map((item, index) => (
+              <div
+                key={index}
+                className="p-3 rounded-lg bg-white/5 border border-white/10 text-white"
+              >
+                Phase {index + 1}: {item}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    ))}
-  </div>
-</div>
+
+      {/* Peer Study Group Finder */}
+      <div className="mt-6 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+        <h2 className="text-xl font-bold text-white mb-4">
+          Student Peer Study Groups
+        </h2>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          {studyGroups.map((group, index) => (
+            <div
+              key={index}
+              className="p-4 rounded-xl bg-white/5 border border-white/10"
+            >
+              <h3 className="font-semibold text-white">{group.name}</h3>
+
+              <p className="text-sm text-gray-400">Subject: {group.subject}</p>
+
+              <p className="text-sm text-gray-400 mb-3">
+                Members: {group.members}
+              </p>
+
+              <button className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm">
+                Join Group
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Attendance Insights */}
       <div className="max-w-7xl mx-auto mt-6 px-6">
@@ -839,131 +832,114 @@ const generateRoadmap = () => {
       </div>
 
       {/* Classroom Event Calendar */}
-<div className="max-w-7xl mx-auto mt-6 px-6">
-  <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-    <h2 className="text-xl font-bold text-white mb-4">
-      📅 Classroom Event Calendar
-    </h2>
+      <div className="max-w-7xl mx-auto mt-6 px-6">
+        <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
+            📅 Classroom Event Calendar
+          </h2>
 
-    <div className="space-y-3">
-      {events.map((event, index) => (
-        <div
-          key={index}
-          className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/10"
-        >
-          <div>
-            <h3 className="text-white font-semibold">
-              {event.title}
-            </h3>
+          <div className="space-y-3">
+            {events.map((event, index) => (
+              <div
+                key={index}
+                className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/10"
+              >
+                <div>
+                  <h3 className="text-white font-semibold">{event.title}</h3>
 
-            <p className="text-sm text-gray-400">
-              {event.date}
-            </p>
+                  <p className="text-sm text-gray-400">{event.date}</p>
+                </div>
+
+                <span className={`font-semibold ${event.color}`}>
+                  {event.type}
+                </span>
+              </div>
+            ))}
           </div>
-
-          <span className={`font-semibold ${event.color}`}>
-            {event.type}
-          </span>
         </div>
-      ))}
-    </div>
-  </div>
-</div>
+      </div>
 
-{/* Student Performance Comparison Dashboard */}
-<div className="max-w-7xl mx-auto mt-6 px-6">
-  <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+      {/* Student Performance Comparison Dashboard */}
+      <div className="max-w-7xl mx-auto mt-6 px-6">
+        <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
+            📊 Student Performance Comparison Dashboard
+          </h2>
 
-    <h2 className="text-xl font-bold text-white mb-4">
-      📊 Student Performance Comparison Dashboard
-    </h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            {performanceData.map((item, index) => (
+              <div
+                key={index}
+                className="p-4 rounded-xl bg-white/5 border border-white/10"
+              >
+                <h3 className="text-white font-semibold">{item.subject}</h3>
 
-    <div className="grid md:grid-cols-3 gap-4">
-      {performanceData.map((item, index) => (
-        <div
-          key={index}
-          className="p-4 rounded-xl bg-white/5 border border-white/10"
-        >
-          <h3 className="text-white font-semibold">
-            {item.subject}
-          </h3>
+                <p className="text-blue-400 mt-2">
+                  Current Score: {item.currentScore}%
+                </p>
 
-          <p className="text-blue-400 mt-2">
-            Current Score: {item.currentScore}%
-          </p>
+                <p className="text-gray-400">
+                  Previous Score: {item.previousScore}%
+                </p>
 
-          <p className="text-gray-400">
-            Previous Score: {item.previousScore}%
-          </p>
-
-          <p
-            className={`mt-2 font-semibold ${
-              item.currentScore > item.previousScore
-                ? "text-green-400"
-                : "text-red-400"
-            }`}
-          >
-            {item.currentScore > item.previousScore
-              ? "📈 Improving"
-              : "📉 Needs Improvement"}
-          </p>
+                <p
+                  className={`mt-2 font-semibold ${
+                    item.currentScore > item.previousScore
+                      ? "text-green-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {item.currentScore > item.previousScore
+                    ? "📈 Improving"
+                    : "📉 Needs Improvement"}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </div>
+      </div>
 
-  </div>
-</div>
+      {/* Teacher Feedback & Student Review System */}
+      <div className="max-w-7xl mx-auto mt-6 px-6">
+        <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
+            📝 Teacher Feedback & Reviews
+          </h2>
 
-{/* Teacher Feedback & Student Review System */}
-<div className="max-w-7xl mx-auto mt-6 px-6">
-  <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+          <div className="grid md:grid-cols-3 gap-4">
+            {teacherFeedback.map((feedback, index) => (
+              <div
+                key={index}
+                className="p-4 rounded-xl bg-white/5 border border-white/10"
+              >
+                <h3 className="text-white font-semibold">{feedback.subject}</h3>
 
-    <h2 className="text-xl font-bold text-white mb-4">
-      📝 Teacher Feedback & Reviews
-    </h2>
+                <p className="text-blue-400 text-sm">
+                  Teacher: {feedback.teacher}
+                </p>
 
-    <div className="grid md:grid-cols-3 gap-4">
-      {teacherFeedback.map((feedback, index) => (
-        <div
-          key={index}
-          className="p-4 rounded-xl bg-white/5 border border-white/10"
-        >
-          <h3 className="text-white font-semibold">
-            {feedback.subject}
-          </h3>
+                <p className="mt-2">{feedback.rating}</p>
 
-          <p className="text-blue-400 text-sm">
-            Teacher: {feedback.teacher}
-          </p>
+                <p className="text-gray-300 mt-2">"{feedback.comment}"</p>
 
-          <p className="mt-2">
-            {feedback.rating}
-          </p>
+                <p className="text-yellow-400 mt-2 text-sm">
+                  💡 {feedback.recommendation}
+                </p>
 
-          <p className="text-gray-300 mt-2">
-            "{feedback.comment}"
-          </p>
-
-          <p className="text-yellow-400 mt-2 text-sm">
-            💡 {feedback.recommendation}
-          </p>
-
-          <button
-            className={`mt-3 px-3 py-2 rounded-lg text-sm font-semibold ${
-              feedback.status === "Acknowledged"
-                ? "bg-green-500/20 text-green-400"
-                : "bg-orange-500/20 text-orange-400"
-            }`}
-          >
-            {feedback.status}
-          </button>
-
+                <button
+                  className={`mt-3 px-3 py-2 rounded-lg text-sm font-semibold ${
+                    feedback.status === "Acknowledged"
+                      ? "bg-green-500/20 text-green-400"
+                      : "bg-orange-500/20 text-orange-400"
+                  }`}
+                >
+                  {feedback.status}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </div>
-
-  </div>
-</div>
+      </div>
 
       {/* Smart Attendance Improvement Suggestions */}
       <div className="max-w-7xl mx-auto mt-6 px-6">
@@ -974,7 +950,10 @@ const generateRoadmap = () => {
 
           {attendanceStats.percentage < 60 ? (
             <ul className="space-y-3 text-red-300">
-              <li>⚠️ Your attendance is critically low. Try attending every upcoming class.</li>
+              <li>
+                ⚠️ Your attendance is critically low. Try attending every
+                upcoming class.
+              </li>
               <li>⏰ Enable daily reminders to avoid missing classes.</li>
               <li>📅 Create a weekly study and attendance schedule.</li>
               <li>🎯 Target at least 85% attendance over the next month.</li>
@@ -988,8 +967,8 @@ const generateRoadmap = () => {
             </ul>
           ) : (
             <div className="text-green-400">
-              🎉 Excellent work! Your attendance is strong.
-              Keep maintaining your consistency and punctuality.
+              🎉 Excellent work! Your attendance is strong. Keep maintaining
+              your consistency and punctuality.
             </div>
           )}
         </div>
@@ -1009,7 +988,10 @@ const generateRoadmap = () => {
             <EngagementTrendChart history={engagementHistory} />
             <EngagementBreakdown
               breakdown={[
-                { label: "Attendance", value: engagementMetrics.attendanceScore },
+                {
+                  label: "Attendance",
+                  value: engagementMetrics.attendanceScore,
+                },
                 {
                   label: "Activity Participation",
                   value: engagementMetrics.activityScore,
@@ -1061,7 +1043,7 @@ const generateRoadmap = () => {
           </div>
         </div>
       )}
-      
+
       <QuickNotes />
     </div>
   );

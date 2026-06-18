@@ -81,7 +81,10 @@ export async function POST(req) {
       getUsersResult = await admin.auth().getUsers(authIdentifiers);
       existingAuthUsers.push(...getUsersResult.users.map((u) => u.email));
     } catch (authLookupErr) {
-      const errMsg = authLookupErr instanceof Error ? authLookupErr.message : String(authLookupErr);
+      const errMsg =
+        authLookupErr instanceof Error
+          ? authLookupErr.message
+          : String(authLookupErr);
       console.error(
         `[bulk-import] Firebase Auth lookup failed for ${authIdentifiers.length} emails: ${errMsg}`
       );

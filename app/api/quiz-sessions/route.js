@@ -63,10 +63,13 @@ export async function POST(req) {
     );
   } catch (error) {
     if (error.statusCode === 401 || error.name === "AuthenticationError") {
-      return new Response(JSON.stringify({ error: "Authentication required" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
     return new Response(JSON.stringify({ error: "Failed to create session" }), {
       status: 500,
@@ -100,10 +103,13 @@ export async function submitAnswer(req, sessionId) {
     }
 
     if (session.firebaseUid && session.firebaseUid !== decodedToken.uid) {
-      return new Response(JSON.stringify({ error: "Not authorized to answer this session" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Not authorized to answer this session" }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     if (new Date() > session.expiresAt) {
@@ -151,10 +157,13 @@ export async function submitAnswer(req, sessionId) {
     );
   } catch (error) {
     if (error.statusCode === 401 || error.name === "AuthenticationError") {
-      return new Response(JSON.stringify({ error: "Authentication required" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
     return new Response(JSON.stringify({ error: "Failed to submit answer" }), {
       status: 500,
@@ -179,10 +188,13 @@ export async function submitQuiz(req, sessionId) {
     }
 
     if (session.firebaseUid && session.firebaseUid !== decodedToken.uid) {
-      return new Response(JSON.stringify({ error: "Not authorized to submit this session" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Not authorized to submit this session" }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     if (new Date() > session.expiresAt) {
@@ -242,10 +254,13 @@ export async function submitQuiz(req, sessionId) {
     );
   } catch (error) {
     if (error.statusCode === 401 || error.name === "AuthenticationError") {
-      return new Response(JSON.stringify({ error: "Authentication required" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
     return new Response(JSON.stringify({ error: "Failed to submit quiz" }), {
       status: 500,

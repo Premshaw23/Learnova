@@ -78,7 +78,11 @@ const containerVariants = {
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 300, damping: 24 },
+  },
 };
 
 // ── Custom Animated Progress Ring ──────────────────────────────────────────
@@ -86,11 +90,21 @@ const ProgressRing = ({ percentage, color = "text-pink-500", size = 80 }) => {
   const radius = 24;
   const stroke = 3.5;
   const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, percentage)) / 100) * circumference;
+  const strokeDashoffset =
+    circumference -
+    (Math.min(100, Math.max(0, percentage)) / 100) * circumference;
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width="100%" height="100%" viewBox="0 0 60 60" className="transform -rotate-90">
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      <svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 60 60"
+        className="transform -rotate-90"
+      >
         <circle
           stroke="rgba(255, 255, 255, 0.05)"
           fill="transparent"
@@ -302,7 +316,8 @@ const ParentDashboard = () => {
   // Subject radar chart format (for child progress visualizer)
   const radarChartData = useMemo(() => {
     return grades.map((g) => ({
-      subject: g.subject.length > 12 ? g.subject.slice(0, 10) + ".." : g.subject,
+      subject:
+        g.subject.length > 12 ? g.subject.slice(0, 10) + ".." : g.subject,
       score: Math.round((g.score / g.maxScore) * 100),
       fullMark: 100,
     }));
@@ -317,7 +332,8 @@ const ParentDashboard = () => {
         n.content.toLowerCase().includes(query) ||
         n.category.toLowerCase().includes(query);
       const matchesCategory =
-        noticeCategoryFilter === "All" || n.category.toLowerCase() === noticeCategoryFilter.toLowerCase();
+        noticeCategoryFilter === "All" ||
+        n.category.toLowerCase() === noticeCategoryFilter.toLowerCase();
       return matchesSearch && matchesCategory;
     });
   }, [notices, noticeSearch, noticeCategoryFilter]);
@@ -455,13 +471,15 @@ const ParentDashboard = () => {
             </button>
           </div>
         </div>
-    </>
-  );
-}
+      </>
+    );
+  }
 
   const getAttendanceRateColor = (rate) => {
-    if (rate >= 85) return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
-    if (rate >= threshold) return "text-yellow-400 border-yellow-500/30 bg-yellow-500/10";
+    if (rate >= 85)
+      return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
+    if (rate >= threshold)
+      return "text-yellow-400 border-yellow-500/30 bg-yellow-500/10";
     return "text-red-400 border-red-500/30 bg-red-500/10";
   };
 
@@ -490,12 +508,15 @@ const ParentDashboard = () => {
               <Users className="w-7 h-7 text-white" />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-pink-400 tracking-wider">Parent Portal</span>
+              <span className="text-[10px] uppercase font-bold text-pink-400 tracking-wider">
+                Parent Portal
+              </span>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mt-0.5">
                 {parentName}
               </h1>
               <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Linked with student records
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Linked
+                with student records
               </p>
             </div>
           </div>
@@ -545,12 +566,16 @@ const ParentDashboard = () => {
                 Set Attendance Threshold
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Set a customized threshold for child attendance. An automatic alert triggers when the cumulative percentage drops below this setting.
+                Set a customized threshold for child attendance. An automatic
+                alert triggers when the cumulative percentage drops below this
+                setting.
               </p>
               <div className="space-y-3">
                 <div className="flex justify-between font-mono text-sm">
                   <span>Current Target:</span>
-                  <span className="font-bold text-pink-400">{tempThreshold}%</span>
+                  <span className="font-bold text-pink-400">
+                    {tempThreshold}%
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -595,10 +620,14 @@ const ParentDashboard = () => {
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="text-red-400 font-bold text-sm">Low Attendance Flagged</h4>
+                <h4 className="text-red-400 font-bold text-sm">
+                  Low Attendance Flagged
+                </h4>
                 <p className="text-xs text-slate-300 mt-1">
                   {selectedChild.name}'s attendance has dropped to{" "}
-                  <span className="font-extrabold text-red-400">{childAttendancePercentage}%</span>
+                  <span className="font-extrabold text-red-400">
+                    {childAttendancePercentage}%
+                  </span>
                   , falling below the Warning Threshold of {threshold}%.
                 </p>
               </div>
@@ -621,10 +650,22 @@ const ParentDashboard = () => {
             <EngagementTrendChart history={engagementHistory} />
             <EngagementBreakdown
               breakdown={[
-                { label: "Attendance", value: engagementMetrics.attendanceScore },
-                { label: "Activity Participation", value: engagementMetrics.activityScore },
-                { label: "Assignment Submissions", value: engagementMetrics.assignmentScore },
-                { label: "Academic Performance", value: engagementMetrics.academicScore },
+                {
+                  label: "Attendance",
+                  value: engagementMetrics.attendanceScore,
+                },
+                {
+                  label: "Activity Participation",
+                  value: engagementMetrics.activityScore,
+                },
+                {
+                  label: "Assignment Submissions",
+                  value: engagementMetrics.assignmentScore,
+                },
+                {
+                  label: "Academic Performance",
+                  value: engagementMetrics.academicScore,
+                },
               ]}
             />
             {engagementError && (
@@ -666,7 +707,9 @@ const ParentDashboard = () => {
         {detailLoading ? (
           <div className="py-24 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
             <RefreshCw className="w-8 h-8 animate-spin text-pink-500" />
-            <span className="font-semibold text-sm">Synchronizing child profile...</span>
+            <span className="font-semibold text-sm">
+              Synchronizing child profile...
+            </span>
           </div>
         ) : (
           <motion.div
@@ -678,7 +721,6 @@ const ParentDashboard = () => {
             {/* OVERVIEW TAB */}
             {activeTab === "overview" && selectedChild && (
               <div className="space-y-6">
-                
                 {/* Analytics Cards Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {/* Card: Attendance % */}
@@ -691,7 +733,9 @@ const ParentDashboard = () => {
                         <Calendar className="w-5.5 h-5.5" />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Attendance Rate</p>
+                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                          Attendance Rate
+                        </p>
                         <h3 className="text-2xl font-extrabold mt-1 text-white">
                           {childAttendancePercentage}%
                         </h3>
@@ -714,14 +758,22 @@ const ParentDashboard = () => {
                         <Award className="w-5.5 h-5.5" />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Academic Score</p>
+                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                          Academic Score
+                        </p>
                         <h3 className="text-2xl font-extrabold mt-1 text-purple-400">
-                          {selectedChild.gpa === "N/A" ? "N/A" : `${selectedChild.gpa}%`}
+                          {selectedChild.gpa === "N/A"
+                            ? "N/A"
+                            : `${selectedChild.gpa}%`}
                         </h3>
                       </div>
                     </div>
                     <ProgressRing
-                      percentage={selectedChild.gpa === "N/A" ? 0 : parseFloat(selectedChild.gpa)}
+                      percentage={
+                        selectedChild.gpa === "N/A"
+                          ? 0
+                          : parseFloat(selectedChild.gpa)
+                      }
                       color="text-purple-500"
                       size={52}
                     />
@@ -736,11 +788,15 @@ const ParentDashboard = () => {
                       <Sparkles className="w-5.5 h-5.5" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Achievements</p>
+                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                        Achievements
+                      </p>
                       <h3 className="text-2xl font-extrabold mt-1 text-white">
                         {mockAchievementsCount} Unlocked
                       </h3>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Badges & Certificates</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Badges & Certificates
+                      </p>
                     </div>
                   </motion.div>
 
@@ -753,11 +809,15 @@ const ParentDashboard = () => {
                       <Bell className="w-5.5 h-5.5 animate-bounce" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Unread Alerts</p>
+                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                        Unread Alerts
+                      </p>
                       <h3 className="text-2xl font-extrabold mt-1 text-rose-400">
                         {notices.length} Active
                       </h3>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Campus announcements</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Campus announcements
+                      </p>
                     </div>
                   </motion.div>
                 </div>
@@ -770,21 +830,26 @@ const ParentDashboard = () => {
                   >
                     {/* Background glow decoration */}
                     <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-pink-500/10 to-rose-600/5 rounded-full filter blur-3xl pointer-events-none" />
-                    
+
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Sparkles className="w-5 h-5 text-pink-400" />
-                          <h3 className="text-lg font-bold text-white">Attendance Insights & Early Warnings</h3>
+                          <h3 className="text-lg font-bold text-white">
+                            Attendance Insights & Early Warnings
+                          </h3>
                         </div>
                         <p className="text-xs text-slate-400">
-                          AI-powered analysis and projected attendance trends based on recent records.
+                          AI-powered analysis and projected attendance trends
+                          based on recent records.
                         </p>
                       </div>
 
                       {/* Risk Level Badge */}
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-400 font-semibold font-mono">Risk Level:</span>
+                        <span className="text-xs text-slate-400 font-semibold font-mono">
+                          Risk Level:
+                        </span>
                         {attendance.prediction.riskLevel === "high" && (
                           <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/25 animate-pulse">
                             <XCircle className="w-4.5 h-4.5" />
@@ -811,18 +876,25 @@ const ParentDashboard = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* Projected Percentage Display */}
                       <div className="bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col items-center justify-center text-center space-y-3">
-                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Projected Attendance</span>
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                          Projected Attendance
+                        </span>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-4xl font-extrabold text-white">{attendance.prediction.projectedPercentage}%</span>
+                          <span className="text-4xl font-extrabold text-white">
+                            {attendance.prediction.projectedPercentage}%
+                          </span>
                         </div>
                         <p className="text-[10px] text-slate-400 font-medium">
-                          Estimated rate if current {attendance.prediction.trend} trend continues.
+                          Estimated rate if current{" "}
+                          {attendance.prediction.trend} trend continues.
                         </p>
                       </div>
 
                       {/* Trend Details */}
                       <div className="bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-center space-y-3">
-                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Trend Analysis</span>
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">
+                          Trend Analysis
+                        </span>
                         <div className="flex items-center gap-3">
                           {attendance.prediction.trend === "declining" ? (
                             <>
@@ -830,8 +902,12 @@ const ParentDashboard = () => {
                                 <TrendingDown className="w-5 h-5" />
                               </div>
                               <div>
-                                <h4 className="text-sm font-bold text-white capitalize">{attendance.prediction.trend}</h4>
-                                <p className="text-[10px] text-slate-400">Attendance frequency is slowing down.</p>
+                                <h4 className="text-sm font-bold text-white capitalize">
+                                  {attendance.prediction.trend}
+                                </h4>
+                                <p className="text-[10px] text-slate-400">
+                                  Attendance frequency is slowing down.
+                                </p>
                               </div>
                             </>
                           ) : attendance.prediction.trend === "improving" ? (
@@ -840,8 +916,12 @@ const ParentDashboard = () => {
                                 <TrendingUp className="w-5 h-5" />
                               </div>
                               <div>
-                                <h4 className="text-sm font-bold text-white capitalize">{attendance.prediction.trend}</h4>
-                                <p className="text-[10px] text-slate-400">Recent records show improved frequency!</p>
+                                <h4 className="text-sm font-bold text-white capitalize">
+                                  {attendance.prediction.trend}
+                                </h4>
+                                <p className="text-[10px] text-slate-400">
+                                  Recent records show improved frequency!
+                                </p>
                               </div>
                             </>
                           ) : (
@@ -850,8 +930,12 @@ const ParentDashboard = () => {
                                 <Clock className="w-5 h-5" />
                               </div>
                               <div>
-                                <h4 className="text-sm font-bold text-white capitalize">{attendance.prediction.trend}</h4>
-                                <p className="text-[10px] text-slate-400">Stable patterns of class attendance.</p>
+                                <h4 className="text-sm font-bold text-white capitalize">
+                                  {attendance.prediction.trend}
+                                </h4>
+                                <p className="text-[10px] text-slate-400">
+                                  Stable patterns of class attendance.
+                                </p>
                               </div>
                             </>
                           )}
@@ -860,14 +944,22 @@ const ParentDashboard = () => {
 
                       {/* Proactive Recommendations */}
                       <div className="bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-center space-y-3">
-                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Recommendations</span>
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                          Recommendations
+                        </span>
                         <div className="space-y-2">
-                          {attendance.prediction.recommendations.map((rec, idx) => (
-                            <div key={idx} className="flex items-start gap-2">
-                              <span className="text-pink-400 text-sm mt-0.5">•</span>
-                              <p className="text-xs text-slate-300 leading-relaxed font-medium">{rec}</p>
-                            </div>
-                          ))}
+                          {attendance.prediction.recommendations.map(
+                            (rec, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
+                                <span className="text-pink-400 text-sm mt-0.5">
+                                  •
+                                </span>
+                                <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                                  {rec}
+                                </p>
+                              </div>
+                            )
+                          )}
                         </div>
                       </div>
                     </div>
@@ -886,7 +978,9 @@ const ParentDashboard = () => {
                         <TrendingUp className="w-5 h-5 text-blue-400" />
                         Weekly Attendance Trends
                       </h3>
-                      <span className="text-xs text-slate-400">Last 15 Records</span>
+                      <span className="text-xs text-slate-400">
+                        Last 15 Records
+                      </span>
                     </div>
                     <div className="w-full h-[250px]">
                       {attendanceChartData.length === 0 ? (
@@ -894,17 +988,46 @@ const ParentDashboard = () => {
                           No attendance history found.
                         </div>
                       ) : (
-                        <ResponsiveContainer width="100%" height="100%" minHeight={250}>
+                        <ResponsiveContainer
+                          width="100%"
+                          height="100%"
+                          minHeight={250}
+                        >
                           <AreaChart data={attendanceChartData}>
                             <defs>
-                              <linearGradient id="colorAttTrend" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
-                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                              <linearGradient
+                                id="colorAttTrend"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#3b82f6"
+                                  stopOpacity={0.25}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#3b82f6"
+                                  stopOpacity={0}
+                                />
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
-                            <XAxis dataKey="date" stroke="#94a3b8" fontSize={9} />
-                            <YAxis stroke="#94a3b8" fontSize={9} domain={[0, 100]} />
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#ffffff05"
+                            />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#94a3b8"
+                              fontSize={9}
+                            />
+                            <YAxis
+                              stroke="#94a3b8"
+                              fontSize={9}
+                              domain={[0, 100]}
+                            />
                             <Tooltip
                               contentStyle={{
                                 backgroundColor: "#0f172a",
@@ -936,7 +1059,9 @@ const ParentDashboard = () => {
                         <Award className="w-5 h-5 text-purple-400" />
                         Subject-wise Performance
                       </h3>
-                      <span className="text-xs text-slate-400">Term Breakdown</span>
+                      <span className="text-xs text-slate-400">
+                        Term Breakdown
+                      </span>
                     </div>
                     <div className="w-full h-[250px]">
                       {gradesChartData.length === 0 ? (
@@ -944,11 +1069,26 @@ const ParentDashboard = () => {
                           No academic records available.
                         </div>
                       ) : (
-                        <ResponsiveContainer width="100%" height="100%" minHeight={250}>
+                        <ResponsiveContainer
+                          width="100%"
+                          height="100%"
+                          minHeight={250}
+                        >
                           <BarChart data={gradesChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
-                            <XAxis dataKey="subject" stroke="#94a3b8" fontSize={9} />
-                            <YAxis stroke="#94a3b8" fontSize={9} domain={[0, 100]} />
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#ffffff05"
+                            />
+                            <XAxis
+                              dataKey="subject"
+                              stroke="#94a3b8"
+                              fontSize={9}
+                            />
+                            <YAxis
+                              stroke="#94a3b8"
+                              fontSize={9}
+                              domain={[0, 100]}
+                            />
                             <Tooltip
                               contentStyle={{
                                 backgroundColor: "#0f172a",
@@ -983,7 +1123,8 @@ const ParentDashboard = () => {
                       onClick={() => setActiveTab("notices")}
                       className="text-xs font-bold text-pink-400 hover:text-pink-300 flex items-center gap-0.5"
                     >
-                      View All Announcements <ChevronRight className="w-4 h-4" />
+                      View All Announcements{" "}
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
 
@@ -1000,17 +1141,25 @@ const ParentDashboard = () => {
                           className="bg-white/[0.02] border border-white/5 hover:border-pink-500/20 p-4 rounded-xl cursor-pointer transition-all duration-200"
                         >
                           <div className="flex justify-between items-center">
-                            <span className="text-[10px] uppercase font-bold text-pink-400">{notice.category}</span>
-                            <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full font-bold border ${
-                              notice.priority === "high"
-                                ? "bg-red-500/10 text-red-400 border-red-500/20"
-                                : "bg-slate-800 text-slate-400 border-slate-700"
-                            }`}>
+                            <span className="text-[10px] uppercase font-bold text-pink-400">
+                              {notice.category}
+                            </span>
+                            <span
+                              className={`text-[9px] uppercase px-2 py-0.5 rounded-full font-bold border ${
+                                notice.priority === "high"
+                                  ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                  : "bg-slate-800 text-slate-400 border-slate-700"
+                              }`}
+                            >
                               {notice.priority}
                             </span>
                           </div>
-                          <h4 className="font-bold text-white text-sm mt-2">{notice.title}</h4>
-                          <p className="text-xs text-slate-400 line-clamp-1 mt-1">{notice.content}</p>
+                          <h4 className="font-bold text-white text-sm mt-2">
+                            {notice.title}
+                          </h4>
+                          <p className="text-xs text-slate-400 line-clamp-1 mt-1">
+                            {notice.content}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -1022,7 +1171,6 @@ const ParentDashboard = () => {
             {/* CHILD PROGRESS VISUALIZER */}
             {activeTab === "child_progress" && selectedChild && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
                 {/* Left: Overall Academic Summary */}
                 <motion.div
                   variants={cardVariants}
@@ -1037,23 +1185,37 @@ const ParentDashboard = () => {
                     <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full flex items-center justify-center font-bold text-2xl text-white shadow-md">
                       {selectedChild.name ? selectedChild.name[0] : "S"}
                     </div>
-                    <h4 className="text-lg font-extrabold mt-3 text-white">{selectedChild.name}</h4>
-                    <p className="text-xs text-slate-400 mt-1">Roll No: {selectedChild.rollNo}</p>
+                    <h4 className="text-lg font-extrabold mt-3 text-white">
+                      {selectedChild.name}
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Roll No: {selectedChild.rollNo}
+                    </p>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-                      <span className="text-xs text-slate-400 uppercase tracking-wider">Attendance Score</span>
-                      <span className="font-mono text-sm font-bold text-cyan-400">{childAttendancePercentage}%</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-                      <span className="text-xs text-slate-400 uppercase tracking-wider">Academic Grade</span>
-                      <span className="font-mono text-sm font-bold text-purple-400">
-                        {selectedChild.gpa === "N/A" ? "N/A" : `${selectedChild.gpa}%`}
+                      <span className="text-xs text-slate-400 uppercase tracking-wider">
+                        Attendance Score
+                      </span>
+                      <span className="font-mono text-sm font-bold text-cyan-400">
+                        {childAttendancePercentage}%
                       </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-                      <span className="text-xs text-slate-400 uppercase tracking-wider">Status Badge</span>
+                      <span className="text-xs text-slate-400 uppercase tracking-wider">
+                        Academic Grade
+                      </span>
+                      <span className="font-mono text-sm font-bold text-purple-400">
+                        {selectedChild.gpa === "N/A"
+                          ? "N/A"
+                          : `${selectedChild.gpa}%`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                      <span className="text-xs text-slate-400 uppercase tracking-wider">
+                        Status Badge
+                      </span>
                       <span className="text-xs font-bold text-green-400 flex items-center gap-1">
                         <Check className="w-3.5 h-3.5" /> Active Learner
                       </span>
@@ -1075,13 +1237,29 @@ const ParentDashboard = () => {
                     {/* Radar chart map */}
                     <div className="w-full h-[240px] flex items-center justify-center">
                       {radarChartData.length === 0 ? (
-                        <div className="text-slate-500 text-xs">No radar data.</div>
+                        <div className="text-slate-500 text-xs">
+                          No radar data.
+                        </div>
                       ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarChartData}>
+                          <RadarChart
+                            cx="50%"
+                            cy="50%"
+                            outerRadius="70%"
+                            data={radarChartData}
+                          >
                             <PolarGrid stroke="#ffffff08" />
-                            <PolarAngleAxis dataKey="subject" stroke="#94a3b8" fontSize={9} />
-                            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#94a3b8" fontSize={8} />
+                            <PolarAngleAxis
+                              dataKey="subject"
+                              stroke="#94a3b8"
+                              fontSize={9}
+                            />
+                            <PolarRadiusAxis
+                              angle={30}
+                              domain={[0, 100]}
+                              stroke="#94a3b8"
+                              fontSize={8}
+                            />
                             <Radar
                               name={selectedChild.name}
                               dataKey="score"
@@ -1096,14 +1274,20 @@ const ParentDashboard = () => {
 
                     {/* Quick Metric progress bars */}
                     <div className="space-y-4">
-                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Progress indicators</h4>
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Progress indicators
+                      </h4>
                       {grades.slice(0, 4).map((g) => {
                         const pct = Math.round((g.score / g.maxScore) * 100);
                         return (
                           <div key={g.id} className="space-y-1">
                             <div className="flex justify-between text-xs">
-                              <span className="text-slate-300">{g.subject}</span>
-                              <span className="font-bold text-slate-100">{pct}%</span>
+                              <span className="text-slate-300">
+                                {g.subject}
+                              </span>
+                              <span className="font-bold text-slate-100">
+                                {pct}%
+                              </span>
                             </div>
                             <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                               <div
@@ -1123,7 +1307,6 @@ const ParentDashboard = () => {
             {/* ATTENDANCE TAB */}
             {activeTab === "attendance" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
                 {/* Stats */}
                 <motion.div
                   variants={cardVariants}
@@ -1201,9 +1384,12 @@ const ParentDashboard = () => {
                             <p className="text-xs text-slate-400 font-mono mt-0.5">
                               Check:{" "}
                               {record.timestamp
-                                ? new Date(record.timestamp).toLocaleTimeString()
+                                ? new Date(
+                                    record.timestamp
+                                  ).toLocaleTimeString()
                                 : "--"}{" "}
-                              (confidence: {Math.round(record.confidenceScore * 100)}%)
+                              (confidence:{" "}
+                              {Math.round(record.confidenceScore * 100)}%)
                             </p>
                           </div>
 
@@ -1260,7 +1446,8 @@ const ParentDashboard = () => {
                               {g.subject}
                             </td>
                             <td className="px-6 py-4 font-mono font-bold">
-                              {g.score} / {g.maxScore} ({Math.round((g.score / g.maxScore) * 100)}%)
+                              {g.score} / {g.maxScore} (
+                              {Math.round((g.score / g.maxScore) * 100)}%)
                             </td>
                             <td className="px-6 py-4">
                               <span className="inline-block px-2.5 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-black">
@@ -1271,7 +1458,9 @@ const ParentDashboard = () => {
                               {g.term}
                             </td>
                             <td className="px-6 py-4 text-xs text-slate-400">
-                              {g.date ? new Date(g.date).toLocaleDateString() : "N/A"}
+                              {g.date
+                                ? new Date(g.date).toLocaleDateString()
+                                : "N/A"}
                             </td>
                           </tr>
                         ))}
@@ -1303,17 +1492,21 @@ const ParentDashboard = () => {
                     <Bell className="w-5 h-5 text-pink-400" />
                     Campus Announcement Board
                   </h3>
-                  
+
                   {/* Category filters & Search */}
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <div className="relative">
                       <select
                         value={noticeCategoryFilter}
-                        onChange={(e) => setNoticeCategoryFilter(e.target.value)}
+                        onChange={(e) =>
+                          setNoticeCategoryFilter(e.target.value)
+                        }
                         className="bg-black/40 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-pink-500 cursor-pointer"
                       >
                         {noticeCategories.map((c) => (
-                          <option key={c} value={c}>{c}</option>
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -1369,9 +1562,13 @@ const ParentDashboard = () => {
                         </div>
 
                         <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500 mt-2">
-                          <span>By {n.author} ({n.authorRole})</span>
+                          <span>
+                            By {n.author} ({n.authorRole})
+                          </span>
                           <span className="font-mono">
-                            {n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""}
+                            {n.createdAt
+                              ? new Date(n.createdAt).toLocaleDateString()
+                              : ""}
                           </span>
                         </div>
                       </div>
@@ -1419,14 +1616,23 @@ const ParentDashboard = () => {
               <div className="px-6 py-4 bg-black/40 border-t border-white/10 flex justify-between items-center text-xs text-slate-500">
                 <div className="flex gap-4">
                   <span>
-                    Sender: <strong className="text-slate-300">{selectedNotice.author}</strong>
+                    Sender:{" "}
+                    <strong className="text-slate-300">
+                      {selectedNotice.author}
+                    </strong>
                   </span>
                   <span>
-                    Role: <strong className="text-slate-300">{selectedNotice.authorRole}</strong>
+                    Role:{" "}
+                    <strong className="text-slate-300">
+                      {selectedNotice.authorRole}
+                    </strong>
                   </span>
                 </div>
                 <span>
-                  Date: {selectedNotice.createdAt ? new Date(selectedNotice.createdAt).toLocaleString() : ""}
+                  Date:{" "}
+                  {selectedNotice.createdAt
+                    ? new Date(selectedNotice.createdAt).toLocaleString()
+                    : ""}
                 </span>
               </div>
             </motion.div>

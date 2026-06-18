@@ -69,7 +69,9 @@ export default function ParentAchievementsPanel({ studentId, studentName }) {
             <h3 className="text-lg font-bold text-white">
               {studentName}&apos;s Achievements
             </h3>
-            <p className="text-xs text-gray-400">Certificates and accomplishments</p>
+            <p className="text-xs text-gray-400">
+              Certificates and accomplishments
+            </p>
           </div>
         </div>
         <button
@@ -84,8 +86,16 @@ export default function ParentAchievementsPanel({ studentId, studentName }) {
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: "Total", value: stats.total, color: "text-blue-400" },
-            { label: "Verified", value: stats.verified, color: "text-green-400" },
-            { label: "Pending", value: stats.pending, color: "text-yellow-400" },
+            {
+              label: "Verified",
+              value: stats.verified,
+              color: "text-green-400",
+            },
+            {
+              label: "Pending",
+              value: stats.pending,
+              color: "text-yellow-400",
+            },
           ].map((s) => (
             <div
               key={s.label}
@@ -100,7 +110,9 @@ export default function ParentAchievementsPanel({ studentId, studentName }) {
 
       {recent.length > 0 && (
         <div className="bg-pink-500/10 border border-pink-500/20 rounded-2xl p-5">
-          <h4 className="text-sm font-semibold text-pink-400 mb-3">Recent Accomplishments</h4>
+          <h4 className="text-sm font-semibold text-pink-400 mb-3">
+            Recent Accomplishments
+          </h4>
           <div className="space-y-2">
             {recent.map((a) => (
               <div
@@ -108,7 +120,9 @@ export default function ParentAchievementsPanel({ studentId, studentName }) {
                 className="flex items-center justify-between bg-black/20 rounded-xl px-4 py-2"
               >
                 <span className="text-sm text-white">{a.title}</span>
-                <span className="text-xs text-gray-400">{a.achievementDate?.slice(0, 10)}</span>
+                <span className="text-xs text-gray-400">
+                  {a.achievementDate?.slice(0, 10)}
+                </span>
               </div>
             ))}
           </div>
@@ -134,7 +148,10 @@ export default function ParentAchievementsPanel({ studentId, studentName }) {
       )}
 
       {preview && (
-        <CertificatePreviewModal achievement={preview} onClose={() => setPreview(null)} />
+        <CertificatePreviewModal
+          achievement={preview}
+          onClose={() => setPreview(null)}
+        />
       )}
     </div>
   );

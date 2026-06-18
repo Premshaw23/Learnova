@@ -319,6 +319,8 @@ describe("Parent Portal Feature Tests", () => {
     const mockMongoCollection = {
       updateOne: vi.fn(),
       deleteOne: vi.fn(),
+      insertOne: vi.fn().mockResolvedValue({}),
+      findOne: vi.fn().mockResolvedValue(null),
     };
     connectDb.mockResolvedValue({
       collection: vi.fn(() => mockMongoCollection),
@@ -413,11 +415,7 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminPostLink(makeRequest());
-      await assertApiError(
-        response,
-        400,
-        "Validation failed"
-      );
+      await assertApiError(response, 400, "Validation failed");
     });
 
     it("POST /api/admin/parent-student-link: should return 404 if parent user email does not exist", async () => {
@@ -481,11 +479,7 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminDeleteLink(request);
-      await assertApiError(
-        response,
-        400,
-        "Validation failed"
-      );
+      await assertApiError(response, 400, "Validation failed");
     });
 
     it("POST /api/admin/parent-student-link: should return 500 if the saga coordinator fails to sync the link", async () => {
@@ -533,6 +527,7 @@ describe("Parent Portal Feature Tests", () => {
         role: "parent",
       });
       getUserProfile.mockResolvedValue(store.users["parent-1"]);
+      store.attendance_records = {};
     });
 
     it("GET /api/parent/dashboard: should return linked students profiles and their summaries", async () => {

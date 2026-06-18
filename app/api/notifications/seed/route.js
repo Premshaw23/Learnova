@@ -52,9 +52,27 @@ export const POST = withErrorHandler(async (request) => {
   const db = await connectDb();
   const now = new Date();
   const notifications = [
-    { userId, message: "Attendance marked for CS101", type: "attendance", read: false, createdAt: now },
-    { userId, message: "New notice posted by Admin", type: "notice", read: false, createdAt: now },
-    { userId, message: "System alert: Maintenance scheduled", type: "alert", read: false, createdAt: now },
+    {
+      userId,
+      message: "Attendance marked for CS101",
+      type: "attendance",
+      read: false,
+      createdAt: now,
+    },
+    {
+      userId,
+      message: "New notice posted by Admin",
+      type: "notice",
+      read: false,
+      createdAt: now,
+    },
+    {
+      userId,
+      message: "System alert: Maintenance scheduled",
+      type: "alert",
+      read: false,
+      createdAt: now,
+    },
   ];
   await db.collection("notifications").insertMany(notifications);
 

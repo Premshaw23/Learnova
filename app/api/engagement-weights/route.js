@@ -3,7 +3,10 @@ import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { success, jsonError } from "@/lib/api-response";
-import { normalizeEngagementWeights, DEFAULT_ENGAGEMENT_WEIGHTS } from "@/lib/engagementScore";
+import {
+  normalizeEngagementWeights,
+  DEFAULT_ENGAGEMENT_WEIGHTS,
+} from "@/lib/engagementScore";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,17 +19,29 @@ const engagementWeightsSchema = z.object({
 });
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload, profile } = await requireRole(request, ["admin", "institute"]);
-  const targetInstituteId = payload.role === "admin" ? request.nextUrl.searchParams.get("instituteId") || profile?.uid : profile?.uid;
+  const { payload, profile } = await requireRole(request, [
+    "admin",
+    "institute",
+  ]);
+  const targetInstituteId =
+    payload.role === "admin"
+      ? request.nextUrl.searchParams.get("instituteId") || profile?.uid
+      : profile?.uid;
   const db = await connectDb();
-  const settings = await db.collection("settings").findOne({ userId: targetInstituteId });
-  const weights = settings?.institute?.engagementWeights || DEFAULT_ENGAGEMENT_WEIGHTS;
+  const settings = await db
+    .collection("settings")
+    .findOne({ userId: targetInstituteId });
+  const weights =
+    settings?.institute?.engagementWeights || DEFAULT_ENGAGEMENT_WEIGHTS;
 
   return success({ weights });
 });
 
 export const PATCH = withErrorHandler(async (request) => {
-  const { payload, profile } = await requireRole(request, ["admin", "institute"]);
+  const { payload, profile } = await requireRole(request, [
+    "admin",
+    "institute",
+  ]);
   const body = await parseJSON(request, 1024 * 10);
   const parsed = engagementWeightsSchema.safeParse(body);
 
@@ -35,7 +50,8 @@ export const PATCH = withErrorHandler(async (request) => {
   }
 
   const normalized = normalizeEngagementWeights(parsed.data);
-  const targetInstituteId = payload.role === "admin" ? body.instituteId || profile?.uid : profile?.uid;
+  const targetInstituteId =
+    payload.role === "admin" ? body.instituteId || profile?.uid : profile?.uid;
   const db = await connectDb();
 
   await db.collection("settings").updateOne(
