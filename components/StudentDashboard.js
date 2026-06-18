@@ -71,6 +71,11 @@ const AttendanceCalendar = dynamic(() => import("./AttendanceCalendar"), {
   loading: () => <ChartSkeleton variant="heatmap" />,
 });
 
+const LearningHeatmap = dynamic(() => import("./LearningHeatmap"), {
+  ssr: false,
+  loading: () => <ChartSkeleton variant="heatmap" />,
+});
+
 const DAY_NAMES = [
   "Sunday",
   "Monday",
@@ -736,6 +741,11 @@ const generateRoadmap = () => {
             getInitials={getUserInitials}
           />
         </div>
+      </div>
+
+      {/* Learning Streak Section */}
+      <div className="max-w-7xl mx-auto mb-6 px-6 relative z-10 animate-slide-up">
+        <LearningHeatmap />
       </div>
       <div className="mt-6 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
   <h2 className="text-xl font-bold text-white mb-4">
