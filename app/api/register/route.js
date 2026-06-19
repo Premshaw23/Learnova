@@ -15,6 +15,9 @@ import {
 } from "@/lib/transactionCoordinator";
 import { validateFaceDescriptor } from "@/lib/images/imagesService";
 import { logAuditEvent } from "@/lib/auditLogger";
+import { initializeFirebase } from "@/lib/firebase-admin";
+import admin from "firebase-admin";
+
 
 export const dynamic = "force-dynamic";
 
