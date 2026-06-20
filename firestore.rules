@@ -19,8 +19,8 @@ service cloud.firestore {
     // Users can read their own profile; teachers can read all profiles for class management
     // Users can only edit their own profile
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isTeacher());
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAuthenticated() && request.auth.uid == resource.id && (request.auth.uid == userId || isTeacher());
+      allow write: if isAuthenticated() && request.auth.uid == resource.id && request.auth.uid == userId;
     }
 
     // Courses Collection
