@@ -73,6 +73,7 @@ const API_ROUTE_RULES = [
   { pattern: /^\/api\/settings(?:\/|$)/, authOnly: true },
   { pattern: /^\/api\/stats(?:\/|$)/, authOnly: true },
   { pattern: /^\/api\/upload\/avatar(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/notes(?:\/|$)/, roles: ["student", "teacher", "admin"] },
 ];
 
 function getApiRouteRule(pathname) {

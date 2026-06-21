@@ -13,7 +13,10 @@ import {
   Users,
   Trash2,
   Award,
+  Plus,
+  Edit2,
 } from "lucide-react";
+import { formatTimestamp } from "@/utils/timeUtils";
 import ShareButton from "@/components/ui/ShareButton";
 import StudyDeck from "@/components/flashcards/StudyDeck";
 import Breadcrumb from "@/components/ui/Breadcrumb";
@@ -110,6 +113,12 @@ export default function CourseDetailPage() {
   const [lastProgress, setLastProgress] = useState(null);
   const [notes, setNotes] = useState([]);
   const [noteText, setNoteText] = useState("");
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesError, setNotesError] = useState(null);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState(null);
+  const [capturedTimestamp, setCapturedTimestamp] = useState(0);
+  const [modalNoteText, setModalNoteText] = useState("");
 
   // --- Dynamic Completion & Certificate States ---
   const [completedLessons, setCompletedLessons] = useState({});
@@ -164,15 +173,8 @@ export default function CourseDetailPage() {
         }
       }
 
-      // Load timestamp notes
-      const savedNotes = localStorage.getItem(`video_notes_${params.id}`);
-      if (savedNotes) {
-        try {
-          setNotes(JSON.parse(savedNotes));
-        } catch (e) {
-          console.error("Failed to parse notes", e);
-        }
-      }
+      // Load timestamp notes from API
+      fetchNotes();
 
       // Load completed lessons
       const savedCompleted = localStorage.getItem(
@@ -284,12 +286,98 @@ export default function CourseDetailPage() {
     }
   };
 
-  // Persist notes when they change
-  useEffect(() => {
-    if (mounted) {
-      localStorage.setItem(`video_notes_${params.id}`, JSON.stringify(notes));
+  const fetchNotes = async () => {
+    setNotesLoading(true);
+    setNotesError(null);
+    try {
+      const data = await apiFetch(`/api/notes?courseId=${params.id}`);
+      setNotes(data.items || []);
+    } catch (err) {
+      console.error("Failed to fetch notes:", err);
+      setNotesError(err.message || "Failed to fetch notes");
+    } finally {
+      setNotesLoading(false);
     }
-  }, [notes, mounted, params.id]);
+  };
+
+  const handleAddNote = async () => {
+    if (!noteText.trim()) {
+      toast.error("Note content cannot be empty");
+      return;
+    }
+
+    const currentSec = videoRef.current ? Math.floor(videoRef.current.currentTime) : 0;
+    try {
+      const data = await apiFetch("/api/notes", {
+        method: "POST",
+        body: {
+          text: noteText,
+          timestamp: currentSec,
+          videoId: params.id,
+          courseId: params.id,
+        },
+      });
+      setNotes((prev) => [...prev, data.note]);
+      setNoteText("");
+      toast.success("Note saved successfully");
+    } catch (err) {
+      console.error("Failed to create note:", err);
+    }
+  };
+
+  const handleSaveNote = async () => {
+    if (!modalNoteText.trim()) {
+      toast.error("Note content cannot be empty");
+      return;
+    }
+
+    try {
+      if (editingNote) {
+        // Update Note
+        const data = await apiFetch(`/api/notes/${editingNote._id}`, {
+          method: "PUT",
+          body: {
+            text: modalNoteText,
+            timestamp: capturedTimestamp,
+          },
+        });
+        setNotes((prev) =>
+          prev.map((n) => (n._id === editingNote._id ? data.note : n))
+        );
+        toast.success("Note updated successfully");
+      } else {
+        // Create Note (from Modal)
+        const data = await apiFetch("/api/notes", {
+          method: "POST",
+          body: {
+            text: modalNoteText,
+            timestamp: capturedTimestamp,
+            videoId: params.id,
+            courseId: params.id,
+          },
+        });
+        setNotes((prev) => [...prev, data.note]);
+        toast.success("Note saved successfully");
+      }
+      setIsNoteModalOpen(false);
+      setModalNoteText("");
+      setEditingNote(null);
+    } catch (err) {
+      console.error("Failed to save note:", err);
+    }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    try {
+      await apiFetch(`/api/notes/${noteId}`, {
+        method: "DELETE",
+      });
+      setNotes((prev) => prev.filter((n) => n._id !== noteId));
+      toast.success("Note deleted successfully");
+    } catch (err) {
+      console.error("Failed to delete note:", err);
+    }
+  };
 
   const toggleStudyPod = () => setIsPodActive(!isPodActive);
 
@@ -549,9 +637,24 @@ export default function CourseDetailPage() {
 
                 {/* Segmented AI Concept Map Progress Track */}
                 <div className="mb-6">
-                  <span className="text-xs font-semibold text-zinc-400 block mb-2 tracking-wider uppercase">
-                    AI Concept Map Timeline
-                  </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-zinc-400 tracking-wider uppercase">
+                      AI Concept Map Timeline
+                    </span>
+                    <button
+                      onClick={() => {
+                        const currentSec = videoRef.current ? Math.floor(videoRef.current.currentTime) : 0;
+                        setCapturedTimestamp(currentSec);
+                        setModalNoteText("");
+                        setEditingNote(null);
+                        setIsNoteModalOpen(true);
+                      }}
+                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-600/10 active:scale-95 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Note
+                    </button>
+                  </div>
                   <div className="h-3 w-full bg-zinc-800 rounded-full flex overflow-hidden">
                     {mockVideoAIProperties.conceptMap.map((segment, index) => {
                       const segmentWidth =
@@ -641,33 +744,57 @@ export default function CourseDetailPage() {
                   </div>
 
                   <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    {notes.length > 0 ? (
+                    {notesLoading ? (
+                      <div className="text-center py-10">
+                        <span className="text-sm text-zinc-500">Loading notes...</span>
+                      </div>
+                    ) : notesError ? (
+                      <div className="text-center py-10 bg-red-950/20 border border-red-900/30 rounded-2xl">
+                        <p className="text-sm text-red-400">{notesError}</p>
+                      </div>
+                    ) : notes.length > 0 ? (
                       notes.map((note) => (
                         <div
-                          key={note.id}
+                          key={note._id}
                           className="group relative bg-zinc-950/40 border border-zinc-800/50 rounded-xl p-4 hover:border-zinc-700/80 hover:bg-zinc-900/40 transition-all cursor-pointer"
                           onClick={() => handleSeek(note.timestamp)}
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex gap-4">
                               <span className="text-indigo-400 font-mono text-xs font-bold shrink-0 mt-0.5 px-2 py-1 rounded bg-indigo-500/5 border border-indigo-500/10">
-                                {note.formattedTime}
+                                {formatTimestamp(note.timestamp)}
                               </span>
                               <p className="text-sm text-zinc-300 leading-relaxed font-medium">
                                 {note.text}
                               </p>
                             </div>
-                            <Tooltip content="Delete note" placement="top">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteNote(note.id);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </Tooltip>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 shrink-0">
+                              <Tooltip content="Edit note" placement="top">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingNote(note);
+                                    setCapturedTimestamp(note.timestamp);
+                                    setModalNoteText(note.text);
+                                    setIsNoteModalOpen(true);
+                                  }}
+                                  className="p-2 text-zinc-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                              </Tooltip>
+                              <Tooltip content="Delete note" placement="top">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteNote(note._id);
+                                  }}
+                                  className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </Tooltip>
+                            </div>
                           </div>
                         </div>
                       ))
@@ -1146,6 +1273,85 @@ export default function CourseDetailPage() {
                   >
                     <Award className="w-5 h-5" />
                     Download PDF
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Note Input Modal */}
+          {isNoteModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-fade-in">
+              <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl p-6 sm:p-8 animate-scale-in">
+                <button
+                  onClick={() => {
+                    setIsNoteModalOpen(false);
+                    setEditingNote(null);
+                    setModalNoteText("");
+                  }}
+                  className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-zinc-100 bg-zinc-800/50 hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+
+                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  {editingNote ? <Edit2 className="text-indigo-400 w-5 h-5" /> : <Plus className="text-indigo-400 w-5 h-5" />}
+                  {editingNote ? "Edit Timestamp Note" : "Add Timestamp Note"}
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs text-zinc-400 block mb-1">
+                      Timestamp Captured
+                    </label>
+                    <span className="inline-flex items-center text-sm font-mono font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">
+                      {formatTimestamp(capturedTimestamp)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-zinc-400 block mb-1">
+                      Note Text
+                    </label>
+                    <textarea
+                      value={modalNoteText}
+                      onChange={(e) => setModalNoteText(e.target.value)}
+                      placeholder="Type your notes here..."
+                      className="w-full h-32 rounded-xl p-3 bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-8 flex gap-2 justify-end">
+                  <button
+                    onClick={() => {
+                      setIsNoteModalOpen(false);
+                      setEditingNote(null);
+                      setModalNoteText("");
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveNote}
+                    disabled={!modalNoteText.trim()}
+                    className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/10 cursor-pointer"
+                  >
+                    {editingNote ? "Update" : "Save"}
                   </button>
                 </div>
               </div>
