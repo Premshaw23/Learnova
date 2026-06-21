@@ -34,7 +34,9 @@ export default function SearchModal({ isOpen, onClose }) {
 
   useEffect(() => {
     const savedSearches = JSON.parse(
-      (typeof window !== "undefined" && window.localStorage
+      (typeof window !== "undefined" &&
+      window.localStorage &&
+      typeof window.localStorage.getItem === "function"
         ? window.localStorage.getItem("recentSearches")
         : null) || "[]"
     );
@@ -126,14 +128,14 @@ export default function SearchModal({ isOpen, onClose }) {
 
     setRecentSearches(updated);
 
-    if (typeof window !== "undefined" && window.localStorage) {
+    if (typeof window !== "undefined" && window.localStorage && typeof window.localStorage.setItem === "function") {
       window.localStorage.setItem("recentSearches", JSON.stringify(updated));
     }
   };
 
   const clearRecentSearches = () => {
     setRecentSearches([]);
-    if (typeof window !== "undefined" && window.localStorage) {
+    if (typeof window !== "undefined" && window.localStorage && typeof window.localStorage.removeItem === "function") {
       window.localStorage.removeItem("recentSearches");
     }
   };

@@ -162,13 +162,20 @@ export const quizDatabase = {
     questions: [
       {
         id: 1,
-        question: "What is the correct syntax for defining a variable in JavaScript?",
-        options: ["var myVar = 5;", "variable myVar = 5;", "let myVar = 5;", "const myVar = 5;"],
+        question:
+          "What is the correct syntax for defining a variable in JavaScript?",
+        options: [
+          "var myVar = 5;",
+          "variable myVar = 5;",
+          "let myVar = 5;",
+          "const myVar = 5;",
+        ],
         answer: 2, // let myVar = 5;
       },
       {
         id: 2,
-        question: "Which of the following is NOT a valid data type in JavaScript?",
+        question:
+          "Which of the following is NOT a valid data type in JavaScript?",
         options: ["string", "boolean", "integer", "undefined"],
         answer: 2, // integer
       },
@@ -179,13 +186,12 @@ export const quizDatabase = {
           "Assigns a value to a variable",
           "Checks for equality without type coercion",
           "Checks for equality with type coercion",
-          "Checks if a variable is defined"
+          "Checks if a variable is defined",
         ],
         answer: 1, // Checks for equality without type coercion
-      }
-    ]
-  }
-};
+      },
+    ],
+  },
 };
 
 /**

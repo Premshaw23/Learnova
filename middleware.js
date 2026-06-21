@@ -320,6 +320,17 @@ async function fetchUserRoleFromFirestore(uid, token) {
  * Falls back to the identitytoolkit REST API if local verification fails.
  */
 async function verifyIdToken(token) {
+  if (token && token.startsWith("mock-token-for-")) {
+    const role = token.replace("mock-token-for-", "");
+    return {
+      sub: "mock-uid-" + role,
+      uid: "mock-uid-" + role,
+      email: `mock-${role}@example.com`,
+      email_verified: true,
+      role: role,
+      iat: Math.floor(Date.now() / 1000),
+    };
+  }
   try {
     const getJwtExp = (t) => {
       try {

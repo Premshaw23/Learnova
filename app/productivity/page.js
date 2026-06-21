@@ -884,8 +884,6 @@ export default function ProductivityPage() {
     );
   }
 
-  return (   ← this is the existing line 879, stays as-is
-
   return (
     <div
       className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${

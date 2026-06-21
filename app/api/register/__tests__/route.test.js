@@ -127,6 +127,6 @@ describe("POST /api/register", () => {
     expect(executeSaga).toHaveBeenCalled();
     const sagaArgs = executeSaga.mock.calls[0][0];
     expect(sagaArgs.steps.some((step) => step.name === "write_firestore_profile")).toBe(true);
-    expect(result.user.email).toBe("test@example.com");
+    expect(result.data.user.email).toBe("test@example.com");
   });
 });

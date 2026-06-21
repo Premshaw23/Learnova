@@ -54,21 +54,30 @@ export const POST = withErrorHandler(
           userId,
           studentName,
           email,
-          confidenceScore: normalizedConfidence,
+          confidenceScore: parsedConfidence,
           normalizedDate,
         },
         token
       );
 
-    emitWebhookEvent("attendance.recorded", {
-      studentId: userId,
-      studentName,
-      email,
-      confidence: normalizedConfidence,
-      date: normalizedDate,
-      recordedBy: token.uid,
-    });
+      if (!sagaResult.success) {
+        return jsonError(sagaResult.error || "Failed to record attendance", 500);
+      }
 
-    return jsonSuccess({ alreadyRecorded: false }, 201);
-  })
+      if (sagaResult.context?._alreadyRecorded) {
+        return jsonSuccess({ alreadyRecorded: true }, 200);
+      }
+
+      emitWebhookEvent("attendance.recorded", {
+        studentId: userId,
+        studentName,
+        email,
+        confidence: normalizedConfidence,
+        date: normalizedDate,
+        recordedBy: token.uid,
+      });
+
+      return jsonSuccess({ alreadyRecorded: false }, 201);
+    }
+  )
 );

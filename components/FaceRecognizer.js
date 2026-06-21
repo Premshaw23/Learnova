@@ -396,16 +396,7 @@ export default function FaceRecognizer({ authUser }) {
       signal?.aborted
     ) {
       return;
-    const processVideo = async (signal) => {
-      if (
-        !videoRef.current ||
-        !canvasRef.current ||
-        !faceMatcherRef.current ||
-        !isMounted.current ||
-        signal?.aborted
-      ) {
-        return;
-      }
+    }
 
       const faceapi = await import("face-api.js");
       faceapiRef.current = faceapi;
@@ -592,9 +583,9 @@ export default function FaceRecognizer({ authUser }) {
           return currentLiveness;
         });
       }
-    };
+  };
 
-    useEffect(() => {
+  useEffect(() => {
       if (analytics) {
         try {
           logEvent(analytics, "page_view", { page: "attendance" });
@@ -893,5 +884,4 @@ export default function FaceRecognizer({ authUser }) {
         )}
       </div>
     );
-  };
-}
+  }

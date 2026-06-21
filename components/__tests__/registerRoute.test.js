@@ -1,8 +1,40 @@
+vi.mock("firebase-admin", () => {
+  const mockSet = vi.fn().mockResolvedValue({});
+  const mockGet = vi.fn().mockResolvedValue({ exists: false });
+  const mockSetCustomUserClaims = vi.fn().mockResolvedValue({});
+  const mockGetUser = vi.fn();
+
+  const firestoreFn = vi.fn(() => ({
+    collection: vi.fn(() => ({
+      doc: vi.fn(() => ({
+        get: mockGet,
+        set: mockSet,
+        delete: vi.fn().mockResolvedValue({}),
+      })),
+    })),
+  }));
+
+  const authFn = vi.fn(() => ({
+    setCustomUserClaims: mockSetCustomUserClaims,
+    getUser: mockGetUser,
+  }));
+
+  return {
+    default: {
+      firestore: firestoreFn,
+      auth: authFn,
+    },
+    firestore: firestoreFn,
+    auth: authFn,
+  };
+});
+
 import { POST } from "@/app/api/register/route";
 import { connectDb } from "@/lib/mongodb";
 import { put, del } from "@vercel/blob";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
+import admin from "firebase-admin";
 
 vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn(),
@@ -21,8 +53,8 @@ vi.mock("next/server", () => ({
 }));
 
 vi.mock("@vercel/blob", () => ({
-  put: vi.fn(),
-  del: vi.fn(),
+  put: vi.fn().mockResolvedValue({ url: "https://example.com/blob.jpg" }),
+  del: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock("@/lib/mongodb", () => ({
@@ -31,6 +63,7 @@ vi.mock("@/lib/mongodb", () => ({
 
 vi.mock("@/lib/firebase-admin", () => ({
   verifyFirebaseToken: vi.fn(),
+  initializeFirebase: vi.fn(),
 }));
 
 describe("POST /api/register - Authentication, Rollback, and Validation Security Tests", () => {
@@ -252,7 +285,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     expect(body6.error).toContain("Too many registration attempts");
   });
 
-  test("deletes uploaded blob if database insertion fails (rollback)", async () => {
+  test("does not upload blob if mongodb database insertion fails", async () => {
     mockFindOne.mockResolvedValue(null);
     mockInsertOne.mockRejectedValue(new Error("Database write failed"));
 
@@ -268,15 +301,13 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
     expect(response.status).toBe(500);
     expect(body.error).toBe("Registration failed. Please try again.");
-    expect(put).toHaveBeenCalled();
-    expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
+    expect(put).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
   });
 
-  test("handles MongoDB unique index duplicate key error (E11000) by returning 409 and rolling back blob upload", async () => {
+  test("handles MongoDB unique index duplicate key error (E11000) by returning 409 and not uploading blob", async () => {
     mockFindOne.mockResolvedValue(null);
 
-    // Simulate a race condition: another request finished inserting after our findOne check,
-    // so MongoDB throws a duplicate key error (code 11000) on our insertOne call.
     const duplicateKeyError = new Error(
       "E11000 duplicate key error collection: users index: email_1 dup key"
     );
@@ -295,6 +326,29 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
     expect(response.status).toBe(409);
     expect(body.error).toBe("User already registered");
+    expect(put).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  test("deletes uploaded blob if firestore profile write fails (rollback)", async () => {
+    mockFindOne.mockResolvedValue(null);
+    mockInsertOne.mockResolvedValue({ insertedId: "mock-id" });
+
+    // Mock Firestore set to fail, which triggers compensation/rollback
+    admin.firestore().collection().doc().set.mockRejectedValue(new Error("Firestore write failed"));
+
+    const req = createMockRequest({
+      name: "John Doe",
+      rollNo: "123456",
+      email: "user@domain.com",
+      photo: createMockFile("image/jpeg", 1024, [0xff, 0xd8, 0xff]),
+    });
+
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toBe("Registration failed. Please try again.");
     expect(put).toHaveBeenCalled();
     expect(del).toHaveBeenCalledWith("https://example.com/blob.jpg");
   });

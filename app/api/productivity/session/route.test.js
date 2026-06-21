@@ -1,25 +1,27 @@
 import { POST, GET } from "./route";
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
+import { requireRole, requireAuth } from "@/lib/rbac";
 import { awardXp } from "@/lib/gamification-service";
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
 }));
 
-jest.mock("@/lib/rbac", () => ({
-  requireRole: jest.fn(),
+vi.mock("@/lib/rbac", () => ({
+  requireRole: vi.fn(),
+  requireAuth: vi.fn(),
 }));
 
-jest.mock("@/lib/error-handler", () => ({
+vi.mock("@/lib/error-handler", () => ({
   withErrorHandler: (handler) => handler,
+  parseJSON: vi.fn(async (request) => request.json()),
 }));
 
-jest.mock("@/lib/gamification-service", () => ({
-  awardXp: jest.fn(),
+vi.mock("@/lib/gamification-service", () => ({
+  awardXp: vi.fn(),
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -33,25 +35,29 @@ describe("POST /api/productivity/session", () => {
   let mockCollection;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     mockCollection = {
-      insertOne: jest.fn().mockResolvedValue({ insertedId: "session-123" }),
-      find: jest.fn(),
+      insertOne: vi.fn().mockResolvedValue({ insertedId: "session-123" }),
+      find: vi.fn(),
     };
 
     mockDb = {
-      collection: jest.fn(() => mockCollection),
+      collection: vi.fn(() => mockCollection),
     };
 
     connectDb.mockResolvedValue(mockDb);
     requireRole.mockResolvedValue({ payload: { uid: "user-123" } });
+    requireAuth.mockResolvedValue({ uid: "user-123" });
   });
 
   test("successfully records a focus session and awards XP", async () => {
     awardXp.mockResolvedValue({ xpAwarded: 15 });
 
     const request = {
+      headers: {
+        get: vi.fn().mockReturnValue("127.0.0.1"),
+      },
       json: async () => ({
         duration: 25,
         completedAt: new Date().toISOString(),
@@ -71,6 +77,9 @@ describe("POST /api/productivity/session", () => {
 
   test("records a break session and does not award XP", async () => {
     const request = {
+      headers: {
+        get: vi.fn().mockReturnValue("127.0.0.1"),
+      },
       json: async () => ({
         duration: 5,
         completedAt: new Date().toISOString(),
@@ -90,6 +99,9 @@ describe("POST /api/productivity/session", () => {
 
   test("rejects invalid request payload", async () => {
     const request = {
+      headers: {
+        get: vi.fn().mockReturnValue("127.0.0.1"),
+      },
       json: async () => ({
         duration: "invalid-duration",
         completedAt: "invalid-date",

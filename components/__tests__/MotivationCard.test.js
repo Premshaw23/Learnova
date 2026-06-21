@@ -1,6 +1,6 @@
 import { render, screen, act } from "@testing-library/react";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import MotivationCard from "./MotivationCard";
+import MotivationCard from "../MotivationCard";
 
 vi.mock("framer-motion", () => ({
   motion: {

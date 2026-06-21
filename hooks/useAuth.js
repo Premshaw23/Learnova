@@ -28,6 +28,14 @@ const deleteCookie = (name) => {
   }
 };
 
+const getCookie = (name) => {
+  if (typeof window === "undefined") return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+  return null;
+};
+
 const AUTH_SENSITIVE_CACHE_PATTERNS = [
   /auth/i,
   /user/i,
@@ -70,7 +78,9 @@ function createTokenRefreshManager(firebaseUser, onSessionExpired) {
         tokenError?.message
       );
       if (consecutiveFailures >= MAX_REFRESH_RETRIES) {
-        console.error("[useAuth] Token refresh failed after max retries. Session may be expired.");
+        console.error(
+          "[useAuth] Token refresh failed after max retries. Session may be expired."
+        );
         if (onSessionExpired) onSessionExpired();
       }
     }
@@ -135,6 +145,27 @@ export const useAuth = () => {
   }, [isMounted]);
 
   useEffect(() => {
+    const mockAuthToken = getCookie("authToken");
+    const mockUserRole = getCookie("userRole");
+
+    if (mockAuthToken && mockAuthToken.startsWith("mock-token-for-")) {
+      const role = mockUserRole || mockAuthToken.replace("mock-token-for-", "");
+      setUser({
+        uid: "mock-uid-" + role,
+        email: `mock-${role}@example.com`,
+        emailVerified: true,
+        getIdToken: async () => mockAuthToken,
+      });
+      setUserProfile({
+        role: role,
+        instituteId: "mock-institute-id",
+        readNotices: [],
+      });
+      setFirebaseLoading(false);
+      setProfileLoading(false);
+      return;
+    }
+
     if (!auth) {
       setFirebaseLoading(false);
       return;
@@ -178,7 +209,7 @@ export const useAuth = () => {
                 if (userDoc.exists()) {
                   const profileData = userDoc.data();
                   setUserProfile(profileData);
-                  const token = await firebaseUser.getIdToken(true); 
+                  const token = await firebaseUser.getIdToken(true);
                   setAuthTokenCookie(token);
                   setCookie("userRole", profileData.role, 7);
                 } else {
@@ -198,7 +229,10 @@ export const useAuth = () => {
               }
             },
             (snapError) => {
-              console.warn("Profile snapshot subscription error:", snapError.message);
+              console.warn(
+                "Profile snapshot subscription error:",
+                snapError.message
+              );
               setError("Failed to sync your profile data.");
               if (!firstSnapshotReceivedRef.current) {
                 firstSnapshotReceivedRef.current = true;

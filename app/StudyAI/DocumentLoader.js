@@ -17,10 +17,8 @@ async function getPdfJs() {
 
   const pdfjs = await import("pdfjs-dist");
 
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.js",
-    import.meta.url
-  ).toString();
+  // Use CDN worker to avoid webpack resolution of local binary at build time
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
   pdfjsLib = pdfjs;
   return pdfjsLib;

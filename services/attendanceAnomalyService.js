@@ -131,7 +131,7 @@ export function generateStudentAlerts({ name, currentRate, riskLevel, classesNee
  * @returns {object|null} Batch anomaly object or null
  */
 export function detectBatchAnomaly(students = [], threshold = 0.4) {
-  if (students.length === 0) return null;
+  if (students.length === 0) return { detected: false };
 
   const atRiskCount = students.filter(
     (s) => s.riskLevel !== RISK_LEVELS.SAFE

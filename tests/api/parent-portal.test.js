@@ -319,6 +319,7 @@ describe("Parent Portal Feature Tests", () => {
     const mockMongoCollection = {
       updateOne: vi.fn(),
       deleteOne: vi.fn(),
+      insertOne: vi.fn().mockResolvedValue({}),
     };
     connectDb.mockResolvedValue({
       collection: vi.fn(() => mockMongoCollection),

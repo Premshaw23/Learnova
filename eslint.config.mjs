@@ -1,7 +1,14 @@
-import nextConfig from "eslint-config-next/core-web-vitals";
+import { FlatCompat } from "@eslint/eslintrc";
 
-export default [
-  ...nextConfig,
+const compat = new FlatCompat({
+  baseDirectory: import.meta.dirname,
+});
+
+const eslintConfig = [
+  {
+    ignores: [".next/**/*", "node_modules/**/*", "playwright-report/**/*", "test-results/**/*"]
+  },
+  ...compat.extends("next/core-web-vitals"),
   {
     rules: {
       "no-console": "warn",
@@ -15,3 +22,5 @@ export default [
     },
   },
 ];
+
+export default eslintConfig;

@@ -3,15 +3,24 @@ import { render, screen } from "@testing-library/react";
 import { describe, test, expect, vi } from "vitest";
 import AmbientMode from "../AmbientMode";
 
-vi.mock("framer-motion", () => ({
-  motion: {
-    div: ({ children, ...props }) => (
-      <div data-testid="motion-div" {...props}>
-        {children}
-      </div>
-    ),
-  },
-}));
+vi.mock("framer-motion", () => {
+  const cleanProps = ({ whileHover, whileTap, transition, initial, animate, exit, ...props }) => props;
+  return {
+    motion: {
+      div: ({ children, ...props }) => (
+        <div data-testid="motion-div" {...cleanProps(props)}>
+          {children}
+        </div>
+      ),
+      button: ({ children, ...props }) => (
+        <button {...cleanProps(props)}>
+          {children}
+        </button>
+      ),
+    },
+    AnimatePresence: ({ children }) => children,
+  };
+});
 
 describe("AmbientMode", () => {
   test("renders ambient mode label", () => {

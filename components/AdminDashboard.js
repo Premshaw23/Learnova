@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   FileText,
   History,
+  Search,
 } from "lucide-react";
 import { Navbar } from "./Navbar";
 import { dashboardContentOffsetClass } from "@/components/navigation";

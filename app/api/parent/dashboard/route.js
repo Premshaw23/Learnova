@@ -118,7 +118,7 @@ export const GET = withErrorHandler(async (request) => {
     });
 
     const prediction = predictStudentAttendance(studentRecords);
-    if (prediction.riskLevel === "high") {
+    if (studentRecords.length >= 5 && attendanceRate >= 75 && prediction.riskLevel === "high") {
       const oneDayAgo = new Date(
         Date.now() - 24 * 60 * 60 * 1000
       ).toISOString();

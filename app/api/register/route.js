@@ -1,6 +1,8 @@
 import { put, del } from "@vercel/blob";
 import { randomUUID } from "crypto";
 import { connectDb } from "@/lib/mongodb";
+import admin from "firebase-admin";
+import { initializeFirebase } from "@/lib/firebase-admin";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
