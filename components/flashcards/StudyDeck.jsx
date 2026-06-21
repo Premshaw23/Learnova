@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 
-
 export default function StudyDeck() {
   const [cards, setCards] = useState([]);
   const [index, setIndex] = useState(0);
@@ -18,9 +17,7 @@ export default function StudyDeck() {
   async function fetchCards() {
     setLoading(true);
     try {
-      const res = await apiFetch(`/api/flashcards`);
-      if (!res.ok) throw new Error("Failed to load flashcards");
-      const data = await res.json();
+      const data = await apiFetch(`/api/flashcards`);
       setCards(data || []);
       setIndex(0);
       setShowBack(false);
@@ -44,15 +41,40 @@ export default function StudyDeck() {
   return (
     <div className="p-4 max-w-2xl">
       <div className="border rounded-xl p-6 mb-4 bg-white/5">
-        <div className="text-sm text-zinc-400 mb-1">Card {index + 1} / {cards.length}</div>
+        <div className="text-sm text-zinc-400 mb-1">
+          Card {index + 1} / {cards.length}
+        </div>
         <h3 className="text-xl font-semibold mb-3">{card.front}</h3>
-        {showBack ? <p className="text-zinc-200">{card.back}</p> : <button onClick={() => setShowBack(true)} className="btn">Show answer</button>}
+        {showBack ? (
+          <p className="text-zinc-200">{card.back}</p>
+        ) : (
+          <button onClick={() => setShowBack(true)} className="btn">
+            Show answer
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
-        <button onClick={nextCard} className="px-4 py-2 bg-indigo-600 text-white rounded-xl">Next</button>
-        <button onClick={() => { setShowBack(true); }} className="px-4 py-2 bg-zinc-700 text-white rounded-xl">Reveal</button>
-        <button onClick={() => setShowOrigin((prev) => !prev)} className="px-4 py-2 bg-slate-700 text-white rounded-xl">View Origin</button>
+        <button
+          onClick={nextCard}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-xl"
+        >
+          Next
+        </button>
+        <button
+          onClick={() => {
+            setShowBack(true);
+          }}
+          className="px-4 py-2 bg-zinc-700 text-white rounded-xl"
+        >
+          Reveal
+        </button>
+        <button
+          onClick={() => setShowOrigin((prev) => !prev)}
+          className="px-4 py-2 bg-slate-700 text-white rounded-xl"
+        >
+          View Origin
+        </button>
       </div>
 
       {showOrigin && (
@@ -61,7 +83,9 @@ export default function StudyDeck() {
           {card.origin ? (
             <p className="whitespace-pre-line">{card.origin}</p>
           ) : (
-            <p className="text-zinc-500">Origin data is not available for this flashcard.</p>
+            <p className="text-zinc-500">
+              Origin data is not available for this flashcard.
+            </p>
           )}
         </div>
       )}

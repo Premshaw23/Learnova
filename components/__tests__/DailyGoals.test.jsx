@@ -9,15 +9,12 @@ const mockSafeLocalStorageSet = vi.fn();
 const mockNormalizeDailyGoals = vi.fn();
 
 vi.mock("@/lib/storage", () => ({
-  safeLocalStorageGet: (...args) =>
-    mockSafeLocalStorageGet(...args),
-  safeLocalStorageSet: (...args) =>
-    mockSafeLocalStorageSet(...args),
+  safeLocalStorageGet: (...args) => mockSafeLocalStorageGet(...args),
+  safeLocalStorageSet: (...args) => mockSafeLocalStorageSet(...args),
 }));
 
 vi.mock("@/lib/wellnessStorage", () => ({
-  normalizeDailyGoals: (...args) =>
-    mockNormalizeDailyGoals(...args),
+  normalizeDailyGoals: (...args) => mockNormalizeDailyGoals(...args),
 }));
 
 describe("DailyGoals Goal Management", () => {
@@ -25,23 +22,20 @@ describe("DailyGoals Goal Management", () => {
     vi.clearAllMocks();
 
     mockSafeLocalStorageGet.mockReturnValue([]);
-    mockNormalizeDailyGoals.mockImplementation(
-      (value) => value
-    );
+    mockNormalizeDailyGoals.mockImplementation((value) => value);
 
-    global.crypto = {
-      randomUUID: vi.fn(() => "goal-123"),
-    };
+    Object.defineProperty(globalThis, "crypto", {
+      value: {
+        randomUUID: vi.fn(() => "goal-123"),
+      },
+      configurable: true,
+    });
   });
 
   test("renders empty state when no goals exist", () => {
     render(<DailyGoals />);
 
-    expect(
-      screen.getByText(
-        /no goals added yet/i
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText(/no goals added yet/i)).toBeInTheDocument();
   });
 
   test("adds a new goal", async () => {
@@ -61,11 +55,7 @@ describe("DailyGoals Goal Management", () => {
       })
     );
 
-    expect(
-      screen.getByText(
-        "Drink 2 liters of water"
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText("Drink 2 liters of water")).toBeInTheDocument();
   });
 
   test("does not add empty goals", async () => {
@@ -79,11 +69,7 @@ describe("DailyGoals Goal Management", () => {
       })
     );
 
-    expect(
-      screen.getByText(
-        /no goals added yet/i
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText(/no goals added yet/i)).toBeInTheDocument();
   });
 
   test("toggles goal completion", async () => {
@@ -103,16 +89,14 @@ describe("DailyGoals Goal Management", () => {
       })
     );
 
-    await user.click(
-      screen.getByRole("button", {
-        name: /morning walk/i,
-      })
-    );
+    const [toggleButton] = screen.getAllByRole("button", {
+      name: /morning walk/i,
+    });
+    await user.click(toggleButton);
 
-    expect(
-      screen.getByText("Morning Walk")
-        .closest("button")
-    ).toHaveClass("line-through");
+    expect(screen.getByText("Morning Walk").closest("button")).toHaveClass(
+      "line-through"
+    );
   });
 
   test("removes a goal", async () => {
@@ -138,9 +122,7 @@ describe("DailyGoals Goal Management", () => {
       })
     );
 
-    expect(
-      screen.queryByText("Meditation")
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Meditation")).not.toBeInTheDocument();
   });
 
   test("loads saved goals from storage", () => {
@@ -154,8 +136,6 @@ describe("DailyGoals Goal Management", () => {
 
     render(<DailyGoals />);
 
-    expect(
-      screen.getByText("Read a book")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Read a book")).toBeInTheDocument();
   });
 });

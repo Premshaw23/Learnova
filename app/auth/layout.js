@@ -15,9 +15,5 @@ export const metadata = {
  * The shell itself is just a plain div; all visual chrome lives in the page.
  */
 export default function AuthLayout({ children }) {
-  return (
-    <div className="auth-shell contents">
-      {children}
-    </div>
-  );
+  return <div className="auth-shell contents">{children}</div>;
 }

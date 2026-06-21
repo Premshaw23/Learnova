@@ -33,12 +33,18 @@ export function useTimetableReminders() {
         loadTimetable();
       };
       window.addEventListener("timetable-updated", handleUpdate);
-      return () => window.removeEventListener("timetable-updated", handleUpdate);
+      return () =>
+        window.removeEventListener("timetable-updated", handleUpdate);
     }
   }, []);
 
   const triggerNotification = (cls, immediate = false) => {
-    if (typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") return;
+    if (
+      typeof window === "undefined" ||
+      !("Notification" in window) ||
+      Notification.permission !== "granted"
+    )
+      return;
 
     const [startStr] = cls.time.split("-");
     if (!startStr) return;
@@ -58,20 +64,22 @@ export function useTimetableReminders() {
       vibrate: [100, 50, 100],
       tag: `class-reminder-${cls.subject}-${cls.time}`,
       data: {
-        url: "/timetable"
+        url: "/timetable",
       },
       actions: [
         { action: "open", title: "View Timetable" },
-        { action: "close", title: "Dismiss" }
-      ]
+        { action: "close", title: "Dismiss" },
+      ],
     };
 
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.showNotification(title, options);
-      }).catch(() => {
-        new Notification(title, options);
-      });
+      navigator.serviceWorker.ready
+        .then((registration) => {
+          registration.showNotification(title, options);
+        })
+        .catch(() => {
+          new Notification(title, options);
+        });
     } else {
       new Notification(title, options);
     }
@@ -81,7 +89,9 @@ export function useTimetableReminders() {
     if (pushStatus !== "granted" || !isMounted()) return;
 
     const timerIds = [];
-    const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+    const todayName = new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+    });
     const todayClasses = timetableData[todayName] || [];
 
     todayClasses.forEach((cls) => {

@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  * Server-side cleanup endpoint for orphaned Firebase Auth accounts.
  * This endpoint uses the Firebase Admin SDK to delete auth accounts
  * that cannot be deleted client-side due to re-authentication requirements.
- * 
+ *
  * Called when client-side profile creation fails and the auth account
  * needs to be cleaned up. Access is strictly authenticated to ensure a user
  * can only delete their own freshly created/orphaned account (CWE-306).
@@ -36,32 +36,39 @@ export const POST = withErrorHandler(async (request) => {
 
   try {
     initializeFirebase();
-    
+
     logger.info(`[auth-cleanup] Attempting to delete orphaned account: ${uid}`);
-    
+
     // Delete the user from Firebase Auth using Admin SDK
     // This bypasses the re-authentication requirement
     await admin.auth().deleteUser(uid);
-    
+
     logger.info(`[auth-cleanup] Successfully deleted orphaned account: ${uid}`);
-    
-    return jsonSuccess({ 
+
+    return jsonSuccess({
       message: "Orphaned auth account deleted successfully",
-      uid 
+      uid,
     });
   } catch (error) {
     // Don't throw if user doesn't exist - they may have been already cleaned up
     if (error.code === "auth/user-not-found") {
-      logger.warn(`[auth-cleanup] User ${uid} not found - may have been already cleaned up`);
-      return jsonSuccess({ 
+      logger.warn(
+        `[auth-cleanup] User ${uid} not found - may have been already cleaned up`
+      );
+      return jsonSuccess({
         message: "User already deleted or not found",
-        uid 
+        uid,
       });
     }
 
-    logger.error(`[auth-cleanup] Failed to delete orphaned account ${uid}: ${error.message}`);
-    
+    logger.error(
+      `[auth-cleanup] Failed to delete orphaned account ${uid}: ${error.message}`
+    );
+
     // Log for manual cleanup but don't expose internal error details
-    return jsonError("Failed to cleanup orphaned account. Please contact support.", 500);
+    return jsonError(
+      "Failed to cleanup orphaned account. Please contact support.",
+      500
+    );
   }
 });

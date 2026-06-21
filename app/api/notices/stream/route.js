@@ -2,7 +2,7 @@ import { authenticateRequest } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { connectDbForSSE } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
 
@@ -12,19 +12,6 @@ const HEARTBEAT_INTERVAL_MS = 15000;
 const POLL_INTERVAL_MS = 10000;
 const NOTICE_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 
-// ── Redis Client ─────────────────────────────────────────────────────────────
-let redisClient;
-
-function getRedis() {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  if (!redisClient) {
-    redisClient = new Redis({ url, token });
-  }
-  return redisClient;
-}
-
 // ── Redis Keys ───────────────────────────────────────────────────────────────
 const redisKeys = {
   connectionCount: (userId) => `sse:conn:${userId}`,
@@ -32,15 +19,27 @@ const redisKeys = {
 };
 
 // ── In-memory connection fallback (used when Redis is unavailable) ────────────
+// Entries carry a TTL so abnormally terminated connections (serverless timeout,
+// browser crash, process kill) self-heal instead of permanently blocking slots.
+const MEMORY_CONNECTION_TTL_MS = 5 * 60 * 1000;
 const memoryConnections = new Map();
 
 function getMemoryConnectionCount(userId) {
-  return memoryConnections.get(userId) || 0;
+  const entry = memoryConnections.get(userId);
+  if (!entry) return 0;
+  if (Date.now() > entry.expiresAt) {
+    memoryConnections.delete(userId);
+    return 0;
+  }
+  return entry.count;
 }
 
 function incrementMemoryConnection(userId) {
   const count = getMemoryConnectionCount(userId) + 1;
-  memoryConnections.set(userId, count);
+  memoryConnections.set(userId, {
+    count,
+    expiresAt: Date.now() + MEMORY_CONNECTION_TTL_MS,
+  });
   return count;
 }
 
@@ -49,10 +48,23 @@ function decrementMemoryConnection(userId) {
   if (count === 0) {
     memoryConnections.delete(userId);
   } else {
-    memoryConnections.set(userId, count);
+    memoryConnections.set(userId, {
+      count,
+      expiresAt: Date.now() + MEMORY_CONNECTION_TTL_MS,
+    });
   }
   return count;
 }
+
+// Periodic eviction of stale entries — same pattern as lib/rateLimit.js
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, entry] of memoryConnections.entries()) {
+    if (now > entry.expiresAt) {
+      memoryConnections.delete(userId);
+    }
+  }
+}, 60 * 1000).unref();
 
 // ── Connection Registry (Redis-backed with in-memory fallback) ────────────────
 async function registerConnection(userId) {
@@ -64,15 +76,14 @@ async function registerConnection(userId) {
       decrementMemoryConnection(userId);
       return { connId: null, allowed: false };
     }
-    const connId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    const connId =
+      Date.now().toString(36) + Math.random().toString(36).slice(2);
     return { connId, allowed: true };
   }
 
   const key = redisKeys.connectionCount(userId);
   const count = await redis.incr(key);
-  if (count === 1) {
-    await redis.expire(key, Math.ceil(IDLE_TIMEOUT_MS / 1000));
-  }
+  await redis.expire(key, Math.ceil(IDLE_TIMEOUT_MS / 1000));
 
   if (count > MAX_PER_USER) {
     await redis.decr(key);
@@ -118,15 +129,33 @@ export async function GET(request) {
     const profile = await getUserProfile(decodedToken.uid);
     const userRole = profile?.role || "student";
     const userId = decodedToken.uid;
-    const instituteId = profile?.instituteId || profile?.uid;
+    const instituteId =
+      profile?.instituteId || profile?.uid || decodedToken.uid;
+
+    if (!instituteId) {
+      return new Response(
+        JSON.stringify({
+          error: "Unauthorized: Missing institute configuration.",
+        }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    const rateLimitResult = await checkRateLimit(`notices_stream_${ip}_${userId}`);
+    const rateLimitResult = await checkRateLimit(
+      `notices_stream_${ip}_${userId}`
+    );
     if (!rateLimitResult.allowed) {
-      return new Response(JSON.stringify({ error: "Too many connections. Please slow down." }), {
-        status: 429,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Too many connections. Please slow down." }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     let isConnected = true;
@@ -161,15 +190,16 @@ export async function GET(request) {
             await unregisterConnection(userId);
             connId = null;
           }
-          try { controller.close(); } catch {}
+          try {
+            controller.close();
+          } catch {}
         };
 
         const { connId: newConnId, allowed } = await registerConnection(userId);
         connId = newConnId;
         if (!allowed) {
           sendEvent("error", {
-            message:
-              "Too many connections. Close other tabs and try again.",
+            message: "Too many connections. Close other tabs and try again.",
           });
           await cleanup();
           return;
@@ -226,16 +256,25 @@ export async function GET(request) {
               for (const member of members) {
                 if (!isConnected) break;
                 try {
-                  const doc = typeof member === "string" ? JSON.parse(member) : member;
+                  const doc =
+                    typeof member === "string" ? JSON.parse(member) : member;
                   const docId = doc._id || doc.id;
                   const memberTime = new Date(doc.createdAt).getTime();
                   // Skip the notice that was the last processed watermark (deterministic tie-breaker)
-                  if (memberTime === lastNoticeTime.getTime() && docId === lastNoticeId) {
+                  if (
+                    memberTime === lastNoticeTime.getTime() &&
+                    docId === lastNoticeId
+                  ) {
                     continue;
                   }
+                  const docAudience = Array.isArray(doc.targetAudience)
+                    ? doc.targetAudience
+                    : typeof doc.targetAudience === "string"
+                      ? [doc.targetAudience]
+                      : [];
                   if (
-                    doc.targetAudience &&
-                    doc.targetAudience.includes(userRole) &&
+                    docAudience.includes(userRole) &&
+                    doc.instituteId &&
                     String(doc.instituteId) === String(instituteId)
                   ) {
                     sendEvent("new-notice", {
@@ -246,7 +285,10 @@ export async function GET(request) {
                   if (memberTime > lastNoticeTime.getTime()) {
                     lastNoticeTime = new Date(doc.createdAt);
                     lastNoticeId = docId;
-                  } else if (memberTime === lastNoticeTime.getTime() && docId !== lastNoticeId) {
+                  } else if (
+                    memberTime === lastNoticeTime.getTime() &&
+                    docId !== lastNoticeId
+                  ) {
                     lastNoticeId = docId;
                   }
                 } catch {}
@@ -291,7 +333,6 @@ export async function GET(request) {
           sendEvent("ping", { time: new Date().toISOString() });
           resetIdle();
         }, HEARTBEAT_INTERVAL_MS);
-
       },
     });
 
@@ -299,7 +340,7 @@ export async function GET(request) {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache, no-transform",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
         "X-Accel-Buffering": "no",
       },
     });

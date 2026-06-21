@@ -1,25 +1,27 @@
 ---
-name: 🐛 Bug Report
-about: Create a detailed bug report to help us improve and fix errors.
-title: "[BUG] "
-labels: ["bug", "triage"]
-assignees: ""
+name: Bug Report
+about: Create a report to help us improve
+title: '[Bug] '
+labels: 'bug'
+assignees: ''
 ---
 
-# Problem
-Describe the issue clearly.
+### Description
+A clear and concise description of what the bug is.
 
-# Current Behavior
-Explain existing behavior.
+### Steps to Reproduce
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
 
-# Why This Improvement Is Needed
-Explain impact on users/developers.
+### Expected Behavior
+A clear and concise description of what you expected to happen.
 
-# Proposed Solution
-Explain the implementation approach.
+### Screenshots
+If applicable, add screenshots to help explain your problem.
 
-# Expected Outcome
-Explain expected improvements.
-
-# Additional Notes
-Optional technical/contextual notes.
+### Environment
+- OS: [e.g. Windows, macOS, Linux]
+- Browser: [e.g. Chrome, Firefox, Safari]
+- Version: [e.g. 22]

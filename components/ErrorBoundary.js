@@ -1,15 +1,21 @@
 "use client";
 import React from "react";
-import { AlertOctagon, RefreshCw, ChevronDown, ChevronUp, Terminal } from "lucide-react";
+import {
+  AlertOctagon,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Terminal,
+} from "lucide-react";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      hasError: false, 
-      error: null, 
-      errorInfo: null, 
-      showDetails: false 
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      showDetails: false,
     };
   }
 
@@ -22,23 +28,29 @@ class ErrorBoundary extends React.Component {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
+  componentDidMount() {
+    window.addEventListener("popstate", this.handleRetry);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("popstate", this.handleRetry);
+  }
   componentDidUpdate(prevProps) {
     if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
-      this.setState({ 
-        hasError: false, 
-        error: null, 
-        errorInfo: null, 
-        showDetails: false 
+      this.setState({
+        hasError: false,
+        error: null,
+        errorInfo: null,
+        showDetails: false,
       });
     }
   }
 
   handleRetry = () => {
-    this.setState({ 
-      hasError: false, 
-      error: null, 
-      errorInfo: null, 
-      showDetails: false 
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      showDetails: false,
     });
   };
 
@@ -61,13 +73,15 @@ class ErrorBoundary extends React.Component {
                 Something went wrong
               </h2>
               <p className="text-gray-400">
-                {this.props.errorMessage || "An unexpected error occurred while rendering this component. We've logged the issue and are looking into it."}
+                {this.props.errorMessage ||
+                  "An unexpected error occurred while rendering this component. We've logged the issue and are looking into it."}
               </p>
-              
+
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                 <button
                   onClick={this.handleRetry}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-medium transition-all"
+                  aria-label="Action button"
                 >
                   <RefreshCw className="w-5 h-5" />
                   Try Again
@@ -83,16 +97,24 @@ class ErrorBoundary extends React.Component {
 
             <div className="border-t border-gray-700 bg-gray-800/50">
               <button
-                onClick={() => this.setState(s => ({ showDetails: !s.showDetails }))}
+                onClick={() =>
+                  this.setState((s) => ({ showDetails: !s.showDetails }))
+                }
                 className="w-full flex items-center justify-between p-4 text-sm text-gray-400 hover:text-gray-300 transition-colors"
               >
                 <span className="flex items-center gap-2 font-medium">
                   <Terminal className="w-4 h-4" />
-                  {this.state.showDetails ? "Hide Error Details" : "Show Error Details"}
+                  {this.state.showDetails
+                    ? "Hide Error Details"
+                    : "Show Error Details"}
                 </span>
-                {this.state.showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {this.state.showDetails ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
               </button>
-              
+
               {this.state.showDetails && this.state.error && (
                 <div className="p-4 pt-0">
                   <div className="bg-black/50 rounded-xl p-4 overflow-auto max-h-60 border border-gray-700/50">

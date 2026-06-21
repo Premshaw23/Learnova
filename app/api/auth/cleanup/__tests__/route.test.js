@@ -33,11 +33,13 @@ vi.mock("@/lib/error-handler", async () => {
           return await handler(request, ...args);
         } catch (error) {
           const status = error.statusCode || 500;
-          const message = error.originalMessage !== undefined
-            ? (typeof error.originalMessage === "object"
-              ? error.originalMessage.message || JSON.stringify(error.originalMessage)
-              : error.originalMessage)
-            : error.message;
+          const message =
+            error.originalMessage !== undefined
+              ? typeof error.originalMessage === "object"
+                ? error.originalMessage.message ||
+                  JSON.stringify(error.originalMessage)
+                : error.originalMessage
+              : error.message;
           return {
             status,
             json: async () => ({

@@ -438,24 +438,11 @@ Found a security vulnerability? Please report it responsibly to **security@learn
 | <a href="https://github.com/savniagrawal1701"><img src="https://github.com/savniagrawal1701.png?size=60" width="52" height="52" alt="savniagrawal1701"/></a><br>@savniagrawal1701 |  |  |  |  |
 <!-- CONTRIBUTORS:END -->
 
-/**
-## ✨ README Improvement Notes
+---
 
-### 📌 Formatting Enhancements Needed
-- Improve heading hierarchy for better readability
-- Ensure consistent spacing between sections
-- Use proper Markdown formatting for code blocks and lists
-- Align all installation and usage steps properly
+## 🏗️ System Architecture Blueprint
 
-### 🚀 Suggested Structure Upgrade
-- Introduction
-- Features
-- Tech Stack
-- Installation
-- Usage
-- Project Structure
-- Contribution Guidelines
-- License
+Want to learn more about how Learnova's underlying technology behaves under the hood? Read our detailed, Mermaid-enhanced [System Architecture Guide](file:///e:/Learnova/Learnova/docs/ARCHITECTURE.md) to understand routing middleware verification, neural network face detection thresholds, and offline PWA queues.
 
 ### 🛠️ Documentation Improvements
 - Add badges (optional): build, license, contributors
@@ -464,8 +451,10 @@ Found a security vulnerability? Please report it responsibly to **security@learn
 
 ### 🎯 Goal
 Improve onboarding experience for new contributors and users by making README more structured, readable, and professional.
-*/ 
 
+| <a href="https://github.com/AdityaSekharDas"><img src="https://github.com/AdityaSekharDas.png?size=60" width="52" height="52" alt="AdityaSekharDas"/></a><br>@AdityaSekharDas | <a href="https://github.com/adityayadav176"><img src="https://github.com/adityayadav176.png?size=60" width="52" height="52" alt="adityayadav176"/></a><br>@adityayadav176 | <a href="https://github.com/adityack477"><img src="https://github.com/adityack477.png?size=60" width="52" height="52" alt="adityack477"/></a><br>@adityack477 | <a href="https://github.com/Nazia012"><img src="https://github.com/Nazia012.png?size=60" width="52" height="52" alt="Nazia012"/></a><br>@Nazia012 | <a href="https://github.com/dchokshi28"><img src="https://github.com/dchokshi28.png?size=60" width="52" height="52" alt="dchokshi28"/></a><br>@dchokshi28 |
+| <a href="https://github.com/ash1shkumar"><img src="https://github.com/ash1shkumar.png?size=60" width="52" height="52" alt="ash1shkumar"/></a><br>@ash1shkumar | | | | |
+| :---: | :---: | :---: | :---: | :---: |
 
 ### GSSoC Attendance Passcode Masking Guidelines
 - Always mask attendance code states internally.

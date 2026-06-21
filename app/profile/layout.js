@@ -1,16 +1,19 @@
 export const metadata = {
-  title: 'My Profile · Learnova',
-  description: 'Manage your Learnova account, preferences, and personal details',
+  title: "My Profile · Learnova",
+  description:
+    "Manage your Learnova account, preferences, and personal details",
   openGraph: {
-    title: 'My Profile · Learnova',
-    description: 'Manage your Learnova account, preferences, and personal details',
-    type: 'website',
-    siteName: 'Learnova',
+    title: "My Profile · Learnova",
+    description:
+      "Manage your Learnova account, preferences, and personal details",
+    type: "website",
+    siteName: "Learnova",
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'My Profile · Learnova',
-    description: 'Manage your Learnova account, preferences, and personal details',
+    card: "summary_large_image",
+    title: "My Profile · Learnova",
+    description:
+      "Manage your Learnova account, preferences, and personal details",
   },
 };
 

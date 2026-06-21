@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { Navbar } from "./Navbar";
+import { dashboardContentOffsetClass } from "@/components/navigation";
 import Image from "next/image";
 import CurriculumBuilder from "./dashboard/CurriculumBuilder";
 import { useAuth } from "@/hooks/useAuth";
@@ -62,30 +63,48 @@ import {
   Zap,
   Loader2,
   XCircle,
+  FileText,
+  Clock,
+  MapPin,
+  CalendarPlus,
 } from "lucide-react";
 import ExportDropdown from "@/components/ui/ExportDropdown";
-import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
+import { exportToCSV } from "@/utils/exportUtils";
 import { exportAttendancePDF } from "@/utils/pdf/attendanceReport";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import SkeletonCard from "@/components/ui/SkeletonCard";
 import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
+
+import { db } from "@/lib/firebaseConfig";
+
+import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+
 import AttendanceRiskDashboard from "@/components/dashboard/AttendanceRiskDashboard";
+import ClassroomMoodWidget from "@/components/dashboard/ClassroomMoodWidget";
 import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
+import LiveAttendanceView from "@/components/LiveAttendanceView";
 import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
 import { apiFetch } from "@/lib/apiClient";
-
+import { syncOfflineQueue, getPendingRecordsCount } from "@/services/offlineSyncQueue";
+import { auth } from "@/lib/firebaseConfig";
+import AbsentSummaryModal from "./dashboard/AbsentSummaryModal";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
-  { ssr: false, loading: () => <ChartSkeleton variant="chart" /> },
+  { ssr: false, loading: () => <ChartSkeleton variant="chart" /> }
 );
 const EngagementChart = dynamic(
   () => import("@/components/charts/EngagementChart"),
-  { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> },
+  { ssr: false, loading: () => <ChartSkeleton variant="doughnut" /> }
+);
+
+const TeacherAchievementPanel = dynamic(
+  () => import("@/components/achievements/TeacherAchievementPanel"),
+  { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 
 const TeacherDashboard = () => {
@@ -99,7 +118,10 @@ const TeacherDashboard = () => {
   const { user, userProfile } = useAuth();
   const isMounted = useIsMounted();
 
-  const { attendanceStats, studentAttendanceData } = useAttendance({ role: "teacher", user });
+  const { attendanceStats, studentAttendanceData } = useAttendance({
+    role: "teacher",
+    user,
+  });
   const { curriculum } = useCurriculum({ role: "teacher", user });
 
   const [todayClasses, setTodayClasses] = useState([]);
@@ -115,11 +137,10 @@ const TeacherDashboard = () => {
   const [allRequests, setAllRequests] = useState([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState(null);
+  const [showAbsentSummaryModal, setShowAbsentSummaryModal] = useState(false);
   const pendingRequests = useMemo(() => {
-  return attendanceRequests.filter(
-    (req) => req.status === "pending"
-  );
-}, [attendanceRequests]);
+    return attendanceRequests.filter((req) => req.status === "pending");
+  }, [attendanceRequests]);
 
   // Dynamic teacher data
   const [teacher, setTeacher] = useState({
@@ -137,43 +158,101 @@ const TeacherDashboard = () => {
 
   const isInitialFetchRef = useRef(true);
 
+  // Background Sync Effect
+  useEffect(() => {
+    const handleOnlineSync = async () => {
+      if (!user) return;
+      const count = await getPendingRecordsCount();
+      if (count === 0) return;
+
+      toast.loading(`Syncing ${count} offline attendance records...`, { id: 'offline-sync' });
+      
+      const token = await user.getIdToken();
+      const result = await syncOfflineQueue(async (record) => {
+        try {
+          const res = await fetch("/api/attendance/record", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(record),
+          });
+          return res.ok;
+        } catch (e) {
+          return false;
+        }
+      });
+
+      if (result.success) {
+        toast.success(`Successfully synced ${result.synced} records`, { id: 'offline-sync' });
+      } else {
+        toast.error(`Failed to sync ${result.failed} records`, { id: 'offline-sync' });
+      }
+    };
+
+    window.addEventListener("online", handleOnlineSync);
+    
+    // Attempt sync on mount if online
+    if (navigator.onLine && user) {
+      handleOnlineSync();
+    }
+
+    return () => window.removeEventListener("online", handleOnlineSync);
+  }, [user]);
+
   const handleExport = (format) => {
     setIsExporting(true);
     setTimeout(() => {
       if (!isMounted()) return;
       try {
-        const exportData = studentAttendanceData.map((student) => ({
-  Date: student.date || new Date().toLocaleDateString(),
-  StudentName: student.name,
-  RollNo: student.rollNo,
-  Status: student.status,
-  Time: student.time || "-",
-  Confidence: student.confidence || "-",
-}));
+        const meta = {
+          className: selectedClass || "All Classes",
+          dateRange: "Last 28 days",
+          teacherName: teacher?.name || "N/A",
+          instituteName: userProfile?.instituteName || "Learnova Institute",
+        };
 
-const attendanceSummary = {
-  totalStudents: attendanceStats.totalStudents,
-  presentToday: attendanceStats.presentToday,
-  absentToday: attendanceStats.absentToday,
-  lateToday: attendanceStats.lateToday,
-};
+        // For the Analytics tab we export student roster with available metrics
+        const analyticsRows = studentAttendanceData.map((student) => ({
+          "Class Name": meta.className,
+          "Date Range": meta.dateRange,
+          Teacher: meta.teacherName,
+          "Student Name": student.name || "—",
+          "Roll No": student.rollNo || "—",
+          "Today's Status": (student.status || "absent").toUpperCase(),
+          "Check-in Time": student.time || "—",
+          "Confidence Score":
+            student.confidence != null ? `${student.confidence}%` : "—",
+          "Attendance %": "—",
+          "Report Generated": new Date().toLocaleString(),
+        }));
 
-const filename = `attendance_report_${selectedClass || 'all'}_${new Date()
-  .toISOString()
-  .split('T')[0]}`;
-
-if (format === 'csv') {
-  exportToCSV(exportData, filename);
-} else {
-  exportAttendancePDF(exportData, {
-    className: selectedClass || 'All Classes',
-    teacherName: teacher?.name || 'N/A',
-    dateRange: 'Today',
-    instituteName: userProfile?.instituteName || 'Learnova Institute',
-    logoUrl: userProfile?.logoUrl || null,
-    summary: attendanceSummary,
-  });
-}
+        if (format === "csv") {
+          exportToCSV(
+            analyticsRows,
+            `analytics-report-${meta.className.replace(/[^a-z0-9]/gi, "_").toLowerCase()}-${new Date().toISOString().slice(0, 10)}`
+          );
+        } else {
+          const rosterRows = studentAttendanceData.map((student) => ({
+            Date: student.date || new Date().toLocaleDateString(),
+            studentName: student.name,
+            rollNo: student.rollNo,
+            status: student.status,
+            time: student.time || "—",
+            confidence: student.confidence != null ? student.confidence : null,
+          }));
+          exportAttendancePDF(rosterRows, {
+            ...meta,
+            logoUrl: userProfile?.logoUrl || null,
+            summary: {
+              totalStudents: attendanceStats.totalStudents,
+              presentToday: attendanceStats.presentToday,
+              absentToday: attendanceStats.absentToday,
+              lateToday: attendanceStats.lateToday,
+            },
+          });
+        }
         toast.success(`Successfully exported as ${format.toUpperCase()}`);
       } catch (error) {
         console.error("Export failed:", error);
@@ -184,11 +263,84 @@ if (format === 'csv') {
     }, 500);
   };
 
+  /**
+   * Export the daily attendance roster (studentAttendanceData).
+   * Uses structured CSV columns: Class Name, Date Range, Student Name,
+   * Roll No, Date, Status, Check-in Time, Confidence Score.
+   */
+  const handleAttendanceExport = (format) => {
+    setIsExporting(true);
+    setTimeout(() => {
+      if (!isMounted()) return;
+      try {
+        const meta = {
+          className: selectedClass || "All Classes",
+          dateRange: "Today — " + new Date().toLocaleDateString(),
+          teacherName: teacher?.name || "N/A",
+          instituteName: userProfile?.instituteName || "Learnova Institute",
+        };
+
+        const attendanceSummary = {
+          totalStudents: attendanceStats.totalStudents,
+          presentToday: attendanceStats.presentToday,
+          absentToday: attendanceStats.absentToday,
+          lateToday: attendanceStats.lateToday,
+        };
+
+        // Map roster to the shape exportAttendancePDF / exportAnalyticsCSV expect
+        const rosterRows = studentAttendanceData.map((student) => ({
+          Date: student.date || new Date().toLocaleDateString(),
+          studentName: student.name,
+          rollNo: student.rollNo,
+          status: student.status,
+          time: student.time || "—",
+          confidence: student.confidence != null ? student.confidence : null,
+        }));
+
+        if (format === "csv") {
+          // Build the structured CSV directly with all required columns
+          const csvRows = studentAttendanceData.map((student) => ({
+            "Class Name": meta.className,
+            "Date Range": meta.dateRange,
+            "Student Name": student.name || "—",
+            "Roll No": student.rollNo || "—",
+            Date: student.date || new Date().toLocaleDateString(),
+            Status: (student.status || "absent").toUpperCase(),
+            "Check-in Time": student.time || "—",
+            "Confidence Score":
+              student.confidence != null ? `${student.confidence}%` : "—",
+            "Attendance %": "—",
+          }));
+          exportToCSV(
+            csvRows,
+            `attendance-report-${meta.className.replace(/[^a-z0-9]/gi, "_").toLowerCase()}-${new Date().toISOString().slice(0, 10)}`
+          );
+        } else {
+          exportAttendancePDF(rosterRows, {
+            ...meta,
+            logoUrl: userProfile?.logoUrl || null,
+            summary: attendanceSummary,
+          });
+        }
+        toast.success(`Successfully exported as ${format.toUpperCase()}`);
+      } catch (error) {
+        console.error("Attendance export failed:", error);
+        toast.error("Failed to export attendance report");
+      } finally {
+        if (isMounted()) setIsExporting(false);
+      }
+    }, 500);
+  };
+
   // Fetch Teacher Profile & Schedule
   useEffect(() => {
     if (userProfile) {
       setTeacher({
-        name: userProfile.displayName || userProfile.name || userProfile.firstName + " " + userProfile.lastName || "Teacher",
+        name:
+          userProfile.displayName ||
+          userProfile.name ||
+          userProfile.firstName + " " + userProfile.lastName ||
+          "Teacher",
         id: userProfile.uid || user?.uid || "TCH001",
         email: userProfile.email || user?.email || "",
         department: userProfile.department || "General",
@@ -213,39 +365,110 @@ if (format === 'csv') {
         }
       } catch (error) {
         console.error("Error fetching schedule, falling back to mock:", error);
-        toast.error("Could not load your schedule. Showing sample data instead.");
+        toast.error(
+          "Could not load your schedule. Showing sample data instead."
+        );
       }
-      
+
       // Fallback Mock Schedule
       if (isMounted()) {
         setWeeklySchedule({
           Monday: [
-            { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
-            { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
-            { time: "14:00-15:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+            {
+              time: "09:00-10:30",
+              subject: "Data Structures",
+              room: "Lab-1",
+              students: 45,
+              semester: "4th",
+              section: "A",
+            },
+            {
+              time: "11:00-12:30",
+              subject: "Web Development",
+              room: "Lab-3",
+              students: 42,
+              semester: "6th",
+              section: "B",
+            },
+            {
+              time: "14:00-15:30",
+              subject: "Database Systems",
+              room: "Lab-2",
+              students: 38,
+              semester: "5th",
+              section: "A",
+            },
           ],
           Tuesday: [
-            { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
-            { time: "11:00-12:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+            {
+              time: "09:00-10:30",
+              subject: "Data Structures",
+              room: "Lab-1",
+              students: 45,
+              semester: "4th",
+              section: "A",
+            },
+            {
+              time: "11:00-12:30",
+              subject: "Database Systems",
+              room: "Lab-2",
+              students: 38,
+              semester: "5th",
+              section: "A",
+            },
           ],
           Wednesday: [
-            { time: "09:00-10:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
-            { time: "14:00-15:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+            {
+              time: "09:00-10:30",
+              subject: "Web Development",
+              room: "Lab-3",
+              students: 42,
+              semester: "6th",
+              section: "B",
+            },
+            {
+              time: "14:00-15:30",
+              subject: "Data Structures",
+              room: "Lab-1",
+              students: 45,
+              semester: "4th",
+              section: "A",
+            },
           ],
           Thursday: [
-            { time: "09:00-10:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
-            { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+            {
+              time: "09:00-10:30",
+              subject: "Database Systems",
+              room: "Lab-2",
+              students: 38,
+              semester: "5th",
+              section: "A",
+            },
+            {
+              time: "11:00-12:30",
+              subject: "Web Development",
+              room: "Lab-3",
+              students: 42,
+              semester: "6th",
+              section: "B",
+            },
           ],
           Friday: [
-            { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+            {
+              time: "09:00-10:30",
+              subject: "Data Structures",
+              room: "Lab-1",
+              students: 45,
+              semester: "4th",
+              section: "A",
+            },
           ],
         });
       }
     };
-    
+
     fetchSchedule();
   }, [user, userProfile]);
-
 
   const fetchAllRequests = async () => {
     if (!user) return;
@@ -386,8 +609,8 @@ if (format === 'csv') {
                   reviewedAt: new Date().toISOString(),
                   reviewedBy: user.displayName || user.email,
                 }
-              : req,
-          ),
+              : req
+          )
         );
       }
     } catch (error) {
@@ -422,12 +645,9 @@ if (format === 'csv') {
     const day = now.getDay();
 
     const isWeekday = day >= 1 && day <= 5;
-    const isAttendanceTime =
-      hour === 9 && minute <= 10;
+    const isAttendanceTime = hour === 9 && minute <= 10;
 
-    setAttendanceWindow(
-      isWeekday && isAttendanceTime
-    );
+    setAttendanceWindow(isWeekday && isAttendanceTime);
 
     const dayNames = [
       "Sunday",
@@ -441,9 +661,7 @@ if (format === 'csv') {
 
     const today = dayNames[day];
 
-    setTodayClasses(
-      weeklySchedule[today] || []
-    );
+    setTodayClasses(Array.isArray(weeklySchedule?.[today]) ? weeklySchedule[today] : []);
   }, [weeklySchedule]);
 
   const generatePasscode = async () => {
@@ -521,44 +739,6 @@ if (format === 'csv') {
     toast.success("Passcode copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
-  const handleExportCSV = () => {
-    if (!studentAttendanceData || studentAttendanceData.length === 0) {
-      toast.error("No attendance records found to export.");
-      return;
-    }
-
-  const headers = ["Student ID", "Student Name", "Date", "Attendance Status"];
-  const todayDate = new Date().toISOString().slice(0, 10);
-
-  const csvRows = studentAttendanceData.map((student) => {
-    const studentId = student.rollNo || student.id || "N/A";
-    const studentName = student.name || "Unknown";
-    const status = student.status || "absent";
-    
-    return [
-      `"${studentId}"`,
-      `"${studentName.replace(/"/g, '""')}"`, 
-      `"${todayDate}"`,
-      `"${status.toUpperCase()}"`
-    ].join(",");
-  });
-
-  const csvContent = [headers.join(","), ...csvRows].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const fileName = `attendance_report_${todayDate}.csv`;
-
-  const link = document.createElement("a");
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", fileName);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Exported data successfully to ${fileName}`);
-  }
-};
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -608,7 +788,9 @@ if (format === 'csv') {
             </div>
             {passcodeExpiresAt && (
               <div className="text-right">
-                <div className="text-sm text-muted-foreground dark:text-gray-400">Expires at</div>
+                <div className="text-sm text-muted-foreground dark:text-gray-400">
+                  Expires at
+                </div>
                 <div className="text-foreground dark:text-white font-semibold">
                   {new Date(passcodeExpiresAt).toLocaleTimeString()}
                 </div>
@@ -628,7 +810,11 @@ if (format === 'csv') {
                 ) : (
                   <Zap className="w-5 h-5" />
                 )}
-                <span>{passcodeLoading ? "Generating..." : "Generate Attendance Passcode"}</span>
+                <span>
+                  {passcodeLoading
+                    ? "Generating..."
+                    : "Generate Attendance Passcode"}
+                </span>
                 {!passcodeLoading && <Sparkles className="w-5 h-5" />}
               </span>
             </button>
@@ -645,7 +831,8 @@ if (format === 'csv') {
                     </div>
                     {passcodeExpiresAt && (
                       <div className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
-                        Expires: {new Date(passcodeExpiresAt).toLocaleTimeString()}
+                        Expires:{" "}
+                        {new Date(passcodeExpiresAt).toLocaleTimeString()}
                       </div>
                     )}
                   </div>
@@ -672,7 +859,9 @@ if (format === 'csv') {
                 ) : (
                   <XCircle className="w-4 h-4" />
                 )}
-                <span>{passcodeLoading ? "Closing..." : "Close Attendance Window"}</span>
+                <span>
+                  {passcodeLoading ? "Closing..." : "Close Attendance Window"}
+                </span>
               </button>
             </div>
           )}
@@ -688,7 +877,10 @@ if (format === 'csv') {
               <h2 className="text-2xl font-bold text-foreground dark:text-white">
                 Today's Attendance Overview
               </h2>
-              <button aria-label="Refresh attendance" className="text-accent hover:text-accent/80 transition-colors">
+              <button
+                aria-label="Refresh attendance"
+                className="text-accent hover:text-accent/80 transition-colors"
+              >
                 <RefreshCw className="w-5 h-5" />
               </button>
             </div>
@@ -757,7 +949,7 @@ if (format === 'csv') {
                     <div className="text-right">
                       <div
                         className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                          student.status,
+                          student.status
                         )}`}
                       >
                         {student.status.toUpperCase()}
@@ -776,6 +968,10 @@ if (format === 'csv') {
             </div>
           </div>
 
+          {/* Live Check-Ins */}
+          <LiveAttendanceView title="Live Check-Ins" />
+        </div>
+        <div className="space-y-8">
           {/* Exception Requests */}
           <ExceptionRequestsList
             exceptionRequests={exceptionRequests}
@@ -794,7 +990,9 @@ if (format === 'csv') {
           <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
             <div className="flex items-center space-x-2 mb-6">
               <Calendar className="w-6 h-6 text-accent" />
-              <h2 className="text-xl font-bold text-foreground dark:text-white">Today's Classes</h2>
+              <h2 className="text-xl font-bold text-foreground dark:text-white">
+                Today's Classes
+              </h2>
             </div>
 
             {todayClasses.length > 0 ? (
@@ -808,7 +1006,9 @@ if (format === 'csv') {
                       <div className="text-foreground dark:text-white font-medium">
                         {cls.subject}
                       </div>
-                      <div className="text-sm text-muted-foreground dark:text-gray-400">{cls.time}</div>
+                      <div className="text-sm text-muted-foreground dark:text-gray-400">
+                        {cls.time}
+                      </div>
                     </div>
                     <div className="text-sm text-muted-foreground dark:text-gray-400 mb-2">
                       {cls.semester} - Section {cls.section}
@@ -831,31 +1031,40 @@ if (format === 'csv') {
             ) : (
               <div className="text-center py-8">
                 <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                <p className="text-muted-foreground dark:text-gray-400">No classes scheduled for today</p>
+                <p className="text-muted-foreground dark:text-gray-400">
+                  No classes scheduled for today
+                </p>
               </div>
             )}
           </div>
 
           {/* Quick Actions */}
           <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
-            <h2 className="text-xl font-bold text-foreground dark:text-white mb-6">Quick Actions</h2>
+            <h2 className="text-xl font-bold text-foreground dark:text-white mb-6">
+              Quick Actions
+            </h2>
 
             <div className="space-y-3">
               <ExportDropdown
-                onExport={handleExport}
+                onExport={handleAttendanceExport}
                 isExporting={isExporting}
+                label="Export Reports"
                 className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left flex justify-start items-center"
               >
                 <div className="flex items-center space-x-3 text-left">
                   <Download className="w-5 h-5 text-purple-400" />
                   <div>
-                    <div className="font-medium text-foreground dark:text-white">Export Reports</div>
-                    <div className="text-sm text-muted-foreground dark:text-gray-400">CSV/PDF formats</div>
+                    <div className="font-medium text-foreground dark:text-white">
+                      Export Reports
+                    </div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      CSV / PDF formats
+                    </div>
                   </div>
                 </div>
               </ExportDropdown>
 
-              <button className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left">
+              <button className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Upload schedule">
                 <div className="flex items-center space-x-3">
                   <Upload className="w-5 h-5 text-green-400" />
                   <div>
@@ -867,7 +1076,7 @@ if (format === 'csv') {
                 </div>
               </button>
 
-              <button className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left">
+              <button className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Send notification">
                 <div className="flex items-center space-x-3">
                   <Bell className="w-5 h-5 text-orange-400" />
                   <div>
@@ -880,16 +1089,33 @@ if (format === 'csv') {
               </button>
 
               <button 
-                onClick={handleExportCSV}
+                onClick={() => setShowAbsentSummaryModal(true)}
+                className="w-full bg-gradient-to-r from-indigo-600/20 to-indigo-600/20 hover:from-indigo-600/30 hover:to-indigo-600/30 border border-indigo-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" 
+                aria-label="Action button">
+                <div className="flex items-center space-x-3">
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                  <div>
+                    <div className="font-medium">AI Lecture Summary</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      Send notes to absent students
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleExport('csv')}
                 className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
-              >
+               aria-label="Action button">
                 <div className="flex items-center space-x-3">
                   <Download className="w-5 h-5 text-purple-400" />
                   <div>
                     <div className="font-medium">Export Reports</div>
-                    <div className="text-sm text-muted-foreground dark:text-gray-400">CSV format (Instant Download)</div>
-                 </div>
-               </div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      CSV format (Instant Download)
+                    </div>
+                  </div>
+                </div>
               </button>
             </div>
           </div>
@@ -898,7 +1124,9 @@ if (format === 'csv') {
           <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
             <div className="flex items-center space-x-2 mb-6">
               <Shield className="w-6 h-6 text-green-400" />
-              <h2 className="text-xl font-bold text-foreground dark:text-white">System Status</h2>
+              <h2 className="text-xl font-bold text-foreground dark:text-white">
+                System Status
+              </h2>
             </div>
 
             <div className="space-y-3">
@@ -915,7 +1143,9 @@ if (format === 'csv') {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-muted-foreground dark:text-gray-300 text-sm">GPS Geofencing</span>
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    GPS Geofencing
+                  </span>
                 </div>
                 <span className="text-green-400 text-sm">Active</span>
               </div>
@@ -923,7 +1153,9 @@ if (format === 'csv') {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-muted-foreground dark:text-gray-300 text-sm">Time Window</span>
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    Time Window
+                  </span>
                 </div>
                 <span className="text-green-400 text-sm">Configured</span>
               </div>
@@ -931,7 +1163,9 @@ if (format === 'csv') {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Activity className="w-4 h-4 text-blue-400" />
-                  <span className="text-muted-foreground dark:text-gray-300 text-sm">Live Monitoring</span>
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    Live Monitoring
+                  </span>
                 </div>
                 <span className="text-blue-400 text-sm">Running</span>
               </div>
@@ -953,11 +1187,22 @@ if (format === 'csv') {
 
   const renderAnalytics = () => (
     <div className="space-y-8">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-foreground dark:text-white mb-2">
-          Analytics Dashboard
-        </h2>
-        <p className="text-muted-foreground dark:text-gray-400">Detailed insights and trends</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground dark:text-white mb-2">
+            Analytics Dashboard
+          </h2>
+          <p className="text-muted-foreground dark:text-gray-400">
+            Detailed insights and trends
+          </p>
+        </div>
+        {/* Analytics export button */}
+        <ExportDropdown
+          onExport={handleExport}
+          isExporting={isExporting}
+          label="Export Analytics"
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white px-4 py-2.5 rounded-xl transition-colors text-sm font-medium"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -988,16 +1233,97 @@ if (format === 'csv') {
         {/* feat: AI-powered attendance risk dashboard (issue #2183) */}
         <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
           <AttendanceRiskDashboard />
+          <div className="mt-8">
+            <ClassroomMoodWidget />
+          </div>
         </div>
       </div>
+
+      {showAbsentSummaryModal && (
+        <AbsentSummaryModal
+          isOpen={showAbsentSummaryModal}
+          onClose={() => setShowAbsentSummaryModal(false)}
+          absentStudents={studentAttendanceData.filter(s => s.status === "absent")}
+        />
+      )}
     </div>
   );
+
+  const handleExportSingleClass = (cls, day) => {
+    let icsString = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Learnova//Teacher Schedule//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+    ].join("\r\n") + "\r\n";
+
+    const [startStr, endStr] = (cls.time || "").split("-");
+    if (!startStr || !endStr) return;
+
+    // Helper to get next weekday date
+    const getNextWeekdayDate = (dayName, timeStr) => {
+      const weekdays = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+      const targetDay = weekdays[dayName];
+      const now = new Date();
+      const currentDay = now.getDay();
+      let daysToAdd = targetDay - currentDay;
+      if (daysToAdd < 0) daysToAdd += 7;
+      const targetDate = new Date();
+      targetDate.setDate(now.getDate() + daysToAdd);
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      targetDate.setHours(hours || 9, minutes || 0, 0, 0);
+      return targetDate;
+    };
+
+    const formatDateToICS = (date) => {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const hh = String(date.getHours()).padStart(2, "0");
+      const min = String(date.getMinutes()).padStart(2, "0");
+      const ss = "00";
+      return `${yyyy}${mm}${dd}T${hh}${min}${ss}`;
+    };
+
+    const startDate = getNextWeekdayDate(day, startStr.trim());
+    const endDate = getNextWeekdayDate(day, endStr.trim());
+    const byDayMap = { Sunday: "SU", Monday: "MO", Tuesday: "TU", Wednesday: "WE", Thursday: "TH", Friday: "FR", Saturday: "SA" };
+
+    icsString += [
+      "BEGIN:VEVENT",
+      `UID:class-${day}-${Date.now()}@learnova`,
+      `DTSTAMP:${formatDateToICS(new Date())}`,
+      `SUMMARY:${cls.subject}`,
+      `DESCRIPTION:Room: ${cls.room}`,
+      `LOCATION:${cls.room}`,
+      `DTSTART:${formatDateToICS(startDate)}`,
+      `DTEND:${formatDateToICS(endDate)}`,
+      `RRULE:FREQ=WEEKLY;BYDAY=${byDayMap[day]}`,
+      "END:VEVENT",
+    ].join("\r\n") + "\r\n";
+    icsString += "END:VCALENDAR";
+
+    const blob = new Blob([icsString], { type: "text/calendar;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${(cls.subject || "Class").replace(/\s+/g, '_')}_schedule.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${cls.subject} to .ics!`);
+  };
 
   const renderSchedule = () => (
     <div className="space-y-8">
       <div className="text-center">
-        <h2 className="text-3xl font-bold text-foreground dark:text-white mb-2">Class Schedule</h2>
-        <p className="text-muted-foreground dark:text-gray-400">Weekly timetable and management</p>
+        <h2 className="text-3xl font-bold text-foreground dark:text-white mb-2">
+          Class Schedule
+        </h2>
+        <p className="text-muted-foreground dark:text-gray-400">
+          Weekly timetable and management
+        </p>
       </div>
 
       <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
@@ -1010,12 +1336,23 @@ if (format === 'csv') {
               {classes.map((cls, index) => (
                 <div
                   key={index}
-                  className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50"
+                  className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50 relative group"
                 >
-                  <div className="text-sm font-medium text-foreground dark:text-white">
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => handleExportSingleClass(cls, day)}
+                      className="p-1 rounded bg-black/40 text-gray-400 hover:text-green-400 transition-colors"
+                      title="Add to Calendar"
+                    >
+                      <CalendarPlus className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="text-sm font-medium text-foreground dark:text-white pr-5">
                     {cls.subject}
                   </div>
-                  <div className="text-xs text-muted-foreground dark:text-gray-400">{cls.time}</div>
+                  <div className="text-xs text-muted-foreground dark:text-gray-400">
+                    {cls.time}
+                  </div>
                   <div className="text-xs text-accent">{cls.room}</div>
                   <div className="text-xs text-blue-400">
                     {cls.students} students
@@ -1030,7 +1367,7 @@ if (format === 'csv') {
   );
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className={`min-h-screen bg-background relative overflow-hidden ${dashboardContentOffsetClass}`}>
       {/* Premium Navbar */}
       <Navbar />
       {/* Animated Gradient Backgrounds */}
@@ -1076,7 +1413,9 @@ if (format === 'csv') {
                       user?.email?.split("@")[0] ||
                       "Teacher"}
                   </h1>
-                  <div className="text-sm text-muted-foreground dark:text-gray-400">{user?.email}</div>
+                  <div className="text-sm text-muted-foreground dark:text-gray-400">
+                    {user?.email}
+                  </div>
                 </div>
               </div>
 
@@ -1123,19 +1462,22 @@ if (format === 'csv') {
             {/* Bottom Action Bar */}
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
               <div className="flex md:flex-row space-y-1 flex-col items-center md:gap-3">
-                <span className="text-sm text-muted-foreground dark:text-gray-400">Quick Actions:</span>
+                <span className="text-sm text-muted-foreground dark:text-gray-400">
+                  Quick Actions:
+                </span>
                 {attendanceWindow && (
                   <button
                     onClick={generatePasscode}
                     className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
-                  >
+                   aria-label="Action button">
                     <Key className="w-3 h-3" />
                     Generate Passcode
                   </button>
                 )}
-                <button 
-                  onClick={handleExportCSV}
+                <button
+                  onClick={() => handleAttendanceExport('csv')}
                   className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
+                  aria-label="Export attendance data as CSV"
                 >
                   <Download className="w-3 h-3" />
                   Export Data
@@ -1158,6 +1500,7 @@ if (format === 'csv') {
           {[
             { id: "dashboard", label: "Dashboard", icon: BarChart3 },
             { id: "curriculum", label: "Curriculum", icon: BookOpen },
+            { id: "achievements", label: "Achievements", icon: Award },
             { id: "analytics", label: "Analytics", icon: TrendingUp },
             { id: "schedule", label: "Schedule", icon: Calendar },
           ].map((tab) => (
@@ -1198,6 +1541,7 @@ if (format === 'csv') {
       <div className="relative z-10 container mx-auto px-6 py-8">
         {activeTab === "dashboard" && renderDashboard()}
         {activeTab === "curriculum" && <CurriculumBuilder />}
+        {activeTab === "achievements" && <TeacherAchievementPanel />}
         {activeTab === "analytics" && renderAnalytics()}
         {activeTab === "schedule" && renderSchedule()}
       </div>

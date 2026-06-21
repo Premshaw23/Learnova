@@ -70,9 +70,7 @@ export default function HeroSection({ selectedRole }) {
               <p className="text-2xl font-extrabold text-foreground">{value}</p>
               <p className="text-xs text-muted-foreground">{label}</p>
             </div>
-            {i < STATS.length - 1 && (
-              <div className="h-8 w-px bg-border" />
-            )}
+            {i < STATS.length - 1 && <div className="h-8 w-px bg-border" />}
           </div>
         ))}
       </div>
@@ -94,11 +92,17 @@ export default function HeroSection({ selectedRole }) {
                 : "border-border bg-card hover:border-indigo-500/30 hover:shadow-md hover:shadow-indigo-500/5"
             }`}
           >
-            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${bgClass}`}>
+            <div
+              className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${bgClass}`}
+            >
               <Icon className={`h-5 w-5 ${iconClass}`} />
             </div>
-            <h3 className="mb-1 text-sm font-bold text-card-foreground">{title}</h3>
-            <p className="text-xs leading-relaxed text-muted-foreground">{desc}</p>
+            <h3 className="mb-1 text-sm font-bold text-card-foreground">
+              {title}
+            </h3>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {desc}
+            </p>
           </div>
         ))}
       </div>
@@ -106,7 +110,9 @@ export default function HeroSection({ selectedRole }) {
       {/* Trust line */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
-        <span>Trusted by institutions across the country — no credit card required.</span>
+        <span>
+          Trusted by institutions across the country — no credit card required.
+        </span>
       </div>
     </div>
   );

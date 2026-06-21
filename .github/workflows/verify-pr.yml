@@ -2,7 +2,7 @@ name: CI Verify PR
 
 on:
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -19,11 +19,40 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install Dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
+
+      - name: 🔧 Fix Linux native bindings
+        run: |
+          set -euo pipefail
+          fix_native() {
+            local pkg="$1" dir="$2"
+            mkdir -p "$dir"
+            echo "Installing $pkg..."
+            TAR=$(npm pack "$pkg")
+            tar -xzf "$TAR" -C "$dir" --strip-components=1
+            rm -f "$TAR"
+          }
+
+          # Rollup
+          RV=$(node -p "require('./node_modules/rollup/package.json').version")
+          fix_native "@rollup/rollup-linux-x64-gnu@$RV" node_modules/@rollup/rollup-linux-x64-gnu
+
+          # Parcel Watcher
+          PV=$(node -p "require('./node_modules/@parcel/watcher/package.json').version")
+          fix_native "@parcel/watcher-linux-x64-glibc@$PV" node_modules/@parcel/watcher-linux-x64-glibc
+
+          # Lightning CSS
+          LV=$(node -p "require('./node_modules/lightningcss/package.json').version")
+          fix_native "lightningcss-linux-x64-gnu@$LV" node_modules/lightningcss-linux-x64-gnu
+          cp node_modules/lightningcss-linux-x64-gnu/*.node node_modules/lightningcss/
+
+          # Tailwind CSS Oxide
+          OV=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
+          fix_native "@tailwindcss/oxide-linux-x64-gnu@$OV" node_modules/@tailwindcss/oxide-linux-x64-gnu
 
       - name: Verify Linter and Formatters
         run: npm run lint --if-present

@@ -2,6 +2,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
+import { getToken } from "firebase/messaging";
+import { messaging, db } from "@/lib/firebaseConfig";
+import { doc, updateDoc } from "firebase/firestore";
 import Image from "next/image";
 import {
   Settings,
@@ -34,10 +37,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
+import { safeLocalStorageRemove } from "@/lib/storage";
 import i18n from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/apiClient";
-
 
 const SettingCard = ({ children, title, description }) => (
   <div className="bg-black/20 backdrop-blur-2xl rounded-2xl border border-white/10 p-6 hover:bg-black/30 transition-all duration-300">
@@ -59,14 +62,14 @@ const ToggleSwitch = ({ enabled, onChange, label, description }) => (
     </div>
     <button
       onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${enabled
-          ? "bg-gradient-to-r from-blue-500 to-purple-600"
-          : "bg-white/20"
-        }`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+        enabled ? "bg-gradient-to-r from-blue-500 to-purple-600" : "bg-white/20"
+      }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${enabled ? "translate-x-6" : "translate-x-1"
-          }`}
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+          enabled ? "translate-x-6" : "translate-x-1"
+        }`}
       />
     </button>
   </div>
@@ -86,6 +89,15 @@ export default function UniversalSettings() {
   const [pushPermission, setPushPermission] = useState("default");
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem("learnova-language");
+
+    if (savedLanguage) {
+      updateSetting("appearance", "language", savedLanguage);
+      i18n.changeLanguage(savedLanguage);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -112,14 +124,51 @@ export default function UniversalSettings() {
       setPushPermission(permission);
       if (permission === "granted") {
         updateSetting("notifications", "pushNotifications", true);
-        toast.success("Timetable push notifications activated! Reminders will trigger 10m before class.");
+        toast.success(
+          "Push notifications activated! Reminders will trigger via FCM."
+        );
+
         if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("/sw.js")
-            .then((reg) => { })
+          navigator.serviceWorker
+            .register("/firebase-messaging-sw.js")
+            .then(async (reg) => {
+              if (reg.active) {
+                reg.active.postMessage({
+                  type: "FIREBASE_CONFIG",
+                  config: {
+                    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+                    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+                    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+                    storageBucket:
+                      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+                    messagingSenderId:
+                      process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+                    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+                  },
+                });
+              }
+
+              if (messaging) {
+                try {
+                  const token = await getToken(messaging, {
+                    serviceWorkerRegistration: reg,
+                  });
+                  if (token && user?.uid) {
+                    await updateDoc(doc(db, "users", user.uid), {
+                      fcmToken: token,
+                    });
+                  }
+                } catch (tokenErr) {
+                  console.error("Error getting FCM token:", tokenErr);
+                }
+              }
+            })
             .catch((err) => console.error("SW Registration failed:", err));
         }
       } else if (permission === "denied") {
-        toast.error("Notifications blocked! Allow permission in site settings.");
+        toast.error(
+          "Notifications blocked! Allow permission in site settings."
+        );
       }
     } catch (err) {
       console.error("Error setting notification permission:", err);
@@ -144,14 +193,16 @@ export default function UniversalSettings() {
 
     // Store the file and create preview
     setAvatarFile(file);
-    
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const imageData = event.target?.result;
       if (imageData) {
         setAvatarPreview(imageData);
         setHasChanges(true);
-        toast.success("Avatar preview updated! Click 'Save Changes' to upload.");
+        toast.success(
+          "Avatar preview updated! Click 'Save Changes' to upload."
+        );
       }
     };
     reader.readAsDataURL(file);
@@ -379,49 +430,71 @@ export default function UniversalSettings() {
     setIsLoading(true);
     setError(null);
     try {
-      // Upload avatar separately if one was selected
       let avatarUrl = settings.profile.avatar;
       if (avatarFile) {
-        const formData = new FormData();
-        formData.append("file", avatarFile);
-        
-        const uploadResponse = await apiFetch("/api/upload/avatar", {
-          method: "POST",
-          body: formData,
-          credentials: "include", // Include cookies for authentication
-        });
-        
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json().catch(() => ({}));
-          const errorMsg = errorData.error || errorData.message || "Failed to upload avatar";
-          throw new Error(`Avatar upload failed: ${errorMsg}`);
+        try {
+          const formData = new FormData();
+          formData.append("file", avatarFile);
+
+          const uploadResponse = await apiFetch("/api/upload/avatar", {
+            method: "POST",
+            body: formData,
+            credentials: "include", // Include cookies for authentication
+          });
+
+          const uploadResponseText = await uploadResponse.text().catch(() => "");
+          let uploadData = null;
+
+          if (uploadResponseText) {
+            try {
+              uploadData = JSON.parse(uploadResponseText);
+            } catch (parseError) {
+              console.error("Error parsing avatar upload response:", parseError);
+              throw new Error("Avatar upload returned invalid data.");
+            }
+          }
+
+          if (!uploadResponse.ok) {
+            const errorMsg =
+              uploadData?.error ||
+              uploadData?.message ||
+              uploadResponseText ||
+              "Failed to upload avatar";
+            throw new Error(`Avatar upload failed: ${errorMsg}`);
+          }
+
+          if (!uploadData || !uploadData.url) {
+            throw new Error("Avatar upload completed without a usable image URL.");
+          }
+
+          avatarUrl = uploadData.url;
+          setAvatarFile(null);
+          setAvatarPreview(null);
+        } catch (avatarError) {
+          console.error("Error uploading avatar:", avatarError);
+          toast.error(
+            avatarError?.message || "Avatar upload failed, saving other settings only."
+          );
         }
-        
-        const uploadData = await uploadResponse.json();
-        if (!uploadData.url) {
-          throw new Error("No URL returned from avatar upload");
-        }
-        avatarUrl = uploadData.url;
-        setAvatarFile(null);
-        setAvatarPreview(null);
       }
 
-      // Save other settings
       const response = await apiFetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...settings, 
+          ...settings,
           profile: {
             ...settings.profile,
-            avatar: avatarUrl
+            avatar: avatarUrl,
           },
-          userId: user?.uid 
+          userId: user?.uid,
         }),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Settings save failed: ${errorData.error || errorData.message || "Unknown error"}`);
+        throw new Error(
+          `Settings save failed: ${errorData.error || errorData.message || "Unknown error"}`
+        );
       }
       setHasChanges(false);
       toast.success("Settings updated successfully!");
@@ -467,11 +540,9 @@ export default function UniversalSettings() {
   const handleResetToDefaults = async () => {
     try {
       // 1. Clear settings-related keys in localStorage safely
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.removeItem("theme");
-        window.localStorage.removeItem("settings");
-        window.localStorage.removeItem("learnova_settings");
-      }
+      safeLocalStorageRemove("theme");
+      safeLocalStorageRemove("settings");
+      safeLocalStorageRemove("learnova_settings");
 
       // 2. Revert theme in next-themes provider to default 'dark'
       setTheme("dark");
@@ -516,7 +587,9 @@ export default function UniversalSettings() {
               name: getUserDisplayName(),
               email: getUserEmail(),
               phone: user?.phone || "",
-              bio: user?.bio || "Passionate learner exploring new technologies and skills.",
+              bio:
+                user?.bio ||
+                "Passionate learner exploring new technologies and skills.",
               avatar: getUserPhoto() || "/user-avatar.jpg",
             },
             notifications: roleSpecificSettings.notifications,
@@ -539,7 +612,11 @@ export default function UniversalSettings() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || errorData.message || "Failed to persist reset settings");
+          throw new Error(
+            errorData.error ||
+              errorData.message ||
+              "Failed to persist reset settings"
+          );
         }
       }
 
@@ -613,7 +690,7 @@ export default function UniversalSettings() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
               <Settings className="h-8 w-8 mr-3 text-blue-400" />
-              {t("settings")}
+              {t("settings.description")}
               <Sparkles className="ml-3 h-6 w-6 text-yellow-400 animate-pulse" />
             </h1>
             <p className="text-white/60">
@@ -653,10 +730,11 @@ export default function UniversalSettings() {
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${activeSection === section.id
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                      activeSection === section.id
                         ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
                         : "text-white/70 hover:text-white hover:bg-white/10"
-                      }`}
+                    }`}
                   >
                     <section.icon className="h-5 w-5" />
                     <span>{section.label}</span>
@@ -701,12 +779,13 @@ export default function UniversalSettings() {
                           />
                         ) : null}
                         <div
-                          className={`w-20 h-20 rounded-full border-2 ${avatarPreview ? "border-blue-400" : "border-white/20"} bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl ${getUserPhoto() || avatarPreview ? "hidden" : "flex"
-                            }`}
+                          className={`w-20 h-20 rounded-full border-2 ${avatarPreview ? "border-blue-400" : "border-white/20"} bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl ${
+                            getUserPhoto() || avatarPreview ? "hidden" : "flex"
+                          }`}
                         >
                           {getUserInitials(getUserDisplayName())}
                         </div>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
                           className="absolute -bottom-1 -right-1 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-colors"
@@ -851,15 +930,24 @@ export default function UniversalSettings() {
                   <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${pushPermission === "granted" ? "bg-green-400 animate-pulse" :
-                            pushPermission === "denied" ? "bg-red-500" : "bg-yellow-400 animate-bounce"
-                          }`} />
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${
+                            pushPermission === "granted"
+                              ? "bg-green-400 animate-pulse"
+                              : pushPermission === "denied"
+                                ? "bg-red-500"
+                                : "bg-yellow-400 animate-bounce"
+                          }`}
+                        />
                         <span className="text-sm font-semibold text-white">
-                          Status: {
-                            pushPermission === "granted" ? "Notifications Enabled" :
-                              pushPermission === "denied" ? "Notifications Blocked" :
-                                pushPermission === "unsupported" ? "Browser Unsupported" : "Permission Required"
-                          }
+                          Status:{" "}
+                          {pushPermission === "granted"
+                            ? "Notifications Enabled"
+                            : pushPermission === "denied"
+                              ? "Notifications Blocked"
+                              : pushPermission === "unsupported"
+                                ? "Browser Unsupported"
+                                : "Permission Required"}
                         </span>
                       </div>
                       <p className="text-white/60 text-xs mt-1">
@@ -869,8 +957,7 @@ export default function UniversalSettings() {
                             ? "Please reset browser permissions in your URL bar to enable notifications."
                             : pushPermission === "unsupported"
                               ? "Push notifications are not supported in this browser."
-                              : "Enable browser push notifications to receive proactive class alerts."
-                        }
+                              : "Enable browser push notifications to receive proactive class alerts."}
                       </p>
                     </div>
 
@@ -878,12 +965,15 @@ export default function UniversalSettings() {
                       <button
                         onClick={handleTogglePush}
                         disabled={pushPermission === "denied"}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 ${pushPermission === "granted"
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 ${
+                          pushPermission === "granted"
                             ? "bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
                             : "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-purple-500/20 hover:scale-105 active:scale-95 cursor-pointer"
-                          }`}
+                        }`}
                       >
-                        {pushPermission === "granted" ? "Mute Reminders" : "Enable Reminders"}
+                        {pushPermission === "granted"
+                          ? "Mute Reminders"
+                          : "Enable Reminders"}
                       </button>
                     )}
                   </div>
@@ -909,7 +999,7 @@ export default function UniversalSettings() {
                             .replace(/([A-Z])/g, " $1")
                             .toLowerCase()}`}
                         />
-                      ),
+                      )
                     )}
                   </div>
                 </SettingCard>
@@ -962,7 +1052,7 @@ export default function UniversalSettings() {
                               updateSetting(
                                 "privacy",
                                 "profileVisibility",
-                                e.target.value,
+                                e.target.value
                               )
                             }
                             className="w-4 h-4 text-blue-500 bg-white/10 border-white/20 focus:ring-blue-500"
@@ -1039,7 +1129,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "learning",
                             "dailyGoal",
-                            Number.parseFloat(e.target.value),
+                            Number.parseFloat(e.target.value)
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -1058,7 +1148,7 @@ export default function UniversalSettings() {
                           updateSetting(
                             "learning",
                             "weeklyGoal",
-                            Number.parseInt(e.target.value),
+                            Number.parseInt(e.target.value)
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
@@ -1082,15 +1172,35 @@ export default function UniversalSettings() {
                           updateSetting(
                             "learning",
                             "difficulty",
-                            e.target.value,
+                            e.target.value
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
                       >
-                        <option value="beginner" className="bg-slate-950 text-white">Beginner</option>
-                        <option value="intermediate" className="bg-slate-950 text-white">Intermediate</option>
-                        <option value="advanced" className="bg-slate-950 text-white">Advanced</option>
-                        <option value="expert" className="bg-slate-950 text-white">Expert</option>
+                        <option
+                          value="beginner"
+                          className="bg-slate-950 text-white"
+                        >
+                          Beginner
+                        </option>
+                        <option
+                          value="intermediate"
+                          className="bg-slate-950 text-white"
+                        >
+                          Intermediate
+                        </option>
+                        <option
+                          value="advanced"
+                          className="bg-slate-950 text-white"
+                        >
+                          Advanced
+                        </option>
+                        <option
+                          value="expert"
+                          className="bg-slate-950 text-white"
+                        >
+                          Expert
+                        </option>
                       </select>
                     </div>
 
@@ -1129,28 +1239,49 @@ export default function UniversalSettings() {
                     </label>
                     <div className="grid grid-cols-3 gap-4">
                       {[
-                        { value: "light", label: "Light", icon: Sun, color: "text-amber-400 group-hover:text-amber-300" },
-                        { value: "dark", label: "Dark", icon: Moon, color: "text-violet-400 group-hover:text-violet-300" },
-                        { value: "system", label: "System", icon: Monitor, color: "text-blue-400 group-hover:text-blue-300" },
+                        {
+                          value: "light",
+                          label: "Light",
+                          icon: Sun,
+                          color: "text-amber-400 group-hover:text-amber-300",
+                        },
+                        {
+                          value: "dark",
+                          label: "Dark",
+                          icon: Moon,
+                          color: "text-violet-400 group-hover:text-violet-300",
+                        },
+                        {
+                          value: "system",
+                          label: "System",
+                          icon: Monitor,
+                          color: "text-blue-400 group-hover:text-blue-300",
+                        },
                       ].map((themeOpt) => {
-                        const isSelected = settings.appearance.theme === themeOpt.value;
+                        const isSelected =
+                          settings.appearance.theme === themeOpt.value;
                         return (
                           <motion.button
                             key={themeOpt.value}
                             onClick={() => {
-                              updateSetting("appearance", "theme", themeOpt.value);
+                              updateSetting(
+                                "appearance",
+                                "theme",
+                                themeOpt.value
+                              );
                               setTheme(themeOpt.value);
                             }}
-                            className={`group flex flex-col items-center space-y-3 p-5 rounded-2xl border transition-all duration-300 cursor-pointer text-center relative overflow-hidden ${isSelected
+                            className={`group flex flex-col items-center space-y-3 p-5 rounded-2xl border transition-all duration-300 cursor-pointer text-center relative overflow-hidden ${
+                              isSelected
                                 ? "border-blue-500/80 bg-blue-500/10 text-white shadow-[0_0_20px_rgba(59,130,246,0.25)]"
                                 : "border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]"
-                              }`}
+                            }`}
                             whileHover="hover"
                             whileTap="tap"
                             animate={isSelected ? "selected" : "unselected"}
                             variants={{
                               hover: { scale: 1.04, y: -2 },
-                              tap: { scale: 0.96 }
+                              tap: { scale: 0.96 },
                             }}
                           >
                             {/* Glow spot */}
@@ -1159,15 +1290,30 @@ export default function UniversalSettings() {
                             )}
                             <motion.div
                               variants={{
-                                hover: { scale: 1.15, rotate: themeOpt.value === "light" ? 45 : themeOpt.value === "dark" ? -15 : 0 }
+                                hover: {
+                                  scale: 1.15,
+                                  rotate:
+                                    themeOpt.value === "light"
+                                      ? 45
+                                      : themeOpt.value === "dark"
+                                        ? -15
+                                        : 0,
+                                },
                               }}
-                              transition={{ type: "spring", stiffness: 200, damping: 12 }}
-                              className={`p-2.5 rounded-xl ${isSelected
+                              transition={{
+                                type: "spring",
+                                stiffness: 200,
+                                damping: 12,
+                              }}
+                              className={`p-2.5 rounded-xl ${
+                                isSelected
                                   ? "bg-blue-500/20"
                                   : "bg-white/5 group-hover:bg-white/10"
-                                } transition-colors duration-300`}
+                              } transition-colors duration-300`}
                             >
-                              <themeOpt.icon className={`h-6 w-6 transition-colors duration-300 ${isSelected ? "text-white" : themeOpt.color}`} />
+                              <themeOpt.icon
+                                className={`h-6 w-6 transition-colors duration-300 ${isSelected ? "text-white" : themeOpt.color}`}
+                              />
                             </motion.div>
                             <span className="text-sm font-semibold tracking-wide block">
                               {themeOpt.label}
@@ -1186,16 +1332,41 @@ export default function UniversalSettings() {
                       <select
                         value={settings.appearance.language}
                         onChange={(e) => {
-                          updateSetting("appearance", "language", e.target.value);
-                          i18n.changeLanguage(e.target.value);
+                          const lang = e.target.value;
+
+                          updateSetting("appearance", "language", lang);
+                          i18n.changeLanguage(lang);
+
+                          localStorage.setItem("learnova-language", lang);
                         }}
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
                       >
-                        <option value="en" className="bg-slate-950 text-white">English</option>
-                        <option value="es" className="bg-slate-950 text-white">Español</option>
-                        <option value="fr" className="bg-slate-950 text-white">Français</option>
-                        <option value="de" className="bg-slate-950 text-white">Deutsch</option>
-                        <option value="zh" className="bg-slate-950 text-white">中文</option>
+                        <option value="en" className="bg-slate-950 text-white">
+                          English
+                        </option>
+                        <option value="es" className="bg-slate-950 text-white">
+                          Español
+                        </option>
+                        <option value="fr" className="bg-slate-950 text-white">
+                          Français
+                        </option>
+                        <option value="de" className="bg-slate-950 text-white">
+                          Deutsch
+                        </option>
+                        <option value="zh" className="bg-slate-950 text-white">
+                          中文
+                        </option>
+                        <option value="hi" className="bg-slate-950 text-white">
+                          हिन्दी
+                        </option>
+
+                        <option value="ja" className="bg-slate-950 text-white">
+                          日本語
+                        </option>
+
+                        <option value="ar" className="bg-slate-950 text-white">
+                          العربية
+                        </option>
                       </select>
                     </div>
                     <div>
@@ -1208,20 +1379,39 @@ export default function UniversalSettings() {
                           updateSetting(
                             "appearance",
                             "timezone",
-                            e.target.value,
+                            e.target.value
                           )
                         }
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
                       >
-                        <option value="UTC-8" className="bg-slate-950 text-white">Pacific Time (UTC-8)</option>
-                        <option value="UTC-5" className="bg-slate-950 text-white">Eastern Time (UTC-5)</option>
-                        <option value="UTC+0" className="bg-slate-950 text-white">
+                        <option
+                          value="UTC-8"
+                          className="bg-slate-950 text-white"
+                        >
+                          Pacific Time (UTC-8)
+                        </option>
+                        <option
+                          value="UTC-5"
+                          className="bg-slate-950 text-white"
+                        >
+                          Eastern Time (UTC-5)
+                        </option>
+                        <option
+                          value="UTC+0"
+                          className="bg-slate-950 text-white"
+                        >
                           Greenwich Mean Time (UTC+0)
                         </option>
-                        <option value="UTC+1" className="bg-slate-950 text-white">
+                        <option
+                          value="UTC+1"
+                          className="bg-slate-950 text-white"
+                        >
                           Central European Time (UTC+1)
                         </option>
-                        <option value="UTC+8" className="bg-slate-950 text-white">
+                        <option
+                          value="UTC+8"
+                          className="bg-slate-950 text-white"
+                        >
                           China Standard Time (UTC+8)
                         </option>
                       </select>
@@ -1283,7 +1473,8 @@ export default function UniversalSettings() {
                       <div>
                         <p className="text-white font-medium">Reset Settings</p>
                         <p className="text-white/60 text-sm">
-                          Revert all configurations back to system default values
+                          Revert all configurations back to system default
+                          values
                         </p>
                       </div>
                       <Button
@@ -1345,7 +1536,10 @@ export default function UniversalSettings() {
               >
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <FileText className="h-6 w-6 text-blue-400" />
                       <div>
                         <p className="text-white font-medium">Documentation</p>
@@ -1355,7 +1549,10 @@ export default function UniversalSettings() {
                       </div>
                     </button>
 
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <Mail className="h-6 w-6 text-green-400" />
                       <div>
                         <p className="text-white font-medium">
@@ -1367,7 +1564,10 @@ export default function UniversalSettings() {
                       </div>
                     </button>
 
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <HelpCircle className="h-6 w-6 text-purple-400" />
                       <div>
                         <p className="text-white font-medium">FAQ</p>
@@ -1377,7 +1577,10 @@ export default function UniversalSettings() {
                       </div>
                     </button>
 
-                    <button className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left">
+                    <button
+                      className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
+                      aria-label="Action button"
+                    >
                       <Globe className="h-6 w-6 text-orange-400" />
                       <div>
                         <p className="text-white font-medium">Community</p>

@@ -1,12 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-} from "chart.js";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -61,8 +56,7 @@ const EngagementChart = ({ data: propData, className = "" }) => {
           pointStyle: "circle",
           font: {
             size: 12,
-            family:
-              "'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif",
+            family: "'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif",
           },
         },
       },

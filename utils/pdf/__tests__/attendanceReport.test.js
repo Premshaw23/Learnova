@@ -16,7 +16,7 @@ vi.mock("jspdf", () => {
     autoTable: vi.fn(),
   };
   return {
-    default: vi.fn(() => mockDoc),
+    default: vi.fn(function () { return mockDoc; }),
   };
 });
 
@@ -26,8 +26,18 @@ vi.mock("jspdf-autotable", () => ({
 
 describe("Attendance PDF Export Utility", () => {
   const mockAttendanceData = [
-    { Date: "2026-06-01", studentName: "John Doe", rollNo: "101", status: "present" },
-    { Date: "2026-06-01", studentName: "Jane Smith", rollNo: "102", status: "absent" },
+    {
+      Date: "2026-06-01",
+      studentName: "John Doe",
+      rollNo: "101",
+      status: "present",
+    },
+    {
+      Date: "2026-06-01",
+      studentName: "Jane Smith",
+      rollNo: "102",
+      status: "absent",
+    },
   ];
 
   test("Scenario 1: Attendance records available - PDF generated", () => {
@@ -39,7 +49,9 @@ describe("Attendance PDF Export Utility", () => {
     expect(doc).toBeDefined();
     expect(doc.save).toHaveBeenCalled();
     // Verify it sanitized filename and saved
-    expect(doc.save.mock.calls[0][0]).toContain("attendance-report-class-class_10a-");
+    expect(doc.save.mock.calls[0][0]).toContain(
+      "attendance-report-class-class_10a-"
+    );
   });
 
   test("Scenario 2: Empty attendance dataset - Graceful message rendered", () => {

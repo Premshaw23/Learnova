@@ -28,11 +28,17 @@ export const POST = withErrorHandler(async (request) => {
 
   const decodedToken = await requireAuth(request);
   const authorization = request.headers.get("authorization") || "";
-  const bearerToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : null;
-  const authToken = bearerToken || request.cookies.get("authToken")?.value || null;
+  const bearerToken = authorization.startsWith("Bearer ")
+    ? authorization.slice(7)
+    : null;
+  const authToken =
+    bearerToken || request.cookies.get("authToken")?.value || null;
 
   if (!authToken) {
-    return NextResponse.json({ success: false, error: "Missing authentication token" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "Missing authentication token" },
+      { status: 400 }
+    );
   }
 
   // Create stateful session in Redis

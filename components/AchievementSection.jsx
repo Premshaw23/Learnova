@@ -60,10 +60,12 @@ const AchievementSection = ({ attendancePercentage = 92, streakDays = 8 }) => {
   const badges = useMemo(
     () =>
       badgeDefinitions.map((badge) => {
-        const value = badge.type === "streak" ? streakDays : attendancePercentage;
-        const progress = badge.type === "streak"
-          ? Math.min(100, (value / badge.threshold) * 100)
-          : Math.min(100, (attendancePercentage / badge.threshold) * 100);
+        const value =
+          badge.type === "streak" ? streakDays : attendancePercentage;
+        const progress =
+          badge.type === "streak"
+            ? Math.min(100, (value / badge.threshold) * 100)
+            : Math.min(100, (attendancePercentage / badge.threshold) * 100);
 
         return {
           ...badge,
@@ -118,7 +120,8 @@ const AchievementSection = ({ attendancePercentage = 92, streakDays = 8 }) => {
             Attendance Rewards & Progress
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Unlock badges as you improve your attendance. Each badge tracks the student’s current progress and rewards consistent learning habits.
+            Unlock badges as you improve your attendance. Each badge tracks the
+            student’s current progress and rewards consistent learning habits.
           </p>
         </div>
 

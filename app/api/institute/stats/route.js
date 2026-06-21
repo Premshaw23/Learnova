@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import admin from "firebase-admin";
@@ -8,9 +8,11 @@ import admin from "firebase-admin";
 export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, ["institute", "admin"]);
+  const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`institute_stats_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `institute_stats_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many requests. Please slow down.", 429);
   }
@@ -51,7 +53,10 @@ export const GET = withErrorHandler(async (request) => {
       .where("role", "==", "teacher")
       .limit(50)
       .get();
-    teacherDocs = teachersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    teacherDocs = teachersSnap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
     const classesCountSnap = await db
       .collection("classes")
@@ -81,7 +86,10 @@ export const GET = withErrorHandler(async (request) => {
       .orderBy("createdAt", "desc")
       .limit(20)
       .get();
-    attendanceRequests = reqSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    attendanceRequests = reqSnap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
     const today = new Date().toISOString().slice(0, 10);
     const presentSnap = await db
@@ -92,7 +100,7 @@ export const GET = withErrorHandler(async (request) => {
       .count()
       .get();
     const presentCount = presentSnap.data().count;
-    
+
     const divisor = totalStudents || 1;
     todayAttendance = Math.round((presentCount / divisor) * 1000) / 10;
   } catch (err) {
@@ -119,8 +127,14 @@ export const GET = withErrorHandler(async (request) => {
     totalClasses,
     todayAttendance,
     activeClasses,
-    pendingRequests: attendanceRequests.filter((r) => r.status === "pending").length,
+    pendingRequests: attendanceRequests.filter((r) => r.status === "pending")
+      .length,
   };
 
-  return NextResponse.json({ dashboardData, classes, teachers, attendanceRequests });
+  return NextResponse.json({
+    dashboardData,
+    classes,
+    teachers,
+    attendanceRequests,
+  });
 });

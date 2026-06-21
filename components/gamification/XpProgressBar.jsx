@@ -18,10 +18,7 @@ export default function XpProgressBar({ currentLevel = 1, currentXp = 0 }) {
     xpRequiredForNextLevel > 0
       ? Math.min(
           100,
-          Math.max(
-            0,
-            (xpIntoCurrentLevel / xpRequiredForNextLevel) * 100
-          )
+          Math.max(0, (xpIntoCurrentLevel / xpRequiredForNextLevel) * 100)
         )
       : 0;
 
@@ -39,10 +36,8 @@ export default function XpProgressBar({ currentLevel = 1, currentXp = 0 }) {
 
         <div className="text-right">
           <p className="text-xs text-gray-400">
-            <span className="text-indigo-400 font-semibold">
-              {currentXp}
-            </span>{" "}
-            / {nextLevelXp} XP
+            <span className="text-indigo-400 font-semibold">{currentXp}</span> /{" "}
+            {nextLevelXp} XP
           </p>
         </div>
       </div>

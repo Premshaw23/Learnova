@@ -6,49 +6,46 @@ import { Brain, Sparkles, TrendingUp, Target } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
 
-export default function AIProductivityInsights({
-  analytics,
-  isDark,
-}) {
-    const { user } = useAuthContext();
+export default function AIProductivityInsights({ analytics, isDark }) {
+  const { user } = useAuthContext();
 
   const [loading, setLoading] = useState(false);
   const [insights, setInsights] = useState(null);
 
   const generateInsights = async () => {
-  setLoading(true);
-
-  try {
     setLoading(true);
 
-    if (!user) {
-      toast.error("Please login to generate AI insights.");
-      return;
+    try {
+      setLoading(true);
+
+      if (!user) {
+        toast.error("Please login to generate AI insights.");
+        return;
+      }
+
+      const idToken = await user.getIdToken();
+
+      const response = await fetch("/api/ai-productivity", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(analytics),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setInsights(data.data);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to generate insights. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    const idToken = await user.getIdToken();
-
-    const response = await fetch("/api/ai-productivity", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`,
-      },
-      body: JSON.stringify(analytics),
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      setInsights(data.data);
-    }
-  } catch (error) {
-    console.error(error);
-    toast.error("Failed to generate insights. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <motion.div
@@ -105,9 +102,7 @@ export default function AIProductivityInsights({
         >
           <Sparkles className="w-10 h-10 mx-auto mb-3 text-purple-400" />
 
-          <p className="font-medium mb-2">
-            Personalized Productivity Guidance
-          </p>
+          <p className="font-medium mb-2">Personalized Productivity Guidance</p>
 
           <p
             className={`text-sm ${
@@ -139,7 +134,7 @@ export default function AIProductivityInsights({
       {/* Results */}
 
       {insights && !loading && (
-  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Strength */}
 
           <div
@@ -210,91 +205,91 @@ export default function AIProductivityInsights({
           </div>
           {/* Productivity Score */}
 
-<div
-  className={`rounded-2xl p-4 ${
-    isDark
-      ? "bg-black/30 border border-white/10"
-      : "bg-slate-50 border border-slate-200"
-  }`}
->
-  <div className="flex items-center gap-2 mb-3">
-    <Brain className="w-5 h-5 text-purple-400" />
-    <h4 className="font-semibold">Productivity Score</h4>
-  </div>
+          <div
+            className={`rounded-2xl p-4 ${
+              isDark
+                ? "bg-black/30 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Brain className="w-5 h-5 text-purple-400" />
+              <h4 className="font-semibold">Productivity Score</h4>
+            </div>
 
-  <p className="text-3xl font-bold text-purple-400">
-    {insights.productivityScore ?? "--"}
-  </p>
-</div>
+            <p className="text-3xl font-bold text-purple-400">
+              {insights.productivityScore ?? "--"}
+            </p>
+          </div>
 
-{/* Weekly Goal */}
+          {/* Weekly Goal */}
 
-<div
-  className={`rounded-2xl p-4 ${
-    isDark
-      ? "bg-black/30 border border-white/10"
-      : "bg-slate-50 border border-slate-200"
-  }`}
->
-  <div className="flex items-center gap-2 mb-3">
-    <Target className="w-5 h-5 text-green-400" />
-    <h4 className="font-semibold">Weekly Goal</h4>
-  </div>
+          <div
+            className={`rounded-2xl p-4 ${
+              isDark
+                ? "bg-black/30 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="w-5 h-5 text-green-400" />
+              <h4 className="font-semibold">Weekly Goal</h4>
+            </div>
 
-  <p
-    className={`text-sm ${
-      isDark ? "text-slate-300" : "text-slate-600"
-    }`}
-  >
-    {insights.weeklyGoal}
-  </p>
-</div>
+            <p
+              className={`text-sm ${
+                isDark ? "text-slate-300" : "text-slate-600"
+              }`}
+            >
+              {insights.weeklyGoal}
+            </p>
+          </div>
 
-{/* Focus Pattern */}
+          {/* Focus Pattern */}
 
-<div
-  className={`rounded-2xl p-4 ${
-    isDark
-      ? "bg-black/30 border border-white/10"
-      : "bg-slate-50 border border-slate-200"
-  }`}
->
-  <div className="flex items-center gap-2 mb-3">
-    <TrendingUp className="w-5 h-5 text-cyan-400" />
-    <h4 className="font-semibold">Focus Pattern</h4>
-  </div>
+          <div
+            className={`rounded-2xl p-4 ${
+              isDark
+                ? "bg-black/30 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-5 h-5 text-cyan-400" />
+              <h4 className="font-semibold">Focus Pattern</h4>
+            </div>
 
-  <p
-    className={`text-sm ${
-      isDark ? "text-slate-300" : "text-slate-600"
-    }`}
-  >
-    {insights.focusPattern}
-  </p>
-</div>
+            <p
+              className={`text-sm ${
+                isDark ? "text-slate-300" : "text-slate-600"
+              }`}
+            >
+              {insights.focusPattern}
+            </p>
+          </div>
 
-{/* Next Action */}
+          {/* Next Action */}
 
-<div
-  className={`rounded-2xl p-4 ${
-    isDark
-      ? "bg-black/30 border border-white/10"
-      : "bg-slate-50 border border-slate-200"
-  }`}
->
-  <div className="flex items-center gap-2 mb-3">
-    <Sparkles className="w-5 h-5 text-yellow-400" />
-    <h4 className="font-semibold">Next Action</h4>
-  </div>
+          <div
+            className={`rounded-2xl p-4 ${
+              isDark
+                ? "bg-black/30 border border-white/10"
+                : "bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-5 h-5 text-yellow-400" />
+              <h4 className="font-semibold">Next Action</h4>
+            </div>
 
-  <p
-    className={`text-sm ${
-      isDark ? "text-slate-300" : "text-slate-600"
-    }`}
-  >
-    {insights.nextAction}
-  </p>
-</div>
+            <p
+              className={`text-sm ${
+                isDark ? "text-slate-300" : "text-slate-600"
+              }`}
+            >
+              {insights.nextAction}
+            </p>
+          </div>
         </div>
       )}
     </motion.div>

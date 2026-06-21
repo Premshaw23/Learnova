@@ -37,76 +37,43 @@ describe("AttendanceBadge Achievement Display", () => {
 
     expect(screen.getByText("🏆")).toBeInTheDocument();
 
-    expect(
-      screen.getByText("Attendance Champion")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Attendance Champion")).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        "Maintain excellent attendance throughout the semester."
-      )
+      screen.getByText("Maintain excellent attendance throughout the semester.")
     ).toBeInTheDocument();
 
     expect(screen.getByText("95% Attendance")).toBeInTheDocument();
   });
 
   test("shows locked status when unlocked is false", () => {
-    render(
-      <AttendanceBadge
-        {...defaultProps}
-        unlocked={false}
-      />
-    );
+    render(<AttendanceBadge {...defaultProps} unlocked={false} />);
 
     expect(screen.getByText("Locked")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Unlocked")
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Unlocked")).not.toBeInTheDocument();
   });
 
   test("shows unlocked status when unlocked is true", () => {
-    render(
-      <AttendanceBadge
-        {...defaultProps}
-        unlocked={true}
-      />
-    );
+    render(<AttendanceBadge {...defaultProps} unlocked={true} />);
 
     expect(screen.getByText("Unlocked")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Locked")
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Locked")).not.toBeInTheDocument();
   });
 
   test("floors and displays progress percentage correctly", () => {
-    render(
-      <AttendanceBadge
-        {...defaultProps}
-        progress={87.8}
-      />
-    );
+    render(<AttendanceBadge {...defaultProps} progress={87.8} />);
 
     expect(screen.getByText("87%")).toBeInTheDocument();
   });
 
   test("renders 100 percent progress correctly", () => {
-    render(
-      <AttendanceBadge
-        {...defaultProps}
-        progress={100}
-      />
-    );
+    render(<AttendanceBadge {...defaultProps} progress={100} />);
 
     expect(screen.getByText("100%")).toBeInTheDocument();
   });
 
   test("renders 0 percent progress correctly", () => {
-    render(
-      <AttendanceBadge
-        {...defaultProps}
-        progress={0}
-      />
-    );
+    render(<AttendanceBadge {...defaultProps} progress={0} />);
 
     expect(screen.getByText("0%")).toBeInTheDocument();
   });

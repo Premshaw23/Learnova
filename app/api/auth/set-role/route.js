@@ -10,13 +10,16 @@ import { executeSaga } from "@/lib/transactionCoordinator";
 
 import { withValidation } from "@/lib/validations/withValidation";
 import { setRoleSchema } from "@/lib/validations/auth";
+import { emitWebhookEvent } from "@/lib/webhook/dispatcher";
 
 export const POST = withValidation(
   setRoleSchema,
   withErrorHandler(async (request, data) => {
     const decodedToken = await requireAuth(request);
 
-    const rateLimitResult = await checkRateLimit(`set_role_${decodedToken.uid}`);
+    const rateLimitResult = await checkRateLimit(
+      `set_role_${decodedToken.uid}`
+    );
     if (!rateLimitResult.allowed) {
       throw new AppError("Too many attempts. Please try again later.", 429);
     }
@@ -27,12 +30,18 @@ export const POST = withValidation(
     if (role === "teacher") {
       const expectedCode = process.env.TEACHER_INVITE_CODE;
       if (!expectedCode || inviteCode !== expectedCode) {
-        return jsonError("Forbidden: Invalid or missing teacher invite code.", 403);
+        return jsonError(
+          "Forbidden: Invalid or missing teacher invite code.",
+          403
+        );
       }
     } else if (role === "institute") {
       const expectedCode = process.env.INSTITUTE_INVITE_CODE;
       if (!expectedCode || inviteCode !== expectedCode) {
-        return jsonError("Forbidden: Invalid or missing institute invite code.", 403);
+        return jsonError(
+          "Forbidden: Invalid or missing institute invite code.",
+          403
+        );
       }
     }
     // ------------------------------------------------------------------------
@@ -72,13 +81,18 @@ export const POST = withValidation(
       createdAt: new Date().toISOString(),
       emailVerified: decodedToken.email_verified || false,
       lastLogin: new Date().toISOString(),
+      emailPreferences: {
+        attendanceAlerts: true,
+        weeklyDigest: true,
+        lowAttendanceWarning: true,
+        passwordChanges: true,
+        bulkAnnouncements: true,
+      },
     };
 
     if (role === "institute" && instituteName) {
       userProfile.instituteName = instituteName;
     }
-
-
 
     const sagaResult = await executeSaga({
       operationType: "set_role",
@@ -151,7 +165,9 @@ export const POST = withValidation(
           },
           compensate: async () => {
             const mongoDB = await connectDb();
-            await mongoDB.collection("users").deleteOne({ firebaseUid: decodedToken.uid });
+            await mongoDB
+              .collection("users")
+              .deleteOne({ firebaseUid: decodedToken.uid });
           },
         },
       ],
@@ -169,6 +185,14 @@ export const POST = withValidation(
         500
       );
     }
+
+    emitWebhookEvent("user.created", {
+      uid: userProfile.uid,
+      email: userProfile.email,
+      fullName: userProfile.fullName,
+      role: userProfile.role,
+      instituteName: userProfile.instituteName || null,
+    });
 
     return jsonSuccess({ userProfile }, 201);
   }),

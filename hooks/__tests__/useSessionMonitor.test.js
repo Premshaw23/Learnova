@@ -55,7 +55,9 @@ describe("useSessionMonitor", () => {
       await global.fetch("/api/test");
     });
 
-    expect(toast.error).toHaveBeenCalledWith("Session expired. Please log in again.");
+    expect(toast.error).toHaveBeenCalledWith(
+      "Session expired. Please log in again."
+    );
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockRouterPush).toHaveBeenCalledWith("/auth");
   });

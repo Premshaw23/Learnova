@@ -5,7 +5,7 @@ import { calculateReadingTime, cn } from "@/lib/utils";
 /**
  * ReadingTimeBadge component.
  * Calculates estimated reading time for the provided text and renders a stylized Tailwind badge.
- * 
+ *
  * @param {Object} props
  * @param {string} props.text - The raw text content of the article or lesson.
  * @param {string} [props.className] - Additional styling classes.

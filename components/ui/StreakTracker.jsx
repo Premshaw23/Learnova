@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {normalizeStreakCount,getStreakBadge,getNextMilestone,} from "@/lib/streakUtils";
 
 /**
  * StreakTracker Component
@@ -12,6 +13,8 @@ import { cn } from "@/lib/utils";
 export default function StreakTracker({ className }) {
   const [streak, setStreak] = useState(0);
   const [isActive, setIsActive] = useState(false);
+  const [badge, setBadge] = useState("");
+  
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -19,7 +22,11 @@ export default function StreakTracker({ className }) {
     try {
       const today = new Date();
       // Zero out time to get accurate calendar day comparisons
-      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const todayMidnight = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
 
       const storedStreak = localStorage.getItem("currentStreak");
       const storedLastActive = localStorage.getItem("lastActiveDate");
@@ -61,10 +68,23 @@ export default function StreakTracker({ className }) {
 
       setStreak(currentStreak);
       setIsActive(currentStreak > 0);
+      if (currentStreak >= 100) {
+  setBadge("🏆 Learning Master");
+} else if (currentStreak >= 30) {
+  setBadge("🥇 Study Champion");
+} else if (currentStreak >= 7) {
+  setBadge("🎖 Consistent Learner");
+}
     } catch (error) {
       console.error("Failed to update daily streak:", error);
     }
   }, []);
+
+  const nextMilestone =
+  streak < 7 ? 7 :
+  streak < 30 ? 30 :
+  streak < 100 ? 100 :
+  null;
 
   return (
     <div
@@ -75,15 +95,36 @@ export default function StreakTracker({ className }) {
           : "text-zinc-400 bg-zinc-100 border-zinc-200 dark:bg-zinc-900/60 dark:border-zinc-800 dark:text-zinc-500",
         className
       )}
-      title={isActive ? `Active learning streak: ${streak} days!` : "Start your daily learning streak today!"}
+      title={
+        isActive
+          ? `Active learning streak: ${streak} days!`
+          : "Start your daily learning streak today!"
+      }
     >
       <Flame
         className={cn(
           "w-4 h-4 transition-transform duration-300",
-          isActive ? "text-orange-500 fill-orange-500 scale-110 drop-shadow-[0_0_4px_rgba(249,115,22,0.5)]" : "text-zinc-400 dark:text-zinc-600"
+          isActive
+            ? "text-orange-500 fill-orange-500 scale-110 drop-shadow-[0_0_4px_rgba(249,115,22,0.5)]"
+            : "text-zinc-400 dark:text-zinc-600"
         )}
       />
-      <span>{streak} Day{streak !== 1 ? "s" : ""} Streak</span>
+      <div className="flex flex-col">
+  <span>
+    {streak} Day{streak !== 1 ? "s" : ""} Streak
+  </span>
+
+  {badge && (
+    <span className="text-[10px] font-medium">
+      {badge}
+    </span>
+  )}
+  {nextMilestone && (
+    <span className="text-[10px] opacity-70">
+      {nextMilestone - streak} days to {nextMilestone}-day milestone
+    </span>
+  )}
+</div>
     </div>
   );
 }

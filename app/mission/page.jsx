@@ -108,10 +108,8 @@ export default function MissionPage() {
         transition-colors duration-500
         "
       >
-
         {/* Ambient Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-
           <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-fuchsia-500/20 blur-3xl" />
 
           <div className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-cyan-500/20 blur-3xl" />
@@ -120,32 +118,25 @@ export default function MissionPage() {
         </div>
 
         <div className="relative z-10 mx-auto max-w-7xl px-6 py-24 space-y-32">
-
           {/* Hero */}
           <section className="text-center max-w-5xl mx-auto">
-
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7 }}
               className="space-y-8"
             >
-
               <div className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/20 bg-fuchsia-500/10 px-5 py-2 text-sm font-medium text-fuchsia-700 dark:text-fuchsia-200 backdrop-blur-xl">
                 <Rocket className="h-4 w-4" />
                 Our Mission
               </div>
 
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-tight tracking-tight">
-
                 Empowering{" "}
-
                 <span className="bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-500 dark:from-fuchsia-400 dark:via-violet-400 dark:to-cyan-400 bg-clip-text text-transparent">
                   Education
                 </span>
-
                 <br />
-
                 Through Intelligent Technology
               </h1>
 
@@ -157,13 +148,11 @@ export default function MissionPage() {
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-
                 <Link
                   href="/register"
                   className="group inline-flex items-center gap-2 rounded-full bg-slate-900 dark:bg-white px-6 py-3 text-sm font-semibold text-white dark:text-slate-950 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(168,85,247,0.15)]"
                 >
                   Get Started
-
                   <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
 
@@ -179,9 +168,7 @@ export default function MissionPage() {
 
           {/* Mission Pillars */}
           <section className="space-y-16">
-
             <div className="text-center space-y-4">
-
               <h2 className="text-4xl sm:text-5xl font-black tracking-tight">
                 Our Core Mission
               </h2>
@@ -193,7 +180,6 @@ export default function MissionPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-
               {pillars.map((pillar, index) => {
                 const Icon = pillar.icon;
 
@@ -219,8 +205,8 @@ export default function MissionPage() {
                     dark:hover:border-fuchsia-500/50
                     hover:shadow-[0_20px_80px_rgba(168,85,247,0.18)]
                     dark:hover:shadow-[0_20px_80px_rgba(168,85,247,0.12)]
-                    ">
-
+                    "
+                  >
                     <div
                       className={`
                       mb-6 flex h-16 w-16 items-center justify-center rounded-2xl
@@ -246,9 +232,7 @@ export default function MissionPage() {
 
           {/* Stats */}
           <section className="space-y-14">
-
             <div className="text-center space-y-4">
-
               <h2 className="text-4xl font-black tracking-tight">
                 Educational Impact
               </h2>
@@ -260,7 +244,6 @@ export default function MissionPage() {
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-
               {stats.map((stat) => (
                 <div
                   key={stat.label}
@@ -293,25 +276,21 @@ export default function MissionPage() {
 
           {/* Vision Timeline */}
           <section className="space-y-16">
-
             <div className="text-center space-y-4">
-
               <h2 className="text-4xl sm:text-5xl font-black tracking-tight">
                 Future Vision
               </h2>
 
               <p className="mx-auto max-w-2xl text-slate-500 dark:text-slate-400">
-                Learnova is continuously evolving to shape the future of education
-                through innovation and collaboration.
+                Learnova is continuously evolving to shape the future of
+                education through innovation and collaboration.
               </p>
             </div>
 
             <div className="relative mx-auto max-w-4xl">
-
               <div className="absolute left-5 top-0 h-full w-px bg-gradient-to-b from-fuchsia-500 via-violet-500 to-cyan-500" />
 
               <div className="space-y-14">
-
                 {roadmap.map((item, index) => (
                   <motion.div
                     key={item.title}
@@ -321,13 +300,11 @@ export default function MissionPage() {
                     viewport={{ once: true }}
                     className="relative pl-16"
                   >
-
                     <div className="absolute left-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 backdrop-blur-xl">
                       <Target className="h-5 w-5 text-fuchsia-500 dark:text-fuchsia-300" />
                     </div>
 
                     <div className="rounded-[2rem] border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/5 p-7 backdrop-blur-xl transition-all duration-300 hover:border-fuchsia-500/50 hover:bg-white dark:hover:border-fuchsia-500/50">
-
                       <h3 className="mb-3 text-2xl font-bold text-slate-900 dark:text-white">
                         {item.title}
                       </h3>
@@ -344,11 +321,9 @@ export default function MissionPage() {
 
           {/* Final CTA */}
           <section className="relative overflow-hidden rounded-[2.5rem] border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-white/5 px-8 py-20 text-center backdrop-blur-xl">
-
             <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/30 via-transparent to-cyan-500/20" />
 
             <div className="relative z-10 max-w-3xl mx-auto space-y-8">
-
               <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-500 shadow-[0_0_50px_rgba(168,85,247,0.4)]">
                 <Lightbulb className="h-10 w-10 text-white" />
               </div>
@@ -363,7 +338,6 @@ export default function MissionPage() {
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-4">
-
                 <Link
                   href="/register"
                   className="rounded-full bg-slate-900 dark:bg-white px-7 py-3 text-sm font-semibold text-white dark:text-slate-950 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(255,255,255,0.18)]"

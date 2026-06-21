@@ -3,17 +3,13 @@ import { ForbiddenError, ValidationError } from "@/lib/errors";
 import { getFirestore } from "firebase-admin/firestore";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { fail, success } from "@/lib/api-response";
-
-// Backwards-compatible alias for test suites that mock `requireAuth` directly.
-// In production, authorization is performed via `requireRole`.
-// eslint-disable-next-line no-unused-vars
-const requireAuth = requireRole;
 
 export const GET = withErrorHandler(async (request) => {
   initFirebaseAdmin();
-  const { payload: decodedToken, profile } = await requireRole(request, ["student", "teacher", "admin"]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
 
   const { searchParams } = new URL(request.url);
   const requestedUserId = searchParams.get("userId");
@@ -28,15 +24,22 @@ export const GET = withErrorHandler(async (request) => {
   if (requestedUserId && requestedUserId !== decodedToken.uid) {
     const role = decodedToken.role;
     if (role !== "admin" && role !== "teacher") {
-      throw new ForbiddenError("Forbidden: Cannot query attendance for another user");
+      throw new ForbiddenError(
+        "Forbidden: Cannot query attendance for another user"
+      );
     }
 
     // Verify institute membership
     const requesterProfile = await getUserProfile(decodedToken.uid);
     const targetProfile = await getUserProfile(requestedUserId);
-    if (!requesterProfile || !targetProfile ||
-        requesterProfile.instituteId !== targetProfile.instituteId) {
-      throw new ForbiddenError("Forbidden: Cannot query attendance for users outside your institute");
+    if (
+      !requesterProfile ||
+      !targetProfile ||
+      requesterProfile.instituteId !== targetProfile.instituteId
+    ) {
+      throw new ForbiddenError(
+        "Forbidden: Cannot query attendance for users outside your institute"
+      );
     }
 
     targetUserId = requestedUserId;
@@ -45,16 +48,21 @@ export const GET = withErrorHandler(async (request) => {
     if (role === "teacher") {
       const targetProfile = await getUserProfile(targetUserId);
       if (!targetProfile || targetProfile.role !== "student") {
-        throw new ForbiddenError("Forbidden: You are not authorized to view this user's attendance heatmap");
+        throw new ForbiddenError(
+          "Forbidden: You are not authorized to view this user's attendance heatmap"
+        );
       }
       const teacherSubjects = profile?.subjects || [];
-      const studentSubjects = targetProfile.subjects || targetProfile.classes || [];
+      const studentSubjects =
+        targetProfile.subjects || targetProfile.classes || [];
       const studentClass = targetProfile.class || targetProfile.className;
       const hasOverlap =
         studentSubjects.some((subj) => teacherSubjects.includes(subj)) ||
         (studentClass && teacherSubjects.includes(studentClass));
       if (!hasOverlap) {
-        throw new ForbiddenError("Forbidden: You are not authorized to view this student's attendance heatmap");
+        throw new ForbiddenError(
+          "Forbidden: You are not authorized to view this student's attendance heatmap"
+        );
       }
     }
   } else {
@@ -66,9 +74,15 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`attendance_heatmap_${ip}_${targetUserId}`);
+  const rateLimitResult = await checkRateLimit(
+    `attendance_heatmap_${ip}_${targetUserId}`
+  );
   if (!rateLimitResult.allowed) {
-    return fail(429, "TOO_MANY_REQUESTS", "Too many requests. Please slow down.");
+    return fail(
+      429,
+      "TOO_MANY_REQUESTS",
+      "Too many requests. Please slow down."
+    );
   }
 
   const [year, monthNum] = month.split("-").map(Number);

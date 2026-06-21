@@ -13,7 +13,7 @@ export default function ProfilePage() {
       logEvent(analytics, "page_view", { page: "profile" });
     }
   }, []);
-  
+
   const { user, loading } = useAuth();
   // Removed extensive unused mock data (achievements, stats, recentActivity) and unused state handlers
 

@@ -1,7 +1,6 @@
 //  Install (already installed from loader step):
 //    npm install @langchain/community @langchain/core
 
-
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 // ─────────────────────────────────────────────
@@ -14,19 +13,19 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 export const CHUNK_PROFILES = {
   // Dense academic PDFs, textbooks, research papers
   academic: {
-    chunkSize:    1000,
+    chunkSize: 1000,
     chunkOverlap: 200,
   },
 
   // Lecture notes, articles, blog posts
   notes: {
-    chunkSize:    700,
+    chunkSize: 700,
     chunkOverlap: 120,
   },
 
   // Short summaries, pasted paragraphs
   brief: {
-    chunkSize:    400,
+    chunkSize: 400,
     chunkOverlap: 80,
   },
 };
@@ -34,10 +33,7 @@ export const CHUNK_PROFILES = {
 // Default profile — safe for most study material
 const DEFAULT_PROFILE = "academic";
 
-
-
 const SEPARATORS = ["\n\n", "\n", ". ", ", ", " ", ""];
-
 
 /**
  * Split LangChain Documents into smaller chunks.
@@ -58,7 +54,8 @@ const SEPARATORS = ["\n\n", "\n", ". ", ", ", " ", ""];
 export async function splitDocuments(docs, profile = DEFAULT_PROFILE) {
   if (!docs?.length) throw new Error("No documents to split.");
 
-  const { chunkSize, chunkOverlap } = CHUNK_PROFILES[profile] ?? CHUNK_PROFILES[DEFAULT_PROFILE];
+  const { chunkSize, chunkOverlap } =
+    CHUNK_PROFILES[profile] ?? CHUNK_PROFILES[DEFAULT_PROFILE];
 
   const splitter = new RecursiveCharacterTextSplitter({
     chunkSize,
@@ -77,12 +74,10 @@ export async function splitDocuments(docs, profile = DEFAULT_PROFILE) {
   return enriched;
 }
 
-
 //  METADATA ENRICHMENT
 //  Adds chunkIndex and totalChunks to every chunk.
 //  Groups by source file so indexes restart per document
 //  (useful if the user uploads multiple files later).
-
 
 function enrichMetadata(chunks) {
   // Group chunk indexes by source filename
@@ -102,19 +97,17 @@ function enrichMetadata(chunks) {
     return {
       ...chunk,
       metadata: {
-        ...chunk.metadata,                          // source, page, fileType from loader
-        chunkIndex:  indexBySource[src],            // e.g. 3  (this is the 3rd chunk)
-        totalChunks: countBySource[src],            // e.g. 42 (file has 42 chunks total)
+        ...chunk.metadata, // source, page, fileType from loader
+        chunkIndex: indexBySource[src], // e.g. 3  (this is the 3rd chunk)
+        totalChunks: countBySource[src], // e.g. 42 (file has 42 chunks total)
       },
     };
   });
 }
 
-
 //  INSPECT HELPER  (dev / debug only)
 //  Prints a summary of the chunks — useful during
 //  development to tune chunkSize and chunkOverlap.
-
 
 /**
  * Log a readable summary of chunks to the console.
@@ -123,17 +116,17 @@ function enrichMetadata(chunks) {
  * @param {Document[]} chunks
  */
 export function inspectChunks(chunks) {
-  const lengths  = chunks.map((c) => c.pageContent.length);
-  const avgLen   = Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length);
-  const minLen   = Math.min(...lengths);
-  const maxLen   = Math.max(...lengths);
-
-
+  const lengths = chunks.map((c) => c.pageContent.length);
+  const avgLen = Math.round(
+    lengths.reduce((a, b) => a + b, 0) / lengths.length
+  );
+  const minLen = Math.min(...lengths);
+  const maxLen = Math.max(...lengths);
 
   // Preview first 3 chunks
   chunks.slice(0, 3).forEach((chunk, i) => {
     console.group(`Chunk ${i + 1} — page ${chunk.metadata.page}`);
-    
+
     console.groupEnd();
   });
 }

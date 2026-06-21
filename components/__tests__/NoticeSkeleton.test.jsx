@@ -23,33 +23,23 @@ describe("NoticeSkeleton Loading States", () => {
   test("renders four skeleton cards by default", () => {
     const { container } = render(<NoticeSkeleton />);
 
-    const cards = container.querySelectorAll(
-      ".rounded-\\[2rem\\]"
-    );
+    const cards = container.querySelectorAll(".rounded-\\[2rem\\]");
 
     expect(cards).toHaveLength(4);
   });
 
   test("renders custom skeleton count", () => {
-    const { container } = render(
-      <NoticeSkeleton count={6} />
-    );
+    const { container } = render(<NoticeSkeleton count={6} />);
 
-    const cards = container.querySelectorAll(
-      ".rounded-\\[2rem\\]"
-    );
+    const cards = container.querySelectorAll(".rounded-\\[2rem\\]");
 
     expect(cards).toHaveLength(6);
   });
 
   test("renders no skeleton cards when count is zero", () => {
-    const { container } = render(
-      <NoticeSkeleton count={0} />
-    );
+    const { container } = render(<NoticeSkeleton count={0} />);
 
-    const cards = container.querySelectorAll(
-      ".rounded-\\[2rem\\]"
-    );
+    const cards = container.querySelectorAll(".rounded-\\[2rem\\]");
 
     expect(cards).toHaveLength(0);
   });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
 import logger from "@/utils/logger";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +28,8 @@ export async function GET() {
 
   // 2. Check Upstash Redis
   try {
-    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-      const redis = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
+    const redis = getRedis();
+    if (redis) {
       const ping = await redis.ping();
       status.redis = ping === "PONG" ? "connected" : "error";
     } else {
@@ -52,5 +49,8 @@ export async function GET() {
     logger.warn("Rate-limit health check failed: both backends unavailable");
   }
 
-  return NextResponse.json({ status }, { status: status.overall.includes("degraded") ? 503 : 200 });
+  return NextResponse.json(
+    { status },
+    { status: status.overall.includes("degraded") ? 503 : 200 }
+  );
 }

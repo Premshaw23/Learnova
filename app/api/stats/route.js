@@ -59,7 +59,10 @@ export const POST = withErrorHandler(async (request) => {
     if (!Number.isFinite(rawIncrement)) {
       return jsonError("value must be a finite number", 400);
     }
-    const incValue = Math.max(-MAX_INCREMENT, Math.min(MAX_INCREMENT, rawIncrement));
+    const incValue = Math.max(
+      -MAX_INCREMENT,
+      Math.min(MAX_INCREMENT, rawIncrement)
+    );
 
     const statsSnap = await statsRef.get();
     if (!statsSnap.exists) {

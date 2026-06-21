@@ -3,6 +3,7 @@ import { withErrorHandler } from "@/lib/error-handler";
 import { requireParent } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
+import { predictStudentAttendance } from "@/lib/attendanceUtils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -31,14 +32,16 @@ export const GET = withErrorHandler(async (request) => {
     if (!studentDoc.exists) continue;
 
     const studentProfile = studentDoc.data();
-    const studentName = studentProfile.fullName || studentProfile.name || "Student";
+    const studentName =
+      studentProfile.fullName || studentProfile.name || "Student";
     const instituteId = studentProfile.instituteId || "N/A";
 
     // Fetch student overall stats (like attendance rate)
     const statsDoc = await db.collection("userStats").doc(studentId).get();
     const stats = statsDoc.exists ? statsDoc.data() : {};
     const attendanceRateStr = stats["Attendance Rate"] || "0%";
-    const attendanceRate = parseInt(attendanceRateStr.replace("%", ""), 10) || 0;
+    const attendanceRate =
+      parseInt(attendanceRateStr.replace("%", ""), 10) || 0;
 
     // Fetch recent 3 notices for the student's institute
     let notices = [];
@@ -63,16 +66,21 @@ export const GET = withErrorHandler(async (request) => {
       .collection("grades")
       .where("studentId", "==", studentId)
       .get();
-    
+
     const grades = gradesSnap.docs.map((doc) => doc.data());
-    const gpa = grades.length > 0
-      ? (grades.reduce((sum, g) => sum + g.score, 0) / grades.length).toFixed(1)
-      : "N/A";
+    const gpa =
+      grades.length > 0
+        ? (grades.reduce((sum, g) => sum + g.score, 0) / grades.length).toFixed(
+            1
+          )
+        : "N/A";
 
     // Self-healing check: Trigger low-attendance notification if rate is below 75%
     if (attendanceRate < 75) {
       // Check if alert already exists within the last 24 hours
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const oneDayAgo = new Date(
+        Date.now() - 24 * 60 * 60 * 1000
+      ).toISOString();
       const existingAlerts = await db
         .collection("notifications")
         .where("recipientId", "==", parentId)
@@ -88,6 +96,47 @@ export const GET = withErrorHandler(async (request) => {
           studentId,
           message: `Alert: ${studentName}'s attendance has dropped to ${attendanceRateStr}, which is below the 75% required threshold.`,
           type: "low_attendance",
+          createdAt: new Date().toISOString(),
+          read: false,
+        });
+      }
+    }
+
+    // Early warning check: Trigger warning if projected attendance is below 75%
+    const recordsQuery = await db
+      .collection("attendance_records")
+      .where("userId", "==", studentId)
+      .get();
+    
+    const studentRecords = [];
+    recordsQuery.docs.forEach((doc) => {
+      const data = doc.data();
+      studentRecords.push({
+        date: data.date,
+        status: data.status || "present",
+      });
+    });
+
+    const prediction = predictStudentAttendance(studentRecords);
+    if (prediction.riskLevel === "high") {
+      const oneDayAgo = new Date(
+        Date.now() - 24 * 60 * 60 * 1000
+      ).toISOString();
+      const existingWarningAlerts = await db
+        .collection("notifications")
+        .where("recipientId", "==", parentId)
+        .where("studentId", "==", studentId)
+        .where("type", "==", "attendance_warning")
+        .where("createdAt", ">=", oneDayAgo)
+        .limit(1)
+        .get();
+
+      if (existingWarningAlerts.empty) {
+        await db.collection("notifications").add({
+          recipientId: parentId,
+          studentId,
+          message: `Early Warning: ${studentName}'s attendance is projected to drop to ${prediction.projectedPercentage}%, which is below the 75% required threshold.`,
+          type: "attendance_warning",
           createdAt: new Date().toISOString(),
           read: false,
         });

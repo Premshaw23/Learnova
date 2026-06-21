@@ -18,7 +18,13 @@ const byDayMap = {
 
 const getNextWeekdayDate = (dayName, timeStr) => {
   const weekdays = {
-    Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6,
+    Sunday: 0,
+    Monday: 1,
+    Tuesday: 2,
+    Wednesday: 3,
+    Thursday: 4,
+    Friday: 5,
+    Saturday: 6,
   };
   const targetDay = weekdays[dayName];
   const now = new Date();
@@ -85,14 +91,15 @@ export async function GET(request, { params }) {
   const data = snapshot.docs[0].data();
   const timetableData = data.timetableData || {};
 
-  let icsString = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Learnova//Timetable//EN",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
-    "X-WR-CALNAME:Learnova Timetable",
-  ].join("\r\n") + "\r\n";
+  let icsString =
+    [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Learnova//Timetable//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "X-WR-CALNAME:Learnova Timetable",
+    ].join("\r\n") + "\r\n";
 
   const nowICS = formatDateToICSUTC(new Date());
 
@@ -109,19 +116,20 @@ export async function GET(request, { params }) {
       const endICS = formatDateToICSFloating(endDate);
       const byDay = byDayMap[day];
 
-      icsString += [
-        "BEGIN:VEVENT",
-        `UID:class-${day}-${idx}-${token}@learnova.app`,
-        `DTSTAMP:${nowICS}`,
-        `SUMMARY:${cls.subject || "Class"}`,
-        `DESCRIPTION:Instructor: ${cls.teacher || "N/A"}\\nRoom: ${cls.room || "N/A"}`,
-        `LOCATION:${cls.room || "N/A"}`,
-        `DTSTART:${startICS}`,
-        `DTEND:${endICS}`,
-        `RRULE:FREQ=WEEKLY;BYDAY=${byDay}`,
-        "STATUS:CONFIRMED",
-        "END:VEVENT",
-      ].join("\r\n") + "\r\n";
+      icsString +=
+        [
+          "BEGIN:VEVENT",
+          `UID:class-${day}-${idx}-${token}@learnova.app`,
+          `DTSTAMP:${nowICS}`,
+          `SUMMARY:${cls.subject || "Class"}`,
+          `DESCRIPTION:Instructor: ${cls.teacher || "N/A"}\\nRoom: ${cls.room || "N/A"}`,
+          `LOCATION:${cls.room || "N/A"}`,
+          `DTSTART:${startICS}`,
+          `DTEND:${endICS}`,
+          `RRULE:FREQ=WEEKLY;BYDAY=${byDay}`,
+          "STATUS:CONFIRMED",
+          "END:VEVENT",
+        ].join("\r\n") + "\r\n";
     });
   });
 

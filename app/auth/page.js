@@ -34,10 +34,11 @@ export default function AuthPage() {
 function AuthPageContent() {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
+  const isDirect = searchParams.get("direct") === "true";
 
-  const [showRoleSelection, setShowRoleSelection] = useState(true);
+  const [showRoleSelection, setShowRoleSelection] = useState(!isDirect);
   const [isLogin, setIsLogin] = useState(mode !== "signup");
-  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedRole, setSelectedRole] = useState(isDirect ? USER_ROLES.STUDENT : "");
 
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -70,14 +71,27 @@ function AuthPageContent() {
     setErrors({});
   };
 
-  const handleSubmit = async (formData) => { // <-- Accept formData directly here
-    const { email, password, fullName, instituteName, inviteCode } = formData; // Extract fields for the API call
-    const { isValid, errors: validationErrors } = validateForm(formData, isLogin);
+ const handleSubmit = async (formData) => {
+  // Validate role selection before proceeding with authentication
+  if (!selectedRole) {
+    setErrors({
+      role: "Please select your role before proceeding with authentication",
+      submit: "Role selection is required. Please go back and select a role."
+    });
+    return;
+  }
 
-    if (!isValid) {
-      setErrors(validationErrors);
-      return;
-    }
+  const { email, password, fullName, instituteName, inviteCode } = formData;
+
+  const { isValid, errors: validationErrors } = validateForm(
+    formData,
+    isLogin
+  );
+
+  if (!isValid) {
+    setErrors(validationErrors);
+    return;
+  }
 
     setIsLoading(true);
     setErrors({});
@@ -95,7 +109,9 @@ function AuthPageContent() {
       }
 
       if (result.needsVerification) {
-        toast.success("Verification email sent! Please check your inbox.");
+        toast.error(
+          "Your email is not verified. Please verify your email to continue."
+        );
         setShowRoleSelection(true);
         router.push("/verify");
       } else if (result.needsProfile) {
@@ -103,14 +119,21 @@ function AuthPageContent() {
         setShowRoleSelection(true);
         router.push("/profile");
       } else if (result.success) {
-        toast.success(isLogin ? "Successfully logged in!" : "Account created successfully!");
+        toast.success(
+          isLogin ? "Successfully logged in!" : "Account created successfully!"
+        );
         setShowRoleSelection(true);
         redirectBasedOnRole(result.userData.role, router);
       } else {
-        setErrors({ submit: result.error || "Something went wrong. Please try again." });
+        setErrors({
+          submit: result.error || "Something went wrong. Please try again.",
+        });
       }
     } catch {
-      setErrors({ submit: "Authentication failed. Please verify your credentials and try again." });
+      setErrors({
+        submit:
+          "Authentication failed. Please verify your credentials and try again.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -127,15 +150,24 @@ function AuthPageContent() {
 
     try {
       // Pass safe fallbacks since local text state is handled inside AuthForm now
-      const result = await loginWithGoogle(selectedRole, isLogin, { fullName: "", instituteName: "" });
+      const result = await loginWithGoogle(selectedRole, isLogin, {
+        fullName: "",
+        instituteName: "",
+      });
       if (result.success) {
         toast.success("Successfully logged in with Google!");
         redirectBasedOnRole(result.userData.role, router);
       } else {
-        setErrors({ submit: result.error || "Google sign-in could not be completed. Please try again." });
+        setErrors({
+          submit:
+            result.error ||
+            "Google sign-in could not be completed. Please try again.",
+        });
       }
     } catch {
-      setErrors({ submit: "An unexpected error occurred during Google authentication." });
+      setErrors({
+        submit: "An unexpected error occurred during Google authentication.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -157,14 +189,19 @@ function AuthPageContent() {
     try {
       const result = await resetPassword(emailToReset);
       if (result.success) {
-        toast.success("Password reset email sent! Check your inbox and spam folder.");
+        toast.success(
+          "Password reset email sent! Check your inbox and spam folder."
+        );
         setShowForgotPassword(false);
         setForgotPasswordEmail("");
       } else {
         setErrors({ forgotEmail: result.error });
       }
     } catch {
-      setErrors({ forgotEmail: "Password reset failed. Please verify your email and try again." });
+      setErrors({
+        forgotEmail:
+          "Password reset failed. Please verify your email and try again.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -202,15 +239,15 @@ function AuthPageContent() {
               <ErrorBoundary>
                 <div className="mx-auto w-full max-w-md">
                   <AuthForm
-                  isLogin={isLogin}
-                  selectedRole={selectedRole}
-                  isLoading={isLoading}
-                  onSubmit={handleSubmit}
-                  onGoogleLogin={handleGoogleLogin}
-                  onRoleChange={handleRoleChange}
-                  onToggleLogin={handleToggleLogin}
-                  onForgotPassword={handleOpenForgotPassword}
-                />
+                    isLogin={isLogin}
+                    selectedRole={selectedRole}
+                    isLoading={isLoading}
+                    onSubmit={handleSubmit}
+                    onGoogleLogin={handleGoogleLogin}
+                    onRoleChange={handleRoleChange}
+                    onToggleLogin={handleToggleLogin}
+                    onForgotPassword={handleOpenForgotPassword}
+                  />
                 </div>
               </ErrorBoundary>
             </div>

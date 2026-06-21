@@ -21,7 +21,9 @@ describe("AuthContext and AuthProvider", () => {
 
   test("throws an error when useAuthContext is used outside AuthProvider", () => {
     // Suppress console.error in test output as throwing is expected here
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     expect(() => render(<TestComponent />)).toThrow(
       "useAuthContext must be used within an AuthProvider"
@@ -49,6 +51,8 @@ describe("AuthContext and AuthProvider", () => {
       </AuthProvider>
     );
 
-    expect(screen.getByTestId("user-email")).toHaveTextContent("test@example.com");
+    expect(screen.getByTestId("user-email")).toHaveTextContent(
+      "test@example.com"
+    );
   });
 });

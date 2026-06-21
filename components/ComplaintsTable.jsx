@@ -1,24 +1,40 @@
 "use client";
-
+//removed unused imports
 import { useMemo, useState } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
-import { Search, Filter, Plus, CheckCircle2, Clock3, AlertCircle, Shield } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Search,
+  Filter,
+  Plus,
+  CheckCircle2,
+  Clock3,
+  AlertCircle,
+  Shield,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-export default function ComplaintsTable({ complaints = [], onRaiseComplaint, onRowClick }) {
+export default function ComplaintsTable({
+  complaints = [],
+  onRaiseComplaint,
+  onRowClick,
+}) {
   const { user } = useAuthContext();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
   const filteredComplaints = useMemo(() => {
     return complaints.filter((c) => {
       const matchesSearch =
         c.title?.toLowerCase().includes(search.toLowerCase()) ||
         c.student?.toLowerCase().includes(search.toLowerCase()) ||
         c.id?.toLowerCase().includes(search.toLowerCase());
-      return matchesSearch && (statusFilter === "All" || c.status === statusFilter);
+      return (
+        matchesSearch && (statusFilter === "All" || c.status === statusFilter)
+      );
     });
   }, [complaints, search, statusFilter]);
 
@@ -28,11 +44,18 @@ export default function ComplaintsTable({ complaints = [], onRaiseComplaint, onR
       <Card className="bg-white/85 dark:bg-slate-950/40 border border-white/10 dark:border-slate-800/80 p-6 md:p-8 shadow-xl backdrop-blur-xl">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-6">
           <div>
-            <p className="text-sm uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">Support Center</p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-950 dark:text-slate-50 tracking-tight">Complaints Dashboard</h1>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">File a classroom, portal, or hostel issue and monitor its resolution trajectory fields.</p>
+            <p className="text-sm uppercase tracking-[0.4em] text-slate-500 dark:text-slate-400">
+              Support Center
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-950 dark:text-slate-50 tracking-tight">
+              Complaints Dashboard
+            </h1>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              File a classroom, portal, or hostel issue and monitor its
+              resolution trajectory fields.
+            </p>
           </div>
-          <Button 
+          <Button
             onClick={onRaiseComplaint}
             className="rounded-3xl px-6 py-5 font-semibold text-sm bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 transition shadow-md hover:opacity-90 cursor-pointer"
           >
@@ -69,6 +92,29 @@ export default function ComplaintsTable({ complaints = [], onRaiseComplaint, onR
         </div>
       </div>
 
+      {/* PAGINATION CONTROLS */}
+      {filteredComplaints.length > itemsPerPage && (
+        <div className="flex justify-center gap-2 mt-4">
+          <Button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="cursor-pointer"
+          >
+            Previous
+          </Button>
+          <span className="self-center text-sm text-slate-400">
+            Page {currentPage} of {Math.ceil(filteredComplaints.length / itemsPerPage)}
+          </span>
+          <Button
+            onClick={() => setCurrentPage((p) => Math.min(Math.ceil(filteredComplaints.length / itemsPerPage), p + 1))}
+            disabled={currentPage === Math.ceil(filteredComplaints.length / itemsPerPage)}
+            className="cursor-pointer"
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
       {/* DATA RECORDS LEDGER GRID */}
       <Card className="bg-white/85 dark:bg-slate-950/40 border border-white/10 dark:border-slate-800/80 overflow-hidden shadow-2xl backdrop-blur-xl">
         <div className="overflow-x-auto">
@@ -91,43 +137,78 @@ export default function ComplaintsTable({ complaints = [], onRaiseComplaint, onR
               animate="visible"
               variants={{ visible: { transition: { staggerChildren: 0.02 } } }}
             >
-              {filteredComplaints.map((c) => (
+              {(filteredComplaints.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)).map((c) => (
                 <motion.tr
                   key={c.id}
                   onClick={() => onRowClick && onRowClick(c)}
-                  variants={{ hidden: { opacity: 0, y: 4 }, visible: { opacity: 1, y: 0 } }}
+                  variants={{
+                    hidden: { opacity: 0, y: 4 },
+                    visible: { opacity: 1, y: 0 },
+                  }}
                   className="border-b border-slate-200 dark:border-slate-800/60 hover:bg-slate-100/50 dark:hover:bg-slate-900/40 transition-colors cursor-pointer text-sm"
                 >
-                  <td className="px-6 py-5 font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">{c.id}</td>
-                  <td className="px-6 py-5 font-semibold text-slate-900 dark:text-slate-100 max-w-[220px] truncate">{c.title}</td>
+                  <td className="px-6 py-5 font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">
+                    {c.id}
+                  </td>
+                  <td className="px-6 py-5 font-semibold text-slate-900 dark:text-slate-100 max-w-[220px] truncate">
+                    {c.title}
+                  </td>
                   <td className="px-6 py-5 text-slate-700 dark:text-slate-300">
                     <div className="flex items-center gap-2">
-                      {c.isAnonymous && <Shield size={12} className="text-purple-500" />}
-                      <span className={c.isAnonymous ? "text-purple-500 font-medium" : ""}>{c.student}</span>
+                      {c.isAnonymous && (
+                        <Shield size={12} className="text-purple-500" />
+                      )}
+                      <span
+                        className={
+                          c.isAnonymous ? "text-purple-500 font-medium" : ""
+                        }
+                      >
+                        {c.student}
+                      </span>
                     </div>
                   </td>
-                  <td className="px-6 py-5 font-mono text-xs text-slate-500 dark:text-slate-400">{c.roll}</td>
-                  <td className="px-6 py-5 text-slate-500 dark:text-slate-400 text-xs">{c.department}</td>
+                  <td className="px-6 py-5 font-mono text-xs text-slate-500 dark:text-slate-400">
+                    {c.roll}
+                  </td>
+                  <td className="px-6 py-5 text-slate-500 dark:text-slate-400 text-xs">
+                    {c.department}
+                  </td>
                   <td className="px-6 py-5 text-center">
-                    <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide border ${
-                      c.priority === "High" ? "bg-red-500/10 text-red-500 border-red-500/20" :
-                      c.priority === "Medium" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                      "bg-green-500/10 text-green-500 border-green-500/20"
-                    }`}>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide border ${
+                        c.priority === "High"
+                          ? "bg-red-500/10 text-red-500 border-red-500/20"
+                          : c.priority === "Medium"
+                            ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                            : "bg-green-500/10 text-green-500 border-green-500/20"
+                      }`}
+                    >
                       {c.priority}
                     </span>
                   </td>
                   <td className="px-6 py-5 text-center">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                      c.status === "Resolved" ? "bg-green-500/10 text-green-600 dark:text-green-400" :
-                      c.status === "Pending" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
-                      "bg-rose-500/10 text-rose-500"
-                    }`}>
-                      {c.status === "Resolved" ? <CheckCircle2 size={12} /> : c.status === "Pending" ? <Clock3 size={12} /> : <AlertCircle size={12} />}
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                        c.status === "Resolved"
+                          ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                          : c.status === "Pending"
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            : "bg-rose-500/10 text-rose-500"
+                      }`}
+                    >
+                      {c.status === "Resolved" ? (
+                        <CheckCircle2 size={12} />
+                      ) : c.status === "Pending" ? (
+                        <Clock3 size={12} />
+                      ) : (
+                        <AlertCircle size={12} />
+                      )}
                       {c.status}
                     </span>
                   </td>
-                  <td className="px-6 py-5 text-right pr-8 font-medium text-xs text-slate-400">{c.date}</td>
+                  <td className="px-6 py-5 text-right pr-8 font-medium text-xs text-slate-400">
+                    {c.date}
+                  </td>
                 </motion.tr>
               ))}
             </motion.tbody>

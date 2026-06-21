@@ -1,137 +1,102 @@
-import { NextResponse } from "next/server";
+import { z } from "zod";
 import { connectDb } from "@/lib/mongodb";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
+import { getUserProfile } from "@/lib/firebase-admin";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
+import { jsonSuccess } from "@/lib/api-response";
+import { ValidationError, ForbiddenError } from "@/lib/errors";
 
-export async function POST(request) {
-  try {
-    // Authenticate and authorize — only teachers and admins can modify curricula
-    const { payload, profile } = await requireRole(request, ["teacher", "admin"]);
+const MAX_PAYLOAD_BYTES = 1024 * 500;
 
-    const body = await request.json();
-    const { courseId, modules } = body;
+const lessonSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, "Lesson title is required").max(200),
+  duration: z.string().max(50).optional(),
+  type: z.string().max(50).optional(),
+  completed: z.boolean().optional(),
+});
 
-    if (!courseId) {
-      return NextResponse.json(
-        { success: false, error: "Course ID is required" },
-        { status: 400 }
-      );
-    }
+const moduleSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, "Module title is required").max(200),
+  lessons: z.array(lessonSchema).max(100).optional().default([]),
+});
 
-    if (!Array.isArray(modules)) {
-      return NextResponse.json(
-        { success: false, error: "Modules must be a valid array" },
-        { status: 400 }
-      );
-    }
+const curriculumSyncSchema = z
+  .object({
+    courseId: z.string().min(1, "Course ID is required").max(100),
+    modules: z.array(moduleSchema).max(50, "Too many modules (max 50)"),
+  })
+  .strict();
 
-    // Validate each module entry. Accepting arbitrary objects without schema
-    // validation allows malformed data (null IDs, non-string titles, lesson
-    // arrays that are actually objects) to be persisted, causing downstream
-    // errors when the curriculum is rendered or processed.
-    const invalidModules = modules.filter(
-      (mod, idx) =>
-        mod === null ||
-        typeof mod !== "object" ||
-        typeof mod.title !== "string" ||
-        mod.title.trim() === "" ||
-        (mod.lessons !== undefined && !Array.isArray(mod.lessons))
-    );
+/**
+ * POST /api/courses/curriculum/sync — persists a validated curriculum structure to MongoDB.
+ */
+export const POST = withErrorHandler(async (request) => {
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
 
-    if (invalidModules.length > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Each module must be an object with a non-empty title string and an optional lessons array",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate each lesson within every module.
-    for (let modIdx = 0; modIdx < modules.length; modIdx++) {
-      const lessons = modules[modIdx].lessons || [];
-      const invalidLessons = lessons.filter(
-        (les) =>
-          les === null ||
-          typeof les !== "object" ||
-          typeof les.title !== "string" ||
-          les.title.trim() === ""
-      );
-      if (invalidLessons.length > 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Module at index ${modIdx} contains lessons with missing or invalid title fields`,
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    let isDbPersisted = false;
-
-    if (process.env.MONGODB_URI) {
-      const db = await connectDb();
-
-      // Ownership check: only the original creator or an admin can modify a curriculum
-      if (profile?.role !== "admin") {
-        const existing = await db.collection("course_curriculums").findOne(
-          { courseId },
-          { projection: { ownerId: 1 } }
-        );
-        if (existing && existing.ownerId !== payload.uid) {
-          return NextResponse.json(
-            { success: false, error: "Forbidden: You do not own this course curriculum" },
-            { status: 403 }
-          );
-        }
-      }
-
-      // Structure the modules list to enforce position sequences
-      const structuredModules = modules.map((mod, modIdx) => ({
-        id: mod.id,
-        title: mod.title.trim(),
-        order: modIdx,
-        lessons: (mod.lessons || []).map((les, lesIdx) => ({
-          id: les.id,
-          title: les.title.trim(),
-          duration: les.duration || "15 mins",
-          type: les.type || "video",
-          completed: les.completed || false,
-          order: lesIdx
-        }))
-      }));
-
-      await db.collection("course_curriculums").updateOne(
-        { courseId },
-        {
-          $set: {
-            modules: structuredModules,
-            updatedAt: new Date(),
-          },
-          $setOnInsert: {
-            ownerId: payload.uid,
-            createdAt: new Date(),
-          },
-        },
-        { upsert: true }
-      );
-      isDbPersisted = true;
-    }
-
-    return NextResponse.json({
-      success: true,
-      persisted: isDbPersisted,
-      message: isDbPersisted
-        ? "Curriculum synced atomically to MongoDB successfully"
-        : "Curriculum cached successfully (Demo fallback mode active)"
-    });
-  } catch (error) {
-    console.error("POST Curriculum Sync API Error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Internal Server Error" },
-      { status: 500 }
+  const body = await parseJSON(request, MAX_PAYLOAD_BYTES);
+  const parsed = curriculumSyncSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new ValidationError(
+      parsed.error.issues[0]?.message || "Invalid curriculum payload"
     );
   }
-}
+
+  const { courseId, modules } = parsed.data;
+
+  let isDbPersisted = false;
+
+  if (process.env.MONGODB_URI) {
+    const db = await connectDb();
+
+    if (profile?.role !== "admin") {
+      const existing = await db
+        .collection("course_curriculums")
+        .findOne({ courseId }, { projection: { ownerId: 1 } });
+      if (existing && existing.ownerId !== decodedToken.uid) {
+        throw new ForbiddenError(
+          "Forbidden: You do not own this course curriculum"
+        );
+      }
+    }
+
+    const structuredModules = modules.map((mod, modIdx) => ({
+      id: mod.id,
+      title: mod.title.trim(),
+      order: modIdx,
+      lessons: mod.lessons.map((les, lesIdx) => ({
+        id: les.id,
+        title: les.title.trim(),
+        duration: les.duration || "15 mins",
+        type: les.type || "video",
+        completed: les.completed || false,
+        order: lesIdx,
+      })),
+    }));
+
+    await db.collection("course_curriculums").updateOne(
+      { courseId },
+      {
+        $set: {
+          modules: structuredModules,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          ownerId: decodedToken.uid,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+    isDbPersisted = true;
+  }
+
+  return jsonSuccess({
+    persisted: isDbPersisted,
+    message: isDbPersisted
+      ? "Curriculum synced to MongoDB successfully"
+      : "Curriculum cached successfully (Demo fallback mode active)",
+  });
+});

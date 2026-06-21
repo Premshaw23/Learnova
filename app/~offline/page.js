@@ -22,7 +22,7 @@ export default function OfflinePage() {
           const cache = await caches.open("api-cache");
           const keys = await cache.keys();
           const attendanceKey = keys.find((k) =>
-            k.url.includes("/api/attendance"),
+            k.url.includes("/api/attendance")
           );
           if (attendanceKey) {
             const response = await cache.match(attendanceKey);
@@ -79,7 +79,6 @@ export default function OfflinePage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 bg-background">
       <div className="max-w-md w-full space-y-6">
-
         {/* Icon */}
         <div className="flex justify-center">
           <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">

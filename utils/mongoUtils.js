@@ -34,7 +34,11 @@ export function escapeRegex(raw, maxLength = 100) {
  * @param {string}      defaultField  - Fallback used when field is not allowed
  * @returns {string} A safe sort field name guaranteed to be in allowedFields
  */
-export function sanitizeSortField(field, allowedFields, defaultField = "createdAt") {
+export function sanitizeSortField(
+  field,
+  allowedFields,
+  defaultField = "createdAt"
+) {
   if (typeof field !== "string" || !allowedFields.has(field)) {
     return defaultField;
   }

@@ -1,4 +1,3 @@
-
 //  Install:
 //    npm install @langchain/community @langchain/core pdfjs-dist tesseract.js
 //
@@ -7,10 +6,9 @@
 //  This means your TextSplitter and Retriever need zero changes
 //  regardless of which loader ran.
 
-
-import { BaseDocumentLoader }   from "@langchain/core/document_loaders/base";
-import { Document }             from "@langchain/core/documents";
-import { createWorker }         from "tesseract.js";
+import { BaseDocumentLoader } from "@langchain/core/document_loaders/base";
+import { Document } from "@langchain/core/documents";
+import { createWorker } from "tesseract.js";
 
 let pdfjsLib = null;
 
@@ -27,11 +25,10 @@ async function getPdfJs() {
   pdfjsLib = pdfjs;
   return pdfjsLib;
 }
-const SCANNED_CHAR_THRESHOLD = 100;  // chars across first 3 pages — below this = scanned
-const OCR_RENDER_SCALE       = 2.0;  // 2x scale improves Tesseract accuracy significantly
-const OCR_IMAGE_QUALITY      = 0.90; // JPEG quality for canvas → Tesseract
-const MAX_FILE_SIZE_MB       = 20;
-
+const SCANNED_CHAR_THRESHOLD = 100; // chars across first 3 pages — below this = scanned
+const OCR_RENDER_SCALE = 2.0; // 2x scale improves Tesseract accuracy significantly
+const OCR_IMAGE_QUALITY = 0.9; // JPEG quality for canvas → Tesseract
+const MAX_FILE_SIZE_MB = 20;
 
 /**
  * Load any supported file and return LangChain Documents.
@@ -63,15 +60,13 @@ export async function loadDocument(file, onProgress = () => {}) {
   throw new Error(`".${ext}" is not supported. Upload a PDF, TXT, or MD file.`);
 }
 
-
-
 async function routePDFLoader(file, onProgress) {
   onProgress({ stage: "Detecting PDF type", page: 0, total: 0, percent: 0 });
 
   const arrayBuffer = await file.arrayBuffer();
   const pdfjs = await getPdfJs();
-const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-  const isScanned   = await detectScannedPDF(pdf);
+  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+  const isScanned = await detectScannedPDF(pdf);
 
   if (isScanned) {
     // Route to our custom LangChain loader
@@ -86,20 +81,17 @@ const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
 //  TEXT-BASED PDF  —  WebPDFLoader (LangChain built-in)
 //  Returns one Document per page with metadata
 
-
 async function loadTextPDF(file, onProgress) {
   const arrayBuffer = await file.arrayBuffer();
   const pdfjs = await getPdfJs();
-const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
   const docs = [];
 
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
 
-    const text = content.items
-      .map(item => item.str)
-      .join(" ");
+    const text = content.items.map((item) => item.str).join(" ");
 
     docs.push(
       new Document({
@@ -134,8 +126,8 @@ export class ScannedPDFLoader extends BaseDocumentLoader {
    */
   constructor(file, options = {}) {
     super();
-    this.file       = file;
-    this.language   = options.language   ?? "eng";
+    this.file = file;
+    this.language = options.language ?? "eng";
     this.onProgress = options.onProgress ?? (() => {});
   }
 
@@ -146,11 +138,11 @@ export class ScannedPDFLoader extends BaseDocumentLoader {
   async load() {
     const arrayBuffer = await this.file.arrayBuffer();
     const pdfjs = await getPdfJs();
-const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
 
     // Initialise Tesseract worker once — reused across all pages
     const worker = await createWorker(this.language, 1, {
-      logger: () => {},  // suppress Tesseract console noise
+      logger: () => {}, // suppress Tesseract console noise
     });
 
     const documents = [];
@@ -158,9 +150,9 @@ const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
     try {
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         this.onProgress({
-          stage:   "Running OCR",
-          page:    pageNum,
-          total:   pdf.numPages,
+          stage: "Running OCR",
+          page: pageNum,
+          total: pdf.numPages,
           percent: Math.round((pageNum / pdf.numPages) * 100),
         });
 
@@ -171,8 +163,8 @@ const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
           new Document({
             pageContent: pageText,
             metadata: {
-              source:   this.file.name,
-              page:     pageNum,
+              source: this.file.name,
+              page: pageNum,
               fileType: "pdf-scanned",
             },
           })
@@ -191,11 +183,11 @@ const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
    * @private
    */
   async _ocrPage(pdf, pageNumber, worker) {
-    const page     = await pdf.getPage(pageNumber);
+    const page = await pdf.getPage(pageNumber);
     const viewport = page.getViewport({ scale: OCR_RENDER_SCALE });
 
-    const canvas  = document.createElement("canvas");
-    canvas.width  = viewport.width;
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
     canvas.height = viewport.height;
 
     await page.render({
@@ -205,7 +197,9 @@ const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
 
     const imageData = canvas.toDataURL("image/jpeg", OCR_IMAGE_QUALITY);
 
-    const { data: { text } } = await worker.recognize(imageData);
+    const {
+      data: { text },
+    } = await worker.recognize(imageData);
     return text.trim();
   }
 }
@@ -229,7 +223,6 @@ export function loadFromText(text, source = "pasted-content") {
   ];
 }
 
-
 /**
  * Load directly pasted text into LangChain Document shape.
  *
@@ -243,13 +236,12 @@ export function loadFromPaste(rawText) {
   return loadFromText(rawText, "pasted-content");
 }
 
-
 async function detectScannedPDF(pdf) {
   const pagesToSample = Math.min(3, pdf.numPages);
   let totalChars = 0;
 
   for (let i = 1; i <= pagesToSample; i++) {
-    const page    = await pdf.getPage(i);
+    const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     totalChars += content.items.reduce((acc, item) => acc + item.str.length, 0);
   }
@@ -269,6 +261,8 @@ function validateFile(file) {
 
   const ext = file.name.split(".").pop().toLowerCase();
   if (!["pdf", "txt", "md"].includes(ext)) {
-    throw new Error(`".${ext}" is not supported. Upload a PDF, TXT, or MD file.`);
+    throw new Error(
+      `".${ext}" is not supported. Upload a PDF, TXT, or MD file.`
+    );
   }
 }

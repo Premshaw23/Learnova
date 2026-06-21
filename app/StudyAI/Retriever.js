@@ -1,10 +1,7 @@
 /**
  * Build vector store on server and return sessionId
  */
-export async function buildRetriever(
-  chunks,
-  onProgress = () => {}
-) {
+export async function buildRetriever(chunks, onProgress = () => {}) {
   if (!chunks?.length) {
     throw new Error("No chunks to embed.");
   }
@@ -14,28 +11,21 @@ export async function buildRetriever(
     percent: 20,
   });
 
-  const response = await fetch(
-    "/api/StudyAI/embed",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chunks,
-      }),
-    }
-  );
+  const response = await fetch("/api/StudyAI/embed", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      chunks,
+    }),
+  });
 
   const data = await response.json();
 
-
-
-if (!response.ok) {
-  throw new Error(
-    JSON.stringify(data, null, 2)
-  );
-}
+  if (!response.ok) {
+    throw new Error(JSON.stringify(data, null, 2));
+  }
 
   onProgress({
     stage: "Vector store ready",
@@ -68,15 +58,10 @@ export async function retrieve(query, sessionId) {
     }),
   });
 
-  console.log("Retrieve status:", response.status);
-
   const data = await response.json();
 
-
   if (!response.ok) {
-    throw new Error(
-      JSON.stringify(data, null, 2)
-    );
+    throw new Error(JSON.stringify(data, null, 2));
   }
 
   return data.data.docs;

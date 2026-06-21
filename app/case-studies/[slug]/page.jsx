@@ -21,7 +21,8 @@ const CASE_STUDIES = {
   impact: {
     slug: "impact",
     title: "Measurable Academic & Operational Impact",
-    subtitle: "How Learnova transformed institutional efficiency across campuses",
+    subtitle:
+      "How Learnova transformed institutional efficiency across campuses",
     category: "Institutional Impact",
     readTime: "8 min read",
     publishedAt: "January 2025",
@@ -29,12 +30,42 @@ const CASE_STUDIES = {
     summary:
       "Learnova's platform delivered measurable gains in student engagement, attendance compliance, and administrative throughput across partner institutions — backed by live data layers and actionable analytics.",
     stats: [
-      { label: "Students Onboarded", value: "12,400+", icon: Users, color: "text-indigo-400" },
-      { label: "Institutions Partnered", value: "38", icon: Building2, color: "text-purple-400" },
-      { label: "Avg. Attendance Improvement", value: "+31%", icon: TrendingUp, color: "text-emerald-400" },
-      { label: "Courses Delivered", value: "940+", icon: BookOpen, color: "text-blue-400" },
-      { label: "Avg. Grade Uplift", value: "+18%", icon: Award, color: "text-amber-400" },
-      { label: "Hours Saved (Admin/week)", value: "9.2h", icon: Clock, color: "text-rose-400" },
+      {
+        label: "Students Onboarded",
+        value: "12,400+",
+        icon: Users,
+        color: "text-indigo-400",
+      },
+      {
+        label: "Institutions Partnered",
+        value: "38",
+        icon: Building2,
+        color: "text-purple-400",
+      },
+      {
+        label: "Avg. Attendance Improvement",
+        value: "+31%",
+        icon: TrendingUp,
+        color: "text-emerald-400",
+      },
+      {
+        label: "Courses Delivered",
+        value: "940+",
+        icon: BookOpen,
+        color: "text-blue-400",
+      },
+      {
+        label: "Avg. Grade Uplift",
+        value: "+18%",
+        icon: Award,
+        color: "text-amber-400",
+      },
+      {
+        label: "Hours Saved (Admin/week)",
+        value: "9.2h",
+        icon: Clock,
+        color: "text-rose-400",
+      },
     ],
     sections: [
       {
@@ -78,9 +109,7 @@ export default function CaseStudyPage() {
 
   // Render skeleton shell on server / before mount to avoid hydration mismatch
   if (!mounted || !study) {
-    return (
-      <div className="min-h-screen bg-zinc-950" aria-hidden="true" />
-    );
+    return <div className="min-h-screen bg-zinc-950" aria-hidden="true" />;
   }
 
   return (
@@ -117,9 +146,13 @@ export default function CaseStudyPage() {
               {study.category}
             </span>
             <span className="text-zinc-600">·</span>
-            <span className="text-xs text-zinc-500 font-medium">{study.readTime}</span>
+            <span className="text-xs text-zinc-500 font-medium">
+              {study.readTime}
+            </span>
             <span className="text-zinc-600">·</span>
-            <span className="text-xs text-zinc-500 font-medium">{study.publishedAt}</span>
+            <span className="text-xs text-zinc-500 font-medium">
+              {study.publishedAt}
+            </span>
           </div>
 
           {/* Title */}
@@ -146,8 +179,12 @@ export default function CaseStudyPage() {
                 className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-5 flex flex-col gap-2 hover:border-zinc-700/60 transition-colors duration-200"
               >
                 <Icon className={`w-5 h-5 ${stat.color}`} />
-                <span className="text-2xl font-black text-zinc-100">{stat.value}</span>
-                <span className="text-xs text-zinc-500 font-medium leading-snug">{stat.label}</span>
+                <span className="text-2xl font-black text-zinc-100">
+                  {stat.value}
+                </span>
+                <span className="text-xs text-zinc-500 font-medium leading-snug">
+                  {stat.label}
+                </span>
               </div>
             );
           })}
@@ -175,7 +212,9 @@ export default function CaseStudyPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 + i * 0.07 }}
             >
-              <h2 className="text-xl font-bold text-zinc-100 mb-3">{section.heading}</h2>
+              <h2 className="text-xl font-bold text-zinc-100 mb-3">
+                {section.heading}
+              </h2>
               <p className="text-zinc-400 leading-relaxed">{section.body}</p>
             </motion.section>
           ))}
@@ -191,7 +230,10 @@ export default function CaseStudyPage() {
           <h2 className="text-xl font-bold text-zinc-100 mb-5">Key Outcomes</h2>
           <ul className="space-y-3">
             {study.highlights.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-sm text-zinc-300">
+              <li
+                key={item}
+                className="flex items-start gap-3 text-sm text-zinc-300"
+              >
                 <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
                 {item}
               </li>
@@ -206,7 +248,9 @@ export default function CaseStudyPage() {
           transition={{ duration: 0.5, delay: 0.5 }}
           className="text-center"
         >
-          <p className="text-zinc-500 text-sm mb-4">Ready to bring these results to your institution?</p>
+          <p className="text-zinc-500 text-sm mb-4">
+            Ready to bring these results to your institution?
+          </p>
           <a
             href="/contact"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold shadow-lg shadow-indigo-600/20 transition-all duration-200"

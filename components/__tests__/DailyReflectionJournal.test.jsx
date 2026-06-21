@@ -49,16 +49,12 @@ describe("DailyReflectionJournal Reflection Persistence", () => {
   test("renders journal headings", () => {
     render(<DailyReflectionJournal />);
 
-    expect(
-      screen.getByText(/daily reflection journal/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/daily reflection journal/i)).toBeInTheDocument();
+
+    expect(screen.getByText(/what went well today/i)).toBeInTheDocument();
 
     expect(
-      screen.getByText(/what went well today/i)
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(/one thing you're proud of/i)
+      screen.getByText(/one thing you\u2019re proud of/i)
     ).toBeInTheDocument();
   });
 
@@ -74,16 +70,10 @@ describe("DailyReflectionJournal Reflection Persistence", () => {
     render(<DailyReflectionJournal />);
 
     expect(
-      screen.getByDisplayValue(
-        "Completed my assignments"
-      )
+      screen.getByDisplayValue("Completed my assignments")
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByDisplayValue(
-        "Stayed consistent"
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Stayed consistent")).toBeInTheDocument();
   });
 
   test("updates textarea values", async () => {
@@ -91,19 +81,13 @@ describe("DailyReflectionJournal Reflection Persistence", () => {
 
     render(<DailyReflectionJournal />);
 
-    const wentWellTextarea =
-      screen.getByPlaceholderText(
-        /a moment that felt good/i
-      );
-
-    await user.type(
-      wentWellTextarea,
-      "Had a productive day"
+    const wentWellTextarea = screen.getByPlaceholderText(
+      /a moment that felt good/i
     );
 
-    expect(wentWellTextarea).toHaveValue(
-      "Had a productive day"
-    );
+    await user.type(wentWellTextarea, "Had a productive day");
+
+    expect(wentWellTextarea).toHaveValue("Had a productive day");
   });
 
   test("saves reflections to localStorage", async () => {
@@ -112,16 +96,12 @@ describe("DailyReflectionJournal Reflection Persistence", () => {
     render(<DailyReflectionJournal />);
 
     await user.type(
-      screen.getByPlaceholderText(
-        /a moment that felt good/i
-      ),
+      screen.getByPlaceholderText(/a moment that felt good/i),
       "Finished studying"
     );
 
     await user.type(
-      screen.getByPlaceholderText(
-        /a small accomplishment or progress/i
-      ),
+      screen.getByPlaceholderText(/a small accomplishment or progress/i),
       "Completed workout"
     );
 
@@ -131,9 +111,7 @@ describe("DailyReflectionJournal Reflection Persistence", () => {
       })
     );
 
-    expect(
-      window.localStorage.setItem
-    ).toHaveBeenCalled();
+    expect(window.localStorage.setItem).toHaveBeenCalled();
   });
 
   test("shows save confirmation message", async () => {
@@ -148,9 +126,7 @@ describe("DailyReflectionJournal Reflection Persistence", () => {
     );
 
     expect(
-      screen.getByText(
-        /reflection saved successfully/i
-      )
+      screen.getByText(/reflection saved successfully/i)
     ).toBeInTheDocument();
   });
 

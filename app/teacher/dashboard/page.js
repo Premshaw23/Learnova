@@ -12,7 +12,7 @@ const TeacherDashboard = dynamic(
 export default function Teacher() {
   return (
     <ProtectedRoute allowedRoles={["teacher"]}>
-      <TeacherDashboard/>
+      <TeacherDashboard />
     </ProtectedRoute>
   );
 }

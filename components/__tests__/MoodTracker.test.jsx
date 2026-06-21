@@ -43,24 +43,25 @@ describe("MoodTracker Component", () => {
     expect(screen.getAllByText("Calm").length).toBeGreaterThan(0);
   });
 
-  test("should render the 'Selected mood' badge exactly once for the active mood", () => {
+  test("should render the 'Selected' badge exactly once for the active mood", () => {
     render(<MoodTracker />);
 
     // By default, "happy" is the active mood.
-    // Let's verify that the "Selected mood" badge is rendered exactly once.
-    const badges = screen.getAllByText("Selected mood");
+    // Let's verify that the "Selected" badge is rendered exactly once.
+    const badges = screen.getAllByText("Selected");
     expect(badges).toHaveLength(1);
   });
 
-  test("should update the active mood and keep only a single 'Selected mood' badge", () => {
+
+  test("should update the active mood and keep only a single 'Selected' badge", () => {
     render(<MoodTracker />);
 
     // Find the "Calm" mood button and click it
     const calmButton = screen.getByRole("button", { name: /Calm/i });
     fireEvent.click(calmButton);
 
-    // Verify that the "Selected mood" badge is still rendered exactly once on the page
-    const badges = screen.getAllByText("Selected mood");
+    // Verify that the "Selected" badge is still rendered exactly once
+    const badges = screen.getAllByText("Selected");
     expect(badges).toHaveLength(1);
   });
 });

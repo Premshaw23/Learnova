@@ -33,7 +33,7 @@ describe("StreakTracker Component", () => {
 
   test("should initialize streak to 1 and store today as lastActiveDate on first render", () => {
     render(<StreakTracker />);
-    
+
     act(() => {
       vi.runAllTimers();
     });
@@ -52,10 +52,17 @@ describe("StreakTracker Component", () => {
     // Set yesterday's date
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayMidnight = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+    const yesterdayMidnight = new Date(
+      yesterday.getFullYear(),
+      yesterday.getMonth(),
+      yesterday.getDate()
+    );
 
     window.localStorage.setItem("currentStreak", "3");
-    window.localStorage.setItem("lastActiveDate", yesterdayMidnight.toISOString());
+    window.localStorage.setItem(
+      "lastActiveDate",
+      yesterdayMidnight.toISOString()
+    );
 
     render(<StreakTracker />);
 
@@ -71,7 +78,11 @@ describe("StreakTracker Component", () => {
 
   test("should keep streak the same if lastActiveDate is today", () => {
     const today = new Date();
-    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayMidnight = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
 
     window.localStorage.setItem("currentStreak", "5");
     window.localStorage.setItem("lastActiveDate", todayMidnight.toISOString());
@@ -91,10 +102,17 @@ describe("StreakTracker Component", () => {
   test("should reset streak to 1 if lastActiveDate was more than 1 day ago", () => {
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    const threeDaysAgoMidnight = new Date(threeDaysAgo.getFullYear(), threeDaysAgo.getMonth(), threeDaysAgo.getDate());
+    const threeDaysAgoMidnight = new Date(
+      threeDaysAgo.getFullYear(),
+      threeDaysAgo.getMonth(),
+      threeDaysAgo.getDate()
+    );
 
     window.localStorage.setItem("currentStreak", "10");
-    window.localStorage.setItem("lastActiveDate", threeDaysAgoMidnight.toISOString());
+    window.localStorage.setItem(
+      "lastActiveDate",
+      threeDaysAgoMidnight.toISOString()
+    );
 
     render(<StreakTracker />);
 

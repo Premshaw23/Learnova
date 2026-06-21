@@ -449,14 +449,17 @@ const CSS = `
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function timestamp() {
-  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 const QUICK_ACTIONS = [
-  { key: "summarise",  label: "Summarise",  icon: "📝" },
-  { key: "keypoints",  label: "Key Points", icon: "🎯" },
+  { key: "summarise", label: "Summarise", icon: "📝" },
+  { key: "keypoints", label: "Key Points", icon: "🎯" },
   { key: "flashcards", label: "Flashcards", icon: "🃏" },
-  { key: "simplify",   label: "Simplify",   icon: "💡" },
+  { key: "simplify", label: "Simplify", icon: "💡" },
 ];
 
 const HINT_PROMPTS = [
@@ -469,21 +472,21 @@ const HINT_PROMPTS = [
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function StudyAIPage() {
-  const [activeTab,    setActiveTab]    = useState("upload");
-  const [profile,      setProfile]      = useState("academic");
-  const [document,     setDocument]     = useState(null);
+  const [activeTab, setActiveTab] = useState("upload");
+  const [profile, setProfile] = useState("academic");
+  const [document, setDocument] = useState(null);
   const [sessionId, setSessionId] = useState(null);
-  const [messages,     setMessages]     = useState([]);
-  const [input,        setInput]        = useState("");
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isAnswering,  setIsAnswering]  = useState(false);
-  const [progress,     setProgress]     = useState({ stage: "", percent: 0 });
-  const [pasteText,    setPasteText]    = useState("");
-  const [dragOver,     setDragOver]     = useState(false);
+  const [isAnswering, setIsAnswering] = useState(false);
+  const [progress, setProgress] = useState({ stage: "", percent: 0 });
+  const [pasteText, setPasteText] = useState("");
+  const [dragOver, setDragOver] = useState(false);
 
   const messagesEndRef = useRef(null);
-  const fileInputRef   = useRef(null);
-  const textareaRef    = useRef(null);
+  const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -494,37 +497,42 @@ export default function StudyAIPage() {
     setProgress({ stage: "Starting…", percent: 0 });
 
     const docs = file
-      ? await loadDocument(file, ({ stage, percent }) => setProgress({ stage, percent }))
+      ? await loadDocument(file, ({ stage, percent }) =>
+          setProgress({ stage, percent })
+        )
       : loadFromPaste(pastedText);
 
     setProgress({ stage: "Splitting into chunks…", percent: 60 });
     const chunks = await splitDocuments(docs, profile);
 
     setProgress({ stage: "Building vector store…", percent: 75 });
-    const sessionId = await buildRetriever(
-  chunks,
-  ({ stage, percent }) => setProgress({ stage, percent })
-);
+    const sessionId = await buildRetriever(chunks, ({ stage, percent }) =>
+      setProgress({ stage, percent })
+    );
 
-setSessionId(sessionId);
+    setSessionId(sessionId);
 
     setProgress({ stage: "Ready ✓", percent: 100 });
 
     const docName = file ? file.name : "Pasted Content";
     const docType = file
-      ? (file.name.endsWith(".pdf") ? "pdf-text" : "plain-text")
+      ? file.name.endsWith(".pdf")
+        ? "pdf-text"
+        : "plain-text"
       : "plain-text";
 
     setDocument({ name: docName, type: docType, chunks: chunks.length });
     setIsProcessing(false);
 
-    setMessages([{
-      id:      Date.now(),
-      role:    "ai",
-      text:    `Document loaded! Processed **${docName}** into ${chunks.length} chunks. Ask me anything about it, or use the quick actions.`,
-      time:    timestamp(),
-      sources: [],
-    }]);
+    setMessages([
+      {
+        id: Date.now(),
+        role: "ai",
+        text: `Document loaded! Processed **${docName}** into ${chunks.length} chunks. Ask me anything about it, or use the quick actions.`,
+        time: timestamp(),
+        sources: [],
+      },
+    ]);
   }
 
   async function handleFileUpload(file) {
@@ -544,20 +552,25 @@ setSessionId(sessionId);
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    const userMsg = { id: Date.now(), role: "user", text: q, time: timestamp() };
-    setMessages(prev => [...prev, userMsg]);
+    const userMsg = {
+      id: Date.now(),
+      role: "user",
+      text: q,
+      time: timestamp(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
     setIsAnswering(true);
 
     const answer = await askQuestion(q, sessionId);
     const aiMsg = {
-      id:      Date.now() + 1,
-      role:    "ai",
-      text:    answer,
-      time:    timestamp(),
+      id: Date.now() + 1,
+      role: "ai",
+      text: answer,
+      time: timestamp(),
       sources: [],
     };
 
-    setMessages(prev => [...prev, aiMsg]);
+    setMessages((prev) => [...prev, aiMsg]);
     setIsAnswering(false);
   }
 
@@ -565,30 +578,30 @@ setSessionId(sessionId);
     if (!sessionId || isAnswering) return;
     setIsAnswering(true);
 
-    const label = QUICK_ACTIONS.find(a => a.key === action)?.label;
+    const label = QUICK_ACTIONS.find((a) => a.key === action)?.label;
 
     const userMsg = {
-      id:   Date.now(),
+      id: Date.now(),
       role: "user",
       text: `Generate ${label} for this document`,
       time: timestamp(),
     };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, userMsg]);
 
     const result = await quickAction(action, sessionId);
 
     const aiMsg = {
-      id:          Date.now() + 1,
-      role:        "ai",
-      isAction:    true,
-      actionKey:   action,
+      id: Date.now() + 1,
+      role: "ai",
+      isAction: true,
+      actionKey: action,
       actionLabel: label,
-      text:        result,
-      time:        timestamp(),
-      sources:     [],
+      text: result,
+      time: timestamp(),
+      sources: [],
     };
 
-    setMessages(prev => [...prev, aiMsg]);
+    setMessages((prev) => [...prev, aiMsg]);
     setIsAnswering(false);
   }
 
@@ -611,10 +624,8 @@ setSessionId(sessionId);
     <>
       <style>{CSS}</style>
       <div className="page-wrapper">
-
         {/* ── Main ── */}
         <div className="main">
-
           {/* ── Sidebar ── */}
           <aside className="sidebar">
             <div className="sidebar-header">
@@ -623,12 +634,14 @@ setSessionId(sessionId);
               <div className="input-tabs">
                 <button
                   className={`input-tab${activeTab === "upload" ? " active" : ""}`}
-                  onClick={() => setActiveTab("upload")}>
+                  onClick={() => setActiveTab("upload")}
+                >
                   ↑ Upload
                 </button>
                 <button
                   className={`input-tab${activeTab === "paste" ? " active" : ""}`}
-                  onClick={() => setActiveTab("paste")}>
+                  onClick={() => setActiveTab("paste")}
+                >
                   ✎ Paste
                 </button>
               </div>
@@ -636,12 +649,23 @@ setSessionId(sessionId);
               {activeTab === "upload" && !document && (
                 <div
                   className={`upload-zone${dragOver ? " drag-over" : ""}`}
-                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
                   onDragLeave={() => setDragOver(false)}
-                  onDrop={e => { e.preventDefault(); setDragOver(false); handleFileUpload(e.dataTransfer.files[0]); }}>
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    handleFileUpload(e.dataTransfer.files[0]);
+                  }}
+                >
                   <input
-                    type="file" accept=".pdf,.txt,.md" ref={fileInputRef}
-                    onChange={e => handleFileUpload(e.target.files[0])} />
+                    type="file"
+                    accept=".pdf,.txt,.md"
+                    ref={fileInputRef}
+                    onChange={(e) => handleFileUpload(e.target.files[0])}
+                  />
                   <div className="upload-icon">📄</div>
                   <div className="upload-label">Drop your file here</div>
                   <div className="upload-sub">PDF, TXT, MD — max 20 MB</div>
@@ -651,14 +675,17 @@ setSessionId(sessionId);
               {activeTab === "paste" && !document && (
                 <>
                   <textarea
-                    className="paste-area" rows={6}
+                    className="paste-area"
+                    rows={6}
                     placeholder="Paste your notes, articles, or any study material here…"
                     value={pasteText}
-                    onChange={e => setPasteText(e.target.value)} />
+                    onChange={(e) => setPasteText(e.target.value)}
+                  />
                   <button
                     className="process-btn"
                     disabled={!pasteText.trim() || isProcessing}
-                    onClick={handlePasteProcess}>
+                    onClick={handlePasteProcess}
+                  >
                     {isProcessing ? "Processing…" : "Process Content →"}
                   </button>
                 </>
@@ -672,7 +699,10 @@ setSessionId(sessionId);
                   <span>{progress.percent}%</span>
                 </div>
                 <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${progress.percent}%` }} />
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${progress.percent}%` }}
+                  />
                 </div>
               </div>
             )}
@@ -681,13 +711,25 @@ setSessionId(sessionId);
               <div className="doc-info">
                 <div className="doc-badge">
                   <div className="doc-badge-icon">
-                    {document.type === "pdf-scanned" ? "🖨️" : document.type === "pdf-text" ? "📕" : "📝"}
+                    {document.type === "pdf-scanned"
+                      ? "🖨️"
+                      : document.type === "pdf-text"
+                        ? "📕"
+                        : "📝"}
                   </div>
                   <div>
                     <div className="doc-badge-name">{document.name}</div>
-                    <div className="doc-badge-meta">{document.chunks} chunks · {document.type}</div>
+                    <div className="doc-badge-meta">
+                      {document.chunks} chunks · {document.type}
+                    </div>
                   </div>
-                  <div className="doc-badge-remove" onClick={handleRemoveDoc} title="Remove document">✕</div>
+                  <div
+                    className="doc-badge-remove"
+                    onClick={handleRemoveDoc}
+                    title="Remove document"
+                  >
+                    ✕
+                  </div>
                 </div>
               </div>
             )}
@@ -695,12 +737,13 @@ setSessionId(sessionId);
             <div className="quick-actions">
               <div className="qa-title">Quick Actions</div>
               <div className="qa-grid">
-                {QUICK_ACTIONS.map(a => (
+                {QUICK_ACTIONS.map((a) => (
                   <button
                     key={a.key}
                     className="qa-btn"
                     disabled={!canInteract || isAnswering}
-                    onClick={() => handleQuickAction(a.key)}>
+                    onClick={() => handleQuickAction(a.key)}
+                  >
                     <span className="qa-btn-icon">{a.icon}</span>
                     {a.label}
                   </button>
@@ -713,7 +756,8 @@ setSessionId(sessionId);
               <select
                 className="profile-select"
                 value={profile}
-                onChange={e => setProfile(e.target.value)}>
+                onChange={(e) => setProfile(e.target.value)}
+              >
                 <option value="academic">Academic — Dense PDFs</option>
                 <option value="notes">Notes — Lecture / Articles</option>
                 <option value="brief">Brief — Short Passages</option>
@@ -725,34 +769,40 @@ setSessionId(sessionId);
           <div className="chat-area">
             <div className="chat-glow" />
 
-           <div className="chat-header">
-  <div className="chat-header-left">
-    <div
-      className="chat-header-dot"
-      style={{
-        background: canInteract ? "#22c55e" : "#64748b",
-        boxShadow: canInteract ? "0 0 8px #22c55e" : "none",
-      }}
-    />
-    <div>
-      <div className="chat-header-title">Study Assistant</div>
-      <div className="chat-header-sub">
-        {canInteract
-          ? `${document?.name} — ${document?.chunks} chunks indexed`
-          : "Upload a document to start chatting"}
-      </div>
-    </div>
-  </div>
+            <div className="chat-header">
+              <div className="chat-header-left">
+                <div
+                  className="chat-header-dot"
+                  style={{
+                    background: canInteract ? "#22c55e" : "#64748b",
+                    boxShadow: canInteract ? "0 0 8px #22c55e" : "none",
+                  }}
+                />
+                <div>
+                  <div className="chat-header-title">Study Assistant</div>
+                  <div className="chat-header-sub">
+                    {canInteract
+                      ? `${document?.name} — ${document?.chunks} chunks indexed`
+                      : "Upload a document to start chatting"}
+                  </div>
+                </div>
+              </div>
 
-  <div style={{ display: "flex", gap: "8px" }}>
-    <a href="/" className="clear-btn" style={{ textDecoration: "none" }}>
-      ← Home
-    </a>
-    {messages.length > 0 && (
-      <button className="clear-btn" onClick={handleClear}>Clear chat</button>
-    )}
-  </div>
-</div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <a
+                  href="/"
+                  className="clear-btn"
+                  style={{ textDecoration: "none" }}
+                >
+                  ← Home
+                </a>
+                {messages.length > 0 && (
+                  <button className="clear-btn" onClick={handleClear}>
+                    Clear chat
+                  </button>
+                )}
+              </div>
+            </div>
 
             <div className="messages">
               {messages.length === 0 && !isProcessing ? (
@@ -760,18 +810,26 @@ setSessionId(sessionId);
                   <div className="empty-icon">🧠</div>
                   <div className="empty-title">Ask me anything</div>
                   <div className="empty-sub">
-                    Upload your study material and I&apos;ll answer questions, generate summaries, create flashcards, and help you understand complex topics.
+                    Upload your study material and I&apos;ll answer questions,
+                    generate summaries, create flashcards, and help you
+                    understand complex topics.
                   </div>
                   <div className="empty-hints">
-                    {HINT_PROMPTS.map(h => (
-                      <button key={h} className="empty-hint" onClick={() => { if (canInteract) handleSend(h); }}>
+                    {HINT_PROMPTS.map((h) => (
+                      <button
+                        key={h}
+                        className="empty-hint"
+                        onClick={() => {
+                          if (canInteract) handleSend(h);
+                        }}
+                      >
                         {h}
                       </button>
                     ))}
                   </div>
                 </div>
               ) : (
-                messages.map(msg => (
+                messages.map((msg) => (
                   <div key={msg.id} className={`msg ${msg.role}`}>
                     <div className={`msg-avatar ${msg.role}`}>
                       {msg.role === "ai" ? "✦" : "👤"}
@@ -779,7 +837,9 @@ setSessionId(sessionId);
                     <div>
                       {msg.isAction ? (
                         <div className="action-card">
-                          <div className="action-card-label">{msg.actionLabel}</div>
+                          <div className="action-card-label">
+                            {msg.actionLabel}
+                          </div>
                           <div className="action-card-content">{msg.text}</div>
                         </div>
                       ) : (
@@ -788,7 +848,9 @@ setSessionId(sessionId);
                       {msg.sources?.length > 0 && (
                         <div className="source-pills">
                           {msg.sources.map((s, i) => (
-                            <span key={i} className="source-pill">pg {s.page} · chunk {s.chunk}</span>
+                            <span key={i} className="source-pill">
+                              pg {s.page} · chunk {s.chunk}
+                            </span>
                           ))}
                         </div>
                       )}
@@ -820,26 +882,38 @@ setSessionId(sessionId);
                   ref={textareaRef}
                   className="chat-input"
                   rows={1}
-                  placeholder={canInteract ? "Ask a question about your document…" : "Upload a document first…"}
+                  placeholder={
+                    canInteract
+                      ? "Ask a question about your document…"
+                      : "Upload a document first…"
+                  }
                   value={input}
                   disabled={!canInteract || isAnswering}
-                  onChange={e => {
+                  onChange={(e) => {
                     setInput(e.target.value);
                     e.target.style.height = "auto";
-                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+                    e.target.style.height =
+                      Math.min(e.target.scrollHeight, 120) + "px";
                   }}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
                   }}
                 />
                 <button
                   className="send-btn"
                   disabled={!canInteract || !input.trim() || isAnswering}
-                  onClick={() => handleSend()}>
+                  onClick={() => handleSend()}
+                >
                   ➤
                 </button>
               </div>
-              <div className="input-hint">Enter to send · Shift+Enter for new line · Powered by Groq llama-3.3-70b</div>
+              <div className="input-hint">
+                Enter to send · Shift+Enter for new line · Powered by Groq
+                llama-3.3-70b
+              </div>
             </div>
           </div>
         </div>

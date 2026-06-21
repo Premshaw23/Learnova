@@ -1,5 +1,9 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { authenticateRequest, parseJSON, withErrorHandler } from "@/lib/error-handler";
+import {
+  authenticateRequest,
+  parseJSON,
+  withErrorHandler,
+} from "@/lib/error-handler";
 import { validateGroqBody, callGroq } from "@/lib/ai/groq";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { detectInjection, sanitizeMessage } from "@/utils/promptGuard";
@@ -25,14 +29,24 @@ export const POST = withErrorHandler(async (request) => {
 
   const injectionCheck = detectInjection(trimmedMessage);
   if (injectionCheck.isInjection) {
-    console.warn(`[nova-ai-safety] Injection blocked for user ${decodedToken.uid}: ${injectionCheck.matchedPattern}`);
-    return jsonError("Safety check: System instructions override or prompt injection attempt detected.", 400);
+    console.warn(
+      `[nova-ai-safety] Injection blocked for user ${decodedToken.uid}: ${injectionCheck.matchedPattern}`
+    );
+    return jsonError(
+      "Safety check: System instructions override or prompt injection attempt detected.",
+      400
+    );
   }
 
   const sanitizedMessage = sanitizeMessage(trimmedMessage);
 
   try {
-    const content = await callGroq(sanitizedMessage, validation.messages, decodedToken.uid);
+    const content = await callGroq(
+      sanitizedMessage,
+      validation.messages,
+      decodedToken.uid,
+      validation.context
+    );
     return jsonSuccess({ message: content });
   } catch (error) {
     if (error.name === "AbortError" || error.status === 504) {

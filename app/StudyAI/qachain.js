@@ -1,13 +1,12 @@
-
 import {
   ChatPromptTemplate,
   MessagesPlaceholder,
-}                              from "@langchain/core/prompts";
+} from "@langchain/core/prompts";
 import {
   HumanMessage,
   AIMessage,
   SystemMessage,
-}                              from "@langchain/core/messages";
+} from "@langchain/core/messages";
 import { retrieve } from "./Retriever.js";
 
 function formatContext(chunks) {
@@ -19,9 +18,7 @@ function formatContext(chunks) {
     .map((chunk, i) => {
       const { source, page } = chunk.metadata || {};
 
-      return `[Chunk ${i + 1}${
-        source ? ` - ${source}` : ""
-      }${
+      return `[Chunk ${i + 1}${source ? ` - ${source}` : ""}${
         page ? ` - Page ${page}` : ""
       }]
 ${chunk.pageContent}`;
@@ -32,8 +29,6 @@ ${chunk.pageContent}`;
 // Each turn = 1 HumanMessage + 1 AIMessage.
 // Keeps the prompt lean — older turns are dropped.
 const MAX_HISTORY_TURNS = 6;
-
-
 
 //  CONVERSATION HISTORY
 //  Stored as LangChain BaseMessage[] so it feeds
@@ -57,7 +52,7 @@ export function clearHistory() {
  */
 export function getHistory() {
   return conversationHistory.map((msg) => ({
-    role:    msg instanceof HumanMessage ? "user" : "assistant",
+    role: msg instanceof HumanMessage ? "user" : "assistant",
     content: msg.content,
   }));
 }
@@ -139,16 +134,10 @@ export async function askQuestion(question, sessionId) {
 
   const relevantChunks = await retrieve(question, sessionId);
 
-
-
-
-
-const context = formatContext(relevantChunks);
+  const context = formatContext(relevantChunks);
 
   // Keep only recent conversation history
-  const trimmedHistory = conversationHistory.slice(
-    -(MAX_HISTORY_TURNS * 2)
-  );
+  const trimmedHistory = conversationHistory.slice(-(MAX_HISTORY_TURNS * 2));
 
   // Build LangChain prompt messages
   const promptMessages = await qaPromptTemplate.formatMessages({
@@ -158,13 +147,7 @@ const context = formatContext(relevantChunks);
   });
 
   // Convert messages into ONE string for /api/groq
-  const promptText = promptMessages
-    .map((msg) => msg.content)
-    .join("\n\n");
-
-  
-
-  
+  const promptText = promptMessages.map((msg) => msg.content).join("\n\n");
 
   const response = await fetch("/api/groq", {
     method: "POST",
@@ -176,20 +159,15 @@ const context = formatContext(relevantChunks);
     }),
   });
 
-
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(
-      error?.error || "Failed to get response from Groq"
-    );
+    throw new Error(error?.error || "Failed to get response from Groq");
   }
 
   const data = await response.json();
 
   const answer =
-    data?.data?.message ||
-    data?.message ||
-    "No response generated.";
+    data?.data?.message || data?.message || "No response generated.";
 
   // Save conversation history
   conversationHistory.push(new HumanMessage(question));
@@ -197,7 +175,6 @@ const context = formatContext(relevantChunks);
 
   return answer;
 }
-
 
 //  QUICK ACTIONS
 //  Summarise / Key Points / Flashcards / Simplify
@@ -226,34 +203,28 @@ export async function quickAction(action, sessionId, topic = "") {
   if (!sessionId) throw new Error("session not initialised.");
 
   // Use the topic as the retrieval query, or fall back to the action name
-  const query          = topic || action;
+  const query = topic || action;
   const relevantChunks = await retrieve(query, sessionId);
-  const context        = formatContext(relevantChunks);
+  const context = formatContext(relevantChunks);
 
   const prompt = await quickActionTemplate.formatMessages({
     systemPrompt: QUICK_ACTION_PROMPTS[action],
     context,
   });
 
- const promptText = prompt
-  .map((msg) => msg.content)
-  .join("\n\n");
+  const promptText = prompt.map((msg) => msg.content).join("\n\n");
 
-const response = await fetch("/api/groq", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    message: promptText,
-  }),
-});
+  const response = await fetch("/api/groq", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: promptText,
+    }),
+  });
 
-const data = await response.json();
+  const data = await response.json();
 
-return (
-  data?.data?.message ||
-  data?.message ||
-  "No response generated."
-);
+  return data?.data?.message || data?.message || "No response generated.";
 }
