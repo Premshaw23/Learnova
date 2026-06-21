@@ -193,17 +193,6 @@ describe("Parent Portal Feature Tests", () => {
     };
 
     getFirestore.mockReturnValue({
-      getAll: vi.fn((...refs) => {
-        const colData = store["users"] || {};
-        return refs.map((ref) => {
-          const docVal = colData[ref.id || ref._docId];
-          return {
-            exists: docVal !== undefined,
-            id: ref.id || ref._docId,
-            data: () => docVal || {},
-          };
-        });
-      }),
       collection: vi.fn((colName) => {
         const colData = store[colName] || {};
         return {
