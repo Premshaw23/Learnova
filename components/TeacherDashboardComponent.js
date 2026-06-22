@@ -63,6 +63,10 @@ import {
   Zap,
   Loader2,
   XCircle,
+  FileText,
+  Clock,
+  MapPin,
+  CalendarPlus,
 } from "lucide-react";
 import ExportDropdown from "@/components/ui/ExportDropdown";
 import { exportToCSV } from "@/utils/exportUtils";
@@ -78,6 +82,7 @@ import { db } from "@/lib/firebaseConfig";
 import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 
 import AttendanceRiskDashboard from "@/components/dashboard/AttendanceRiskDashboard";
+import ClassroomMoodWidget from "@/components/dashboard/ClassroomMoodWidget";
 import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
 import LiveAttendanceView from "@/components/LiveAttendanceView";
 import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
@@ -86,6 +91,7 @@ import { useCurriculum } from "@/hooks/useCurriculum";
 import { apiFetch } from "@/lib/apiClient";
 import { syncOfflineQueue, getPendingRecordsCount } from "@/services/offlineSyncQueue";
 import { auth } from "@/lib/firebaseConfig";
+import AbsentSummaryModal from "./dashboard/AbsentSummaryModal";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -131,6 +137,7 @@ const TeacherDashboard = () => {
   const [allRequests, setAllRequests] = useState([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState(null);
+  const [showAbsentSummaryModal, setShowAbsentSummaryModal] = useState(false);
   const pendingRequests = useMemo(() => {
     return attendanceRequests.filter((req) => req.status === "pending");
   }, [attendanceRequests]);
@@ -1080,6 +1087,36 @@ const TeacherDashboard = () => {
                   </div>
                 </div>
               </button>
+
+              <button 
+                onClick={() => setShowAbsentSummaryModal(true)}
+                className="w-full bg-gradient-to-r from-indigo-600/20 to-indigo-600/20 hover:from-indigo-600/30 hover:to-indigo-600/30 border border-indigo-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" 
+                aria-label="Action button">
+                <div className="flex items-center space-x-3">
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                  <div>
+                    <div className="font-medium">AI Lecture Summary</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      Send notes to absent students
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleExport('csv')}
+                className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+               aria-label="Action button">
+                <div className="flex items-center space-x-3">
+                  <Download className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <div className="font-medium">Export Reports</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      CSV format (Instant Download)
+                    </div>
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -1196,10 +1233,87 @@ const TeacherDashboard = () => {
         {/* feat: AI-powered attendance risk dashboard (issue #2183) */}
         <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
           <AttendanceRiskDashboard />
+          <div className="mt-8">
+            <ClassroomMoodWidget />
+          </div>
         </div>
       </div>
+
+      {showAbsentSummaryModal && (
+        <AbsentSummaryModal
+          isOpen={showAbsentSummaryModal}
+          onClose={() => setShowAbsentSummaryModal(false)}
+          absentStudents={studentAttendanceData.filter(s => s.status === "absent")}
+        />
+      )}
     </div>
   );
+
+  const handleExportSingleClass = (cls, day) => {
+    let icsString = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Learnova//Teacher Schedule//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+    ].join("\r\n") + "\r\n";
+
+    const [startStr, endStr] = (cls.time || "").split("-");
+    if (!startStr || !endStr) return;
+
+    // Helper to get next weekday date
+    const getNextWeekdayDate = (dayName, timeStr) => {
+      const weekdays = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+      const targetDay = weekdays[dayName];
+      const now = new Date();
+      const currentDay = now.getDay();
+      let daysToAdd = targetDay - currentDay;
+      if (daysToAdd < 0) daysToAdd += 7;
+      const targetDate = new Date();
+      targetDate.setDate(now.getDate() + daysToAdd);
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      targetDate.setHours(hours || 9, minutes || 0, 0, 0);
+      return targetDate;
+    };
+
+    const formatDateToICS = (date) => {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const hh = String(date.getHours()).padStart(2, "0");
+      const min = String(date.getMinutes()).padStart(2, "0");
+      const ss = "00";
+      return `${yyyy}${mm}${dd}T${hh}${min}${ss}`;
+    };
+
+    const startDate = getNextWeekdayDate(day, startStr.trim());
+    const endDate = getNextWeekdayDate(day, endStr.trim());
+    const byDayMap = { Sunday: "SU", Monday: "MO", Tuesday: "TU", Wednesday: "WE", Thursday: "TH", Friday: "FR", Saturday: "SA" };
+
+    icsString += [
+      "BEGIN:VEVENT",
+      `UID:class-${day}-${Date.now()}@learnova`,
+      `DTSTAMP:${formatDateToICS(new Date())}`,
+      `SUMMARY:${cls.subject}`,
+      `DESCRIPTION:Room: ${cls.room}`,
+      `LOCATION:${cls.room}`,
+      `DTSTART:${formatDateToICS(startDate)}`,
+      `DTEND:${formatDateToICS(endDate)}`,
+      `RRULE:FREQ=WEEKLY;BYDAY=${byDayMap[day]}`,
+      "END:VEVENT",
+    ].join("\r\n") + "\r\n";
+    icsString += "END:VCALENDAR";
+
+    const blob = new Blob([icsString], { type: "text/calendar;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${(cls.subject || "Class").replace(/\s+/g, '_')}_schedule.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${cls.subject} to .ics!`);
+  };
 
   const renderSchedule = () => (
     <div className="space-y-8">
@@ -1222,9 +1336,18 @@ const TeacherDashboard = () => {
               {classes.map((cls, index) => (
                 <div
                   key={index}
-                  className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50"
+                  className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50 relative group"
                 >
-                  <div className="text-sm font-medium text-foreground dark:text-white">
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => handleExportSingleClass(cls, day)}
+                      className="p-1 rounded bg-black/40 text-gray-400 hover:text-green-400 transition-colors"
+                      title="Add to Calendar"
+                    >
+                      <CalendarPlus className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="text-sm font-medium text-foreground dark:text-white pr-5">
                     {cls.subject}
                   </div>
                   <div className="text-xs text-muted-foreground dark:text-gray-400">

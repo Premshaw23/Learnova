@@ -560,6 +560,55 @@ export default function Timetable({ role = "student" }) {
     toast.success(`Successfully exported ${eventCount} classes to .ics!`);
   };
 
+  const handleExportSingleClass = (cls, day) => {
+    let icsString =
+      [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Learnova//Student Timetable Scheduler//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+      ].join("\r\n") + "\r\n";
+
+    const [startStr, endStr] = cls.time.split("-");
+    if (!startStr || !endStr) return;
+
+    const startDate = getNextWeekdayDate(day, startStr.trim());
+    const endDate = getNextWeekdayDate(day, endStr.trim());
+
+    const startICS = formatDateToICS(startDate);
+    const endICS = formatDateToICS(endDate);
+    const byDay = byDayMap[day];
+
+    icsString +=
+      [
+        "BEGIN:VEVENT",
+        `UID:class-${day}-${Date.now()}@learnova`,
+        `DTSTAMP:${formatDateToICS(new Date())}`,
+        `SUMMARY:${cls.subject}`,
+        `DESCRIPTION:Instructor: ${cls.teacher}\\nRoom: ${cls.room}`,
+        `LOCATION:${cls.room}`,
+        `DTSTART:${startICS}`,
+        `DTEND:${endICS}`,
+        `RRULE:FREQ=WEEKLY;BYDAY=${byDay}`,
+        "END:VEVENT",
+      ].join("\r\n") + "\r\n";
+
+    icsString += "END:VCALENDAR";
+
+    const blob = new Blob([icsString], {
+      type: "text/calendar;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${cls.subject.replace(/\s+/g, '_')}_class.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Successfully exported ${cls.subject} to .ics!`);
+  };
+
   const classes = timetableData[selectedDay] || [];
 
   return (
@@ -710,6 +759,16 @@ export default function Timetable({ role = "student" }) {
 
                     {/* Visual action controls on the card */}
                     <div className="flex items-center space-x-1.5 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportSingleClass(cls, selectedDay);
+                        }}
+                        className="p-1.5 rounded-lg bg-white/5 text-white/50 hover:text-green-400 hover:bg-white/10 hover:border-green-500/20 border border-transparent transition-all"
+                        title="Add to Calendar"
+                      >
+                        <CalendarPlus className="w-3 h-3" />
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

@@ -16,6 +16,11 @@ import {
   RefreshCw,
   Sparkles,
   AlertTriangle,
+  GripVertical,
+  Eye,
+  EyeOff,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
@@ -661,6 +666,452 @@ const generateRoadmap = () => {
     }
   };
 
+  // ── Dashboard Customization & Reordering State ──────────────────────────
+  const [widgetOrder, setWidgetOrder] = useState([
+    "roadmap",
+    "studyGroups",
+    "attendanceInsights",
+    "calendar",
+    "performance",
+    "feedback",
+    "suggestions",
+    "engagement",
+    "achievements",
+  ]);
+  const [hiddenWidgets, setHiddenWidgets] = useState([]);
+  const [customizingLayout, setCustomizingLayout] = useState(false);
+  const [draggedWidgetId, setDraggedWidgetId] = useState(null);
+  const [draggedOverId, setDraggedOverId] = useState(null);
+
+  // Load layout from localStorage
+  useEffect(() => {
+    const savedOrder = localStorage.getItem("learnova_student_widget_order");
+    const savedHidden = localStorage.getItem("learnova_student_hidden_widgets");
+    if (savedOrder) {
+      try {
+        setWidgetOrder(JSON.parse(savedOrder));
+      } catch (e) {
+        console.error("Error parsing widget order", e);
+      }
+    }
+    if (savedHidden) {
+      try {
+        setHiddenWidgets(JSON.parse(savedHidden));
+      } catch (e) {
+        console.error("Error parsing hidden widgets", e);
+      }
+    }
+  }, []);
+
+  const handleDragStart = (e, id) => {
+    setDraggedWidgetId(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+
+  const handleDragOver = (e, id) => {
+    e.preventDefault();
+    if (draggedWidgetId !== id) {
+      setDraggedOverId(id);
+    }
+  };
+
+  const handleDrop = (e, targetId) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData("text/plain") || draggedWidgetId;
+    if (!sourceId || sourceId === targetId) return;
+
+    setWidgetOrder((prevOrder) => {
+      const sourceIndex = prevOrder.indexOf(sourceId);
+      const targetIndex = prevOrder.indexOf(targetId);
+      if (sourceIndex === -1 || targetIndex === -1) return prevOrder;
+
+      const newOrder = [...prevOrder];
+      newOrder.splice(sourceIndex, 1);
+      newOrder.splice(targetIndex, 0, sourceId);
+      
+      localStorage.setItem("learnova_student_widget_order", JSON.stringify(newOrder));
+      return newOrder;
+    });
+
+    setDraggedWidgetId(null);
+    setDraggedOverId(null);
+    toast.success("Layout updated", { id: "dnd-toast" });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedWidgetId(null);
+    setDraggedOverId(null);
+  };
+
+  const moveWidget = (id, direction) => {
+    setWidgetOrder((prevOrder) => {
+      const index = prevOrder.indexOf(id);
+      if (index === -1) return prevOrder;
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prevOrder.length) return prevOrder;
+
+      const newOrder = [...prevOrder];
+      const temp = newOrder[index];
+      newOrder[index] = newOrder[targetIndex];
+      newOrder[targetIndex] = temp;
+
+      localStorage.setItem("learnova_student_widget_order", JSON.stringify(newOrder));
+      return newOrder;
+    });
+    toast.success("Widget shifted", { id: "shift-toast" });
+  };
+
+  const hideWidget = (id) => {
+    setHiddenWidgets((prevHidden) => {
+      const newHidden = [...prevHidden, id];
+      localStorage.setItem("learnova_student_hidden_widgets", JSON.stringify(newHidden));
+      return newHidden;
+    });
+    toast.success("Widget hidden. Recover it from the top editor panel.", { id: "hide-toast" });
+  };
+
+  const showWidget = (id) => {
+    setHiddenWidgets((prevHidden) => {
+      const newHidden = prevHidden.filter((item) => item !== id);
+      localStorage.setItem("learnova_student_hidden_widgets", JSON.stringify(newHidden));
+      return newHidden;
+    });
+    toast.success("Widget restored.", { id: "show-toast" });
+  };
+
+  const resetLayout = () => {
+    const defaultOrder = [
+      "roadmap",
+      "studyGroups",
+      "attendanceInsights",
+      "calendar",
+      "performance",
+      "feedback",
+      "suggestions",
+      "engagement",
+      "achievements",
+    ];
+    setWidgetOrder(defaultOrder);
+    setHiddenWidgets([]);
+    localStorage.removeItem("learnova_student_widget_order");
+    localStorage.removeItem("learnova_student_hidden_widgets");
+    toast.success("Dashboard layout reset to default", { id: "reset-toast" });
+  };
+
+  const renderWidget = (id) => {
+    if (hiddenWidgets.includes(id)) return null;
+
+    let widgetContent = null;
+    let widgetTitle = "";
+
+    switch (id) {
+      case "roadmap":
+        widgetTitle = "AI Learning Roadmap";
+        widgetContent = (
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <h2 className="text-xl font-bold text-white mb-4">
+              AI Learning Roadmap Generator
+            </h2>
+            <div className="flex flex-wrap gap-4 mb-4">
+              <select
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20 select"
+              >
+                <option value="">Select Goal</option>
+                <option value="Web Development">Web Development</option>
+                <option value="Data Science">Data Science</option>
+                <option value="Artificial Intelligence">Artificial Intelligence</option>
+              </select>
+              <select
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+                className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20 select"
+              >
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+              <button
+                onClick={generateRoadmap}
+                className="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white btn"
+              >
+                Generate Roadmap
+              </button>
+            </div>
+            {roadmap.length > 0 && (
+              <div className="space-y-2">
+                {roadmap.map((item, index) => (
+                  <div
+                    key={index}
+                    className="p-3 rounded-lg bg-white/5 border border-white/10 text-white"
+                  >
+                    Phase {index + 1}: {item}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+        break;
+
+      case "studyGroups":
+        widgetTitle = "Peer Study Groups";
+        widgetContent = (
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <h2 className="text-xl font-bold text-white mb-4">
+              Student Peer Study Groups
+            </h2>
+            <div className="grid md:grid-cols-3 gap-4">
+              {studyGroups.map((group, index) => (
+                <div
+                  key={index}
+                  className="p-4 rounded-xl bg-white/5 border border-white/10"
+                >
+                  <h3 className="font-semibold text-white">{group.name}</h3>
+                  <p className="text-sm text-gray-400">Subject: {group.subject}</p>
+                  <p className="text-sm text-gray-400 mb-3">Members: {group.members}</p>
+                  <button className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm">
+                    Join Group
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+        break;
+
+      case "attendanceInsights":
+        widgetTitle = "Attendance Insights";
+        widgetContent = (
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <ExportDropdown onExport={handleExportAttendance} />
+            </div>
+            <AttendanceInsights recentActivity={recentActivity} />
+          </div>
+        );
+        break;
+
+      case "calendar":
+        widgetTitle = "Classroom Event Calendar";
+        widgetContent = (
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <h2 className="text-xl font-bold text-white mb-4">
+              📅 Classroom Event Calendar
+            </h2>
+            <div className="space-y-3">
+              {events.map((event, index) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/10"
+                >
+                  <div>
+                    <h3 className="text-white font-semibold">{event.title}</h3>
+                    <p className="text-sm text-gray-400">{event.date}</p>
+                  </div>
+                  <span className={`font-semibold ${event.color}`}>{event.type}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+        break;
+
+      case "performance":
+        widgetTitle = "Student Performance";
+        widgetContent = (
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <h2 className="text-xl font-bold text-white mb-4">
+              📊 Student Performance Comparison Dashboard
+            </h2>
+            <div className="grid md:grid-cols-3 gap-4">
+              {performanceData.map((item, index) => (
+                <div
+                  key={index}
+                  className="p-4 rounded-xl bg-white/5 border border-white/10"
+                >
+                  <h3 className="text-white font-semibold">{item.subject}</h3>
+                  <p className="text-blue-400 mt-2">Current Score: {item.currentScore}%</p>
+                  <p className="text-gray-400">Previous Score: {item.previousScore}%</p>
+                  <p
+                    className={`mt-2 font-semibold ${
+                      item.currentScore > item.previousScore
+                        ? "text-green-400"
+                        : "text-red-400"
+                    }`}
+                  >
+                    {item.currentScore > item.previousScore ? "📈 Improving" : "📉 Needs Improvement"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+        break;
+
+      case "feedback":
+        widgetTitle = "Teacher Feedback";
+        widgetContent = (
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <h2 className="text-xl font-bold text-white mb-4">
+              📝 Teacher Feedback & Reviews
+            </h2>
+            <div className="grid md:grid-cols-3 gap-4">
+              {teacherFeedback.map((feedback, index) => (
+                <div
+                  key={index}
+                  className="p-4 rounded-xl bg-white/5 border border-white/10"
+                >
+                  <h3 className="text-white font-semibold">{feedback.subject}</h3>
+                  <p className="text-blue-400 text-sm">Teacher: {feedback.teacher}</p>
+                  <p className="mt-2">{feedback.rating}</p>
+                  <p className="text-gray-300 mt-2">"{feedback.comment}"</p>
+                  <p className="text-yellow-400 mt-2 text-sm">💡 {feedback.recommendation}</p>
+                  <button
+                    className={`mt-3 px-3 py-2 rounded-lg text-sm font-semibold ${
+                      feedback.status === "Acknowledged"
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-orange-500/20 text-orange-400"
+                    }`}
+                  >
+                    {feedback.status}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+        break;
+
+      case "suggestions":
+        widgetTitle = "Attendance Suggestions";
+        widgetContent = (
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+            <h2 className="text-xl font-bold text-white mb-4">
+              🤖 Smart Attendance Improvement Suggestions
+            </h2>
+            {attendanceStats.percentage < 60 ? (
+              <ul className="space-y-3 text-red-300">
+                <li>⚠️ Your attendance is critically low. Try attending every upcoming class.</li>
+                <li>⏰ Enable daily reminders to avoid missing classes.</li>
+                <li>📅 Create a weekly study and attendance schedule.</li>
+                <li>🎯 Target at least 85% attendance over the next month.</li>
+              </ul>
+            ) : attendanceStats.percentage < 75 ? (
+              <ul className="space-y-3 text-yellow-300">
+                <li>📈 Your attendance can be improved with more consistency.</li>
+                <li>📝 Track your attendance progress every week.</li>
+                <li>⏰ Set alarms before your classes start.</li>
+                <li>🎯 Aim to increase your attendance above 90%.</li>
+              </ul>
+            ) : (
+              <div className="text-green-400">
+                🎉 Excellent work! Your attendance is strong.
+                Keep maintaining your consistency and punctuality.
+              </div>
+            )}
+          </div>
+        );
+        break;
+
+      case "engagement":
+        widgetTitle = "Engagement Performance";
+        widgetContent = (
+          <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+            <EngagementScoreCard
+              overallScore={engagementMetrics.overallScore}
+              attendanceScore={engagementMetrics.attendanceScore}
+              activityScore={engagementMetrics.activityScore}
+              assignmentScore={engagementMetrics.assignmentScore}
+              academicScore={engagementMetrics.academicScore}
+            />
+            <div className="space-y-6">
+              <EngagementTrendChart history={engagementHistory} />
+              <EngagementBreakdown
+                breakdown={[
+                  { label: "Attendance", value: engagementMetrics.attendanceScore },
+                  { label: "Activity Participation", value: engagementMetrics.activityScore },
+                  { label: "Assignment Submissions", value: engagementMetrics.assignmentScore },
+                  { label: "Academic Performance", value: engagementMetrics.academicScore },
+                ]}
+              />
+            </div>
+          </div>
+        );
+        break;
+
+      case "achievements":
+        widgetTitle = "Achievements & Certificates";
+        widgetContent = <StudentAchievementsPanel />;
+        break;
+
+      default:
+        return null;
+    }
+
+    const isDragging = draggedWidgetId === id;
+    const isDraggedOver = draggedOverId === id;
+
+    return (
+      <div
+        key={id}
+        draggable={customizingLayout}
+        onDragStart={(e) => handleDragStart(e, id)}
+        onDragOver={(e) => handleDragOver(e, id)}
+        onDrop={(e) => handleDrop(e, id)}
+        onDragEnd={handleDragEnd}
+        className={`transition-all duration-300 relative ${
+          customizingLayout ? "cursor-grab" : ""
+        } ${isDragging ? "opacity-45 scale-95 border-2 border-dashed border-purple-500" : ""} ${
+          isDraggedOver ? "border-2 border-dashed border-green-500 scale-[1.01] bg-green-500/5 animate-pulse" : ""
+        }`}
+      >
+        {customizingLayout && (
+          <div className="absolute -top-3 left-4 right-4 z-30 flex items-center justify-between bg-black/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-purple-500/30 text-white text-xs font-medium select-none shadow-md">
+            <div className="flex items-center gap-1">
+              <GripVertical className="w-3.5 h-3.5 text-purple-400 cursor-grab active:cursor-grabbing" />
+              <span>{widgetTitle}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => moveWidget(id, "up")}
+                disabled={widgetOrder.indexOf(id) === 0}
+                className="p-1 hover:text-purple-400 disabled:opacity-30 disabled:hover:text-white transition-colors"
+                title="Move Up"
+              >
+                <ArrowUp className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveWidget(id, "down")}
+                disabled={widgetOrder.indexOf(id) === widgetOrder.length - 1}
+                className="p-1 hover:text-purple-400 disabled:opacity-30 disabled:hover:text-white transition-colors"
+                title="Move Down"
+              >
+                <ArrowDown className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => hideWidget(id)}
+                className="p-1 hover:text-red-400 transition-colors"
+                title="Hide Widget"
+              >
+                <EyeOff className="w-3.5 h-3.5 text-gray-400 hover:text-red-400" />
+              </button>
+            </div>
+          </div>
+        )}
+        <div className={customizingLayout ? "pt-2 pointer-events-none opacity-80" : ""}>
+          {widgetContent}
+        </div>
+      </div>
+    );
+  };
+
   // ── Render ────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -737,290 +1188,110 @@ const generateRoadmap = () => {
           />
         </div>
       </div>
-      <div className="mt-6 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-  <h2 className="text-xl font-bold text-white mb-4">
-    AI Learning Roadmap Generator
-  </h2>
 
-  <div className="flex flex-wrap gap-4 mb-4">
-    <select
-      value={goal}
-      onChange={(e) => setGoal(e.target.value)}
-      className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20"
-    >
-      <option value="">Select Goal</option>
-      <option value="Web Development">Web Development</option>
-      <option value="Data Science">Data Science</option>
-      <option value="Artificial Intelligence">Artificial Intelligence</option>
-    </select>
-
-    <select
-      value={level}
-      onChange={(e) => setLevel(e.target.value)}
-      className="px-4 py-2 rounded-lg bg-black/40 text-white border border-white/20"
-    >
-      <option value="Beginner">Beginner</option>
-      <option value="Intermediate">Intermediate</option>
-      <option value="Advanced">Advanced</option>
-    </select>
-
-    <button
-      onClick={generateRoadmap}
-      className="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white"
-    >
-      Generate Roadmap
-    </button>
-  </div>
-
-  {roadmap.length > 0 && (
-    <div className="space-y-2">
-      {roadmap.map((item, index) => (
-        <div
-          key={index}
-          className="p-3 rounded-lg bg-white/5 border border-white/10 text-white"
-        >
-          Phase {index + 1}: {item}
-        </div>
-      ))}
-    </div>
-  )}
-</div>
-
-{/* Peer Study Group Finder */}
-<div className="mt-6 bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-  <h2 className="text-xl font-bold text-white mb-4">
-    Student Peer Study Groups
-  </h2>
-
-  <div className="grid md:grid-cols-3 gap-4">
-    {studyGroups.map((group, index) => (
-      <div
-        key={index}
-        className="p-4 rounded-xl bg-white/5 border border-white/10"
-      >
-        <h3 className="font-semibold text-white">
-          {group.name}
-        </h3>
-
-        <p className="text-sm text-gray-400">
-          Subject: {group.subject}
-        </p>
-
-        <p className="text-sm text-gray-400 mb-3">
-          Members: {group.members}
-        </p>
-
+      {/* Dashboard Customization controls */}
+      <div className="max-w-7xl mx-auto px-6 mb-4 flex justify-end gap-3 flex-wrap relative z-20">
         <button
-          className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm"
+          onClick={() => setCustomizingLayout(prev => !prev)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+            customizingLayout
+              ? "bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-lg shadow-purple-500/10"
+              : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10"
+          }`}
         >
-          Join Group
+          <Sparkles className="w-4 h-4 text-purple-400" />
+          {customizingLayout ? "Exit Customization" : "Customize Layout"}
         </button>
-      </div>
-    ))}
-  </div>
-</div>
-
-      {/* Attendance Insights */}
-      <div className="max-w-7xl mx-auto mt-6 px-6">
-        <div className="flex justify-end mb-4">
-          <ExportDropdown onExport={handleExportAttendance} />
-        </div>
-        <AttendanceInsights recentActivity={recentActivity} />
-      </div>
-
-      {/* Classroom Event Calendar */}
-<div className="max-w-7xl mx-auto mt-6 px-6">
-  <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-    <h2 className="text-xl font-bold text-white mb-4">
-      📅 Classroom Event Calendar
-    </h2>
-
-    <div className="space-y-3">
-      {events.map((event, index) => (
-        <div
-          key={index}
-          className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/10"
-        >
-          <div>
-            <h3 className="text-white font-semibold">
-              {event.title}
-            </h3>
-
-            <p className="text-sm text-gray-400">
-              {event.date}
-            </p>
-          </div>
-
-          <span className={`font-semibold ${event.color}`}>
-            {event.type}
-          </span>
-        </div>
-      ))}
-    </div>
-  </div>
-</div>
-
-{/* Student Performance Comparison Dashboard */}
-<div className="max-w-7xl mx-auto mt-6 px-6">
-  <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-
-    <h2 className="text-xl font-bold text-white mb-4">
-      📊 Student Performance Comparison Dashboard
-    </h2>
-
-    <div className="grid md:grid-cols-3 gap-4">
-      {performanceData.map((item, index) => (
-        <div
-          key={index}
-          className="p-4 rounded-xl bg-white/5 border border-white/10"
-        >
-          <h3 className="text-white font-semibold">
-            {item.subject}
-          </h3>
-
-          <p className="text-blue-400 mt-2">
-            Current Score: {item.currentScore}%
-          </p>
-
-          <p className="text-gray-400">
-            Previous Score: {item.previousScore}%
-          </p>
-
-          <p
-            className={`mt-2 font-semibold ${
-              item.currentScore > item.previousScore
-                ? "text-green-400"
-                : "text-red-400"
-            }`}
-          >
-            {item.currentScore > item.previousScore
-              ? "📈 Improving"
-              : "📉 Needs Improvement"}
-          </p>
-        </div>
-      ))}
-    </div>
-
-  </div>
-</div>
-
-{/* Teacher Feedback & Student Review System */}
-<div className="max-w-7xl mx-auto mt-6 px-6">
-  <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-
-    <h2 className="text-xl font-bold text-white mb-4">
-      📝 Teacher Feedback & Reviews
-    </h2>
-
-    <div className="grid md:grid-cols-3 gap-4">
-      {teacherFeedback.map((feedback, index) => (
-        <div
-          key={index}
-          className="p-4 rounded-xl bg-white/5 border border-white/10"
-        >
-          <h3 className="text-white font-semibold">
-            {feedback.subject}
-          </h3>
-
-          <p className="text-blue-400 text-sm">
-            Teacher: {feedback.teacher}
-          </p>
-
-          <p className="mt-2">
-            {feedback.rating}
-          </p>
-
-          <p className="text-gray-300 mt-2">
-            "{feedback.comment}"
-          </p>
-
-          <p className="text-yellow-400 mt-2 text-sm">
-            💡 {feedback.recommendation}
-          </p>
-
+        {customizingLayout && (
           <button
-            className={`mt-3 px-3 py-2 rounded-lg text-sm font-semibold ${
-              feedback.status === "Acknowledged"
-                ? "bg-green-500/20 text-green-400"
-                : "bg-orange-500/20 text-orange-400"
-            }`}
+            onClick={resetLayout}
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-sm font-semibold transition animate-in fade-in zoom-in-95 duration-200"
           >
-            {feedback.status}
+            Reset Layout
           </button>
-
-        </div>
-      ))}
-    </div>
-
-  </div>
-</div>
-
-      {/* Smart Attendance Improvement Suggestions */}
-      <div className="max-w-7xl mx-auto mt-6 px-6">
-        <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-          <h2 className="text-xl font-bold text-white mb-4">
-            🤖 Smart Attendance Improvement Suggestions
-          </h2>
-
-          {attendanceStats.percentage < 60 ? (
-            <ul className="space-y-3 text-red-300">
-              <li>⚠️ Your attendance is critically low. Try attending every upcoming class.</li>
-              <li>⏰ Enable daily reminders to avoid missing classes.</li>
-              <li>📅 Create a weekly study and attendance schedule.</li>
-              <li>🎯 Target at least 85% attendance over the next month.</li>
-            </ul>
-          ) : attendanceStats.percentage < 75 ? (
-            <ul className="space-y-3 text-yellow-300">
-              <li>📈 Your attendance can be improved with more consistency.</li>
-              <li>📝 Track your attendance progress every week.</li>
-              <li>⏰ Set alarms before your classes start.</li>
-              <li>🎯 Aim to increase your attendance above 90%.</li>
-            </ul>
-          ) : (
-            <div className="text-green-400">
-              🎉 Excellent work! Your attendance is strong.
-              Keep maintaining your consistency and punctuality.
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Engagement Score Section */}
+      {/* Customize Toolbar panel */}
+      {customizingLayout && (
+        <div className="max-w-7xl mx-auto mt-2 px-6 relative z-30 animate-in slide-in-from-top-4 duration-300">
+          <div className="bg-gradient-to-r from-purple-900/30 via-slate-900/40 to-black border border-purple-500/30 rounded-2xl p-6 text-white backdrop-blur-xl shadow-xl shadow-purple-500/5">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-5 h-5 text-purple-400 animate-pulse" />
+                  <h3 className="text-lg font-bold">Customize Dashboard Layout</h3>
+                </div>
+                <p className="text-sm text-gray-400">
+                  Drag and drop the cards to rearrange them, or use the manual arrow keys. Hide cards you don't need.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setCustomizingLayout(false)}
+                  className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-lg shadow-purple-500/20 active:scale-95"
+                >
+                  Save & Finish
+                </button>
+              </div>
+            </div>
+
+            {hiddenWidgets.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <span className="text-xs text-gray-400 block mb-2 font-semibold tracking-wide uppercase">Hidden Widgets (Click to Restore):</span>
+                <div className="flex flex-wrap gap-2">
+                  {hiddenWidgets.map((hiddenId) => {
+                    const labelMap = {
+                      roadmap: "AI Roadmap",
+                      studyGroups: "Peer Study Groups",
+                      attendanceInsights: "Attendance Insights",
+                      calendar: "Event Calendar",
+                      performance: "Performance Comparison",
+                      feedback: "Teacher Feedback",
+                      suggestions: "Attendance Suggestions",
+                      engagement: "Engagement Score",
+                      achievements: "Achievements & Certificates",
+                    };
+                    return (
+                      <button
+                        key={hiddenId}
+                        onClick={() => showWidget(hiddenId)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/5 border border-white/10 rounded-full text-xs text-gray-300 hover:text-green-400 hover:bg-white/10 hover:border-green-500/40 transition-all cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        {labelMap[hiddenId] || hiddenId}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Widget Grid */}
+      <div className="space-y-8 mt-6 max-w-7xl mx-auto px-6 relative z-10 pb-6">
+        {widgetOrder.map((id) => renderWidget(id))}
+      </div>
+
+      {/* Gamification System */}
       <div className="max-w-7xl mx-auto mt-8 px-6">
-        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <EngagementScoreCard
-            overallScore={engagementMetrics.overallScore}
-            attendanceScore={engagementMetrics.attendanceScore}
-            activityScore={engagementMetrics.activityScore}
-            assignmentScore={engagementMetrics.assignmentScore}
-            academicScore={engagementMetrics.academicScore}
-          />
-          <div className="space-y-6">
-            <EngagementTrendChart history={engagementHistory} />
-            <EngagementBreakdown
-              breakdown={[
-                { label: "Attendance", value: engagementMetrics.attendanceScore },
-                {
-                  label: "Activity Participation",
-                  value: engagementMetrics.activityScore,
-                },
-                {
-                  label: "Assignment Submissions",
-                  value: engagementMetrics.assignmentScore,
-                },
-                {
-                  label: "Academic Performance",
-                  value: engagementMetrics.academicScore,
-                },
-              ]}
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <span className="text-2xl">🎮</span> Gamification & Progress
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-6">
+            <StreakCounter currentStreak={attendancePerformance.streakDays} />
+            <XpProgressBar 
+              currentLevel={gamificationData?.currentLevel ?? 1} 
+              currentXp={gamificationData?.currentXp ?? 0} 
             />
           </div>
+          <div>
+            <BadgeGallery unlockedBadges={gamificationData?.unlockedBadges ?? []} />
+          </div>
         </div>
-      </div>
-
-      {/* Digital Certificates & Achievements */}
-      <div className="max-w-7xl mx-auto mt-8 px-6">
-        <StudentAchievementsPanel />
       </div>
 
       {/* Adaptive Content Sections */}

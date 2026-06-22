@@ -301,7 +301,7 @@ export default async function RootLayout({ children }) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(siteStructuredData),
+            __html: JSON.stringify(siteStructuredData).replace(/</g, "\\u003c"),
           }}
         />
       </head>

@@ -4,9 +4,7 @@
  * Prevents cheating through modified local data
  */
 
-import { createLogger } from "./logger";
-
-const logger = createLogger("offline-sync");
+import logger from "./logger";
 
 /**
  * Validates offline progress synchronization data

@@ -1,4 +1,5 @@
 import { openDB } from "idb";
+import { logger } from "@/lib/logger";
 
 const DB_NAME = "learnova-offline-sync-db";
 const STORE_NAME = "attendance_queue";
@@ -47,7 +48,7 @@ export async function queueOfflineAttendance(record) {
 
       const pendingDuplicate = existing.find((r) => r.status === "pending");
       if (pendingDuplicate) {
-        console.log(
+        logger.info(
           `[Offline Sync] Duplicate skipped — record already queued with ID: ${pendingDuplicate.id}`
         );
         return pendingDuplicate.id;
@@ -59,10 +60,10 @@ export async function queueOfflineAttendance(record) {
       status: "pending",
       timestamp: Date.now(),
     });
-    console.log(`[Offline Sync] Queued attendance record ID: ${id}`);
+    logger.info(`[Offline Sync] Queued attendance record ID: ${id}`);
     return id;
   } catch (error) {
-    console.error("[Offline Sync] Failed to queue record:", error);
+    logger.error("[Offline Sync] Failed to queue record:", { error });
     throw error;
   }
 }
@@ -77,7 +78,7 @@ export async function getPendingOfflineRecords() {
     const index = tx.store.index("status");
     return await index.getAll("pending");
   } catch (error) {
-    console.error("[Offline Sync] Failed to fetch pending records:", error);
+    logger.error("[Offline Sync] Failed to fetch pending records:", { error });
     return [];
   }
 }
@@ -100,7 +101,7 @@ export async function markRecordAsSynced(id) {
     }
     await tx.done;
   } catch (error) {
-    console.error(`[Offline Sync] Failed to mark record ${id} as synced:`, error);
+    logger.error(`[Offline Sync] Failed to mark record ${id} as synced:`, { error });
   }
 }
 
@@ -113,7 +114,7 @@ export async function removeRecordFromQueue(id) {
     const db = await initOfflineDB();
     await db.delete(STORE_NAME, id);
   } catch (error) {
-    console.error(`[Offline Sync] Failed to delete record ${id}:`, error);
+    logger.error(`[Offline Sync] Failed to delete record ${id}:`, { error });
   }
 }
 
@@ -132,7 +133,7 @@ export async function getPendingRecordsCount() {
  */
 export async function syncOfflineQueue(syncCallback) {
   if (!navigator.onLine) {
-    console.warn("[Offline Sync] Cannot sync, device is currently offline.");
+    logger.warn("[Offline Sync] Cannot sync, device is currently offline.");
     return { success: false, synced: 0, failed: 0 };
   }
 
@@ -141,7 +142,7 @@ export async function syncOfflineQueue(syncCallback) {
     return { success: true, synced: 0, failed: 0 };
   }
 
-  console.log(`[Offline Sync] Attempting to sync ${pendingRecords.length} records...`);
+  logger.info(`[Offline Sync] Attempting to sync ${pendingRecords.length} records...`);
   
   let syncedCount = 0;
   let failedCount = 0;
@@ -158,12 +159,12 @@ export async function syncOfflineQueue(syncCallback) {
         failedCount++;
       }
     } catch (err) {
-      console.error(`[Offline Sync] Error syncing record ${record.id}:`, err);
+      logger.error(`[Offline Sync] Error syncing record ${record.id}:`, { err });
       failedCount++;
     }
   }
 
-  console.log(`[Offline Sync] Sync complete. Synced: ${syncedCount}, Failed: ${failedCount}`);
+  logger.info(`[Offline Sync] Sync complete. Synced: ${syncedCount}, Failed: ${failedCount}`);
   
   return {
     success: failedCount === 0,
