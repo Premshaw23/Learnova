@@ -1091,7 +1091,7 @@ const TeacherDashboard = () => {
               <button 
                 onClick={() => setShowAbsentSummaryModal(true)}
                 className="w-full bg-gradient-to-r from-indigo-600/20 to-indigo-600/20 hover:from-indigo-600/30 hover:to-indigo-600/30 border border-indigo-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" 
-                aria-label="Action button">
+                aria-label="View AI lecture summary">
                 <div className="flex items-center space-x-3">
                   <Sparkles className="w-5 h-5 text-indigo-400" />
                   <div>
@@ -1106,7 +1106,7 @@ const TeacherDashboard = () => {
               <button
                 onClick={() => handleExport('csv')}
                 className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
-               aria-label="Action button">
+               aria-label="Export reports">
                 <div className="flex items-center space-x-3">
                   <Download className="w-5 h-5 text-purple-400" />
                   <div>
@@ -1469,7 +1469,7 @@ const TeacherDashboard = () => {
                   <button
                     onClick={generatePasscode}
                     className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
-                   aria-label="Action button">
+                   aria-label="Generate passcode">
                     <Key className="w-3 h-3" />
                     Generate Passcode
                   </button>

@@ -1538,7 +1538,7 @@ export default function UniversalSettings() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button
                       className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
-                      aria-label="Action button"
+                      aria-label="View documentation"
                     >
                       <FileText className="h-6 w-6 text-blue-400" />
                       <div>
@@ -1551,7 +1551,7 @@ export default function UniversalSettings() {
 
                     <button
                       className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
-                      aria-label="Action button"
+                      aria-label="Contact support"
                     >
                       <Mail className="h-6 w-6 text-green-400" />
                       <div>
@@ -1566,7 +1566,7 @@ export default function UniversalSettings() {
 
                     <button
                       className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
-                      aria-label="Action button"
+                      aria-label="View FAQ"
                     >
                       <HelpCircle className="h-6 w-6 text-purple-400" />
                       <div>
@@ -1579,7 +1579,7 @@ export default function UniversalSettings() {
 
                     <button
                       className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-200 text-left"
-                      aria-label="Action button"
+                      aria-label="Join community"
                     >
                       <Globe className="h-6 w-6 text-orange-400" />
                       <div>

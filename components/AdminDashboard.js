@@ -769,7 +769,7 @@ const SuperAdminDashboard = () => {
         <div className="flex gap-3">
           <button
             className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center gap-2 shadow-lg transition-all duration-300"
-            aria-label="Action button"
+            aria-label="Add new institute"
           >
             <Building2 className="w-4 h-4" />
             Add New Institute
@@ -1153,7 +1153,7 @@ const SuperAdminDashboard = () => {
             </div>
             <button
               className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-              aria-label="Action button"
+              aria-label="Investigate geofence anomaly"
             >
               Investigate
             </button>
@@ -1169,7 +1169,7 @@ const SuperAdminDashboard = () => {
             </div>
             <button
               className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-              aria-label="Action button"
+              aria-label="Investigate GPS spoofing"
             >
               Investigate
             </button>
@@ -1219,7 +1219,7 @@ const SuperAdminDashboard = () => {
                 <td className="px-4 py-2">
                   <button
                     className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
-                    aria-label="Action button"
+                    aria-label="View compliance audit report"
                   >
                     View Report
                   </button>
@@ -1237,7 +1237,7 @@ const SuperAdminDashboard = () => {
                 <td className="px-4 py-2">
                   <button
                     className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
-                    aria-label="Action button"
+                    aria-label="View compliance audit report"
                   >
                     View Report
                   </button>
@@ -1322,7 +1322,7 @@ const SuperAdminDashboard = () => {
             <button
               onClick={handleForceSync}
               className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2 shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all duration-300"
-              aria-label="Action button"
+              aria-label="Force sync outbox queue"
             >
               <Play className="w-4 h-4" />
               Sync Now
@@ -1330,7 +1330,7 @@ const SuperAdminDashboard = () => {
             <button
               onClick={handleClearOutbox}
               className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 flex items-center gap-2 border border-red-500/30 transition-all duration-300"
-              aria-label="Action button"
+              aria-label="Clear outbox queue"
             >
               <Trash2 className="w-4 h-4" />
               Clear Queue

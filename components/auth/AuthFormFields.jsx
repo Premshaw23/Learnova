@@ -148,7 +148,6 @@ export const SelectedRoleBadge = ({ config, onClick }) => {
         onClick={onClick}
         aria-label={`Change role from ${config.title}`}
         className="inline-flex items-center gap-3 p-4 bg-card backdrop-blur-sm rounded-xl border border-border hover:border-indigo-500/50 transition-all duration-200"
-        aria-label="Action button"
       >
         <div
           className={`w-10 h-10 rounded-full bg-gradient-to-r ${config.color} p-2`}

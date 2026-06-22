@@ -600,7 +600,7 @@ export default function LeaderboardsPage() {
                 </div>
                 <button
                   className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors border border-white/10 hidden sm:block"
-                  aria-label="Action button"
+                  aria-label="View full profile"
                 >
                   View Full Profile
                 </button>

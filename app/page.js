@@ -115,7 +115,7 @@ function FAQAccordionItem({ question, answer, isOpen, onToggle }) {
       <button
         onClick={onToggle}
         className="w-full flex justify-between items-center p-5 md:p-6 text-left font-semibold text-black dark:text-zinc-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none"
-        aria-label="Action button"
+        aria-label="Toggle FAQ answer"
       >
         <span className="text-sm md:text-base leading-relaxed">{question}</span>
         <ChevronDown

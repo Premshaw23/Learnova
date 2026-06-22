@@ -621,7 +621,7 @@ export default function UniversalProfile() {
                     type="button"
                     onClick={handleConfirmUpload}
                     className="text-xs bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full"
-                    aria-label="Action button"
+                    aria-label="Save photo"
                   >
                     Save Photo
                   </button>
@@ -629,7 +629,7 @@ export default function UniversalProfile() {
                     type="button"
                     onClick={handleCancelPreview}
                     className="text-xs bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded-full"
-                    aria-label="Action button"
+                    aria-label="Cancel upload"
                   >
                     Cancel
                   </button>
@@ -642,7 +642,7 @@ export default function UniversalProfile() {
                   type="button"
                   onClick={handleRemovePhoto}
                   className="text-xs text-red-400 hover:text-red-300 underline"
-                  aria-label="Action button"
+                  aria-label="Remove photo"
                 >
                   Remove photo
                 </button>
