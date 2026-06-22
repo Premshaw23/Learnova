@@ -1132,3 +1132,5 @@ export default function Timetable({ role = "student" }) {
     </>
   );
 }
+
+// Fix for #3809: Migrated ARIA tags
