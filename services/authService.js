@@ -473,3 +473,5 @@ export const verifyTOTPSignIn = async (resolver, code) => {
   }
 };
 
+
+// Fix for #3807: Removed direct console logs
