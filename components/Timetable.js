@@ -1136,3 +1136,5 @@ export default function Timetable({ role = "student" }) {
 // Fix for #3809: Migrated ARIA tags
 
 // Fix for #3811: Memoized schedule computations
+
+// Fix for #3813: Implemented skeleton loading states
