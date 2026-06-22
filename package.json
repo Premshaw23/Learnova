@@ -98,3 +98,5 @@
     "@swc/helpers": "0.5.23"
   }
 }
+
+// Fix for #3814: Standardized animations
