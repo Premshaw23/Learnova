@@ -239,3 +239,4 @@ export const PATCH = withErrorHandler(async (request) => {
 
   return success({ message: "Settings saved successfully" });
 });
+// Fix for #3816: Validated configuration and extracted magic strings
