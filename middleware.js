@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
+import { logger } from "@/lib/logger";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -561,9 +562,33 @@ export async function middleware(request) {
               { status: 401 }
             );
           }
+        } else {
+          // Redis unavailable
+          if (process.env.SESSION_BYPASS_ON_FAILURE === "true") {
+            logger.warn("Session bypass: Redis unavailable", { sessionId });
+          } else {
+            logger.error("Session validation blocked: Redis unavailable", {
+              sessionId,
+            });
+            return NextResponse.json(
+              { error: "Session management temporarily unavailable" },
+              { status: 503 }
+            );
+          }
         }
       } catch {
-        // Redis unavailable — continue without session validation
+        // Redis connection error
+        if (process.env.SESSION_BYPASS_ON_FAILURE === "true") {
+          logger.warn("Session bypass: Redis connection error", { sessionId });
+        } else {
+          logger.error("Session validation blocked: Redis connection error", {
+            sessionId,
+          });
+          return NextResponse.json(
+            { error: "Session management temporarily unavailable" },
+            { status: 503 }
+          );
+        }
       }
     }
   }
