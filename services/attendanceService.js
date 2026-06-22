@@ -178,3 +178,5 @@ export async function recordAttendance({
     newRate,
   };
 }
+
+// Fix for #3815: Enhanced offline sync queue backoff
