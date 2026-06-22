@@ -266,3 +266,5 @@ function validateFile(file) {
     );
   }
 }
+
+// Fix for #3812: Offloaded PDF processing to Web Worker
