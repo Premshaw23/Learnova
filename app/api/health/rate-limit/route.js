@@ -1,11 +1,28 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { getRedis } from "@/lib/redis";
+import { checkRateLimit } from "@/lib/rateLimit";
 import logger from "@/utils/logger";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request) {
+  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+  const rateLimitResult = await checkRateLimit(`health_ratelimit_${ip}`);
+
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json({
+      error: "Too Many Requests",
+      message: "Rate limit exceeded for health checks.",
+    }, {
+      status: 429,
+      headers: {
+        'Retry-After': '60',
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    });
+  }
+
   const status = {
     mongodb: "unknown",
     redis: "unknown",
@@ -51,6 +68,11 @@ export async function GET() {
 
   return NextResponse.json(
     { status },
-    { status: status.overall.includes("degraded") ? 503 : 200 }
+    {
+      status: status.overall.includes("degraded") ? 503 : 200,
+      headers: {
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    }
   );
 }
