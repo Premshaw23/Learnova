@@ -25,8 +25,6 @@ import {
   Trash2,
   Play,
   CheckCircle2,
-  Wifi,
-  WifiOff,
   FileText,
   History,
 } from "lucide-react";
@@ -35,7 +33,6 @@ import { dashboardContentOffsetClass } from "@/components/navigation";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
-import SkeletonCard from "@/components/ui/SkeletonCard";
 import ExportDropdown from "@/components/ui/ExportDropdown";
 import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 

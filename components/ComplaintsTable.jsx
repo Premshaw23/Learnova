@@ -1,5 +1,5 @@
 "use client";
-
+//removed unused imports
 import { useMemo, useState } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
@@ -12,7 +12,7 @@ import {
   AlertCircle,
   Shield,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function ComplaintsTable({

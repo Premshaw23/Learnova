@@ -204,7 +204,7 @@ export function Navbar() {
           aria-hidden="true"
         />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-4">
           <div className="flex h-16 items-center justify-between gap-3">
             <div className="flex items-center gap-2">
             <NavbarBrand onNavigate={() => setIsMenuOpen(false)} />

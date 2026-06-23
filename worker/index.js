@@ -168,9 +168,11 @@ const ANONYMOUS_USER_PREFIX = "anon";
 self.addEventListener("sync", (event) => {
   if (event.tag === "sync-pending-actions") {
     event.waitUntil(
-      handleSync().catch((err) =>
-        console.error("[SW] Background sync failed:", err)
-      )
+      handleSync().catch(async (err) => {
+        console.error("[SW] Background sync failed:", err);
+        const clientsList = await self.clients.matchAll();
+        clientsList.forEach((c) => c.postMessage({ type: "SW_ERROR", error: err.message }));
+      })
     );
   }
 });
@@ -178,23 +180,29 @@ self.addEventListener("sync", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "TRIGGER_SYNC_PENDING_ACTIONS") {
     event.waitUntil(
-      handleSync().catch((err) =>
-        console.error("[SW] Message sync failed:", err)
-      )
+      handleSync().catch(async (err) => {
+        console.error("[SW] Message sync failed:", err);
+        const clientsList = await self.clients.matchAll();
+        clientsList.forEach((c) => c.postMessage({ type: "SW_ERROR", error: err.message }));
+      })
     );
   } else if (event.data && event.data.type === "CLEAR_USER_CACHE") {
     const userHash = event.data.userHash;
     if (userHash) {
       event.waitUntil(
-        clearCacheForUser(userHash).catch((err) =>
-          console.error("[SW] Clear user cache failed:", err)
-        )
+        clearCacheForUser(userHash).catch(async (err) => {
+          console.error("[SW] Clear user cache failed:", err);
+          const clientsList = await self.clients.matchAll();
+          clientsList.forEach((c) => c.postMessage({ type: "SW_ERROR", error: err.message }));
+        })
       );
     } else {
       event.waitUntil(
-        clearUserCaches().catch((err) =>
-          console.error("[SW] Clear all caches failed:", err)
-        )
+        clearUserCaches().catch(async (err) => {
+          console.error("[SW] Clear all caches failed:", err);
+          const clientsList = await self.clients.matchAll();
+          clientsList.forEach((c) => c.postMessage({ type: "SW_ERROR", error: err.message }));
+        })
       );
     }
   }

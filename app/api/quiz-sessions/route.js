@@ -43,7 +43,7 @@ export async function POST(req) {
     const session = {
       _id: sessionId,
       quizId,
-      firebaseUid: decodedToken.uid,
+      userId: decodedToken.uid,
       createdAt: new Date(),
       expiresAt,
       answers: {},

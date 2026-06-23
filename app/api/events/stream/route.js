@@ -11,13 +11,6 @@ const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const queryToken = searchParams.get("token");
-    if (queryToken) {
-      const headers = new Headers(request.headers);
-      headers.set("authorization", `Bearer ${queryToken}`);
-      request = new Request(request.url, { headers });
-    }
     const decodedToken = await authenticateRequest(request);
     const userId = decodedToken.uid;
 

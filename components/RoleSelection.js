@@ -77,7 +77,7 @@ export default function RoleSelection({ onRoleSelect }) {
       </div>
 
       {/* Role cards */}
-      <div ref={containerRef} onKeyDown={handleKeyDown} className="relative z-10 mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div ref={containerRef} onKeyDown={handleKeyDown} className="relative z-10 mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {Object.entries(ROLE_CONFIG).map(([role, config]) => {
           const glow =
             ROLE_GLOW[role] ??

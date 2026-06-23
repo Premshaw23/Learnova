@@ -45,7 +45,9 @@ export function AmbientAudioProvider({ children }) {
         if (typeof p.volume === "number") setVolumeState(p.volume);
         if (typeof p.isPlaying === "boolean") setIsPlaying(p.isPlaying);
       }
-    } catch (_) {}
+    } catch (err) {
+      console.warn("Failed to load ambient audio settings from localStorage:", err);
+    }
     setIsLoaded(true);
   }, []);
 
@@ -56,7 +58,9 @@ export function AmbientAudioProvider({ children }) {
         STORAGE_KEY,
         JSON.stringify({ selectedSound, volume, isPlaying })
       );
-    } catch (_) {}
+    } catch (err) {
+      console.warn("Failed to save ambient audio settings to localStorage:", err);
+    }
   }, [selectedSound, volume, isPlaying, isLoaded]);
 
   useEffect(() => {
@@ -68,7 +72,7 @@ export function AmbientAudioProvider({ children }) {
 
     if (isPlaying) {
       const playPromise = audio.play();
-      if (playPromise) playPromise.catch(() => {});
+      if (playPromise) playPromise.catch((err) => { console.warn("Ambient audio playback failed:", err); });
     } else {
       audio.pause();
     }
@@ -84,7 +88,7 @@ export function AmbientAudioProvider({ children }) {
 
     if (isPlaying) {
       const playPromise = audio.play();
-      if (playPromise) playPromise.catch(() => {});
+      if (playPromise) playPromise.catch((err) => { console.warn("Ambient audio playback failed:", err); });
     }
   }, [selectedSound]);
 

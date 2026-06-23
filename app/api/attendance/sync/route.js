@@ -8,7 +8,6 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
 import { enqueue, JOB_TYPES } from "@/lib/queue";
-import { awardXp } from "@/lib/gamification-service";
 import { connectDb } from "@/lib/mongodb";
 import { z } from "zod";
 
@@ -271,16 +270,6 @@ async function handleSync(request) {
                 attendanceDate: recordDate,
               },
             });
-            try {
-              await awardXp(decodedToken.uid, "attendance_marked", {
-                attendanceHour: record.queuedAt
-                  ? new Date(record.queuedAt).getHours()
-                  : new Date().getHours(),
-                attendanceDate: new Date(record.queuedAt),
-              });
-            } catch (xpError) {
-              console.error("Failed to award XP after attendance sync:", xpError);
-            }
           },
           compensate: null,
         },
