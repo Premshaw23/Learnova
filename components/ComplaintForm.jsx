@@ -1,11 +1,10 @@
 "use client";
-
+//removed unused imports
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Shield, Upload, Check } from "lucide-react";
+import { ArrowLeft, Upload, Check } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function ComplaintForm({ onClose, onSubmitComplaint }) {
   const { user } = useAuthContext();

@@ -228,6 +228,7 @@ export default function FaceRecognizer({ authUser }) {
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
         ]);
 
         if (!isEffectMounted || signal.aborted) return;
@@ -447,6 +448,7 @@ export default function FaceRecognizer({ authUser }) {
       const detections = await faceapi
         .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
+        .withFaceExpressions()
         .withFaceDescriptors();
 
       if (!isMounted.current || signal?.aborted) return;
@@ -478,6 +480,29 @@ export default function FaceRecognizer({ authUser }) {
         );
 
         setConfidence(confidenceScore);
+
+        // Anonymous mood aggregation
+        if (face.expressions && (!window.lastMoodPostTime || Date.now() - window.lastMoodPostTime > 5000)) {
+          window.lastMoodPostTime = Date.now();
+          // Find dominant expression
+          const expressionsObj = face.expressions;
+          const dominantExpression = Object.keys(expressionsObj).reduce((a, b) => expressionsObj[a] > expressionsObj[b] ? a : b);
+          
+          let focusScore = 0;
+          if (['neutral', 'happy', 'surprised'].includes(dominantExpression)) {
+            focusScore = 1;
+          }
+
+          fetch("/api/analytics/mood", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              dominantExpression, 
+              focusScore,
+              timestamp: new Date().toISOString()
+            })
+          }).catch(() => {}); // fire and forget
+        }
 
         if (
           label !== "Unknown" &&

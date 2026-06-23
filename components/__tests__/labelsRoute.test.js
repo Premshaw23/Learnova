@@ -72,7 +72,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
   const createMockRequest = (
     tokenVal,
     ip = "127.0.0.1",
-    url = "http://localhost/api/labels"
+    url = "/api/labels"
   ) => {
     const authHeader =
       tokenVal !== undefined
@@ -169,7 +169,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const req = createMockRequest(
       "valid-token",
       "127.0.0.1",
-      "http://localhost/api/labels?search=alice"
+      "/api/labels?search=alice"
     );
     const response = await GET(req);
     const body = await response.json();
@@ -195,7 +195,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const req = createMockRequest(
       "valid-token",
       "10.0.0.5",
-      "http://localhost/api/labels?search=test.*%2B%3F"
+      "/api/labels?search=test.*%2B%3F"
     );
     const response = await GET(req);
     const body = await response.json();
