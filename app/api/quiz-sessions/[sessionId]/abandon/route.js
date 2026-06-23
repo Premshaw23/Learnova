@@ -25,7 +25,8 @@ export const POST = withErrorHandler(async (req, { params }) => {
     });
   }
 
-  if (session.userId !== payload.uid) {
+  const sessionUserId = session.userId || session.firebaseUid;
+  if (sessionUserId !== payload.uid) {
     return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403,
       headers: { "Content-Type": "application/json" },

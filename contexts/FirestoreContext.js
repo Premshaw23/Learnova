@@ -84,8 +84,7 @@ function usePooledCollection(key, buildQuery, enabled = true) {
     );
 
     return unsub;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, enabled]);
+  }, [key, enabled, buildQuery]);
 
   return { data, loading, error };
 }

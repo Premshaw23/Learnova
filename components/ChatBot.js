@@ -3,29 +3,22 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   Send,
   Bot,
-  User,
   MessageCircle,
   X,
   Minimize2,
   Maximize2,
-  Moon,
-  Sun,
-  RefreshCw,
   BookOpen,
   Shield,
   BarChart3,
   Zap,
   Clock,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 
 export default function ChatBot() {
-  const { theme, setTheme } = useTheme();
-  const { user } = useAuthContext();
   const t = useTranslations("ChatBot");
 
   const [isOpen, setIsOpen] = useState(false);
@@ -89,9 +82,42 @@ export default function ChatBot() {
     if (!text.trim()) return;
 
     const userMessage = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     if (!textToSend) setInputValue("");
     setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/groq", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: updatedMessages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          category: activeCategory,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const botMessage = { role: "assistant", content: data.message };
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (err) {
+      console.error("[ChatBot] Failed to get AI response:", err);
+      const errorMessage = {
+        role: "assistant",
+        content: t("errorMessage"),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) {

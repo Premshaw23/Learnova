@@ -11,7 +11,7 @@ import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, Target, Zap } from "lucide-react";
 import BadgeCard from "./BadgeCard";
-import { getBadgeStatistics, formatBadgeProgress } from "@/lib/badgeEngine";
+import { getBadgeStatistics } from "@/lib/badgeEngine";
 
 const AchievementProgress = ({
   badges = [],

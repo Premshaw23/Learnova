@@ -42,8 +42,6 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 // ─── Context providers (all wrapped inside AllProviders) ─────────────────────
 // AllProviders composes: ThemeProvider → AuthProvider → FirestoreProvider → NotificationProvider
 import AllProviders from "./providers/AllProviders";
-import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
 
 // ─── SEO metadata & structured data ─────────────────────────────────────────
 import { siteStructuredData } from "@/lib/seo/siteStructuredData";
@@ -301,7 +299,7 @@ export default async function RootLayout({ children }) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(siteStructuredData),
+            __html: JSON.stringify(siteStructuredData).replace(/</g, "\\u003c"),
           }}
         />
       </head>

@@ -7,7 +7,7 @@ import {
   getCommentStorageKey,
   normalizeStoredComments,
 } from "@/lib/commentStorage";
-import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/storage";
+import { safeLocalStorageGet } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 
 const CommentSection = ({ noticeId }) => {

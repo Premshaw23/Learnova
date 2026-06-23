@@ -46,6 +46,13 @@ export async function GET(request) {
       );
     }
 
+    if (!teacher.instituteId) {
+      return new Response(
+        JSON.stringify({ error: "Teacher profile missing institute affiliation" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Get studentId from query params
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
@@ -54,6 +61,22 @@ export async function GET(request) {
       return new Response(
         JSON.stringify({ error: "Missing studentId parameter" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify the target student exists and belongs to the same institute
+    const targetStudent = await usersCollection.findOne({ uid: studentId });
+    if (!targetStudent) {
+      return new Response(
+        JSON.stringify({ error: "Student not found" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (targetStudent.instituteId !== teacher.instituteId) {
+      return new Response(
+        JSON.stringify({ error: "Student does not belong to your institute" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
       );
     }
 

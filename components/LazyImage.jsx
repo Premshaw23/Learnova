@@ -15,6 +15,10 @@ export default function LazyImage({
 }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(src);
+  useEffect(() => {
+    setCurrentSrc(src);
+  }, [src]);
 
   useEffect(() => {
     setLoaded(false);
@@ -32,33 +36,20 @@ export default function LazyImage({
         />
       )}
 
-      {width && height ? (
-        <Image
-          src={imageSrc}
-          alt={alt || ""}
-          width={width}
-          height={height}
-          onLoad={() => setLoaded(true)}
-          onError={() => setError(true)}
-          className={`object-cover transition-opacity duration-500 ease-in-out ${
-            loaded ? "opacity-100" : "opacity-0"
-          }`}
-          {...props}
-        />
-      ) : (
-        <Image
-          src={imageSrc}
-          alt={alt || ""}
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          onLoad={() => setLoaded(true)}
-          onError={() => setError(true)}
-          className={`object-cover transition-opacity duration-500 ease-in-out ${
-            loaded ? "opacity-100" : "opacity-0"
-          }`}
-          {...props}
-        />
-      )}
+      <img
+        src={error ? fallbackSrc : currentSrc}
+        alt={alt}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          if (currentSrc !== fallbackSrc) {
+            setError(true);
+          }
+        }}
+        className={`w-full h-full object-cover transition-opacity duration-500 ease-in-out ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
+        {...props}
+      />
     </div>
   );
 }
