@@ -63,10 +63,11 @@ export const useAttendance = ({ role, user }) => {
   const [loadingRequests, setLoadingRequests] = useState(false);
 
   // --- student fetchers ---
-  const fetchStudentActivity = useCallback(async () => {
+  const fetchStudentActivity = useCallback(async (signal) => {
     if (!user?.uid) return;
     try {
       const activities = await getUserActivities(user.uid);
+      if (signal?.aborted) return;
       const mapped = activities.map((a) => ({
         subject: a.title,
         date: a.timestamp?.toLocaleDateString() || "",
@@ -74,18 +75,19 @@ export const useAttendance = ({ role, user }) => {
       }));
       setRecentActivity(mapped);
     } catch (err) {
-      console.error("Failed to load activity", err);
+      if (err.name !== "AbortError") {
+        console.error("Failed to load activity", err);
+      }
     }
   }, [user?.uid]);
 
-  const fetchGamification = useCallback(async () => {
+  const fetchGamification = useCallback(async (signal) => {
     if (!user) return;
-    const controller = new AbortController();
     try {
       const token = await user.getIdToken();
       const res = await apiFetch("/api/student/gamification", {
         headers: { Authorization: `Bearer ${token}` },
-        signal: controller.signal,
+        signal,
       });
       setGamificationData(unwrapApiPayload(res));
     } catch (err) {
@@ -93,11 +95,10 @@ export const useAttendance = ({ role, user }) => {
         console.error("Failed to load gamification data", err);
       }
     }
-    return () => controller.abort();
   }, [user]);
 
   // --- teacher fetchers ---
-  const fetchTodayAttendanceStats = useCallback(async () => {
+  const fetchTodayAttendanceStats = useCallback(async (signal) => {
     try {
       const today = getTodayKeyLocal();
       const attendanceQuery = query(
@@ -127,6 +128,7 @@ export const useAttendance = ({ role, user }) => {
           ? Math.round(((presentToday + lateToday) / totalStudents) * 1000) / 10
           : 0;
 
+      if (signal?.aborted) return;
       setAttendanceStats({
         totalStudents,
         presentToday,
@@ -135,7 +137,9 @@ export const useAttendance = ({ role, user }) => {
         averageAttendance,
       });
     } catch (err) {
-      console.error("Failed to fetch today's attendance stats:", err);
+      if (err.name !== "AbortError") {
+        console.error("Failed to fetch today's attendance stats:", err);
+      }
     }
   }, []);
 
@@ -174,7 +178,7 @@ export const useAttendance = ({ role, user }) => {
     }
   }, [user]);
 
-  const loadMoreRequests = useCallback(async () => {
+  const loadMoreRequests = useCallback(async (signal) => {
     if (!user || loadingRequests || !hasMoreRequests) return;
 
     setLoadingRequests(true);
@@ -187,9 +191,11 @@ export const useAttendance = ({ role, user }) => {
         `/api/institute/attendance-requests?cursor=${cursor}&limit=20`,
         {
           headers: { Authorization: `Bearer ${token}` },
+          signal,
         }
       );
 
+      if (signal?.aborted) return;
       const data = unwrapApiPayload(res);
       if (data && data.requests) {
         setAttendanceRequests((prev) => {
@@ -203,22 +209,28 @@ export const useAttendance = ({ role, user }) => {
         setHasMoreRequests(data.requests.length >= 20);
       }
     } catch (err) {
-      console.error("Failed to load more requests", err);
+      if (err.name !== "AbortError") {
+        console.error("Failed to load more requests", err);
+      }
     } finally {
-      setLoadingRequests(false);
+      if (!signal?.aborted) setLoadingRequests(false);
     }
   }, [user, attendanceRequests, loadingRequests, hasMoreRequests]);
 
   // --- effects ---
   useEffect(() => {
     if (role !== "student") return;
-    fetchStudentActivity();
-    fetchGamification();
+    const controller = new AbortController();
+    fetchStudentActivity(controller.signal);
+    fetchGamification(controller.signal);
+    return () => controller.abort();
   }, [role, fetchStudentActivity, fetchGamification]);
 
   useEffect(() => {
     if (role !== "teacher" || !user) return;
-    fetchTodayAttendanceStats();
+    const controller = new AbortController();
+    fetchTodayAttendanceStats(controller.signal);
+    return () => controller.abort();
   }, [role, user, fetchTodayAttendanceStats]);
 
   // teacher real-time roster via onSnapshot
