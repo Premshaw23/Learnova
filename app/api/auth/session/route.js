@@ -3,6 +3,7 @@ import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { createSession, terminateSession } from "@/lib/sessionManager";
+import { SESSION_TTL_SECONDS } from "@/lib/sessionConstants";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ function getAuthCookieOptions() {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60,
+    maxAge: SESSION_TTL_SECONDS,
   };
 }
 
