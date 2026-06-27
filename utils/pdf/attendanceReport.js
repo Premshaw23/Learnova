@@ -1,15 +1,30 @@
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
+/** @type {[number,number,number]} Learnova brand purple */
+const LEARNOVA_PURPLE = [139, 92, 246];
+
 /**
- * Generates a professional PDF attendance report.
- *
- * @param {Array} data - Array of student attendance records
- * @param {Object} options - Metadata options including class name, teacher, range, logo
- * @returns {jsPDF} The generated jsPDF instance
+ * Safely convert any value to a printable string.
+ * @param {*} val
+ * @param {string} [fallback="N/A"]
+ * @returns {string}
  */
-export const exportAttendancePDF = (data, options = {}) => {
-  const doc = new jsPDF();
+const safe = (val, fallback = "N/A") => {
+  if (val === null || val === undefined || val === "") return fallback;
+  return String(val);
+};
+
+/**
+ * Render the standard Learnova PDF header block.
+ * Returns the Y position immediately after the header block.
+ *
+ * @param {jsPDF} doc
+ * @param {string} reportTitle
+ * @param {Object} options
+ * @returns {number} startY for content that follows
+ */
+const renderHeader = (doc, reportTitle, options) => {
   const {
     className = "All Classes",
     teacherName = "N/A",
@@ -18,130 +33,161 @@ export const exportAttendancePDF = (data, options = {}) => {
     logoUrl = null,
   } = options;
 
-  // 1. Header Area
-  let startY = 20;
+  let y = 14;
 
-  if (logoUrl) {
-    try {
-      // Draw a fallback clean placeholder box since absolute external image urls might fail in some test envs
-      doc.setFillColor(139, 92, 246); // Learnova Purple color
-      doc.rect(14, startY, 12, 12, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(255, 255, 255);
-      doc.text("L", 18, startY + 8);
-      doc.setTextColor(0, 0, 0);
-    } catch (e) {
-      console.warn("Logo rendering failed:", e);
-    }
-
-    // Institute Name
+  // Logo placeholder (purple square + "L")
+  try {
+    doc.setFillColor(...LEARNOVA_PURPLE);
+    doc.rect(14, y, 12, 12, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(instituteName, 30, startY + 5);
-
-    doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(
-      "AI-Powered Smart Student Engagement & Attendance",
-      30,
-      startY + 10
-    );
-    startY += 18;
-  } else {
-    // Regular Header text
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(instituteName, 14, startY + 5);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(
-      "AI-Powered Smart Student Engagement & Attendance",
-      14,
-      startY + 10
-    );
-    startY += 18;
+    doc.setTextColor(255, 255, 255);
+    doc.text("L", 18.5, y + 8.5);
+    doc.setTextColor(0, 0, 0);
+  } catch (e) {
+    console.warn("Logo rendering failed:", e);
   }
 
-  // 2. Divider Line
+  // Institute name + tagline
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text(safe(instituteName), 30, y + 5);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(100);
+  doc.text("AI-Powered Smart Student Engagement & Attendance", 30, y + 10);
+  doc.setTextColor(0, 0, 0);
+
+  y += 18;
+
+  // Divider
   doc.setDrawColor(220, 220, 220);
-  doc.line(14, startY, 196, startY);
-  startY += 10;
+  doc.line(14, y, 196, y);
+  y += 8;
 
-  // 3. Document Title
+  // Report title
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.setTextColor(15, 23, 42); // slate-900
-  doc.text("Class Attendance Report", 14, startY);
-  startY += 10;
+  doc.setFontSize(16);
+  doc.setTextColor(15, 23, 42);
+  doc.text(reportTitle, 14, y);
+  y += 10;
 
-  // 4. Metadata Block (Side-by-side Layout)
-  doc.setFontSize(10);
-  doc.setTextColor(71, 85, 105); // slate-600
+  // Metadata two-column block
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
 
-  // Left Column
   doc.setFont("helvetica", "bold");
-  doc.text("Class/Subject:", 14, startY);
+  doc.text("Class / Subject:", 14, y);
   doc.setFont("helvetica", "normal");
-  doc.text(className, 42, startY);
+  doc.text(safe(className), 46, y);
 
   doc.setFont("helvetica", "bold");
-  doc.text("Teacher:", 14, startY + 6);
+  doc.text("Teacher:", 14, y + 6);
   doc.setFont("helvetica", "normal");
-  doc.text(teacherName, 42, startY + 6);
+  doc.text(safe(teacherName), 46, y + 6);
 
-  // Right Column
   doc.setFont("helvetica", "bold");
-  doc.text("Date Range:", 110, startY);
+  doc.text("Date Range:", 110, y);
   doc.setFont("helvetica", "normal");
-  doc.text(dateRange, 138, startY);
+  doc.text(safe(dateRange), 136, y);
 
   doc.setFont("helvetica", "bold");
-  doc.text("Generated On:", 110, startY + 6);
+  doc.text("Generated On:", 110, y + 6);
   doc.setFont("helvetica", "normal");
   doc.text(
-    new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString(),
-    138,
-    startY + 6
+    `${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+    136,
+    y + 6
   );
 
-  startY += 18;
+  doc.setTextColor(0, 0, 0);
+  y += 18;
+  return y;
+};
 
-  // 5. Table or Empty State
+// ---------------------------------------------------------------------------
+// Attendance Roster PDF
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates a professional PDF attendance report for a class roster.
+ * Supports multi-page rendering via jspdf-autotable.
+ *
+ * @param {Object[]} data      - Array of student attendance records
+ * @param {Object}   options   - Metadata: className, teacherName, dateRange, instituteName, logoUrl, summary
+ * @returns {jsPDF}             The generated jsPDF instance (also auto-saves)
+ */
+export const exportAttendancePDF = (data, options = {}) => {
+  const doc = new jsPDF();
+  let startY = renderHeader(doc, "Class Attendance Report", options);
+
+  // Optional summary stats block
+  const summary = options.summary;
+  if (summary) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    const parts = [];
+    if (summary.totalStudents != null)
+      parts.push(`Total: ${summary.totalStudents}`);
+    if (summary.presentToday != null)
+      parts.push(`Present: ${summary.presentToday}`);
+    if (summary.absentToday != null)
+      parts.push(`Absent: ${summary.absentToday}`);
+    if (summary.lateToday != null) parts.push(`Late: ${summary.lateToday}`);
+    if (parts.length > 0) {
+      doc.text(parts.join("  ·  "), 14, startY);
+      startY += 8;
+    }
+    doc.setTextColor(0, 0, 0);
+  }
+
+  // Table or empty state
   if (!data || data.length === 0) {
     doc.setFont("helvetica", "italic");
-    doc.setFontSize(12);
-    doc.setTextColor(156, 163, 175); // gray-400
+    doc.setFontSize(11);
+    doc.setTextColor(156, 163, 175);
     doc.text(
       "No attendance data available for the selected date range.",
       14,
-      startY + 10
+      startY + 6
     );
   } else {
-    const columns = ["Date", "Student Name", "Roll No", "Status"];
     const body = data.map((item) => [
-      item.Date || new Date().toLocaleDateString(),
-      item.studentName || item.name || "N/A",
-      item.rollNo || item.id || "N/A",
-      (item.status || "N/A").toUpperCase(),
+      safe(item.Date, new Date().toLocaleDateString()),
+      safe(item.studentName || item.name),
+      safe(item.rollNo || item.id),
+      safe(item.status, "absent").toUpperCase(),
+      safe(item.time),
+      item.confidence != null ? `${item.confidence}%` : "—",
     ]);
 
     doc.autoTable({
-      startY: startY,
-      head: [columns],
-      body: body,
+      startY,
+      head: [["Date", "Student Name", "Roll No", "Status", "Check-in", "Conf."]],
+      body,
       theme: "grid",
-      headStyles: { fillColor: [139, 92, 246] }, // Learnova Purple theme
-      styles: { fontSize: 10, cellPadding: 3 },
-      alternateRowStyles: { fillColor: [248, 250, 252] }, // slate-50 background for alternate rows
+      headStyles: { fillColor: LEARNOVA_PURPLE, fontSize: 9 },
+      styles: { fontSize: 9, cellPadding: 3 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      // Colour-code status cells
+      didParseCell: (hookData) => {
+        if (hookData.section === "body" && hookData.column.index === 3) {
+          const val = (hookData.cell.raw || "").toUpperCase();
+          if (val === "PRESENT")
+            hookData.cell.styles.textColor = [22, 163, 74];
+          else if (val === "ABSENT")
+            hookData.cell.styles.textColor = [220, 38, 38];
+          else if (val === "LATE")
+            hookData.cell.styles.textColor = [217, 119, 6];
+        }
+      },
     });
   }
 
-  // 6. Save document
-  const sanitizedClass = className.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+  const sanitizedClass = (options.className || "all")
+    .replace(/[^a-z0-9]/gi, "_")
+    .toLowerCase();
   const dateStr = new Date().toISOString().slice(0, 10);
   const filename = `attendance-report-class-${sanitizedClass}-${dateStr}.pdf`;
 

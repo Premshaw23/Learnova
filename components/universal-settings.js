@@ -91,6 +91,15 @@ export default function UniversalSettings() {
   const [avatarPreview, setAvatarPreview] = useState(null);
 
   useEffect(() => {
+    const savedLanguage = localStorage.getItem("learnova-language");
+
+    if (savedLanguage) {
+      updateSetting("appearance", "language", savedLanguage);
+      i18n.changeLanguage(savedLanguage);
+    }
+  }, []);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       if (!("Notification" in window)) {
         setPushPermission("unsupported");
@@ -251,6 +260,7 @@ export default function UniversalSettings() {
           achievementAlerts: true,
           weeklyReports: false,
           marketingEmails: false,
+          bulkAnnouncements: true,
           attendanceAlerts: true,
           gradeUpdates: true,
         },
@@ -273,6 +283,7 @@ export default function UniversalSettings() {
           achievementAlerts: false,
           weeklyReports: true,
           marketingEmails: false,
+          bulkAnnouncements: true,
           studentSubmissions: true,
           parentMessages: true,
         },
@@ -295,6 +306,7 @@ export default function UniversalSettings() {
           achievementAlerts: false,
           weeklyReports: true,
           marketingEmails: false,
+          bulkAnnouncements: true,
           systemAlerts: true,
           securityAlerts: true,
         },
@@ -317,6 +329,7 @@ export default function UniversalSettings() {
           achievementAlerts: false,
           weeklyReports: true,
           marketingEmails: true,
+          bulkAnnouncements: true,
           enrollmentAlerts: true,
           performanceReports: true,
         },
@@ -339,6 +352,7 @@ export default function UniversalSettings() {
           achievementAlerts: true,
           weeklyReports: true,
           marketingEmails: false,
+          bulkAnnouncements: true,
           childProgress: true,
           schoolUpdates: true,
         },
@@ -681,7 +695,7 @@ export default function UniversalSettings() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
               <Settings className="h-8 w-8 mr-3 text-blue-400" />
-              {t("settings")}
+              {t("settings.description")}
               <Sparkles className="ml-3 h-6 w-6 text-yellow-400 animate-pulse" />
             </h1>
             <p className="text-white/60">
@@ -1323,12 +1337,12 @@ export default function UniversalSettings() {
                       <select
                         value={settings.appearance.language}
                         onChange={(e) => {
-                          updateSetting(
-                            "appearance",
-                            "language",
-                            e.target.value
-                          );
-                          i18n.changeLanguage(e.target.value);
+                          const lang = e.target.value;
+
+                          updateSetting("appearance", "language", lang);
+                          i18n.changeLanguage(lang);
+
+                          localStorage.setItem("learnova-language", lang);
                         }}
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white focus:border-blue-400 focus:outline-none"
                       >
@@ -1346,6 +1360,17 @@ export default function UniversalSettings() {
                         </option>
                         <option value="zh" className="bg-slate-950 text-white">
                           中文
+                        </option>
+                        <option value="hi" className="bg-slate-950 text-white">
+                          हिन्दी
+                        </option>
+
+                        <option value="ja" className="bg-slate-950 text-white">
+                          日本語
+                        </option>
+
+                        <option value="ar" className="bg-slate-950 text-white">
+                          العربية
                         </option>
                       </select>
                     </div>

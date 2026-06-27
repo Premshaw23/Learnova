@@ -3,9 +3,8 @@
 import BadgeSystem from "@/components/BadgeSystem";
 import QuizReviewMode from "@/components/QuizReviewMode";
 import OfflineSyncTracker from "@/components/OfflineSyncTracker";
-import { useTheme } from "next-themes";
-import { translations } from "@/constants/translations";
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+// Removed unused imports: useMemo, useCallback, useTheme
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
@@ -19,7 +18,7 @@ import {
   GraduationCap,
   Sparkles,
   ArrowRight,
-  BookOpen,
+  // Removed BookOpen, Play, Shield as it was not used in the component
   Users,
   ChevronDown,
   HelpCircle,
@@ -32,9 +31,7 @@ import {
   Bell,
   Laptop,
   CheckCircle,
-  Play,
   ArrowUpRight,
-  Shield,
   Activity,
 } from "lucide-react";
 

@@ -69,6 +69,7 @@ export default function NotificationBell() {
   const isMounted = useIsMounted();
 
   const dropdownRef = useRef(null);
+  const activeRequestRef = useRef(null);
   const buttonRef = useRef(null);
   const previousIdsRef = useRef(new Set());
   const hasLoadedRef = useRef(false);

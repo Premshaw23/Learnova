@@ -9,7 +9,13 @@
     "contact": "Contact",
     "study": "Study",
     "login": "Login",
-    "signup": "Sign Up"
+    "signup": "Sign Up",
+    "search": "Search",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "logout": "Logout"
   },
   "about": {
     "welcome": "Welcome to Learnova",

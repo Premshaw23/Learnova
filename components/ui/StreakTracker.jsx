@@ -85,11 +85,6 @@ export default function StreakTracker({ className }) {
   streak < 30 ? 30 :
   streak < 100 ? 100 :
   null;
-  {nextMilestone && (
-  <span className="text-[10px] opacity-70">
-    {nextMilestone - streak} days to {nextMilestone}-day milestone
-  </span>
-)}
 
   return (
     <div
@@ -122,6 +117,11 @@ export default function StreakTracker({ className }) {
   {badge && (
     <span className="text-[10px] font-medium">
       {badge}
+    </span>
+  )}
+  {nextMilestone && (
+    <span className="text-[10px] opacity-70">
+      {nextMilestone - streak} days to {nextMilestone}-day milestone
     </span>
   )}
 </div>

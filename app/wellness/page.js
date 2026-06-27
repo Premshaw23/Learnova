@@ -10,6 +10,7 @@ import DailyGoals from "@/components/DailyGoals";
 import SleepReminder from "@/components/SleepReminder";
 import WaterTracker from "@/components/WaterTracker";
 import DailyReflectionJournal from "@/components/DailyReflectionJournal";
+import WellnessJourneyTimeline from "@/components/WellnessJourneyTimeline";
 import { HeartPulse } from "lucide-react";
 
 export default function WellnessPage() {
@@ -131,6 +132,7 @@ export default function WellnessPage() {
               <DailyGoals />
               <SleepReminder />
               <WaterTracker />
+              <WellnessJourneyTimeline />
             </div>
           </div>
         </div>

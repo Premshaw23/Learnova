@@ -16,7 +16,7 @@ import {
 import { motion } from "framer-motion";
 import { CONTACT_INFO } from "../constants/contact";
 
-// Animated link component
+// Reusable footer link component with hover animations
 function FooterLink({ href, children, external = false }) {
   const LinkComponent = external ? "a" : Link;
   const externalProps = external
@@ -63,7 +63,7 @@ function XIcon({ size = 18 }) {
     </svg>
   );
 }
-
+// Animated social media icon button with configurable glow effects
 function SocialIcon({ href, icon: Icon, label, glowColor = "purple" }) {
   const glowMap = {
     purple:
@@ -86,13 +86,14 @@ function SocialIcon({ href, icon: Icon, label, glowColor = "purple" }) {
     </motion.a>
   );
 }
-
+// Shared Framer Motion animation variants for footer elements
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
 export default function Footer() {
+  // Dynamically update copyright year
   const [currentYear, setCurrentYear] = useState(2026);
 
   useEffect(() => {
@@ -100,7 +101,7 @@ export default function Footer() {
   }, []);
 
   const [hoveredBrandLetter, setHoveredBrandLetter] = useState(null);
-
+// Navigation links displayed in the footer
   const quickLinks = [
     { label: "Home", href: "/" },
     { label: "Productivity", href: "/productivity" },
@@ -118,14 +119,14 @@ export default function Footer() {
     },
     { label: "Discord Server", href: "https://discord.gg/", external: true },
   ];
-
+// Landing page section shortcuts
   const sectionLinks = [
-    { label: "Mission", href: "/#mission" },
-    { label: "Values", href: "/#values" },
+    { label: "Mission", href: "/mission" },
+    { label: "Values", href: "/values" },
     { label: "Productivity", href: "/#productivity" },
     { label: "Impact", href: "/#impact" },
   ];
-
+// Social media and community links
   const socialLinks = [
     {
       icon: Github,
@@ -147,9 +148,10 @@ export default function Footer() {
       glow: "red",
     },
   ];
-
+// Individual letters used for animated Learnova branding
   const brandLetters = "LEARNOVA".split("");
 
+  /* Main footer container */
   return (
     <footer className="relative overflow-hidden border-t border-border/70 bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.16),transparent_38%),linear-gradient(180deg,rgba(9,9,11,0.94),rgba(3,7,18,1))] text-foreground transition-colors duration-300">
       <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">

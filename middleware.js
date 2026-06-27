@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
-import getApiRouteRule from "@/lib/rbac-policy";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -22,7 +21,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
 
@@ -34,14 +32,108 @@ const AUTH_RATE_LIMITED_PATHS = [
   "/api/auth/reset-password",
   "/api/auth/verify-email",
   "/api/auth/verify-otp",
-  "/api/auth/verify-otp/callback",
 ];
-
 
 const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
 
+const PUBLIC_API_PATHS = new Set([
+  "/api/auth/csrf",
+  "/api/auth/reset-password",
+  "/api/health",
+]);
+
+const API_ROUTE_RULES = [
+  { pattern: /^\/api\/student(?:\/|$)/, roles: ["student", "admin"] },
+  { pattern: /^\/api\/teacher(?:\/|$)/, roles: ["teacher", "admin"] },
+  { pattern: /^\/api\/admin(?:\/|$)/, roles: ["admin"] },
+  { pattern: /^\/api\/institute(?:\/|$)/, roles: ["institute", "admin"] },
+  { pattern: /^\/api\/parent(?:\/|$)/, roles: ["parent", "admin"] },
+  { pattern: /^\/api\/analytics\/attendance-risk(?:\/|$)/, roles: ["teacher", "institute", "admin"] },
+  { pattern: /^\/api\/attendance\/settings(?:\/|$)/, roles: ["teacher", "admin"] },
+  { pattern: /^\/api\/attendance\/record(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/attendance\/sync(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/attendance\/validate-passcode(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/attendance\/heatmap(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/activities(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/auth\/cleanup(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/auth\/me(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/auth\/session(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/auth\/set-role(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/check-groq-config(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/complaints(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/conversations(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/flashcards(?:\/|$)/, roles: ["student", "teacher", "admin"] },
+  { pattern: /^\/api\/groq(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/images(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/labels(?:\/|$)/, roles: ["admin", "teacher", "student"] },
+  { pattern: /^\/api\/notifications(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/notifications\/seed(?:\/|$)/, roles: ["admin"] },
+  { pattern: /^\/api\/notices(?:\/|$)/, roles: ["teacher", "admin", "staff"] },
+  { pattern: /^\/api\/productivity(?:\/|$)/, roles: ["student", "teacher", "admin"] },
+  { pattern: /^\/api\/settings(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/stats(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/upload\/avatar(?:\/|$)/, authOnly: true },
+];
+
+function getApiRouteRule(pathname) {
+  if (!pathname || !pathname.startsWith("/api/")) return null;
+  if (PUBLIC_API_PATHS.has(pathname)) return { public: true };
+  return API_ROUTE_RULES.find((rule) => rule.pattern.test(pathname)) || { authOnly: true };
+}
+
 function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
+}
+
+// ─── Secure IP Extraction ────────────────────────────────────────────────────
+// Extracts the real client IP:
+//   1. Prefers x-real-ip (set by reverse proxy, not user-controllable)
+//   2. Falls back to the rightmost IP in x-forwarded-for (last proxy hop)
+//   3. Rejects private/loopback/reserved IPs to prevent spoofing
+
+function isValidPublicIp(ip) {
+  if (!ip) return false;
+  const ipv4Match = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4Match) {
+    const parts = ipv4Match.slice(1).map(Number);
+    if (parts.some(p => p < 0 || p > 255)) return false;
+    const [a, b, c, d] = parts;
+    if (a === 10) return false;
+    if (a === 127) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 0) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false;
+    if (a === 198 && b === 18 && c === 0 && d === 0) return false;
+    if (a === 198 && b === 51 && c === 100) return false;
+    if (a >= 224) return false;
+    return true;
+  }
+  if (ip === '::1') return false;
+  if (ip.includes(':')) return false;
+  return false;
+}
+
+function extractClientIp(request) {
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp && isValidPublicIp(realIp)) {
+    return realIp;
+  }
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const ips = forwarded.split(",").map(s => s.trim()).filter(Boolean);
+    const rightmost = ips[ips.length - 1];
+    if (rightmost && isValidPublicIp(rightmost)) {
+      return rightmost;
+    }
+    for (const ip of ips) {
+      if (isValidPublicIp(ip)) return ip;
+    }
+  }
+
+  return null;
 }
 
 async function rateLimit(ip, pathname, request) {
@@ -228,77 +320,89 @@ async function fetchUserRoleFromFirestore(uid, token) {
  */
 async function verifyIdToken(token) {
   try {
-    const getJwtExp = (t) => {
+    const getJwtParts = (t) => {
       try {
         const parts = t.split(".");
-        if (parts.length < 2) return null;
-        let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-        while (payload.length % 4) payload += "=";
-        const decoded =
+        if (parts.length !== 3) return null;
+
+        let headerPayload = parts[0]
+          .replace(/-/g, "+")
+          .replace(/_/g, "/");
+        while (headerPayload.length % 4) headerPayload += "=";
+        const headerJson =
           typeof atob === "function"
-            ? atob(payload)
-            : Buffer.from(payload, "base64").toString("utf8");
-        const parsed = JSON.parse(decoded);
-        return {
-          exp: typeof parsed.exp === "number" ? parsed.exp : null,
-          kid: parsed.kid || null,
-        };
+            ? atob(headerPayload)
+            : Buffer.from(headerPayload, "base64").toString("utf8");
+        const header = JSON.parse(headerJson);
+
+        let bodyPayload = parts[1]
+          .replace(/-/g, "+")
+          .replace(/_/g, "/");
+        while (bodyPayload.length % 4) bodyPayload += "=";
+        const bodyJson =
+          typeof atob === "function"
+            ? atob(bodyPayload)
+            : Buffer.from(bodyPayload, "base64").toString("utf8");
+        const body = JSON.parse(bodyJson);
+
+        return { header, body };
       } catch {
         return null;
       }
     };
 
-    const jwtMeta = getJwtExp(token);
-    if (jwtMeta?.exp) {
+    const jwtParts = getJwtParts(token);
+    if (!jwtParts) return null;
+
+    // Reject tokens with wrong algorithm - only allow RS256 for Firebase
+    if (jwtParts.header.alg !== "RS256") {
+      console.error("[auth] Rejected token with unsupported algorithm:", jwtParts.header.alg);
+      return null;
+    }
+
+    // Check expiration early to avoid unnecessary crypto operations
+    if (typeof jwtParts.body.exp === "number") {
       const now = Math.floor(Date.now() / 1000);
-      if (now > jwtMeta.exp + CLOCK_TOLERANCE_SECONDS) {
+      if (now > jwtParts.body.exp + CLOCK_TOLERANCE_SECONDS) {
         return null;
       }
     }
+
+    // Reject tokens missing required Firebase claims
+    if (!jwtParts.body.sub) return null;
 
     if (!FIREBASE_PROJECT_ID) return null;
 
     const publicKeys = await getFirebasePublicKeys();
     if (publicKeys && Object.keys(publicKeys).length > 0) {
-      try {
-        const headerParts = token.split(".");
-        if (headerParts.length >= 1) {
-          let headerPayload = headerParts[0]
-            .replace(/-/g, "+")
-            .replace(/_/g, "/");
-          while (headerPayload.length % 4) headerPayload += "=";
-          const headerJson =
-            typeof atob === "function"
-              ? atob(headerPayload)
-              : Buffer.from(headerPayload, "base64").toString("utf8");
-          const header = JSON.parse(headerJson);
-          const kid = header.kid;
+      const kid = jwtParts.header.kid;
 
-          if (kid && publicKeys[kid]) {
-            const publicKey = await jose.importSPKI(publicKeys[kid], "RS256");
-            const { payload } = await jose.jwtVerify(token, publicKey, {
-              issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
-              audience: FIREBASE_PROJECT_ID,
-              clockTolerance: CLOCK_TOLERANCE_SECONDS,
-            });
+      if (kid && publicKeys[kid]) {
+        try {
+          const publicKey = await jose.importSPKI(publicKeys[kid], "RS256");
+          const { payload } = await jose.jwtVerify(token, publicKey, {
+            issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+            audience: FIREBASE_PROJECT_ID,
+            clockTolerance: CLOCK_TOLERANCE_SECONDS,
+            algorithms: ["RS256"],
+          });
 
-            let role = payload.role || null;
-            if (!role && payload.sub) {
-              role = await fetchUserRoleFromFirestore(payload.sub, token);
-            }
-
-            return {
-              sub: payload.sub,
-              uid: payload.sub,
-              email: payload.email,
-              email_verified: payload.email_verified === true,
-              role,
-              iat: payload.iat,
-            };
+          let role = payload.role || null;
+          if (!role && payload.sub) {
+            role = await fetchUserRoleFromFirestore(payload.sub, token);
           }
+
+          return {
+            sub: payload.sub,
+            uid: payload.sub,
+            email: payload.email,
+            email_verified: payload.email_verified === true,
+            role,
+            iat: payload.iat,
+          };
+        } catch {
+          // Local verification failed, fall through to REST API
         }
-      } catch {
-        // Local verification failed, fall through to REST API
       }
     }
 
@@ -408,10 +512,7 @@ export async function middleware(request) {
 
   // ── 1. Rate limiting for auth API routes ──
   if (isAuthRoute(pathname)) {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
+    const ip = extractClientIp(request) || "unknown";
 
     const { allowed, remaining, retryAfter } = await rateLimit(ip, pathname, request);
 
@@ -461,7 +562,22 @@ export async function middleware(request) {
     const sessionId =
       request.cookies.get("sessionId")?.value ||
       request.headers.get("x-session-id");
-    if (sessionId) {
+
+    // Enforce session validation when Redis is configured
+    // Previously, omitting the session cookie would skip validation entirely,
+    // allowing stolen tokens to be used even after session termination
+    const redisConfigured =
+      process.env.UPSTASH_REDIS_REST_URL &&
+      process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (redisConfigured) {
+      if (!sessionId) {
+        return NextResponse.json(
+          { error: "Session required" },
+          { status: 401 }
+        );
+      }
+
       try {
         const redis = getRedis();
         if (redis) {
@@ -474,21 +590,27 @@ export async function middleware(request) {
           }
         }
       } catch {
-        // Redis unavailable — continue without session validation
+        // Redis unavailable — deny request when session validation is required
+        return NextResponse.json(
+          { error: "Session validation unavailable" },
+          { status: 503 }
+        );
       }
     }
   }
 
-  const tokenFromCookie = request.cookies.get("authToken")?.value || null;
-  if (tokenFromCookie) {
-    try {
-      validateCsrfOriginAndReferer(request);
-      validateCsrfRequest(request);
-    } catch (error) {
-      return NextResponse.json(
-        { error: error.message || "Forbidden: invalid CSRF request" },
-        { status: error.statusCode || 403 }
-      );
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
+    const tokenFromCookie = request.cookies.get("authToken")?.value || null;
+    if (tokenFromCookie) {
+      try {
+        validateCsrfOriginAndReferer(request);
+        validateCsrfRequest(request);
+      } catch (error) {
+        return NextResponse.json(
+          { error: error.message || "Forbidden: invalid CSRF request" },
+          { status: error.statusCode || 403 }
+        );
+      }
     }
   }
 
@@ -641,7 +763,7 @@ export async function middleware(request) {
 }
 
 // Exported for unit testing (in-memory fallback behavior)
-export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
+export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest, extractClientIp, isValidPublicIp };
 
 // Test helper to control cleanup timer
 function resetForTest(now) {
@@ -653,4 +775,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
   ],
 };
-        

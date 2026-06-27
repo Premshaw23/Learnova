@@ -49,7 +49,7 @@ jobs:
             local pkg="$1" dir="$2"
             mkdir -p "$dir"
             echo "Installing $pkg..."
-            TAR=$(npm pack "$pkg" 2>&1)
+            TAR=$(npm pack "$pkg" | tail -n 1)
             if [ $? -ne 0 ]; then
               echo "❌ Failed to pack $pkg"
               echo "$TAR"

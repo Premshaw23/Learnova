@@ -153,7 +153,7 @@ export const quizDatabase = {
         ],
         answer: 2, // She has a cat.
       },
-    ], 
+    ],
   },
   "Junior Coding Quest": {
     category: "coding",
@@ -185,6 +185,7 @@ export const quizDatabase = {
       }
     ]
   }
+};
 };
 
 /**

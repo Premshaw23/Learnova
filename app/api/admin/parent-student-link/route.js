@@ -7,6 +7,7 @@ import { connectDb } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
+import { logAuditEvent } from "@/lib/auditLogger";
 
 import {
   parentStudentLinkSchema,
@@ -217,8 +218,17 @@ export const POST = withErrorHandler(async (request) => {
     );
   }
 
-  return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
-});
+    logAuditEvent({
+      actor: payload,
+      action: "parent_student_link.create",
+      target: { type: "user", id: studentId },
+      details: { parentId, studentId, parentEmail: validatedData.parentEmail, studentEmail: validatedData.studentEmail },
+      request,
+    });
+
+    return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
+  })
+);
 
 export const DELETE = withErrorHandler(async (request) => {
   const payload = await requireAuth(request);
@@ -299,6 +309,14 @@ export const DELETE = withErrorHandler(async (request) => {
       500
     );
   }
+
+  logAuditEvent({
+    actor: payload,
+    action: "parent_student_link.delete",
+    target: { type: "user", id: studentId },
+    details: { parentId, studentId, linkData },
+    request,
+  });
 
   return jsonSuccess({ success: true }, 200);
 });

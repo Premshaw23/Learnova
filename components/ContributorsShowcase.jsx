@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import Tooltip from "@/components/ui/Tooltip";
 
 const DEFAULT_GITHUB_OWNER = "codedbydollys10";
@@ -181,11 +182,12 @@ const ContributorsShowcase = () => {
                     aria-label={`View ${contributor.login} on GitHub`}
                     className="group inline-flex rounded-full overflow-hidden border border-white/10 shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-accent/60"
                   >
-                    <img
+                    <Image
                       src={contributor.avatar_url}
                       alt={`Avatar of ${contributor.login}`}
+                      width={64}
+                      height={64}
                       className="w-16 h-16 object-cover"
-                      loading="lazy"
                     />
                   </a>
                 </Tooltip>

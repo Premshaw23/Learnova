@@ -14,8 +14,7 @@ import {
   markIdempotent,
 } from "@/lib/transactionCoordinator";
 import { validateFaceDescriptor } from "@/lib/images/imagesService";
-import { initializeFirebase } from "@/lib/firebase-admin";
-import admin from "firebase-admin";
+import { logAuditEvent } from "@/lib/auditLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -385,6 +384,19 @@ export const POST = withErrorHandler(async (req) => {
   if (idempotencyKey) {
     await markIdempotent(idempotencyKey, resultPayload);
   }
+
+  logAuditEvent({
+    actor: decodedToken,
+    action: "user.register",
+    target: { type: "user", id: decodedToken.uid },
+    details: {
+      email,
+      name: sanitizedName,
+      rollNo: sanitizedRollNo,
+      hasPhoto: !!fileName,
+    },
+    request: req,
+  });
 
   return jsonSuccess(resultPayload, 201);
 });

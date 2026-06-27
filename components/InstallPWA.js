@@ -71,6 +71,7 @@ export default function InstallPWA() {
 
   const handleDismiss = () => {
     setIsVisible(false);
+    setInstallPrompt(null);
     try {
       if (typeof window !== "undefined") {
         localStorage.setItem("pwa-install-dismissed", "true");

@@ -24,7 +24,7 @@ export default function CalendarPage() {
   useEffect(() => setMounted(true), []);
   const isDark = mounted ? theme === "dark" : true;
 
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { notices, loading: noticesLoading } = useNotices();
 
   const [activities, setActivities] = useState([]);
@@ -167,6 +167,16 @@ export default function CalendarPage() {
   const selectedDateEvents = eventsByDate.get(selectedDateStr) || [];
 
   const loading = noticesLoading || activitiesLoading;
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (   ← this is the existing line 168, stays as-is
 
   return (
     <>

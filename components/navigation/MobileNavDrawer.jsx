@@ -21,8 +21,7 @@ import { sidebarGlassClass } from "./glassStyles";
 
 export default function MobileNavDrawer({
   isOpen,
-  onClose,
-  isDark,
+  onClose,// Removed unused imports: isDark
   navigationItems,
   isRouteActive,
   isAuthenticated,

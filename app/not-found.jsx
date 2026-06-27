@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   GraduationCap,
-  ArrowLeft,
+  //Removed ArrowLeft as it was not used in the component
   Home,
   Sparkles,
   BookOpen,

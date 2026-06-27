@@ -9,6 +9,7 @@ import { normalizeStreakCount } from "@/lib/streakUtils";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ShortcutsModal from "@/components/ShortcutsModal";
 import SearchModal from "@/components/SearchModal";
+import EmergencyBanner from "@/components/EmergencyBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
 import { doc, runTransaction } from "firebase/firestore";
@@ -374,6 +375,7 @@ export default function ClientLayout({ children }) {
 
   return (
     <>
+      <EmergencyBanner />
       {children}
 
       <InstallPWA />

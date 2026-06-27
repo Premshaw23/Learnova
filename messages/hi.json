@@ -9,7 +9,13 @@
     "contact": "संपर्क करें",
     "study": "अध्ययन",
     "login": "लॉग इन",
-    "signup": "साइन अप"
+    "signup": "साइन अप",
+    "search": "खोज",
+    "notifications": "सूचनाएं",
+    "profile": "प्रोफ़ाइल",
+    "dashboard": "डैशबोर्ड",
+    "settings": "सेटिंग्स",
+    "logout": "लॉग आउट"
   },
   "about": {
     "welcome": "Learnova में आपका स्वागत है",

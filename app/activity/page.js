@@ -18,9 +18,7 @@ import {
   Target,
   Zap,
   Award,
-  TrendingUp,
-  User,
-  Calendar,
+  TrendingUp, // removed user, calendar as they are not used
   Filter,
   Search,
   Gamepad2,
@@ -35,8 +33,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import {
   logActivity,
-  getUserActivities,
-  removeActivity,
+  getUserActivities, // removed removeActivity as it's not used
 } from "@/services/activityService";
 import { updateUserStat } from "@/services/statsService";
 

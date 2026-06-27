@@ -27,6 +27,7 @@ const PRIORITY_OPTIONS = [
   { id: "high", label: "High" },
   { id: "medium", label: "Medium" },
   { id: "low", label: "Low" },
+  { id: "emergency", label: "Emergency" },
 ];
 
 // Animated button component for consistency
@@ -70,6 +71,7 @@ const NoticeFilters = ({
   onSortOrderChange,
   showOnlyUnread,
   onToggleUnread,
+  onReset,
 }) => {
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -106,6 +108,19 @@ const NoticeFilters = ({
             status.
           </p>
         </motion.div>
+
+        {onReset && (
+          <motion.button
+            variants={itemVariants}
+            type="button"
+            onClick={onReset}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center gap-2 rounded-3xl px-4 py-3 text-sm font-semibold border border-slate-800 bg-slate-900 text-slate-200 hover:border-indigo-500 transition active:scale-95 cursor-pointer"
+          >
+            Reset Filters
+          </motion.button>
+        )}
 
         <motion.button
           variants={itemVariants}

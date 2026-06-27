@@ -28,6 +28,12 @@ class ErrorBoundary extends React.Component {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
+  componentDidMount() {
+    window.addEventListener("popstate", this.handleRetry);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("popstate", this.handleRetry);
+  }
   componentDidUpdate(prevProps) {
     if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
       this.setState({

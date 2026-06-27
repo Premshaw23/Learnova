@@ -7,7 +7,7 @@ import { recordAttendance } from "@/services/attendanceService";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import { getAverageEAR } from "@/utils/livenessUtils";
-import { syncAttendanceQueue } from "@/lib/syncService";
+import { syncOfflineQueue, getPendingRecordsCount } from "@/services/offlineSyncQueue";
 
 const MIN_CONFIDENCE_TO_RECORD = 60;
 const EAR_THRESHOLD = 0.25;
@@ -35,6 +35,8 @@ export default function FaceRecognizer({ authUser }) {
     blinkCount: 0,
     requiredBlinks: 2,
     lastBlinkTime: 0,
+    challengeType: "blink",
+    smileDetected: false,
   });
 
   const {
@@ -77,12 +79,13 @@ export default function FaceRecognizer({ authUser }) {
     return stopAllMedia;
   }, [stopAllMedia]);
 
+
   const MODEL_URL = "/models";
   const labels = fetchedLabels;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handleOnline = () => {
+    const handleOnline = async () => {
       if (!isMounted.current) return;
       setIsOffline(false);
       setAttendanceState((prev) => {
@@ -92,7 +95,30 @@ export default function FaceRecognizer({ authUser }) {
         }
         return prev;
       });
-      syncAttendanceQueue();
+      
+      try {
+        const count = await getPendingRecordsCount();
+        if (count > 0 && authUser) {
+          const token = await authUser.getIdToken();
+          await syncOfflineQueue(async (record) => {
+            try {
+              const res = await fetch("/api/attendance/record", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(record),
+              });
+              return res.ok;
+            } catch (e) {
+              return false;
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Offline sync error:", err);
+      }
     };
     const handleOffline = () => {
       if (!isMounted.current) return;
@@ -147,6 +173,8 @@ export default function FaceRecognizer({ authUser }) {
             blinkCount: 0,
             requiredBlinks: Math.floor(Math.random() * 2) + 1,
             lastBlinkTime: 0,
+            challengeType: Math.random() > 0.5 ? "blink" : "smile",
+            smileDetected: false,
           };
           setBlinkPrompt("");
 
@@ -228,6 +256,7 @@ export default function FaceRecognizer({ authUser }) {
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
         ]);
 
         if (!isEffectMounted || signal.aborted) return;
@@ -271,6 +300,9 @@ export default function FaceRecognizer({ authUser }) {
 
               blinkStateRef.current.requiredBlinks =
                 Math.floor(Math.random() * 2) + 1;
+              blinkStateRef.current.challengeType = 
+                Math.random() > 0.5 ? "blink" : "smile";
+              blinkStateRef.current.smileDetected = false;
               processVideo(signal);
             });
           };
@@ -386,16 +418,14 @@ export default function FaceRecognizer({ authUser }) {
     );
   };
 
-  const processVideo = async () => {
-    if (!isMounted.current || !videoRef.current || videoRef.current.paused)
-      return;
-
-    let faceapi = faceapiRef.current;
-    if (!faceapi) {
-      faceapi = await import("face-api.js");
-      faceapiRef.current = faceapi;
-    }
-    if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+  const processVideo = async (signal) => {
+    if (
+      !videoRef.current ||
+      !canvasRef.current ||
+      !faceMatcherRef.current ||
+      !isMounted.current ||
+      signal?.aborted
+    ) {
       return;
     const processVideo = async (signal) => {
       if (
@@ -449,6 +479,7 @@ export default function FaceRecognizer({ authUser }) {
       const detections = await faceapi
         .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
+        .withFaceExpressions()
         .withFaceDescriptors();
 
       if (!isMounted.current || signal?.aborted) return;
@@ -481,6 +512,29 @@ export default function FaceRecognizer({ authUser }) {
 
         setConfidence(confidenceScore);
 
+        // Anonymous mood aggregation
+        if (face.expressions && (!window.lastMoodPostTime || Date.now() - window.lastMoodPostTime > 5000)) {
+          window.lastMoodPostTime = Date.now();
+          // Find dominant expression
+          const expressionsObj = face.expressions;
+          const dominantExpression = Object.keys(expressionsObj).reduce((a, b) => expressionsObj[a] > expressionsObj[b] ? a : b);
+          
+          let focusScore = 0;
+          if (['neutral', 'happy', 'surprised'].includes(dominantExpression)) {
+            focusScore = 1;
+          }
+
+          fetch("/api/analytics/mood", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              dominantExpression, 
+              focusScore,
+              timestamp: new Date().toISOString()
+            })
+          }).catch(() => {}); // fire and forget
+        }
+
         if (
           label !== "Unknown" &&
           confidenceScore >= MIN_CONFIDENCE_TO_RECORD
@@ -491,42 +545,55 @@ export default function FaceRecognizer({ authUser }) {
           setLivenessState((prevState) => {
             if (prevState === "DETECTING_FACE" || prevState === "IDLE") {
               setMessage(`Recognized: ${label}. Checking liveness...`);
-              setBlinkPrompt(
-                `Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`
-              );
+              if (blinkStateRef.current.challengeType === "smile") {
+                setBlinkPrompt(`Please smile naturally for the camera.`);
+              } else {
+                setBlinkPrompt(
+                  `Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`
+                );
+              }
               return "VERIFYING_LIVENESS";
             }
             if (prevState === "VERIFYING_LIVENESS") {
-              const leftEye = face.landmarks.getLeftEye();
-              const rightEye = face.landmarks.getRightEye();
-              const ear = getAverageEAR(leftEye, rightEye);
-
-              if (ear < EAR_THRESHOLD) {
-                blinkStateRef.current.isEyeClosed = true;
+              if (blinkStateRef.current.challengeType === "smile") {
+                if (face.expressions && face.expressions.happy > 0.7) {
+                  setMessage("Liveness verified. Authentication successful!");
+                  setBlinkPrompt("Success!");
+                  setFinished(true);
+                  return "AUTHENTICATED";
+                }
               } else {
-                if (blinkStateRef.current.isEyeClosed) {
-                  blinkStateRef.current.isEyeClosed = false;
-                  const blinkTime = Date.now();
-                  if (
-                    blinkTime - blinkStateRef.current.lastBlinkTime >
-                    BLINK_COOLDOWN_MS
-                  ) {
-                    blinkStateRef.current.blinkCount += 1;
-                    blinkStateRef.current.lastBlinkTime = blinkTime;
-                    const remaining =
-                      blinkStateRef.current.requiredBlinks -
-                      blinkStateRef.current.blinkCount;
-                    if (remaining > 0) {
-                      setBlinkPrompt(
-                        `Blink detected! ${remaining} more to go.`
-                      );
-                    } else {
-                      setMessage(
-                        "Liveness verified. Authentication successful!"
-                      );
-                      setBlinkPrompt("Success!");
-                      setFinished(true);
-                      return "AUTHENTICATED";
+                const leftEye = face.landmarks.getLeftEye();
+                const rightEye = face.landmarks.getRightEye();
+                const ear = getAverageEAR(leftEye, rightEye);
+
+                if (ear < EAR_THRESHOLD) {
+                  blinkStateRef.current.isEyeClosed = true;
+                } else {
+                  if (blinkStateRef.current.isEyeClosed) {
+                    blinkStateRef.current.isEyeClosed = false;
+                    const blinkTime = Date.now();
+                    if (
+                      blinkTime - blinkStateRef.current.lastBlinkTime >
+                      BLINK_COOLDOWN_MS
+                    ) {
+                      blinkStateRef.current.blinkCount += 1;
+                      blinkStateRef.current.lastBlinkTime = blinkTime;
+                      const remaining =
+                        blinkStateRef.current.requiredBlinks -
+                        blinkStateRef.current.blinkCount;
+                      if (remaining > 0) {
+                        setBlinkPrompt(
+                          `Blink detected! ${remaining} more to go.`
+                        );
+                      } else {
+                        setMessage(
+                          "Liveness verified. Authentication successful!"
+                        );
+                        setBlinkPrompt("Success!");
+                        setFinished(true);
+                        return "AUTHENTICATED";
+                      }
                     }
                   }
                 }
@@ -871,4 +938,5 @@ export default function FaceRecognizer({ authUser }) {
       </div>
     );
   };
+}
 }

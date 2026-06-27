@@ -1,4 +1,4 @@
-import clientPromise from "../../../lib/mongodb";
+import { connectDb } from "../../../lib/mongodb";
 import { parseJSON, withErrorHandler } from "../../../lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { checkRateLimit } from "../../../lib/rateLimit";
@@ -43,8 +43,7 @@ export const GET = withErrorHandler(async (request) => {
     );
   }
 
-  const client = await clientPromise;
-  const db = client.db();
+  const db = await connectDb();
   const notifications = await db
     .collection("notifications")
     .find({ userId })
@@ -86,8 +85,7 @@ export const PATCH = withErrorHandler(async (request) => {
     );
   }
 
-  const client = await clientPromise;
-  const db = client.db();
+  const db = await connectDb();
 
   await db
     .collection("notifications")

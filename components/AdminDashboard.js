@@ -25,8 +25,6 @@ import {
   Trash2,
   Play,
   CheckCircle2,
-  Wifi,
-  WifiOff,
   FileText,
   History,
 } from "lucide-react";
@@ -35,7 +33,6 @@ import { dashboardContentOffsetClass } from "@/components/navigation";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
-import SkeletonCard from "@/components/ui/SkeletonCard";
 import ExportDropdown from "@/components/ui/ExportDropdown";
 import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 
@@ -62,6 +59,11 @@ const EngagementChart = dynamic(
 
 const AdminAchievementDashboard = dynamic(
   () => import("@/components/achievements/AdminAchievementDashboard"),
+  { ssr: false, loading: () => <DashboardSkeleton /> }
+);
+
+const DataRetentionSettings = dynamic(
+  () => import("@/components/DataRetentionSettings"),
   { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 
@@ -1640,6 +1642,7 @@ const SuperAdminDashboard = () => {
           "security",
           "sync reconciliation",
           "parent student linking",
+          "data retention"
         ].map((tab) => (
           <button
             key={tab}
@@ -1666,6 +1669,7 @@ const SuperAdminDashboard = () => {
           {activeTab === "sync reconciliation" && renderSyncInspector()}
           {activeTab === "parent student linking" &&
             renderParentStudentLinking()}
+          {activeTab === "data retention" && <DataRetentionSettings />}
         </div>
       </div>
     </div>

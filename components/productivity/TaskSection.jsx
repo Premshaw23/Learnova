@@ -101,7 +101,7 @@ export function TaskSection({
           <p
             className={`text-sm text-center py-8 ${isDark ? "text-slate-500" : "text-slate-400"}`}
           >
-            No tasks yet. Add one above.
+           Create your first task and stay productive.
           </p>
         )}
         {tasks.map((task, index) => (

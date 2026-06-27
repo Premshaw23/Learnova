@@ -1,21 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react"; // removed useRef as it's not used
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Clock,
   Sparkles,
-  CheckCircle2,
-  XCircle,
+  CheckCircle2, // removed XCircle as it's not used
   RotateCcw,
   Trophy,
   Play,
   Check,
   ChevronRight,
-  AlertCircle,
-  Award,
+  AlertCircle, // removed Award as it's not used
   Bookmark,
   ListTodo,
 } from "lucide-react";

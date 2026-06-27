@@ -10,3 +10,8 @@ coverage
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Files with syntax errors
+app/api/attendance/validate-passcode/route.js
+components/FaceRecognizer.js
+middleware.js
