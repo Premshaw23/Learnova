@@ -75,6 +75,11 @@ export async function recordAttendance({
   studentName,
   email,
   confidenceScore,
+  classId,
+  sessionId,
+  attendanceId,
+  version,
+  lastUpdated,
 }) {
   if (!userId || !db) {
     throw new Error("Attendance cannot be saved without a signed-in user.");
@@ -111,7 +116,11 @@ export async function recordAttendance({
         email,
         confidenceScore: confidenceScore ?? 0,
         date: todayKey,
-        // Save the token so background sync can use it if needed, or re-fetch it
+        classId,
+        sessionId,
+        attendanceId,
+        version,
+        lastUpdated,
       });
       return {
         alreadyRecorded: false,
@@ -132,6 +141,11 @@ export async function recordAttendance({
         email,
         confidenceScore: confidenceScore ?? 0,
         date: todayKey,
+        classId,
+        sessionId,
+        attendanceId,
+        version,
+        lastUpdated,
       }),
     });
   } catch (error) {
@@ -143,6 +157,11 @@ export async function recordAttendance({
         email,
         confidenceScore: confidenceScore ?? 0,
         date: todayKey,
+        classId,
+        sessionId,
+        attendanceId,
+        version,
+        lastUpdated,
       });
       return {
         alreadyRecorded: false,
@@ -152,6 +171,7 @@ export async function recordAttendance({
     }
     throw error;
   }
+
 
   if (!response.ok) {
     let errorMessage = "Failed to record attendance securely on the server.";

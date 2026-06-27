@@ -24,6 +24,14 @@ const syncSchema = z.object({
         confidenceScore: z.number().optional(),
         queuedAt: z.number(),
         date: z.string().optional(),
+        attendanceId: z.string().optional(),
+        sessionId: z.string().optional(),
+        classId: z.string().optional(),
+        studentId: z.string().optional(),
+        deviceId: z.string().optional(),
+        version: z.number().optional(),
+        lastUpdated: z.union([z.number(), z.string()]).optional(),
+        syncStatus: z.string().optional(),
       })
     )
     .min(1)
@@ -118,7 +126,7 @@ async function handleSync(request) {
   const successfulIds = [];
   const rejectedIds = [];
 
-  // We use a Set to keep track of processed user-dates to prevent duplicate attendance
+  // We use a Set to keep track of processed user-dates-classes-sessions to prevent duplicate attendance
   // even within the same batch.
   const processedUserDates = new Set();
 
@@ -154,7 +162,9 @@ async function handleSync(request) {
     // online record path produces (fix for Issue #1234 timestamp drift).
     const recordDate = getLocalDateKey(record.queuedAt);
 
-    const userDateKey = `${decodedToken.uid}_${recordDate}`;
+    const recordClassId = record.classId || "default_class";
+    const recordSessionId = record.sessionId || "default_session";
+    const userDateKey = `${decodedToken.uid}_${recordDate}_${recordClassId}_${recordSessionId}`;
 
     if (processedUserDates.has(userDateKey)) {
       successfulIds.push(record.id); // Acknowledge as success to remove from local queue
@@ -185,28 +195,52 @@ async function handleSync(request) {
       steps: [
         {
           name: "write_attendance",
-          // Fix for #3559: use field-level update() on existing documents instead of a
-          // full set(), so concurrent offline syncs for the same user-date cannot
-          // silently overwrite fields written by a racing request that arrived first.
           execute: async (ctx) => {
+            const docName = (record.classId && record.sessionId)
+              ? `${decodedToken.uid}_${recordDate}_${record.classId}_${record.sessionId}`
+              : `${decodedToken.uid}_${recordDate}`;
+
             const newDocRef = db
               .collection("attendance_records")
-              .doc(`${decodedToken.uid}_${recordDate}`);
+              .doc(docName);
 
             await db.runTransaction(async (transaction) => {
               const existingAttendance = await transaction.get(newDocRef);
 
               if (existingAttendance.exists) {
-                // Document already exists — another write (online or a prior sync)
-                // got here first. Mark as already processed so downstream steps
-                // (MongoDB write, XP award) are skipped, preserving the original
-                // record's integrity.
-                ctx._alreadyProcessed = true;
+                const existingData = existingAttendance.data();
+                const existingLastUpdated = existingData.lastUpdated || (existingData.timestamp ? new Date(existingData.timestamp.toDate()).getTime() : 0);
+                const existingVersion = existingData.version || 1;
+
+                const incomingLastUpdated = record.lastUpdated || record.queuedAt || 0;
+                const incomingVersion = record.version || 1;
+
+                // Skip older updates: do not overwrite newer attendance with older data
+                if (existingLastUpdated > incomingLastUpdated || (existingLastUpdated === incomingLastUpdated && existingVersion >= incomingVersion)) {
+                  ctx._alreadyProcessed = true;
+                  return;
+                }
+
+                // Update the existing record with the newer values
+                transaction.update(newDocRef, {
+                  studentName: serverIdentity.studentName,
+                  email: serverIdentity.email,
+                  instituteId,
+                  status: record.status || "present",
+                  confidenceScore: normalizedConfidence,
+                  offlineSynced: true,
+                  version: incomingVersion,
+                  lastUpdated: incomingLastUpdated,
+                  updatedAt: FieldValue.serverTimestamp(),
+                  deviceId: record.deviceId || existingData.deviceId,
+                  classId: record.classId || existingData.classId || "default_class",
+                  sessionId: record.sessionId || existingData.sessionId || "default_session",
+                  attendanceId: record.attendanceId || existingData.attendanceId,
+                });
                 return;
               }
 
               // Document does not exist — safe to create it with a full set().
-              // No merge flag: we own this new document entirely.
               transaction.set(newDocRef, {
                 userId: decodedToken.uid,
                 studentName: serverIdentity.studentName,
@@ -214,10 +248,17 @@ async function handleSync(request) {
                 instituteId,
                 timestamp: FieldValue.serverTimestamp(),
                 date: recordDate,
-                status: "present",
+                status: record.status || "present",
                 confidenceScore: normalizedConfidence,
                 offlineSynced: true,
                 queuedAt: new Date(record.queuedAt),
+                attendanceId: record.attendanceId || `att_${record.queuedAt}_${decodedToken.uid}`,
+                sessionId: recordSessionId,
+                classId: recordClassId,
+                studentId: record.studentId || decodedToken.uid,
+                deviceId: record.deviceId || "unknown_device",
+                version: record.version || 1,
+                lastUpdated: record.lastUpdated || record.queuedAt,
               });
             });
           },
@@ -229,10 +270,13 @@ async function handleSync(request) {
             if (ctx._alreadyProcessed) return;
             const mongoDB = await connectDb();
             try {
-              // $set is inherently field-level in MongoDB — only the listed fields are
-              // touched; no risk of clobbering unrelated fields on a concurrent write.
               await mongoDB.collection("attendance").updateOne(
-                { userId: decodedToken.uid, date: recordDate },
+                { 
+                  userId: decodedToken.uid, 
+                  date: recordDate, 
+                  classId: record.classId || "default_class",
+                  sessionId: record.sessionId || "default_session" 
+                },
                 {
                   $set: {
                     userId: decodedToken.uid,
@@ -241,17 +285,22 @@ async function handleSync(request) {
                     instituteId,
                     timestamp: new Date(record.queuedAt),
                     date: recordDate,
-                    status: "present",
+                    status: record.status || "present",
                     confidenceScore: normalizedConfidence,
                     offlineSynced: true,
                     queuedAt: new Date(record.queuedAt),
+                    attendanceId: record.attendanceId || `att_${record.queuedAt}_${decodedToken.uid}`,
+                    sessionId: record.sessionId || "default_session",
+                    classId: record.classId || "default_class",
+                    studentId: record.studentId || decodedToken.uid,
+                    deviceId: record.deviceId || "unknown_device",
+                    version: record.version || 1,
+                    lastUpdated: record.lastUpdated || record.queuedAt,
                   },
                 },
                 { upsert: true }
               );
             } catch (err) {
-              // E11000 = duplicate key — another concurrent request already wrote
-              // this record. Mark as processed so we don't fail the whole batch.
               if (err?.code === 11000) {
                 ctx._alreadyProcessed = true;
                 return;
@@ -259,6 +308,7 @@ async function handleSync(request) {
               throw err;
             }
           },
+
           compensate: async () => {
             const mongoDB = await connectDb();
             await mongoDB

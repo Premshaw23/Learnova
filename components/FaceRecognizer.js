@@ -102,13 +102,20 @@ export default function FaceRecognizer({ authUser }) {
           const token = await authUser.getIdToken();
           await syncOfflineQueue(async (record) => {
             try {
-              const res = await fetch("/api/attendance/record", {
+              const res = await fetch("/api/attendance/sync", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(record),
+                body: JSON.stringify({
+                  records: [
+                    {
+                      ...record,
+                      queuedAt: record.queuedAt || record.lastUpdated || record.timestamp || Date.now(),
+                    },
+                  ],
+                }),
               });
               return res.ok;
             } catch (e) {
