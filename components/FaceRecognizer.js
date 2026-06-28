@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
@@ -20,6 +20,11 @@ export default function FaceRecognizer({ authUser }) {
   const activeStreamRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  /**
+   * isSubmittingRef acts as a mutex to prevent multiple concurrent attendance
+   * API calls. It is a ref (not state) so it can be read and set synchronously
+   * inside async handlers without stale-closure issues.
+   */
   const isSubmittingRef = useRef(false);
   const cachedDescriptorsRef = useRef(null);
   const faceMatcherRef = useRef(null);
@@ -55,6 +60,12 @@ export default function FaceRecognizer({ authUser }) {
   const [livenessState, setLivenessState] = useState("IDLE");
   const [blinkPrompt, setBlinkPrompt] = useState("");
   const [facingMode, setFacingMode] = useState("user");
+  /**
+   * isVerifying is a React state (shown in the UI) that mirrors isSubmittingRef.
+   * - isSubmittingRef is the authoritative lock (synchronous, stale-closure safe).
+   * - isVerifying drives the disabled / spinner UI states.
+   */
+  const [isVerifying, setIsVerifying] = useState(false);
   const [isOffline, setIsOffline] = useState(
     typeof window !== "undefined" ? !navigator.onLine : false
   );
@@ -83,6 +94,7 @@ export default function FaceRecognizer({ authUser }) {
   const MODEL_URL = "/models";
   const labels = fetchedLabels;
 
+  // ── ONLINE / OFFLINE EVENT LISTENERS ──────────
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handleOnline = async () => {
@@ -95,7 +107,7 @@ export default function FaceRecognizer({ authUser }) {
         }
         return prev;
       });
-      
+
       try {
         const count = await getPendingRecordsCount();
         if (count > 0 && authUser) {
@@ -130,10 +142,12 @@ export default function FaceRecognizer({ authUser }) {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [authUser]);
 
   const handleRetry = async () => {
+    // Reset the submission lock so the next scan can proceed
     isSubmittingRef.current = false;
+    setIsVerifying(false);
     try {
       if (activeStreamRef.current) {
         activeStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -203,6 +217,7 @@ export default function FaceRecognizer({ authUser }) {
     setFacingMode((prev) => (prev === "user" ? "environment" : "user"));
   };
 
+  // ── MAIN INITIALIZATION EFFECT ──────────
   useEffect(() => {
     isMounted.current = true;
     let isEffectMounted = true;
@@ -300,7 +315,7 @@ export default function FaceRecognizer({ authUser }) {
 
               blinkStateRef.current.requiredBlinks =
                 Math.floor(Math.random() * 2) + 1;
-              blinkStateRef.current.challengeType = 
+              blinkStateRef.current.challengeType =
                 Math.random() > 0.5 ? "blink" : "smile";
               blinkStateRef.current.smileDetected = false;
               processVideo(signal);
@@ -350,6 +365,7 @@ export default function FaceRecognizer({ authUser }) {
     };
   }, [labelsLoading, error, labels, facingMode]);
 
+  // ── FACEAPI TF CLEANUP ──────────
   useEffect(() => {
     return () => {
       if (faceapiRef.current?.tf?.disposeVariables) {
@@ -358,6 +374,7 @@ export default function FaceRecognizer({ authUser }) {
     };
   }, []);
 
+  // ── BUILD FACE MATCHER ──────────
   const buildFaceMatcher = async (signal) => {
     if (!labels || labels.length === 0) return;
     if (!isMounted.current || signal?.aborted) return;
@@ -418,6 +435,7 @@ export default function FaceRecognizer({ authUser }) {
     );
   };
 
+  // ── VIDEO PROCESSING LOOP ──────────
   const processVideo = async (signal) => {
     if (
       !videoRef.current ||
@@ -427,496 +445,560 @@ export default function FaceRecognizer({ authUser }) {
       signal?.aborted
     ) {
       return;
-    const processVideo = async (signal) => {
-      if (
-        !videoRef.current ||
-        !canvasRef.current ||
-        !faceMatcherRef.current ||
-        !isMounted.current ||
-        signal?.aborted
-      ) {
-        return;
-      }
+    }
 
-      const faceapi = await import("face-api.js");
-      faceapiRef.current = faceapi;
-      if (!isMounted.current || signal?.aborted) return;
-      const video = videoRef.current;
+    const faceapi = await import("face-api.js");
+    faceapiRef.current = faceapi;
+    if (!isMounted.current || signal?.aborted) return;
+    const video = videoRef.current;
 
-      if (video.paused || video.ended || !video.videoWidth) {
-        if (isMounted.current && !finished && !signal?.aborted) {
-          animationFrameId.current = requestAnimationFrame(() =>
-            processVideo(signal)
-          );
-        }
-        return;
-      }
-
-      const now = Date.now();
-      if (now - lastDetectionTime.current < PROCESSING_INTERVAL_MS) {
-        if (isMounted.current && !finished && !signal?.aborted) {
-          animationFrameId.current = requestAnimationFrame(() =>
-            processVideo(signal)
-          );
-        }
-        return;
-      }
-      lastDetectionTime.current = now;
-
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const rect = video.getBoundingClientRect();
-      const displaySize = {
-        width: rect.width || video.videoWidth || 720,
-        height: rect.height || video.videoHeight || 500,
-      };
-
-      canvas.width = displaySize.width;
-      canvas.height = displaySize.height;
-      faceapi.matchDimensions(canvas, displaySize);
-
-      const detections = await faceapi
-        .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceExpressions()
-        .withFaceDescriptors();
-
-      if (!isMounted.current || signal?.aborted) return;
-
-      const resizedDetections = faceapi.resizeResults(detections, displaySize);
-      const ctx = canvas.getContext("2d");
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (resizedDetections.length > 0 && ctx) {
-        const face = resizedDetections[0];
-        const bestMatch = faceMatcherRef.current.findBestMatch(face.descriptor);
-        const label =
-          bestMatch.label === "unknown" ? "Unknown" : bestMatch.label;
-        const confidenceScore = Math.round((1 - bestMatch.distance) * 100);
-        const box = face.detection.box;
-
-        ctx.strokeStyle = label !== "Unknown" ? "#10b981" : "#ef4444";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(box.x, box.y, box.width, box.height);
-        ctx.fillStyle = label !== "Unknown" ? "#10b981" : "#ef4444";
-        ctx.fillRect(box.x, box.y - 30, box.width, 30);
-        ctx.fillStyle = "white";
-        ctx.font = "16px Inter, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(
-          `${label} (${confidenceScore}%)`,
-          box.x + box.width / 2,
-          box.y - 8
+    if (video.paused || video.ended || !video.videoWidth) {
+      if (isMounted.current && !signal?.aborted) {
+        animationFrameId.current = requestAnimationFrame(() =>
+          processVideo(signal)
         );
+      }
+      return;
+    }
 
-        setConfidence(confidenceScore);
+    const now = Date.now();
+    if (now - lastDetectionTime.current < PROCESSING_INTERVAL_MS) {
+      if (isMounted.current && !signal?.aborted) {
+        animationFrameId.current = requestAnimationFrame(() =>
+          processVideo(signal)
+        );
+      }
+      return;
+    }
+    lastDetectionTime.current = now;
 
-        // Anonymous mood aggregation
-        if (face.expressions && (!window.lastMoodPostTime || Date.now() - window.lastMoodPostTime > 5000)) {
-          window.lastMoodPostTime = Date.now();
-          // Find dominant expression
-          const expressionsObj = face.expressions;
-          const dominantExpression = Object.keys(expressionsObj).reduce((a, b) => expressionsObj[a] > expressionsObj[b] ? a : b);
-          
-          let focusScore = 0;
-          if (['neutral', 'happy', 'surprised'].includes(dominantExpression)) {
-            focusScore = 1;
-          }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-          fetch("/api/analytics/mood", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              dominantExpression, 
-              focusScore,
-              timestamp: new Date().toISOString()
-            })
-          }).catch(() => {}); // fire and forget
-        }
+    const rect = video.getBoundingClientRect();
+    const displaySize = {
+      width: rect.width || video.videoWidth || 720,
+      height: rect.height || video.videoHeight || 500,
+    };
 
-        if (
-          label !== "Unknown" &&
-          confidenceScore >= MIN_CONFIDENCE_TO_RECORD
-        ) {
-          const person = labels.find((l) => l.name === label);
-          setDetectedPerson(person || null);
+    canvas.width = displaySize.width;
+    canvas.height = displaySize.height;
+    faceapi.matchDimensions(canvas, displaySize);
 
-          setLivenessState((prevState) => {
-            if (prevState === "DETECTING_FACE" || prevState === "IDLE") {
-              setMessage(`Recognized: ${label}. Checking liveness...`);
-              if (blinkStateRef.current.challengeType === "smile") {
-                setBlinkPrompt(`Please smile naturally for the camera.`);
-              } else {
-                setBlinkPrompt(
-                  `Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`
-                );
-              }
-              return "VERIFYING_LIVENESS";
+    const detections = await faceapi
+      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceExpressions()
+      .withFaceDescriptors();
+
+    if (!isMounted.current || signal?.aborted) return;
+
+    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (resizedDetections.length > 0 && ctx) {
+      const face = resizedDetections[0];
+      const bestMatch = faceMatcherRef.current.findBestMatch(face.descriptor);
+      const label =
+        bestMatch.label === "unknown" ? "Unknown" : bestMatch.label;
+      const confidenceScore = Math.round((1 - bestMatch.distance) * 100);
+      const box = face.detection.box;
+
+      ctx.strokeStyle = label !== "Unknown" ? "#10b981" : "#ef4444";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
+      ctx.fillStyle = label !== "Unknown" ? "#10b981" : "#ef4444";
+      ctx.fillRect(box.x, box.y - 30, box.width, 30);
+      ctx.fillStyle = "white";
+      ctx.font = "16px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        `${label} (${confidenceScore}%)`,
+        box.x + box.width / 2,
+        box.y - 8
+      );
+
+      setConfidence(confidenceScore);
+
+      // Anonymous mood aggregation (fire and forget, throttled to every 5 s)
+      if (
+        face.expressions &&
+        (!window.lastMoodPostTime ||
+          Date.now() - window.lastMoodPostTime > 5000)
+      ) {
+        window.lastMoodPostTime = Date.now();
+        const expressionsObj = face.expressions;
+        const dominantExpression = Object.keys(expressionsObj).reduce((a, b) =>
+          expressionsObj[a] > expressionsObj[b] ? a : b
+        );
+        const focusScore = ["neutral", "happy", "surprised"].includes(
+          dominantExpression
+        )
+          ? 1
+          : 0;
+
+        fetch("/api/analytics/mood", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dominantExpression,
+            focusScore,
+            timestamp: new Date().toISOString(),
+          }),
+        }).catch(() => {}); // fire and forget
+      }
+
+      if (
+        label !== "Unknown" &&
+        confidenceScore >= MIN_CONFIDENCE_TO_RECORD
+      ) {
+        const person = labels.find((l) => l.name === label);
+        setDetectedPerson(person || null);
+
+        setLivenessState((prevState) => {
+          if (prevState === "DETECTING_FACE" || prevState === "IDLE") {
+            setMessage(`Recognized: ${label}. Checking liveness...`);
+            if (blinkStateRef.current.challengeType === "smile") {
+              setBlinkPrompt(`Please smile naturally for the camera.`);
+            } else {
+              setBlinkPrompt(
+                `Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`
+              );
             }
-            if (prevState === "VERIFYING_LIVENESS") {
-              if (blinkStateRef.current.challengeType === "smile") {
-                if (face.expressions && face.expressions.happy > 0.7) {
-                  setMessage("Liveness verified. Authentication successful!");
-                  setBlinkPrompt("Success!");
-                  setFinished(true);
-                  return "AUTHENTICATED";
-                }
-              } else {
-                const leftEye = face.landmarks.getLeftEye();
-                const rightEye = face.landmarks.getRightEye();
-                const ear = getAverageEAR(leftEye, rightEye);
+            return "VERIFYING_LIVENESS";
+          }
+          if (prevState === "VERIFYING_LIVENESS") {
+            if (blinkStateRef.current.challengeType === "smile") {
+              if (face.expressions && face.expressions.happy > 0.7) {
+                setMessage("Liveness verified. Authentication successful!");
+                setBlinkPrompt("Success!");
+                setFinished(true);
+                return "AUTHENTICATED";
+              }
+            } else {
+              const leftEye = face.landmarks.getLeftEye();
+              const rightEye = face.landmarks.getRightEye();
+              const ear = getAverageEAR(leftEye, rightEye);
 
-                if (ear < EAR_THRESHOLD) {
-                  blinkStateRef.current.isEyeClosed = true;
-                } else {
-                  if (blinkStateRef.current.isEyeClosed) {
-                    blinkStateRef.current.isEyeClosed = false;
-                    const blinkTime = Date.now();
-                    if (
-                      blinkTime - blinkStateRef.current.lastBlinkTime >
-                      BLINK_COOLDOWN_MS
-                    ) {
-                      blinkStateRef.current.blinkCount += 1;
-                      blinkStateRef.current.lastBlinkTime = blinkTime;
-                      const remaining =
-                        blinkStateRef.current.requiredBlinks -
-                        blinkStateRef.current.blinkCount;
-                      if (remaining > 0) {
-                        setBlinkPrompt(
-                          `Blink detected! ${remaining} more to go.`
-                        );
-                      } else {
-                        setMessage(
-                          "Liveness verified. Authentication successful!"
-                        );
-                        setBlinkPrompt("Success!");
-                        setFinished(true);
-                        return "AUTHENTICATED";
-                      }
+              if (ear < EAR_THRESHOLD) {
+                blinkStateRef.current.isEyeClosed = true;
+              } else {
+                if (blinkStateRef.current.isEyeClosed) {
+                  blinkStateRef.current.isEyeClosed = false;
+                  const blinkTime = Date.now();
+                  if (
+                    blinkTime - blinkStateRef.current.lastBlinkTime >
+                    BLINK_COOLDOWN_MS
+                  ) {
+                    blinkStateRef.current.blinkCount += 1;
+                    blinkStateRef.current.lastBlinkTime = blinkTime;
+                    const remaining =
+                      blinkStateRef.current.requiredBlinks -
+                      blinkStateRef.current.blinkCount;
+                    if (remaining > 0) {
+                      setBlinkPrompt(
+                        `Blink detected! ${remaining} more to go.`
+                      );
+                    } else {
+                      setMessage(
+                        "Liveness verified. Authentication successful!"
+                      );
+                      setBlinkPrompt("Success!");
+                      setFinished(true);
+                      return "AUTHENTICATED";
                     }
                   }
                 }
               }
             }
-            return prevState;
-          });
-        } else {
-          setDetectedPerson(null);
-          if (livenessState !== "AUTHENTICATED") {
-            setMessage("Face not recognized.");
-            setLivenessState("DETECTING_FACE");
           }
-        }
+          return prevState;
+        });
       } else {
-        if (isMounted.current && !signal?.aborted) {
-          if (livenessState !== "AUTHENTICATED") {
-            setMessage("No face detected");
-            setLivenessState("DETECTING_FACE");
-          }
-          setDetectedPerson(null);
-          setConfidence(0);
-          if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        setDetectedPerson(null);
+        if (livenessState !== "AUTHENTICATED") {
+          setMessage("Face not recognized.");
+          setLivenessState("DETECTING_FACE");
         }
       }
+    } else {
+      if (isMounted.current && !signal?.aborted) {
+        if (livenessState !== "AUTHENTICATED") {
+          setMessage("No face detected");
+          setLivenessState("DETECTING_FACE");
+        }
+        setDetectedPerson(null);
+        setConfidence(0);
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
 
-      if (isMounted.current && !finished && !signal?.aborted) {
-        // Loop execution only if not finished
-        // To prevent race conditions, check if we just transitioned to AUTHENTICATED
-        setLivenessState((currentLiveness) => {
-          if (
-            currentLiveness !== "AUTHENTICATED" &&
-            isMounted.current &&
-            !signal?.aborted
-          ) {
-            animationFrameId.current = requestAnimationFrame(() =>
-              processVideo(signal)
-            );
-          }
-          return currentLiveness;
+    // Continue the loop only when not yet authenticated
+    if (isMounted.current && !signal?.aborted) {
+      setLivenessState((currentLiveness) => {
+        if (
+          currentLiveness !== "AUTHENTICATED" &&
+          isMounted.current &&
+          !signal?.aborted
+        ) {
+          animationFrameId.current = requestAnimationFrame(() =>
+            processVideo(signal)
+          );
+        }
+        return currentLiveness;
+      });
+    }
+  };
+
+  // ── ANALYTICS PAGE VIEW ──────────
+  useEffect(() => {
+    if (analytics) {
+      try {
+        logEvent(analytics, "page_view", { page: "attendance" });
+      } catch (err) {
+        console.warn(
+          "Analytics page_view logEvent was blocked or failed:",
+          err
+        );
+      }
+    }
+  }, []);
+
+  // ── PERSIST ATTENDANCE AFTER LIVENESS AUTHENTICATION ──────────
+  useEffect(() => {
+    const persistAttendance = async () => {
+      if (
+        !finished ||
+        !detectedPerson ||
+        !authUser?.uid ||
+        livenessState !== "AUTHENTICATED"
+      )
+        return;
+
+      // ── MUTEX GUARD: only one submission at a time ──
+      if (isSubmittingRef.current) {
+        console.warn(
+          "[FaceRecognizer] Duplicate attendance submission blocked — request already in progress."
+        );
+        return;
+      }
+      if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+        return;
+
+      if (confidence < MIN_CONFIDENCE_TO_RECORD) {
+        setAttendanceState("low-confidence");
+        return;
+      }
+
+      const detectedEmail = detectedPerson.email?.trim().toLowerCase();
+      const userEmail = authUser.email?.trim().toLowerCase();
+      if (detectedEmail && userEmail && detectedEmail !== userEmail) {
+        setAttendanceState("mismatch");
+        setMessage("Face does not match signed-in account.");
+        return;
+      }
+
+      // Acquire the lock and show loading state
+      isSubmittingRef.current = true;
+      setIsVerifying(true);
+      setAttendanceState("saving");
+
+      try {
+        const result = await recordAttendance({
+          userId: authUser.uid,
+          studentName: detectedPerson.name,
+          email: detectedPerson.email || authUser.email,
+          confidenceScore: confidence,
         });
+
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+          return;
+
+        if (result.queuedOffline) {
+          setAttendanceState("queued-offline");
+          setMessage("Offline - Syncing later");
+        } else {
+          setAttendanceState(
+            result.alreadyRecorded ? "already-recorded" : "saved"
+          );
+        }
+      } catch (err) {
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+          return;
+        setAttendanceState("error");
+        setMessage(err.message || "Could not save attendance.");
+        console.error("[FaceRecognizer] Attendance submission error:", err);
+      } finally {
+        // Always release the lock and clear the UI spinner
+        isSubmittingRef.current = false;
+        setIsVerifying(false);
       }
     };
 
-    useEffect(() => {
-      if (analytics) {
-        try {
-          logEvent(analytics, "page_view", { page: "attendance" });
-        } catch (err) {
-          console.warn(
-            "Analytics page_view logEvent was blocked or failed:",
-            err
-          );
-        }
-      }
-    }, []);
+    persistAttendance();
+  }, [authUser, confidence, detectedPerson, finished, livenessState]);
 
-    useEffect(() => {
-      const persistAttendance = async () => {
-        if (
-          !finished ||
-          !detectedPerson ||
-          !authUser?.uid ||
-          livenessState !== "AUTHENTICATED"
-        )
-          return;
-        if (isSubmittingRef.current) return;
-        if (!isMounted.current || abortControllerRef.current?.signal.aborted)
-          return;
-        if (confidence < MIN_CONFIDENCE_TO_RECORD) {
-          setAttendanceState("low-confidence");
-          return;
-        }
-        const detectedEmail = detectedPerson.email?.trim().toLowerCase();
-        const userEmail = authUser.email?.trim().toLowerCase();
-        if (detectedEmail && userEmail && detectedEmail !== userEmail) {
-          setAttendanceState("mismatch");
-          setMessage("Face does not match signed-in account.");
-          return;
-        }
-        isSubmittingRef.current = true;
-        setAttendanceState("saving");
-        try {
-          const result = await recordAttendance({
-            userId: authUser.uid,
-            studentName: detectedPerson.name,
-            email: detectedPerson.email || authUser.email,
-            confidenceScore: confidence,
-          });
-          if (!isMounted.current || abortControllerRef.current?.signal.aborted)
-            return;
-          if (result.queuedOffline) {
-            setAttendanceState("queued-offline");
-            setMessage("Offline - Syncing later");
-          } else {
-            setAttendanceState(
-              result.alreadyRecorded ? "already-recorded" : "saved"
-            );
-          }
-        } catch (err) {
-          if (!isMounted.current || abortControllerRef.current?.signal.aborted)
-            return;
-          setAttendanceState("error");
-          setMessage(err.message || "Could not save attendance.");
-        }
-      };
-      persistAttendance();
-    }, [authUser, confidence, detectedPerson, finished, livenessState]);
-
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4 relative">
-        {isOffline && (
-          <div className="w-full max-w-4xl mb-4 bg-amber-500/10 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-amber-500/5 animate-in fade-in slide-in-from-top-4 duration-300 relative z-50">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl animate-pulse">📡</span>
-              <div className="text-left">
-                <h4 className="font-bold text-amber-400 text-sm">
-                  Offline Mode Active
-                </h4>
-                <p className="text-xs text-gray-300">
-                  Scans will be saved securely to local IndexedDB storage and
-                  synced automatically once connection is restored.
-                </p>
-              </div>
+  // ── RENDER ──────────
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4 relative">
+      {isOffline && (
+        <div className="w-full max-w-4xl mb-4 bg-amber-500/10 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-amber-500/5 animate-in fade-in slide-in-from-top-4 duration-300 relative z-50">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl animate-pulse">📡</span>
+            <div className="text-left">
+              <h4 className="font-bold text-amber-400 text-sm">
+                Offline Mode Active
+              </h4>
+              <p className="text-xs text-gray-300">
+                Scans will be saved securely to local IndexedDB storage and
+                synced automatically once connection is restored.
+              </p>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-full whitespace-nowrap">
-              indexedDB Queue
-            </span>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-full whitespace-nowrap">
+            indexedDB Queue
+          </span>
+        </div>
+      )}
+
+      <div className="relative w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl border border-white/10 backdrop-blur-xl bg-white/5">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/10 rounded-xl" />
+
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          className="w-full h-full object-cover relative z-10"
+        />
+
+        <canvas
+          ref={canvasRef}
+          className="absolute top-0 left-0 w-full h-full pointer-events-none z-20 object-cover"
+        />
+
+        {livenessState === "VERIFYING_LIVENESS" && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute w-72 h-72 border-4 border-dashed border-blue-400 rounded-full animate-[spin_4s_linear_infinite]" />
+              <div className="absolute w-72 h-72 bg-black/40 rounded-full backdrop-blur-sm" />
+              <p className="text-xl font-bold text-blue-300 animate-pulse text-center px-6 relative z-40 drop-shadow-lg">
+                {blinkPrompt}
+              </p>
+            </div>
           </div>
         )}
 
-        <div className="relative w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl border border-white/10 backdrop-blur-xl bg-white/5">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/10 rounded-xl" />
-
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover relative z-10"
-          />
-
-          <canvas
-            ref={canvasRef}
-            className="absolute top-0 left-0 w-full h-full pointer-events-none z-20 object-cover"
-          />
-
-          {livenessState === "VERIFYING_LIVENESS" && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
-              <div className="relative flex items-center justify-center">
-                <div className="absolute w-72 h-72 border-4 border-dashed border-blue-400 rounded-full animate-[spin_4s_linear_infinite]" />
-                <div className="absolute w-72 h-72 bg-black/40 rounded-full backdrop-blur-sm" />
-                <p className="text-xl font-bold text-blue-300 animate-pulse text-center px-6 relative z-40 drop-shadow-lg">
-                  {blinkPrompt}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Loading skeleton — shown while models load in the Worker or camera starts */}
-          {isLoading && (
-            <div
-              role="status"
-              aria-label={message}
-              className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/85 backdrop-blur-sm z-40 gap-6 px-8"
-            >
-              {/* Pulsing skeleton placeholder */}
-              <div className="w-full max-w-sm space-y-3 animate-pulse">
-                <div className="h-48 bg-slate-700/60 rounded-xl" />
-                <div className="h-4 bg-slate-700/60 rounded-full w-3/4 mx-auto" />
-                <div className="h-3 bg-slate-700/40 rounded-full w-1/2 mx-auto" />
-              </div>
-
-              {/* Spinner + message */}
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-                <p className="text-white font-medium text-sm text-center max-w-xs">
-                  {message}
-                </p>
-              </div>
-
-              {/* Step progress indicators */}
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span
-                  className={
-                    modelsReady
-                      ? "text-green-400 font-semibold"
-                      : "text-gray-500"
-                  }
-                >
-                  {modelsReady ? "✓" : "○"} AI Models
-                </span>
-                <span className="text-gray-600">›</span>
-                <span className="text-gray-500">○ Camera</span>
-                <span className="text-gray-600">›</span>
-                <span className="text-gray-500">○ Face Matching</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="w-full max-w-2xl mt-8 relative z-10">
-          <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-3 h-3 bg-gradient-to-r from-green-400 to-blue-400 rounded-full animate-pulse" />
-              <p className="text-white font-semibold text-lg">{message}</p>
+        {/* Loading skeleton — shown while models load in the Worker or camera starts */}
+        {isLoading && (
+          <div
+            role="status"
+            aria-label={message}
+            className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/85 backdrop-blur-sm z-40 gap-6 px-8"
+          >
+            {/* Pulsing skeleton placeholder */}
+            <div className="w-full max-w-sm space-y-3 animate-pulse">
+              <div className="h-48 bg-slate-700/60 rounded-xl" />
+              <div className="h-4 bg-slate-700/60 rounded-full w-3/4 mx-auto" />
+              <div className="h-3 bg-slate-700/40 rounded-full w-1/2 mx-auto" />
             </div>
 
-            {confidence > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm text-gray-300">
-                  <span>Confidence Level</span>
-                  <span className="font-bold text-purple-400">
-                    {confidence}%
-                  </span>
-                </div>
-                <div className="w-full h-3 bg-slate-700/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/10">
-                  <div
-                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out shadow-lg shadow-purple-500/50"
-                    style={{ width: `${confidence}%` }}
-                  />
-                </div>
-              </div>
-            )}
+            {/* Spinner + message */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+              <p className="text-white font-medium text-sm text-center max-w-xs">
+                {message}
+              </p>
+            </div>
+
+            {/* Step progress indicators */}
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span
+                className={
+                  modelsReady
+                    ? "text-green-400 font-semibold"
+                    : "text-gray-500"
+                }
+              >
+                {modelsReady ? "✓" : "○"} AI Models
+              </span>
+              <span className="text-gray-600">›</span>
+              <span className="text-gray-500">○ Camera</span>
+              <span className="text-gray-600">›</span>
+              <span className="text-gray-500">○ Face Matching</span>
+            </div>
           </div>
-        </div>
+        )}
 
-        {detectedPerson && livenessState === "AUTHENTICATED" && (
-          <div className="w-full max-w-lg mt-6 bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-6 space-y-4 relative z-10 animate-in slide-in-from-bottom-4 duration-500">
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/25">
-                <svg
-                  className="w-6 h-6 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
-                Identity & Liveness Verified
-              </h3>
-            </div>
+        {/* Verification loading overlay — shown while the attendance API call is in-flight */}
+        {isVerifying && (
+          <div
+            role="status"
+            aria-label="Recording attendance…"
+            className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm z-50 gap-4"
+          >
+            <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+            <p className="text-emerald-300 font-semibold text-sm animate-pulse">
+              Recording attendance…
+            </p>
+          </div>
+        )}
+      </div>
 
+      <div className="w-full max-w-2xl mt-8 relative z-10">
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 text-center">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-3 h-3 bg-gradient-to-r from-green-400 to-blue-400 rounded-full animate-pulse" />
+            <p className="text-white font-semibold text-lg">{message}</p>
+          </div>
+
+          {confidence > 0 && (
             <div className="space-y-2">
+              <div className="flex justify-between text-sm text-gray-300">
+                <span>Confidence Level</span>
+                <span className="font-bold text-purple-400">
+                  {confidence}%
+                </span>
+              </div>
+              <div className="w-full h-3 bg-slate-700/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/10">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out shadow-lg shadow-purple-500/50"
+                  style={{ width: `${confidence}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {detectedPerson && livenessState === "AUTHENTICATED" && (
+        <div className="w-full max-w-lg mt-6 bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-6 space-y-4 relative z-10 animate-in slide-in-from-bottom-4 duration-500">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/25">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
+              Identity &amp; Liveness Verified
+            </h3>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between items-center bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+              <span className="font-medium text-gray-300 uppercase tracking-wide text-xs">
+                Name
+              </span>
+              <span className="font-bold text-white">
+                {detectedPerson.name}
+              </span>
+            </div>
+            {detectedPerson.email && (
               <div className="flex justify-between items-center bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
                 <span className="font-medium text-gray-300 uppercase tracking-wide text-xs">
-                  Name
+                  Email
                 </span>
-                <span className="font-bold text-white">
-                  {detectedPerson.name}
+                <span className="font-bold text-white text-sm break-all">
+                  {detectedPerson.email}
                 </span>
-              </div>
-              {detectedPerson.email && (
-                <div className="flex justify-between items-center bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
-                  <span className="font-medium text-gray-300 uppercase tracking-wide text-xs">
-                    Email
-                  </span>
-                  <span className="font-bold text-white text-sm break-all">
-                    {detectedPerson.email}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {attendanceState === "saved" && (
-              <p className="text-center text-sm font-medium text-emerald-300">
-                Attendance recorded for today.
-              </p>
-            )}
-            {attendanceState === "already-recorded" && (
-              <p className="text-center text-sm font-medium text-amber-300">
-                You have already checked in today.
-              </p>
-            )}
-            {attendanceState === "queued-offline" && (
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3.5 text-center space-y-1">
-                <p className="text-blue-300 font-semibold text-sm">
-                  Offline - Syncing later
-                </p>
-                <p className="text-xs text-gray-300">
-                  Will sync automatically when connection is restored.
-                </p>
               </div>
             )}
           </div>
-        )}
 
-        <button
-          onClick={handleCameraToggle}
-          aria-label="Switch camera"
-          className="mt-6 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
+          {/* Attendance status messages */}
+          {attendanceState === "saving" && (
+            <div className="flex items-center justify-center gap-2 text-sm font-medium text-blue-300">
+              <div className="w-4 h-4 border-2 border-blue-300/40 border-t-blue-300 rounded-full animate-spin" />
+              <span>Saving attendance…</span>
+            </div>
+          )}
+          {attendanceState === "saved" && (
+            <p className="text-center text-sm font-medium text-emerald-300">
+              ✅ Attendance recorded for today.
+            </p>
+          )}
+          {attendanceState === "already-recorded" && (
+            <p className="text-center text-sm font-medium text-amber-300">
+              ℹ️ You have already checked in today.
+            </p>
+          )}
+          {attendanceState === "queued-offline" && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3.5 text-center space-y-1">
+              <p className="text-blue-300 font-semibold text-sm">
+                Offline - Syncing later
+              </p>
+              <p className="text-xs text-gray-300">
+                Will sync automatically when connection is restored.
+              </p>
+            </div>
+          )}
+          {attendanceState === "error" && (
+            <p className="text-center text-sm font-medium text-red-400">
+              ❌ {message || "Could not save attendance. Please try again."}
+            </p>
+          )}
+          {attendanceState === "mismatch" && (
+            <p className="text-center text-sm font-medium text-red-400">
+              ⚠️ Face does not match signed-in account.
+            </p>
+          )}
+          {attendanceState === "low-confidence" && (
+            <p className="text-center text-sm font-medium text-yellow-400">
+              ⚠️ Confidence too low. Please try again in better lighting.
+            </p>
+          )}
+        </div>
+      )}
+
+      <button
+        onClick={handleCameraToggle}
+        aria-label="Switch camera"
+        className="mt-6 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
+      >
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
         >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          {facingMode === "user"
-            ? "Switch to Rear Camera"
-            : "Switch to Front Camera"}
-        </button>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        </svg>
+        {facingMode === "user"
+          ? "Switch to Rear Camera"
+          : "Switch to Front Camera"}
+      </button>
 
-        {finished && (
-          <Button
-            onClick={handleRetry}
-            className="mt-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-10 py-6 rounded-xl shadow-2xl hover:scale-105 transition-all duration-300"
-          >
+      {finished && (
+        <Button
+          id="face-recognizer-retry-btn"
+          onClick={handleRetry}
+          disabled={isVerifying}
+          aria-disabled={isVerifying}
+          className="mt-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-10 py-6 rounded-xl shadow-2xl hover:scale-105 disabled:hover:scale-100 transition-all duration-300"
+        >
+          {isVerifying ? (
+            <span className="flex items-center gap-2">
+              <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              Processing…
+            </span>
+          ) : (
             <span className="flex items-center gap-2">
               <svg
                 className="w-5 h-5"
@@ -933,10 +1015,9 @@ export default function FaceRecognizer({ authUser }) {
               </svg>
               Scan Again
             </span>
-          </Button>
-        )}
-      </div>
-    );
-  };
-}
+          )}
+        </Button>
+      )}
+    </div>
+  );
 }

@@ -14,6 +14,7 @@ export const POST = withErrorHandler(
     async (request, validatedData, context) => {
       const token = await requireAuth(request);
 
+      // Rate-limit per IP + uid to prevent burst abuse
       const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
       const rateLimitResult = await checkRateLimit(
         `attendance_record_${ip}_${token.uid}`
@@ -26,7 +27,7 @@ export const POST = withErrorHandler(
         validatedData;
       const normalizedDate = date || getLocalDateKey();
 
-      // 2. Ensure they are only submitting attendance for their own UID, OR they are a teacher/admin!
+      // Ensure the caller is submitting for their own UID, or is a teacher/admin
       const isTeacherOrAdmin =
         token.role === "teacher" || token.role === "admin";
       if (token.uid !== userId && !isTeacherOrAdmin) {
@@ -36,7 +37,7 @@ export const POST = withErrorHandler(
         );
       }
 
-      // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)
+      // Reject requests that did not pass the frontend confidence threshold
       const parsedConfidence = Number(confidenceScore);
       if (parsedConfidence < 60) {
         return jsonError(
@@ -45,10 +46,10 @@ export const POST = withErrorHandler(
         );
       }
 
-      // Normalize confidence score to 0-1 range for consistency across the DB and dashboards
+      // Normalize confidence score to 0-1 range for DB consistency
       const normalizedConfidence = parsedConfidence / 100;
 
-      // 4. Record attendance using the domain service
+      // Record attendance via the domain service (runs Firestore + MongoDB saga)
       const sagaResult = await AttendanceService.recordAttendance(
         {
           userId,
@@ -60,15 +61,25 @@ export const POST = withErrorHandler(
         token
       );
 
-    emitWebhookEvent("attendance.recorded", {
-      studentId: userId,
-      studentName,
-      email,
-      confidence: normalizedConfidence,
-      date: normalizedDate,
-      recordedBy: token.uid,
-    });
+      // If the saga detected a duplicate (idempotency key or Firestore doc already
+      // existed), return HTTP 409 so the client can handle it gracefully without
+      // treating it as an error.
+      const alreadyRecorded = !!(sagaResult.context?._alreadyRecorded);
+      if (alreadyRecorded) {
+        return jsonSuccess({ alreadyRecorded: true }, 200);
+      }
 
-    return jsonSuccess({ alreadyRecorded: false }, 201);
-  })
+      // Fire webhook for downstream integrations (non-blocking)
+      emitWebhookEvent("attendance.recorded", {
+        studentId: userId,
+        studentName,
+        email,
+        confidence: normalizedConfidence,
+        date: normalizedDate,
+        recordedBy: token.uid,
+      });
+
+      return jsonSuccess({ alreadyRecorded: false }, 201);
+    }
+  )
 );
