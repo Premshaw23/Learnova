@@ -176,8 +176,6 @@ export default function CalendarPage() {
     );
   }
 
-  return (   ← this is the existing line 168, stays as-is
-
   return (
     <>
       <div className="fixed inset-0 -z-10 bg-background">
