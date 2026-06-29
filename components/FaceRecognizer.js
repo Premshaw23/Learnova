@@ -7,7 +7,7 @@ import { recordAttendance } from "@/services/attendanceService";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import { getAverageEAR } from "@/utils/livenessUtils";
-import { syncAttendanceQueue } from "@/lib/syncService";
+import { syncOfflineQueue, getPendingRecordsCount } from "@/services/offlineSyncQueue";
 
 const MIN_CONFIDENCE_TO_RECORD = 60;
 const EAR_THRESHOLD = 0.25;
@@ -35,6 +35,8 @@ export default function FaceRecognizer({ authUser }) {
     blinkCount: 0,
     requiredBlinks: 2,
     lastBlinkTime: 0,
+    challengeType: "blink",
+    smileDetected: false,
   });
 
   const {
@@ -77,12 +79,13 @@ export default function FaceRecognizer({ authUser }) {
     return stopAllMedia;
   }, [stopAllMedia]);
 
+
   const MODEL_URL = "/models";
   const labels = fetchedLabels;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handleOnline = () => {
+    const handleOnline = async () => {
       if (!isMounted.current) return;
       setIsOffline(false);
       setAttendanceState((prev) => {
@@ -92,7 +95,30 @@ export default function FaceRecognizer({ authUser }) {
         }
         return prev;
       });
-      syncAttendanceQueue();
+      
+      try {
+        const count = await getPendingRecordsCount();
+        if (count > 0 && authUser) {
+          const token = await authUser.getIdToken();
+          await syncOfflineQueue(async (record) => {
+            try {
+              const res = await fetch("/api/attendance/record", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(record),
+              });
+              return res.ok;
+            } catch (e) {
+              return false;
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Offline sync error:", err);
+      }
     };
     const handleOffline = () => {
       if (!isMounted.current) return;
@@ -147,6 +173,8 @@ export default function FaceRecognizer({ authUser }) {
             blinkCount: 0,
             requiredBlinks: Math.floor(Math.random() * 2) + 1,
             lastBlinkTime: 0,
+            challengeType: Math.random() > 0.5 ? "blink" : "smile",
+            smileDetected: false,
           };
           setBlinkPrompt("");
 
@@ -272,6 +300,9 @@ export default function FaceRecognizer({ authUser }) {
 
               blinkStateRef.current.requiredBlinks =
                 Math.floor(Math.random() * 2) + 1;
+              blinkStateRef.current.challengeType = 
+                Math.random() > 0.5 ? "blink" : "smile";
+              blinkStateRef.current.smileDetected = false;
               processVideo(signal);
             });
           };
@@ -514,42 +545,55 @@ export default function FaceRecognizer({ authUser }) {
           setLivenessState((prevState) => {
             if (prevState === "DETECTING_FACE" || prevState === "IDLE") {
               setMessage(`Recognized: ${label}. Checking liveness...`);
-              setBlinkPrompt(
-                `Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`
-              );
+              if (blinkStateRef.current.challengeType === "smile") {
+                setBlinkPrompt(`Please smile naturally for the camera.`);
+              } else {
+                setBlinkPrompt(
+                  `Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`
+                );
+              }
               return "VERIFYING_LIVENESS";
             }
             if (prevState === "VERIFYING_LIVENESS") {
-              const leftEye = face.landmarks.getLeftEye();
-              const rightEye = face.landmarks.getRightEye();
-              const ear = getAverageEAR(leftEye, rightEye);
-
-              if (ear < EAR_THRESHOLD) {
-                blinkStateRef.current.isEyeClosed = true;
+              if (blinkStateRef.current.challengeType === "smile") {
+                if (face.expressions && face.expressions.happy > 0.7) {
+                  setMessage("Liveness verified. Authentication successful!");
+                  setBlinkPrompt("Success!");
+                  setFinished(true);
+                  return "AUTHENTICATED";
+                }
               } else {
-                if (blinkStateRef.current.isEyeClosed) {
-                  blinkStateRef.current.isEyeClosed = false;
-                  const blinkTime = Date.now();
-                  if (
-                    blinkTime - blinkStateRef.current.lastBlinkTime >
-                    BLINK_COOLDOWN_MS
-                  ) {
-                    blinkStateRef.current.blinkCount += 1;
-                    blinkStateRef.current.lastBlinkTime = blinkTime;
-                    const remaining =
-                      blinkStateRef.current.requiredBlinks -
-                      blinkStateRef.current.blinkCount;
-                    if (remaining > 0) {
-                      setBlinkPrompt(
-                        `Blink detected! ${remaining} more to go.`
-                      );
-                    } else {
-                      setMessage(
-                        "Liveness verified. Authentication successful!"
-                      );
-                      setBlinkPrompt("Success!");
-                      setFinished(true);
-                      return "AUTHENTICATED";
+                const leftEye = face.landmarks.getLeftEye();
+                const rightEye = face.landmarks.getRightEye();
+                const ear = getAverageEAR(leftEye, rightEye);
+
+                if (ear < EAR_THRESHOLD) {
+                  blinkStateRef.current.isEyeClosed = true;
+                } else {
+                  if (blinkStateRef.current.isEyeClosed) {
+                    blinkStateRef.current.isEyeClosed = false;
+                    const blinkTime = Date.now();
+                    if (
+                      blinkTime - blinkStateRef.current.lastBlinkTime >
+                      BLINK_COOLDOWN_MS
+                    ) {
+                      blinkStateRef.current.blinkCount += 1;
+                      blinkStateRef.current.lastBlinkTime = blinkTime;
+                      const remaining =
+                        blinkStateRef.current.requiredBlinks -
+                        blinkStateRef.current.blinkCount;
+                      if (remaining > 0) {
+                        setBlinkPrompt(
+                          `Blink detected! ${remaining} more to go.`
+                        );
+                      } else {
+                        setMessage(
+                          "Liveness verified. Authentication successful!"
+                        );
+                        setBlinkPrompt("Success!");
+                        setFinished(true);
+                        return "AUTHENTICATED";
+                      }
                     }
                   }
                 }
@@ -894,4 +938,5 @@ export default function FaceRecognizer({ authUser }) {
       </div>
     );
   };
+}
 }

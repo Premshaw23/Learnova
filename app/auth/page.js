@@ -12,6 +12,10 @@ import HeroSection from "@/components/HeroSection";
 import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import toast from "react-hot-toast";
+import { auth } from "@/lib/firebaseConfig";
+import { multiFactor, signOut as firebaseSignOut } from "firebase/auth";
+import MfaVerification from "@/components/MfaVerification";
+import MfaEnrollment from "@/components/MfaEnrollment";
 
 import {
   loginWithEmail,
@@ -44,6 +48,9 @@ function AuthPageContent() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [mfaResolver, setMfaResolver] = useState(null);
+  const [showMfaEnrollment, setShowMfaEnrollment] = useState(false);
+  const [pendingUser, setPendingUser] = useState(null);
 
   const router = useRouter();
 
@@ -118,7 +125,21 @@ function AuthPageContent() {
         toast.success("Account created successfully!");
         setShowRoleSelection(true);
         router.push("/profile");
+      } else if (result.needsMFA) {
+        setMfaResolver(result.resolver);
       } else if (result.success) {
+        // Enforce MFA for high-privilege roles
+        const user = auth.currentUser;
+        const role = result.userData.role;
+        if (user && ["admin", "institute"].includes(role)) {
+          const mfaUser = multiFactor(user);
+          if (mfaUser.enrolledFactors.length === 0) {
+            setPendingUser(user);
+            setShowMfaEnrollment(true);
+            return;
+          }
+        }
+
         toast.success(
           isLogin ? "Successfully logged in!" : "Account created successfully!"
         );
@@ -154,7 +175,21 @@ function AuthPageContent() {
         fullName: "",
         instituteName: "",
       });
-      if (result.success) {
+      if (result.needsMFA) {
+        setMfaResolver(result.resolver);
+      } else if (result.success) {
+        // Enforce MFA for high-privilege roles
+        const user = auth.currentUser;
+        const role = result.userData.role;
+        if (user && ["admin", "institute"].includes(role)) {
+          const mfaUser = multiFactor(user);
+          if (mfaUser.enrolledFactors.length === 0) {
+            setPendingUser(user);
+            setShowMfaEnrollment(true);
+            return;
+          }
+        }
+
         toast.success("Successfully logged in with Google!");
         redirectBasedOnRole(result.userData.role, router);
       } else {
@@ -224,7 +259,45 @@ function AuthPageContent() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
-        {showRoleSelection ? (
+        {mfaResolver ? (
+          <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
+            <div className="w-full max-w-md animate-fadeIn">
+              <MfaVerification
+                resolver={mfaResolver}
+                onComplete={() => {
+                  setMfaResolver(null);
+                  toast.success("Successfully logged in!");
+                  redirectBasedOnRole(selectedRole, router);
+                }}
+                onCancel={() => {
+                  setMfaResolver(null);
+                  firebaseSignOut(auth);
+                }}
+              />
+            </div>
+          </div>
+        ) : showMfaEnrollment ? (
+          <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
+            <div className="w-full max-w-md animate-fadeIn">
+              <MfaEnrollment
+                user={pendingUser}
+                onComplete={() => {
+                  setShowMfaEnrollment(false);
+                  setPendingUser(null);
+                  toast.success(
+                    isLogin ? "Successfully logged in!" : "Account created successfully!"
+                  );
+                  redirectBasedOnRole(selectedRole, router);
+                }}
+                onCancel={() => {
+                  setShowMfaEnrollment(false);
+                  setPendingUser(null);
+                  firebaseSignOut(auth);
+                }}
+              />
+            </div>
+          </div>
+        ) : showRoleSelection ? (
           /* ── Role selection ── */
           <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
             <div className="w-full animate-fadeIn">

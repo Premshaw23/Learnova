@@ -320,77 +320,89 @@ async function fetchUserRoleFromFirestore(uid, token) {
  */
 async function verifyIdToken(token) {
   try {
-    const getJwtExp = (t) => {
+    const getJwtParts = (t) => {
       try {
         const parts = t.split(".");
-        if (parts.length < 2) return null;
-        let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-        while (payload.length % 4) payload += "=";
-        const decoded =
+        if (parts.length !== 3) return null;
+
+        let headerPayload = parts[0]
+          .replace(/-/g, "+")
+          .replace(/_/g, "/");
+        while (headerPayload.length % 4) headerPayload += "=";
+        const headerJson =
           typeof atob === "function"
-            ? atob(payload)
-            : Buffer.from(payload, "base64").toString("utf8");
-        const parsed = JSON.parse(decoded);
-        return {
-          exp: typeof parsed.exp === "number" ? parsed.exp : null,
-          kid: parsed.kid || null,
-        };
+            ? atob(headerPayload)
+            : Buffer.from(headerPayload, "base64").toString("utf8");
+        const header = JSON.parse(headerJson);
+
+        let bodyPayload = parts[1]
+          .replace(/-/g, "+")
+          .replace(/_/g, "/");
+        while (bodyPayload.length % 4) bodyPayload += "=";
+        const bodyJson =
+          typeof atob === "function"
+            ? atob(bodyPayload)
+            : Buffer.from(bodyPayload, "base64").toString("utf8");
+        const body = JSON.parse(bodyJson);
+
+        return { header, body };
       } catch {
         return null;
       }
     };
 
-    const jwtMeta = getJwtExp(token);
-    if (jwtMeta?.exp) {
+    const jwtParts = getJwtParts(token);
+    if (!jwtParts) return null;
+
+    // Reject tokens with wrong algorithm - only allow RS256 for Firebase
+    if (jwtParts.header.alg !== "RS256") {
+      console.error("[auth] Rejected token with unsupported algorithm:", jwtParts.header.alg);
+      return null;
+    }
+
+    // Check expiration early to avoid unnecessary crypto operations
+    if (typeof jwtParts.body.exp === "number") {
       const now = Math.floor(Date.now() / 1000);
-      if (now > jwtMeta.exp + CLOCK_TOLERANCE_SECONDS) {
+      if (now > jwtParts.body.exp + CLOCK_TOLERANCE_SECONDS) {
         return null;
       }
     }
+
+    // Reject tokens missing required Firebase claims
+    if (!jwtParts.body.sub) return null;
 
     if (!FIREBASE_PROJECT_ID) return null;
 
     const publicKeys = await getFirebasePublicKeys();
     if (publicKeys && Object.keys(publicKeys).length > 0) {
-      try {
-        const headerParts = token.split(".");
-        if (headerParts.length >= 1) {
-          let headerPayload = headerParts[0]
-            .replace(/-/g, "+")
-            .replace(/_/g, "/");
-          while (headerPayload.length % 4) headerPayload += "=";
-          const headerJson =
-            typeof atob === "function"
-              ? atob(headerPayload)
-              : Buffer.from(headerPayload, "base64").toString("utf8");
-          const header = JSON.parse(headerJson);
-          const kid = header.kid;
+      const kid = jwtParts.header.kid;
 
-          if (kid && publicKeys[kid]) {
-            const publicKey = await jose.importSPKI(publicKeys[kid], "RS256");
-            const { payload } = await jose.jwtVerify(token, publicKey, {
-              issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
-              audience: FIREBASE_PROJECT_ID,
-              clockTolerance: CLOCK_TOLERANCE_SECONDS,
-            });
+      if (kid && publicKeys[kid]) {
+        try {
+          const publicKey = await jose.importSPKI(publicKeys[kid], "RS256");
+          const { payload } = await jose.jwtVerify(token, publicKey, {
+            issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+            audience: FIREBASE_PROJECT_ID,
+            clockTolerance: CLOCK_TOLERANCE_SECONDS,
+            algorithms: ["RS256"],
+          });
 
-            let role = payload.role || null;
-            if (!role && payload.sub) {
-              role = await fetchUserRoleFromFirestore(payload.sub, token);
-            }
-
-            return {
-              sub: payload.sub,
-              uid: payload.sub,
-              email: payload.email,
-              email_verified: payload.email_verified === true,
-              role,
-              iat: payload.iat,
-            };
+          let role = payload.role || null;
+          if (!role && payload.sub) {
+            role = await fetchUserRoleFromFirestore(payload.sub, token);
           }
+
+          return {
+            sub: payload.sub,
+            uid: payload.sub,
+            email: payload.email,
+            email_verified: payload.email_verified === true,
+            role,
+            iat: payload.iat,
+          };
+        } catch {
+          // Local verification failed, fall through to REST API
         }
-      } catch {
-        // Local verification failed, fall through to REST API
       }
     }
 
@@ -550,7 +562,22 @@ export async function middleware(request) {
     const sessionId =
       request.cookies.get("sessionId")?.value ||
       request.headers.get("x-session-id");
-    if (sessionId) {
+
+    // Enforce session validation when Redis is configured
+    // Previously, omitting the session cookie would skip validation entirely,
+    // allowing stolen tokens to be used even after session termination
+    const redisConfigured =
+      process.env.UPSTASH_REDIS_REST_URL &&
+      process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (redisConfigured) {
+      if (!sessionId) {
+        return NextResponse.json(
+          { error: "Session required" },
+          { status: 401 }
+        );
+      }
+
       try {
         const redis = getRedis();
         if (redis) {
@@ -563,7 +590,11 @@ export async function middleware(request) {
           }
         }
       } catch {
-        // Redis unavailable — continue without session validation
+        // Redis unavailable — deny request when session validation is required
+        return NextResponse.json(
+          { error: "Session validation unavailable" },
+          { status: 503 }
+        );
       }
     }
   }

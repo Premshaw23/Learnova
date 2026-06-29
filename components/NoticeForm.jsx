@@ -14,7 +14,7 @@ import toast from "react-hot-toast";
 
 const ROLES = ["student", "teacher", "institute", "admin", "staff"];
 const CATEGORIES = ["academic", "administrative", "financial", "general", "technical"];
-const PRIORITIES = ["low", "medium", "high"];
+const PRIORITIES = ["low", "medium", "high", "emergency"];
 
 export default function NoticeForm({ onClose, onSuccess }) {
   const [title, setTitle] = useState("");

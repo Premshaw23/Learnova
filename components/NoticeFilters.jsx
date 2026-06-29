@@ -27,6 +27,7 @@ const PRIORITY_OPTIONS = [
   { id: "high", label: "High" },
   { id: "medium", label: "Medium" },
   { id: "low", label: "Low" },
+  { id: "emergency", label: "Emergency" },
 ];
 
 // Animated button component for consistency
