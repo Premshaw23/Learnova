@@ -31,6 +31,7 @@
     "@emailjs/browser": "^4.4.1",
     "@gsap/react": "^2.1.2",
     "@radix-ui/react-slot": "^1.2.3",
+    "@upstash/redis": "^1.38.0",
     "@vercel/blob": "^1.1.1",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",

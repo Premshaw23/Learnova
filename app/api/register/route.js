@@ -15,6 +15,8 @@ import {
 } from "@/lib/transactionCoordinator";
 import { validateFaceDescriptor } from "@/lib/images/imagesService";
 import { logAuditEvent } from "@/lib/auditLogger";
+import { initializeFirebase } from "@/lib/firebase-admin";
+import admin from "firebase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -300,10 +302,13 @@ export const POST = withErrorHandler(async (req) => {
         compensate: async (ctx) => {
           if (ctx._insertedUserId) {
             await users.deleteOne({ _id: ctx._insertedUserId }).catch((err) => {
-              logger.error("Registration rollback: failed to delete user document", {
-                userId: String(ctx._insertedUserId),
-                error: err.message,
-              });
+              logger.error(
+                "Registration rollback: failed to delete user document",
+                {
+                  userId: String(ctx._insertedUserId),
+                  error: err.message,
+                }
+              );
             });
           }
         },
@@ -325,10 +330,13 @@ export const POST = withErrorHandler(async (req) => {
         compensate: async (ctx) => {
           if (ctx._blobUrl) {
             await del(ctx._blobUrl).catch((err) => {
-              logger.error("Registration rollback: failed to delete orphaned blob", {
-                blobUrl: ctx._blobUrl,
-                error: err.message,
-              });
+              logger.error(
+                "Registration rollback: failed to delete orphaned blob",
+                {
+                  blobUrl: ctx._blobUrl,
+                  error: err.message,
+                }
+              );
             });
           }
         },
