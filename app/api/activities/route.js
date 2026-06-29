@@ -6,7 +6,7 @@ import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-const ALLOWED_TYPES = ["course", "quiz", "assignment"];
+const ALLOWED_TYPES = ["course", "quiz", "assignment", "login", "video"];
 
 const activitySchema = z.object({
   title: z
@@ -38,7 +38,7 @@ export const GET = withErrorHandler(async (request) => {
     .collection("activities")
     .where("userId", "==", decodedToken.uid)
     .orderBy("timestamp", "desc")
-    .limit(100)
+    .limit(1000)
     .get();
 
   const activities = snapshot.docs.map((doc) => ({

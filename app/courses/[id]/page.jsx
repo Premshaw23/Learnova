@@ -27,6 +27,9 @@ import { apiFetch } from "@/lib/apiClient";
 import { addRecentActivity } from "@/utils/recentActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { generateCertificatePDF } from "@/utils/pdf/generateCertificatePDF";
+import { logActivity } from "@/services/activityService";
+import { db } from "@/lib/firebaseConfig";
+import { doc, updateDoc, arrayUnion } from "firebase/firestore";
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -119,6 +122,8 @@ export default function CourseDetailPage() {
 
   // --- AI TIMELINE FEATURE STATES ---
   const videoRef = useRef(null);
+  const watchedSecondsRef = useRef(new Set());
+  const videoActivityLoggedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTimestamps, setFilteredTimestamps] = useState([]);
 
@@ -248,9 +253,10 @@ export default function CourseDetailPage() {
   }, [completedLessons, mounted, params.id]);
 
   const toggleLesson = (lessonTitle) => {
+    const isNowCompleted = !completedLessons[lessonTitle];
     const next = {
       ...completedLessons,
-      [lessonTitle]: !completedLessons[lessonTitle],
+      [lessonTitle]: isNowCompleted,
     };
     setCompletedLessons(next);
     try {
@@ -258,6 +264,37 @@ export default function CourseDetailPage() {
         `learnova_completed_lessons_${params.id}`,
         JSON.stringify(next)
       );
+
+      if (isNowCompleted && user?.uid) {
+        // Log lesson completion
+        logActivity(user.uid, {
+          title: `Completed lesson: "${lessonTitle}" in ${course.title}`,
+          type: "course",
+          progress: 100,
+        }).catch(err => console.error("Failed to log lesson activity:", err));
+
+        // Add to activeDays in Firestore
+        const today = new Date().toISOString().split("T")[0];
+        const userDocRef = doc(db, "users", user.uid);
+        updateDoc(userDocRef, {
+          activeDays: arrayUnion(today),
+        }).catch(err => console.error("Failed to update activeDays:", err));
+
+        // Log module completion if all lessons in the module are complete
+        const parentModule = course.modules.find(m =>
+          m.lessons.some(l => l.title === lessonTitle)
+        );
+        if (parentModule) {
+          const allCompleted = parentModule.lessons.every(l => next[l.title]);
+          if (allCompleted) {
+            logActivity(user.uid, {
+              title: `Completed module: "${parentModule.title}" in ${course.title}`,
+              type: "course",
+              progress: 100,
+            }).catch(err => console.error("Failed to log module activity:", err));
+          }
+        }
+      }
     } catch (e) {
       console.error("Failed to save progress", e);
     }
@@ -312,6 +349,36 @@ export default function CourseDetailPage() {
       toast.success(
         `Jumped to ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
       );
+    }
+  };
+
+  const handleVideoTimeUpdate = () => {
+    if (!videoRef.current || videoActivityLoggedRef.current || !user?.uid) return;
+
+    const currentSecond = Math.floor(videoRef.current.currentTime);
+    watchedSecondsRef.current.add(currentSecond);
+
+    if (watchedSecondsRef.current.size >= 10) {
+      videoActivityLoggedRef.current = true;
+      try {
+        logActivity(user.uid, {
+          title: `Watched video lecture in ${course.title}`,
+          type: "video",
+          progress: 100,
+        }).catch(err => console.error("Failed to log video activity:", err));
+
+        const today = new Date().toISOString().split("T")[0];
+        const userDocRef = doc(db, "users", user.uid);
+        updateDoc(userDocRef, {
+          activeDays: arrayUnion(today),
+        }).catch(err => console.error("Failed to update activeDays:", err));
+
+        toast.success("Study activity logged! Keep it up!", {
+          icon: "🔥",
+        });
+      } catch (err) {
+        console.error("Failed to record video study activity:", err);
+      }
     }
   };
 
@@ -544,6 +611,7 @@ export default function CourseDetailPage() {
                     src={mockVideoAIProperties.videoUrl}
                     controls
                     className="w-full h-full object-contain"
+                    onTimeUpdate={handleVideoTimeUpdate}
                   />
                 </div>
 

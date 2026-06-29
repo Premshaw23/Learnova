@@ -42,15 +42,15 @@ const getCellClassName = (value) => {
   return "fill-emerald-400 stroke-emerald-300/60";
 };
 
-const buildHeatmapValues = (records = []) => {
+const buildHeatmapValues = (records = [], rangeDays = 365) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const dataMap = new Map(records.map((item) => [item.date, item.count]));
 
-  return Array.from({ length: 84 }, (_, index) => {
+  return Array.from({ length: rangeDays }, (_, index) => {
     const date = new Date(today);
-    date.setDate(today.getDate() - (83 - index));
+    date.setDate(today.getDate() - (rangeDays - 1 - index));
     const isoDate = date.toISOString().slice(0, 10);
 
     return {
@@ -68,6 +68,7 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tooltip, setTooltip] = useState(null);
+  const [timeframe, setTimeframe] = useState("year"); // "month" | "quarter" | "year"
 
   useEffect(() => {
     let active = true;
@@ -101,20 +102,24 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
     };
   }, [userId]);
 
-  const values = useMemo(() => buildHeatmapValues(records), [records]);
+  const rangeDays = useMemo(() => {
+    return timeframe === "month" ? 30 : timeframe === "quarter" ? 90 : 365;
+  }, [timeframe]);
 
   const startDate = useMemo(() => {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - 83);
+    date.setDate(date.getDate() - (rangeDays - 1));
     return date;
-  }, []);
+  }, [rangeDays]);
 
   const endDate = useMemo(() => {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
     return date;
   }, []);
+
+  const values = useMemo(() => buildHeatmapValues(records, rangeDays), [records, rangeDays]);
 
   const summaryText = () => {
     if (isLoading) return "Loading activity chart…";
@@ -145,7 +150,7 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
 
   return (
     <section className="bg-black/20 border border-white/10 rounded-3xl p-6 shadow-2xl backdrop-blur-xl">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.26em] text-slate-400">
             Activity Heatmap
@@ -159,22 +164,45 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
           </p>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-300 grid grid-cols-4 gap-2 sm:grid-cols-4">
-          <div className="text-center">
-            <span className="block text-white font-semibold">0</span>
-            <span className="text-slate-500">Inactive</span>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="inline-flex rounded-xl bg-slate-950/70 p-1 border border-white/10 text-xs">
+            {[
+              { id: "month", label: "Month" },
+              { id: "quarter", label: "3 Months" },
+              { id: "year", label: "Year" },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTimeframe(t.id)}
+                className={`rounded-lg px-3 py-1.5 font-medium transition-all ${
+                  timeframe === t.id
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
-          <div className="text-center">
-            <span className="block text-white font-semibold">1–2</span>
-            <span className="text-slate-500">Low</span>
-          </div>
-          <div className="text-center">
-            <span className="block text-white font-semibold">3–5</span>
-            <span className="text-slate-500">Medium</span>
-          </div>
-          <div className="text-center">
-            <span className="block text-white font-semibold">6+</span>
-            <span className="text-slate-500">High</span>
+
+          <div className="rounded-xl border border-white/10 bg-slate-950/70 p-2.5 text-[10px] text-slate-300 flex gap-3">
+            <div className="text-center">
+              <span className="block text-white font-semibold">0</span>
+              <span className="text-slate-500">Inactive</span>
+            </div>
+            <div className="text-center">
+              <span className="block text-white font-semibold">1–2</span>
+              <span className="text-slate-500">Low</span>
+            </div>
+            <div className="text-center">
+              <span className="block text-white font-semibold">3–5</span>
+              <span className="text-slate-500">Med</span>
+            </div>
+            <div className="text-center">
+              <span className="block text-white font-semibold">6+</span>
+              <span className="text-slate-500">High</span>
+            </div>
           </div>
         </div>
       </div>
@@ -206,8 +234,13 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto pb-4">
-              <div className="min-w-[360px]">
+            <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+              <div
+                style={{
+                  minWidth: timeframe === "year" ? "840px" : timeframe === "quarter" ? "420px" : "320px",
+                }}
+                className="transition-all duration-300"
+              >
                 <CalendarHeatmap
                   startDate={startDate}
                   endDate={endDate}

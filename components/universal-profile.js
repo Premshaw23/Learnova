@@ -38,6 +38,7 @@ import {
   Bell,
   Eye,
   Smartphone,
+  Flame,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -771,7 +772,7 @@ export default function UniversalProfile() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mt-8">
           {[
             {
               id: "courses",
@@ -796,14 +797,34 @@ export default function UniversalProfile() {
               label: "Awards",
               icon: Award,
             },
+
+            {
+              id: "streak",
+              label: "Daily Streak",
+              icon: Flame,
+              value: `${userData?.siteStreak || userProfile?.siteStreak || 0} days`,
+              isStreak: true,
+            },
           ].map((stat) => (
             <div
               key={stat.id}
-              className="bg-black/20 border border-white/10 rounded-2xl p-6"
+              className={`border rounded-2xl p-6 transition-all duration-300 hover:scale-[1.03] ${
+                stat.isStreak
+                  ? "bg-gradient-to-br from-orange-600/20 via-rose-500/15 to-transparent border-orange-500/30 hover:border-orange-500/60 shadow-lg shadow-orange-950/20"
+                  : "bg-black/20 border-white/10 hover:border-white/20"
+              }`}
             >
-              <stat.icon className="w-8 h-8 text-blue-400 mb-4" />
+              <stat.icon
+                className={`w-8 h-8 mb-4 ${
+                  stat.isStreak
+                    ? "text-orange-500 animate-pulse filter drop-shadow-[0_0_8px_rgba(249,115,22,0.5)]"
+                    : "text-blue-400"
+                }`}
+              />
 
-              <h3 className="text-3xl font-bold">{stats?.[stat.id] || "0"}</h3>
+              <h3 className="text-3xl font-bold">
+                {stat.isStreak ? stat.value : (stats?.[stat.id] || "0")}
+              </h3>
 
               <p className="text-white/60 mt-1">{stat.label}</p>
             </div>

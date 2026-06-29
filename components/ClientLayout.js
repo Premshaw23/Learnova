@@ -24,6 +24,7 @@ import {
 import { useTimetableReminders } from "@/hooks/useTimetableReminders";
 import { addRecentlyVisitedPage } from "@/utils/recentlyVisitedPages";
 import { getRouteDisplayName } from "@/lib/navigation";
+import { logActivity } from "@/services/activityService";
 
 const modalInitialState = {
   isShortcutsOpen: false,
@@ -315,6 +316,7 @@ export default function ClientLayout({ children }) {
 
         if (user.uid) {
           const userDocRef = doc(db, "users", user.uid);
+          let shouldLogLogin = false;
           await runTransaction(db, async (transaction) => {
             const snapshot = await transaction.get(userDocRef);
             if (!snapshot.exists()) return;
@@ -328,6 +330,15 @@ export default function ClientLayout({ children }) {
             )
               ? snapshot.data().siteVisitHistory
               : [];
+            const storedActiveDays = Array.isArray(
+              snapshot.data().activeDays
+            )
+              ? snapshot.data().activeDays
+              : [];
+
+            if (!storedHistory.includes(todayDateStr)) {
+              shouldLogLogin = true;
+            }
 
             const mergedStreak = Math.max(currentStreak, storedStreak);
             const mergedLastVisit =
@@ -335,6 +346,9 @@ export default function ClientLayout({ children }) {
             const mergedHistory = [
               ...new Set([...storedHistory, ...history]),
             ].slice(-30);
+            const mergedActiveDays = [
+              ...new Set([...storedActiveDays, todayDateStr]),
+            ];
 
             transaction.set(
               userDocRef,
@@ -342,10 +356,23 @@ export default function ClientLayout({ children }) {
                 siteStreak: mergedStreak,
                 siteLastVisit: mergedLastVisit,
                 siteVisitHistory: mergedHistory,
+                activeDays: mergedActiveDays,
               },
               { merge: true }
             );
           });
+
+          if (shouldLogLogin) {
+            try {
+              await logActivity(user.uid, {
+                title: "Logged in",
+                type: "login",
+                progress: 100,
+              });
+            } catch (err) {
+              console.error("[streak-sync] Failed to log login activity:", err);
+            }
+          }
         }
       } catch (error) {
         console.error("[streak-sync] Sync error:", error);
