@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireAuth } from "@/lib/rbac";
+import { requireAdmin } from "@/lib/rbac";
 import { terminateAllUserSessions } from "@/lib/sessionManager";
 import { logAuditEvent } from "@/lib/auditLogger";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const POST = withErrorHandler(async (request) => {
   // Only admins can forcibly terminate sessions for other users
-  const decodedToken = await requireAuth(request);
+  const { payload: decodedToken } = await requireAdmin(request);
 
   const body = await parseJSON(request);
   const { targetUserId } = body;

@@ -48,7 +48,6 @@ import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 
 // 🎯 FIX: Explicitly loading overlays
 import CommandPaletteWrapper from "@/components/CommandPaletteWrapper";
-import ShortcutsModal from "@/components/ShortcutsModal";
 
 // Validate environment variables at startup (server-side only).
 // ─── Environment validation (server-side only, runs once at startup) ─────────
@@ -368,8 +367,6 @@ export default async function RootLayout({ children }) {
             />
 
             <CommandPaletteWrapper />
-            {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
-            <ShortcutsModal />
           </Suspense>
         </AllProviders>
         </NextIntlClientProvider>
