@@ -26,6 +26,7 @@ const { getMock, setMockData } = vi.hoisted(() => {
 
 vi.mock("@/lib/firebase-admin", () => ({
   initFirebaseAdmin: vi.fn(),
+  initializeFirebase: vi.fn(),
 }));
 
 vi.mock("firebase-admin/firestore", () => ({

@@ -26,7 +26,7 @@ export const GET = withErrorHandler(async (request) => {
   const profile = await getUserProfile(decodedToken.uid);
 
   // Search query — escape metacharacters to prevent ReDoS
-  const { searchParams } = new URL(request.url);
+  const { searchParams } = new URL(request.url, "http://localhost");
   const rawSearch = searchParams.get("search") || "";
   const search = escapeRegex(rawSearch);
 

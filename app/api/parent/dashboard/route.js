@@ -107,7 +107,7 @@ export const GET = withErrorHandler(async (request) => {
       .collection("attendance_records")
       .where("userId", "==", studentId)
       .get();
-    
+
     const studentRecords = [];
     recordsQuery.docs.forEach((doc) => {
       const data = doc.data();
@@ -118,7 +118,7 @@ export const GET = withErrorHandler(async (request) => {
     });
 
     const prediction = predictStudentAttendance(studentRecords);
-    if (prediction.riskLevel === "high") {
+    if (prediction.riskLevel === "high" && studentRecords.length >= 5) {
       const oneDayAgo = new Date(
         Date.now() - 24 * 60 * 60 * 1000
       ).toISOString();

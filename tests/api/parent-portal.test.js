@@ -50,6 +50,7 @@ vi.mock("@/lib/error-handler", () => {
 // 3. Mock firebase-admin
 vi.mock("@/lib/firebase-admin", () => ({
   initFirebaseAdmin: vi.fn(),
+  initializeFirebase: vi.fn(),
   getUserProfile: vi.fn(),
 }));
 
@@ -319,6 +320,8 @@ describe("Parent Portal Feature Tests", () => {
     const mockMongoCollection = {
       updateOne: vi.fn(),
       deleteOne: vi.fn(),
+      insertOne: vi.fn().mockResolvedValue({}),
+      createIndex: vi.fn().mockResolvedValue({}),
     };
     connectDb.mockResolvedValue({
       collection: vi.fn(() => mockMongoCollection),
@@ -413,11 +416,7 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminPostLink(makeRequest());
-      await assertApiError(
-        response,
-        400,
-        "Validation failed"
-      );
+      await assertApiError(response, 400, "Validation failed");
     });
 
     it("POST /api/admin/parent-student-link: should return 404 if parent user email does not exist", async () => {
@@ -481,11 +480,7 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminDeleteLink(request);
-      await assertApiError(
-        response,
-        400,
-        "Validation failed"
-      );
+      await assertApiError(response, 400, "Validation failed");
     });
 
     it("POST /api/admin/parent-student-link: should return 500 if the saga coordinator fails to sync the link", async () => {

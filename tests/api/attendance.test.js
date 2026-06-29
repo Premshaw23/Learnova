@@ -20,6 +20,7 @@ vi.mock("@/lib/api-response", () => ({
 
 vi.mock("@/lib/firebase-admin", () => ({
   initFirebaseAdmin: vi.fn(),
+  initializeFirebase: vi.fn(),
   getUserProfile: vi.fn(),
 }));
 
