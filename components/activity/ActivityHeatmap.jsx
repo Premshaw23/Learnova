@@ -119,7 +119,10 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
     return date;
   }, []);
 
-  const values = useMemo(() => buildHeatmapValues(records, rangeDays), [records, rangeDays]);
+  const values = useMemo(
+    () => buildHeatmapValues(records, rangeDays),
+    [records, rangeDays]
+  );
 
   const summaryText = () => {
     if (isLoading) return "Loading activity chart…";
@@ -237,7 +240,12 @@ const ActivityHeatmap = ({ userId: userIdProp }) => {
             <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
               <div
                 style={{
-                  minWidth: timeframe === "year" ? "840px" : timeframe === "quarter" ? "420px" : "320px",
+                  minWidth:
+                    timeframe === "year"
+                      ? "840px"
+                      : timeframe === "quarter"
+                        ? "420px"
+                        : "320px",
                 }}
                 className="transition-all duration-300"
               >

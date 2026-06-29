@@ -271,27 +271,29 @@ export default function CourseDetailPage() {
           title: `Completed lesson: "${lessonTitle}" in ${course.title}`,
           type: "course",
           progress: 100,
-        }).catch(err => console.error("Failed to log lesson activity:", err));
+        }).catch((err) => console.error("Failed to log lesson activity:", err));
 
         // Add to activeDays in Firestore
         const today = new Date().toISOString().split("T")[0];
         const userDocRef = doc(db, "users", user.uid);
         updateDoc(userDocRef, {
           activeDays: arrayUnion(today),
-        }).catch(err => console.error("Failed to update activeDays:", err));
+        }).catch((err) => console.error("Failed to update activeDays:", err));
 
         // Log module completion if all lessons in the module are complete
-        const parentModule = course.modules.find(m =>
-          m.lessons.some(l => l.title === lessonTitle)
+        const parentModule = course.modules.find((m) =>
+          m.lessons.some((l) => l.title === lessonTitle)
         );
         if (parentModule) {
-          const allCompleted = parentModule.lessons.every(l => next[l.title]);
+          const allCompleted = parentModule.lessons.every((l) => next[l.title]);
           if (allCompleted) {
             logActivity(user.uid, {
               title: `Completed module: "${parentModule.title}" in ${course.title}`,
               type: "course",
               progress: 100,
-            }).catch(err => console.error("Failed to log module activity:", err));
+            }).catch((err) =>
+              console.error("Failed to log module activity:", err)
+            );
           }
         }
       }
@@ -353,7 +355,8 @@ export default function CourseDetailPage() {
   };
 
   const handleVideoTimeUpdate = () => {
-    if (!videoRef.current || videoActivityLoggedRef.current || !user?.uid) return;
+    if (!videoRef.current || videoActivityLoggedRef.current || !user?.uid)
+      return;
 
     const currentSecond = Math.floor(videoRef.current.currentTime);
     watchedSecondsRef.current.add(currentSecond);
@@ -365,13 +368,13 @@ export default function CourseDetailPage() {
           title: `Watched video lecture in ${course.title}`,
           type: "video",
           progress: 100,
-        }).catch(err => console.error("Failed to log video activity:", err));
+        }).catch((err) => console.error("Failed to log video activity:", err));
 
         const today = new Date().toISOString().split("T")[0];
         const userDocRef = doc(db, "users", user.uid);
         updateDoc(userDocRef, {
           activeDays: arrayUnion(today),
-        }).catch(err => console.error("Failed to update activeDays:", err));
+        }).catch((err) => console.error("Failed to update activeDays:", err));
 
         toast.success("Study activity logged! Keep it up!", {
           icon: "🔥",

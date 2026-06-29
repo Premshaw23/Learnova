@@ -330,9 +330,7 @@ export default function ClientLayout({ children }) {
             )
               ? snapshot.data().siteVisitHistory
               : [];
-            const storedActiveDays = Array.isArray(
-              snapshot.data().activeDays
-            )
+            const storedActiveDays = Array.isArray(snapshot.data().activeDays)
               ? snapshot.data().activeDays
               : [];
 
