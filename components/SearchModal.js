@@ -177,6 +177,10 @@ export default function SearchModal({ isOpen, onClose }) {
               setTimeout(() => setShowRecentSearches(false), 200);
             }}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Escape") onClose();
+            }}
             className="flex-1 bg-transparent text-white placeholder-white/40 focus:outline-none text-base"
           />
           <button

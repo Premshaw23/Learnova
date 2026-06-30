@@ -18,6 +18,22 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
+// Mock RecentActivityWidget to avoid localStorage/Firestore calls
+vi.mock("@/components/ui/RecentActivityWidget", () => ({
+  default: () => null,
+}));
+
+// Provide a working localStorage stub for jsdom
+Object.defineProperty(window, "localStorage", {
+  value: {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn(),
+  },
+  writable: true,
+});
+
 describe("SearchModal Keyboard Events and Propagation", () => {
   const mockOnClose = vi.fn();
 

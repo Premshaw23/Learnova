@@ -10,7 +10,13 @@ vi.mock("framer-motion", () => ({
         {children}
       </div>
     ),
+    button: ({ children, ...props }) => (
+      <button data-testid="motion-button" {...props}>
+        {children}
+      </button>
+    ),
   },
+  AnimatePresence: ({ children }) => <>{children}</>,
 }));
 
 describe("AmbientMode", () => {

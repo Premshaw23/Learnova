@@ -51,6 +51,8 @@ vi.mock("@/lib/mongodb", () => {
       updateOne: mockUpdateOne,
       findOne: mockFindOne,
       deleteMany: vi.fn().mockResolvedValue({ deletedCount: 0 }),
+      insertOne: vi.fn().mockResolvedValue({}),
+      createIndex: vi.fn().mockResolvedValue({}),
     };
   });
 
