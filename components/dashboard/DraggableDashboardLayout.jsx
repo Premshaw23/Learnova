@@ -1,12 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import { ResponsiveGridLayout } from 'react-grid-layout';
 import { GripHorizontal } from 'lucide-react';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function DraggableDashboardLayout({ children, defaultLayout, layoutKey }) {
   const [layouts, setLayouts] = useState({ lg: defaultLayout });

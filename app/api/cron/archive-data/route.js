@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getFirestore } from "firebase-admin/firestore";
-import { initAdmin } from "@/lib/firebaseAdmin";
+import { initFirebaseAdmin } from "@/lib/firebase-admin";
 
 export async function GET(req) {
   try {
@@ -13,7 +13,7 @@ export async function GET(req) {
     // Since we don't have CRON_SECRET configured for sure in this environment, 
     // we'll leave it open for demonstration/manual triggering or rely on Vercel's network layer.
 
-    initAdmin();
+    initFirebaseAdmin();
     const db = getFirestore();
 
     // Fetch config
