@@ -60,14 +60,18 @@ export const POST = withErrorHandler(
         token
       );
 
-    emitWebhookEvent("attendance.recorded", {
-      studentId: userId,
-      studentName,
-      email,
-      confidence: normalizedConfidence,
-      date: normalizedDate,
-      recordedBy: token.uid,
-    });
+    try {
+      await emitWebhookEvent("attendance.recorded", {
+        studentId: userId,
+        studentName,
+        email,
+        confidence: normalizedConfidence,
+        date: normalizedDate,
+        recordedBy: token.uid,
+      });
+    } catch (error) {
+      console.error("[attendance] Webhook emission failed:", error);
+    }
 
     return jsonSuccess({ alreadyRecorded: false }, 201);
   })
