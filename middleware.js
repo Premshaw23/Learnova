@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
+import { hasPermission } from "./constants/permissions";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -43,13 +44,13 @@ const PUBLIC_API_PATHS = new Set([
 ]);
 
 const API_ROUTE_RULES = [
-  { pattern: /^\/api\/student(?:\/|$)/, roles: ["student", "admin"] },
-  { pattern: /^\/api\/teacher(?:\/|$)/, roles: ["teacher", "admin"] },
-  { pattern: /^\/api\/admin(?:\/|$)/, roles: ["admin"] },
-  { pattern: /^\/api\/institute(?:\/|$)/, roles: ["institute", "admin"] },
-  { pattern: /^\/api\/parent(?:\/|$)/, roles: ["parent", "admin"] },
-  { pattern: /^\/api\/analytics\/attendance-risk(?:\/|$)/, roles: ["teacher", "institute", "admin"] },
-  { pattern: /^\/api\/attendance\/settings(?:\/|$)/, roles: ["teacher", "admin"] },
+  { pattern: /^\/api\/student(?:\/|$)/, permission: "view:attendance" },
+  { pattern: /^\/api\/teacher(?:\/|$)/, permission: "take:attendance" },
+  { pattern: /^\/api\/admin(?:\/|$)/, permission: "manage:users" },
+  { pattern: /^\/api\/institute(?:\/|$)/, permission: "view:analytics" },
+  { pattern: /^\/api\/parent(?:\/|$)/, permission: "view:attendance" },
+  { pattern: /^\/api\/analytics\/attendance-risk(?:\/|$)/, permission: "view:analytics" },
+  { pattern: /^\/api\/attendance\/settings(?:\/|$)/, permission: "manage:settings" },
   { pattern: /^\/api\/attendance\/record(?:\/|$)/, authOnly: true },
   { pattern: /^\/api\/attendance\/sync(?:\/|$)/, authOnly: true },
   { pattern: /^\/api\/attendance\/validate-passcode(?:\/|$)/, authOnly: true },
@@ -62,14 +63,14 @@ const API_ROUTE_RULES = [
   { pattern: /^\/api\/check-groq-config(?:\/|$)/, authOnly: true },
   { pattern: /^\/api\/complaints(?:\/|$)/, authOnly: true },
   { pattern: /^\/api\/conversations(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/flashcards(?:\/|$)/, roles: ["student", "teacher", "admin"] },
+  { pattern: /^\/api\/flashcards(?:\/|$)/, permission: "submit:complaints" },
   { pattern: /^\/api\/groq(?:\/|$)/, authOnly: true },
   { pattern: /^\/api\/images(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/labels(?:\/|$)/, roles: ["admin", "teacher", "student"] },
+  { pattern: /^\/api\/labels(?:\/|$)/, permission: "view:attendance" },
   { pattern: /^\/api\/notifications(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/notifications\/seed(?:\/|$)/, roles: ["admin"] },
-  { pattern: /^\/api\/notices(?:\/|$)/, roles: ["teacher", "admin", "staff"] },
-  { pattern: /^\/api\/productivity(?:\/|$)/, roles: ["student", "teacher", "admin"] },
+  { pattern: /^\/api\/notifications\/seed(?:\/|$)/, permission: "manage:users" },
+  { pattern: /^\/api\/notices(?:\/|$)/, permission: "manage:classes" },
+  { pattern: /^\/api\/productivity(?:\/|$)/, permission: "view:attendance" },
   { pattern: /^\/api\/settings(?:\/|$)/, authOnly: true },
   { pattern: /^\/api\/stats(?:\/|$)/, authOnly: true },
   { pattern: /^\/api\/upload\/avatar(?:\/|$)/, authOnly: true },
@@ -470,6 +471,15 @@ function enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole) {
 
   if (!isEmailVerified) {
     return { error: "Forbidden: Email not verified", status: 403 };
+  }
+
+  if (rule.permission) {
+    if (!userRole) {
+      return { error: "Forbidden: No role assigned", status: 403 };
+    }
+    if (!hasPermission(userRole, rule.permission)) {
+      return { error: "Forbidden: Insufficient permissions", status: 403 };
+    }
   }
 
   if (rule.roles && rule.roles.length > 0) {

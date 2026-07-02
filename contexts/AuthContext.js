@@ -2,12 +2,25 @@
 import { createContext, useContext } from "react";
 import { useAuth as useFirebaseAuth } from "@/hooks/useAuth";
 
+import { hasPermission as checkPermission } from "@/constants/permissions";
+
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const auth = useFirebaseAuth();
 
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+  const userRole = auth.userProfile?.role || null;
+  const hasPermission = (permission) => {
+    return checkPermission(userRole, permission);
+  };
+
+  const contextValue = {
+    ...auth,
+    userRole,
+    hasPermission,
+  };
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
 
 export function useAuthContext() {
