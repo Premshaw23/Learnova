@@ -25,7 +25,7 @@
   opacity: 1;
 }
 
-/* Hide scrollbar for all browsers */
+/* Scrollbar styling — scoped to specific containers only, NO universal selectors */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
   /* Chrome, Safari, Opera */
@@ -36,6 +36,26 @@
   /* IE and Edge */
   scrollbar-width: none;
   /* Firefox */
+}
+
+/* Custom scrollbar for containers that opt-in via .custom-scrollbar class */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-solid);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
 }
 
 @keyframes slide-up {

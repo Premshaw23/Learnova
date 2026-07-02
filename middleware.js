@@ -3,6 +3,7 @@ import * as jose from "jose";
 import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
 import { hasPermission } from "./constants/permissions";
+import { PUBLIC_API_PATHS, default as getApiRouteRule } from "@/lib/rbac-policy";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -37,50 +38,6 @@ const AUTH_RATE_LIMITED_PATHS = [
 
 const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
 
-const PUBLIC_API_PATHS = new Set([
-  "/api/auth/csrf",
-  "/api/auth/reset-password",
-  "/api/health",
-]);
-
-const API_ROUTE_RULES = [
-  { pattern: /^\/api\/student(?:\/|$)/, permission: "view:attendance" },
-  { pattern: /^\/api\/teacher(?:\/|$)/, permission: "take:attendance" },
-  { pattern: /^\/api\/admin(?:\/|$)/, permission: "manage:users" },
-  { pattern: /^\/api\/institute(?:\/|$)/, permission: "view:analytics" },
-  { pattern: /^\/api\/parent(?:\/|$)/, permission: "view:attendance" },
-  { pattern: /^\/api\/analytics\/attendance-risk(?:\/|$)/, permission: "view:analytics" },
-  { pattern: /^\/api\/attendance\/settings(?:\/|$)/, permission: "manage:settings" },
-  { pattern: /^\/api\/attendance\/record(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/attendance\/sync(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/attendance\/validate-passcode(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/attendance\/heatmap(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/activities(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/auth\/cleanup(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/auth\/me(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/auth\/session(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/auth\/set-role(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/check-groq-config(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/complaints(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/conversations(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/flashcards(?:\/|$)/, permission: "submit:complaints" },
-  { pattern: /^\/api\/groq(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/images(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/labels(?:\/|$)/, permission: "view:attendance" },
-  { pattern: /^\/api\/notifications(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/notifications\/seed(?:\/|$)/, permission: "manage:users" },
-  { pattern: /^\/api\/notices(?:\/|$)/, permission: "manage:classes" },
-  { pattern: /^\/api\/productivity(?:\/|$)/, permission: "view:attendance" },
-  { pattern: /^\/api\/settings(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/stats(?:\/|$)/, authOnly: true },
-  { pattern: /^\/api\/upload\/avatar(?:\/|$)/, authOnly: true },
-];
-
-function getApiRouteRule(pathname) {
-  if (!pathname || !pathname.startsWith("/api/")) return null;
-  if (PUBLIC_API_PATHS.has(pathname)) return { public: true };
-  return API_ROUTE_RULES.find((rule) => rule.pattern.test(pathname)) || { authOnly: true };
-}
 
 function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
@@ -91,6 +48,49 @@ function isAuthRoute(pathname) {
 //   1. Prefers x-real-ip (set by reverse proxy, not user-controllable)
 //   2. Falls back to the rightmost IP in x-forwarded-for (last proxy hop)
 //   3. Rejects private/loopback/reserved IPs to prevent spoofing
+
+function expandIpv6(ip) {
+  const normalized = ip.toLowerCase();
+  let parts;
+  const doubleColon = normalized.indexOf('::');
+  if (doubleColon !== -1) {
+    const left = doubleColon === 0 ? [] : normalized.substring(0, doubleColon).split(':');
+    const right = doubleColon === normalized.length - 2 ? [] : normalized.substring(doubleColon + 2).split(':');
+    const missing = 8 - left.length - right.length;
+    parts = [...left, ...Array(missing).fill('0'), ...right];
+  } else {
+    parts = normalized.split(':');
+  }
+  return parts.map(p => p.padStart(4, '0'));
+}
+
+function isValidPublicIpv6(ip) {
+  if (ip === '::1') return false;
+  if (ip === '::') return false;
+
+  const parts = expandIpv6(ip);
+
+  // IPv4-mapped IPv6 (::ffff:x.x.x.x) — validate as IPv4
+  if (/^0000:0000:0000:0000:0000:ffff/i.test(parts.slice(0, 6).join(':'))) {
+    const v4 = `${parseInt(parts[6].substring(0, 2), 16)}.${parseInt(parts[6].substring(2, 4), 16)}.${parseInt(parts[7].substring(0, 2), 16)}.${parseInt(parts[7].substring(2, 4), 16)}`;
+    return isValidPublicIp(v4);
+  }
+
+  const first = parseInt(parts[0], 16);
+
+  // fc00::/7 — unique-local (private)
+  if ((first & 0xfe00) === 0xfc00) return false;
+  // fe80::/10 — link-local
+  if ((first & 0xffc0) === 0xfe80) return false;
+  // ff00::/8 — multicast
+  if (first >= 0xff00) return false;
+  // 2001:db8::/32 — documentation
+  if (first === 0x2001 && parseInt(parts[1], 16) === 0x0db8) return false;
+  // 2001:2::/48 — benchmark testing
+  if (first === 0x2001 && parseInt(parts[1], 16) === 0x0002) return false;
+
+  return true;
+}
 
 function isValidPublicIp(ip) {
   if (!ip) return false;
@@ -111,8 +111,7 @@ function isValidPublicIp(ip) {
     if (a >= 224) return false;
     return true;
   }
-  if (ip === '::1') return false;
-  if (ip.includes(':')) return false;
+  if (ip.includes(':')) return isValidPublicIpv6(ip);
   return false;
 }
 
