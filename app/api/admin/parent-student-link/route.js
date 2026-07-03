@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireAdmin, requireAuth } from "@/lib/rbac";
+import { requireAdmin } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { connectDb } from "@/lib/mongodb";
@@ -218,20 +218,19 @@ export const POST = withErrorHandler(async (request) => {
     );
   }
 
-    logAuditEvent({
-      actor: payload,
-      action: "parent_student_link.create",
-      target: { type: "user", id: studentId },
-      details: { parentId, studentId, parentEmail: validatedData.parentEmail, studentEmail: validatedData.studentEmail },
-      request,
-    });
+  logAuditEvent({
+    actor: payload,
+    action: "parent_student_link.create",
+    target: { type: "user", id: studentId },
+    details: { parentId, studentId },
+    request,
+  });
 
-    return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
-  })
-);
+  return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
+});
 
 export const DELETE = withErrorHandler(async (request) => {
-  const payload = await requireAuth(request);
+  const { payload } = await requireAdmin(request);
   const url = new URL(request.url);
 
   const queryParams = {

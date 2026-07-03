@@ -898,13 +898,7 @@ export default function LearnovaChatbot() {
 
   if (!isOpen) {
     return (
-<<<<<<< HEAD
-      <div
-        className={`fixed z-50 transition-all duration-300 right-4 md:right-6 ${isScrolling ? "bottom-16 opacity-40 scale-90 md:bottom-6 md:opacity-100 md:scale-100" : "bottom-24 md:bottom-6 opacity-100 scale-100"}`}
-      >
-=======
       <div className={`fixed z-50 transition-all duration-300 right-4 md:right-6 ${isScrolling ? 'bottom-16 opacity-40 scale-90 md:bottom-6 md:opacity-100 md:scale-100' : 'bottom-32 md:bottom-6 opacity-100 scale-100'}`}>
->>>>>>> c1d2d10d (Fix chatbot overlap on mobile auth page)
         <button
           onClick={() => setIsOpen(true)}
           className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300 group cursor-pointer"
@@ -928,13 +922,6 @@ export default function LearnovaChatbot() {
       role="dialog"
       aria-label="Nova AI Chat"
       className={`fixed z-50 flex flex-col ${themeTokens.bg} shadow-2xl transition-all duration-300 border ${themeTokens.border} ${
-<<<<<<< HEAD
-        isMinimized
-          ? "bottom-24 md:bottom-6 right-4 md:right-6 w-72 h-16 overflow-hidden rounded-xl"
-          : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
-=======
-        isMinimized ? "bottom-32 md:bottom-6 right-4 md:right-6 w-72 h-16 overflow-hidden rounded-xl" : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
->>>>>>> c1d2d10d (Fix chatbot overlap on mobile auth page)
       }`}
     >
       {/* Header */}

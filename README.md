@@ -199,7 +199,7 @@ learnova/
 ### 1. Clone the repository
 
 ```bash
-git clone [https://github.com/Premshaw23/Learnova.git](https://github.com/Premshaw23/Learnova.git)
+git clone https://github.com/Premshaw23/Learnova.git
 cd Learnova
 ```
 
@@ -443,7 +443,7 @@ Found a security vulnerability? Please report it responsibly to **security@learn
 
 ## 🏗️ System Architecture Blueprint
 
-Want to learn more about how Learnova's underlying technology behaves under the hood? Read our detailed, Mermaid-enhanced [System Architecture Guide](file:///e:/Learnova/Learnova/docs/ARCHITECTURE.md) to understand routing middleware verification, neural network face detection thresholds, and offline PWA queues.
+Want to learn more about how Learnova's underlying technology behaves under the hood? Read our detailed, Mermaid-enhanced [System Architecture Guide](docs/ARCHITECTURE.md) to understand routing middleware verification, neural network face detection thresholds, and offline PWA queues.
 
 ### 🛠️ Documentation Improvements
 - Add badges (optional): build, license, contributors
