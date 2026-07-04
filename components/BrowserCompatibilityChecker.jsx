@@ -32,7 +32,10 @@ export default function BrowserCompatibilityChecker() {
     }
 
     // Check Promise / modern ES6 APIs
-    if (typeof Promise === "undefined" || typeof Promise.allSettled === "undefined") {
+    if (
+      typeof Promise === "undefined" ||
+      typeof Promise.allSettled === "undefined"
+    ) {
       missing.push("Modern Javascript ES6 Promise capabilities");
     }
 
@@ -48,9 +51,12 @@ export default function BrowserCompatibilityChecker() {
       <div className="flex gap-3 items-start">
         <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h4 className="text-sm font-bold">Unsatisfactory Browser capabilities</h4>
+          <h4 className="text-sm font-bold">
+            Unsatisfactory Browser capabilities
+          </h4>
           <p className="text-xs text-amber-300/90 mt-1 leading-relaxed">
-            Your current browser lacks key capabilities required for Learnova to work properly:
+            Your current browser lacks key capabilities required for Learnova to
+            work properly:
           </p>
           <ul className="text-xs list-disc pl-4 mt-2 text-amber-300 space-y-0.5">
             {incompatibleFeatures.map((feat) => (

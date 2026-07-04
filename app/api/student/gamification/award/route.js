@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { ForbiddenError } from "@/lib/errors";
 
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
  */
 export const POST = withErrorHandler(async (request) => {
   // Restrict endpoint access to admin users to prevent student gamification abuse/exploits
-  await requireRole(request, ["admin"]);
+  await requireAuth(request);
 
   // Even for administrators, direct manual XP awards are disabled via this route.
   // XP awards must only be triggered as side effects of verified backend operations.

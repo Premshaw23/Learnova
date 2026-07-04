@@ -187,7 +187,8 @@ const ISSUES = [
     labels: ["good first issue", "enhancement", "validation"],
   },
   {
-    title: "UI: Make the Role Selection screen accessible with keyboard navigation",
+    title:
+      "UI: Make the Role Selection screen accessible with keyboard navigation",
     body: `Role selection cards in \`RoleSelection.js\` may not be keyboard-navigable, preventing access for users who rely on keyboards.
 
 **Relevant files:** \`components/RoleSelection.js\`

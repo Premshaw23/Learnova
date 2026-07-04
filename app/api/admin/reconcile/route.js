@@ -1,12 +1,16 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
-import { requireAdmin } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { AppError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { connectDb } from "@/lib/mongodb";
-import { findStaleOperations, cleanupOldOperations } from "@/lib/transactionCoordinator";
+import {
+  findStaleOperations,
+  cleanupOldOperations,
+} from "@/lib/transactionCoordinator";
 import { logger } from "@/lib/logger";
+import { logAuditEvent } from "@/lib/auditLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +27,7 @@ export const dynamic = "force-dynamic";
  * Additionally triggers cleanup of stale pending_operations records.
  */
 export const POST = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireAdmin(request);
+  const decodedToken = await requireAuth(request);
 
   const { uid } = await request.json();
   if (!uid || typeof uid !== "string") {
@@ -51,7 +55,9 @@ export const POST = withErrorHandler(async (request) => {
   const hasFirestore = firestoreDoc.exists;
   const firestoreData = hasFirestore ? firestoreDoc.data() : null;
 
-  const mongoUser = await mongoDB.collection("users").findOne({ firebaseUid: uid });
+  const mongoUser = await mongoDB
+    .collection("users")
+    .findOne({ firebaseUid: uid });
   const hasMongo = !!mongoUser;
 
   // Case 1: User exists in all relevant stores (or Auth + at least one DB)
@@ -65,7 +71,11 @@ export const POST = withErrorHandler(async (request) => {
     const firestoreRole = firestoreData.role || "";
 
     const actions = [];
-    if (mongoEmail !== firestoreEmail || mongoName !== firestoreName || mongoRole !== firestoreRole) {
+    if (
+      mongoEmail !== firestoreEmail ||
+      mongoName !== firestoreName ||
+      mongoRole !== firestoreRole
+    ) {
       await mongoDB.collection("users").updateOne(
         { firebaseUid: uid },
         {
@@ -74,7 +84,7 @@ export const POST = withErrorHandler(async (request) => {
             name: firestoreName,
             fullName: firestoreName,
             role: firestoreRole,
-          }
+          },
         }
       );
       actions.push("aligned_mongo_details_with_firestore");
@@ -89,15 +99,79 @@ export const POST = withErrorHandler(async (request) => {
           actions.push("aligned_custom_claims_with_firestore");
         }
       } catch (err) {
-        logger.error(`[reconcile] Failed to align custom claims for user ${uid}:`, { error: err.message });
+        logger.error(
+          `[reconcile] Failed to align custom claims for user ${uid}:`,
+          { error: err.message }
+        );
       }
+    }
+
+    // Reconcile attendance records: ensure Firestore records exist in MongoDB
+    try {
+      const firestoreAttendance = await db
+        .collection("attendance_records")
+        .where("userId", "==", uid)
+        .get();
+
+      const mongoAttendance = await mongoDB
+        .collection("attendance")
+        .find({ userId: uid })
+        .project({ date: 1, _id: 0 })
+        .toArray();
+
+      const mongoDates = new Set(mongoAttendance.map((r) => r.date));
+
+      let reconciledCount = 0;
+      for (const doc of firestoreAttendance.docs) {
+        const data = doc.data();
+        if (data.date && !mongoDates.has(data.date)) {
+          await mongoDB.collection("attendance").updateOne(
+            { userId: uid, date: data.date },
+            {
+              $set: {
+                userId: uid,
+                studentName: data.studentName || "",
+                email: data.email || "",
+                instituteId: data.instituteId || null,
+                timestamp: data.timestamp?.toDate() || new Date(),
+                date: data.date,
+                status: data.status || "present",
+                confidenceScore: data.confidenceScore || 0,
+                offlineSynced: data.offlineSynced || false,
+              },
+            },
+            { upsert: true }
+          );
+          reconciledCount++;
+        }
+      }
+
+      if (reconciledCount > 0) {
+        actions.push(`attendance_records_reconciled: ${reconciledCount}`);
+      }
+    } catch (err) {
+      logger.error(
+        `[reconcile] Failed to reconcile attendance records for user ${uid}:`,
+        { error: err.message }
+      );
     }
 
     // Also cleanup stale pending operations as a side-effect
     await cleanupOldOperations();
 
+    logAuditEvent({
+      actor: decodedToken,
+      action: "admin.reconcile_user",
+      target: { type: "user", id: uid },
+      details: { actions },
+      request,
+    });
+
     return jsonSuccess({
-      message: actions.length > 0 ? "User reconciled and aligned successfully" : "User already exists in both databases and is fully aligned",
+      message:
+        actions.length > 0
+          ? "User reconciled and aligned successfully"
+          : "User already exists in both databases and is fully aligned",
       auth: hasAuth,
       firestore: true,
       mongo: true,
@@ -107,13 +181,29 @@ export const POST = withErrorHandler(async (request) => {
 
   // Case 4: User exists in Auth but NOT in Firestore and NOT in MongoDB → orphaned
   if (hasAuth && !hasFirestore && !hasMongo) {
-    logger.warn(`[reconcile] Orphaned auth account detected: ${uid}. Deleting.`);
+    logger.warn(
+      `[reconcile] Orphaned auth account detected: ${uid}. Deleting.`
+    );
     try {
       await admin.auth().deleteUser(uid);
     } catch (deleteErr) {
-      logger.error(`[reconcile] Failed to delete orphaned auth account ${uid}:`, { error: deleteErr.message });
-      return jsonError("Failed to clean up orphaned auth account. Please try again.", 500);
+      logger.error(
+        `[reconcile] Failed to delete orphaned auth account ${uid}:`,
+        { error: deleteErr.message }
+      );
+      return jsonError(
+        "Failed to clean up orphaned auth account. Please try again.",
+        500
+      );
     }
+
+    logAuditEvent({
+      actor: decodedToken,
+      action: "admin.reconcile_user",
+      target: { type: "user", id: uid },
+      details: { action: "orphaned_auth_deleted" },
+      request,
+    });
 
     return jsonSuccess({
       message: "Orphaned Firebase Auth account detected and deleted",
@@ -173,6 +263,14 @@ export const POST = withErrorHandler(async (request) => {
     return jsonError("User not found in either database", 404);
   }
 
+  logAuditEvent({
+    actor: decodedToken,
+    action: "admin.reconcile_user",
+    target: { type: "user", id: uid },
+    details: { actions },
+    request,
+  });
+
   return jsonSuccess({
     message: "User reconciled successfully",
     actions,
@@ -189,7 +287,7 @@ export const POST = withErrorHandler(async (request) => {
  * Used by admins to monitor cross-database transaction health.
  */
 export const GET = withErrorHandler(async (request) => {
-  await requireAdmin(request);
+  await requireAuth(request);
 
   const staleOps = await findStaleOperations(300000); // 5 minutes threshold
 

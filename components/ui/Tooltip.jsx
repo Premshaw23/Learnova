@@ -5,18 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 
 /**
  * A reusable, accessible Tooltip component with intelligent positioning.
- * 
+ *
  * @param {React.ReactNode} children - The trigger element.
  * @param {React.ReactNode} content - Tooltip text or component.
  * @param {'top' | 'bottom' | 'left' | 'right'} placement - Initial placement.
  * @param {number} delay - Delay in ms before showing.
  */
-const Tooltip = ({ 
-  children, 
-  content, 
-  placement = "top", 
-  delay = 200 
-}) => {
+const Tooltip = ({ children, content, placement = "top", delay = 200 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [adjustedPlacement, setAdjustedPlacement] = useState(placement);
   const tooltipId = useId();
@@ -37,7 +32,7 @@ const Tooltip = ({
     if (isVisible && tooltipRef.current) {
       const rect = tooltipRef.current.getBoundingClientRect();
       const viewport = { w: window.innerWidth, h: window.innerHeight };
-      
+
       let next = placement;
       if (placement === "top" && rect.top < 0) next = "bottom";
       else if (placement === "bottom" && rect.bottom > viewport.h) next = "top";
@@ -63,16 +58,18 @@ const Tooltip = ({
   };
 
   return (
-    <div 
+    <div
       className="relative inline-block"
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
       onFocus={showTooltip}
       onBlur={hideTooltip}
     >
-      {React.isValidElement(children) ? (
-        React.cloneElement(children, { "aria-describedby": isVisible ? tooltipId : undefined })
-      ) : children}
+      {React.isValidElement(children)
+        ? React.cloneElement(children, {
+            "aria-describedby": isVisible ? tooltipId : undefined,
+          })
+        : children}
 
       <AnimatePresence>
         {isVisible && content && (
@@ -80,14 +77,25 @@ const Tooltip = ({
             ref={tooltipRef}
             id={tooltipId}
             role="tooltip"
-            initial={{ opacity: 0, scale: 0.96, y: adjustedPlacement === "top" ? 4 : adjustedPlacement === "bottom" ? -4 : 0 }}
+            initial={{
+              opacity: 0,
+              scale: 0.96,
+              y:
+                adjustedPlacement === "top"
+                  ? 4
+                  : adjustedPlacement === "bottom"
+                    ? -4
+                    : 0,
+            }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.12, ease: "easeOut" }}
             className={`absolute z-[100] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-100 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl backdrop-blur-md whitespace-nowrap pointer-events-none ${positionClasses[adjustedPlacement]}`}
           >
             {content}
-            <div className={`absolute w-1.5 h-1.5 bg-zinc-900 border-zinc-800 rotate-45 ${arrowClasses[adjustedPlacement]}`} />
+            <div
+              className={`absolute w-1.5 h-1.5 bg-zinc-900 border-zinc-800 rotate-45 ${arrowClasses[adjustedPlacement]}`}
+            />
           </motion.div>
         )}
       </AnimatePresence>

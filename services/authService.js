@@ -7,6 +7,10 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   signOut,
+  getMultiFactorResolver,
+  multiFactor,
+  TotpMultiFactorGenerator,
+  TotpSecret,
 } from "firebase/auth";
 import { doc, getDoc, deleteDoc, setDoc } from "firebase/firestore";
 import {
@@ -39,7 +43,7 @@ const syncCustomClaims = async ({ user, role, fullName }) => {
       await user.getIdToken(true).catch(() => {});
     } else {
       const errorData = await response.json().catch(() => ({}));
-      if (errorData?.error?.includes('already registered')) {
+      if (errorData?.error?.includes("already registered")) {
         await user.getIdToken(true).catch(() => {});
       }
     }
@@ -64,7 +68,7 @@ export const loginWithEmail = async (email, password, selectedRole) => {
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email.trim(),
-      password,
+      password
     );
     const user = userCredential.user;
 
@@ -105,12 +109,20 @@ export const loginWithEmail = async (email, password, selectedRole) => {
     }
 
     // Update last login
-    await setDoc(doc(db, "users", user.uid), {
-      lastLogin: new Date(),
-    }, { merge: true });
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        lastLogin: new Date(),
+      },
+      { merge: true }
+    );
 
     return { success: true, userData: { role: userRole } };
   } catch (err) {
+    if (err.code === "auth/multi-factor-auth-required") {
+      const resolver = getMultiFactorResolver(auth, err);
+      return { success: false, needsMFA: true, resolver };
+    }
     return {
       success: false,
       error:
@@ -135,7 +147,7 @@ export const signupWithEmail = async (
   email,
   password,
   selectedRole,
-  additionalData,
+  additionalData
 ) => {
   try {
     if (!auth || !db) {
@@ -150,7 +162,7 @@ export const signupWithEmail = async (
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email.trim(),
-      password,
+      password
     );
     const user = userCredential.user;
 
@@ -165,8 +177,10 @@ export const signupWithEmail = async (
     } catch (profileError) {
       // Clean up the orphaned user account using server-side Admin SDK
       // Client-side deleteUser() fails with auth/requires-recent-login if credential is stale
-      console.error(`[signup] Profile creation failed for user ${user.uid}, initiating cleanup`);
-      
+      console.error(
+        `[signup] Profile creation failed for user ${user.uid}, initiating cleanup`
+      );
+
       try {
         await fetch("/api/auth/cleanup", {
           method: "POST",
@@ -174,9 +188,12 @@ export const signupWithEmail = async (
           body: JSON.stringify({ uid: user.uid }),
         });
       } catch (cleanupErr) {
-        console.error(`[signup] Cleanup failed for orphaned account ${user.uid}:`, cleanupErr.message);
+        console.error(
+          `[signup] Cleanup failed for orphaned account ${user.uid}:`,
+          cleanupErr.message
+        );
       }
-      
+
       await deleteDoc(doc(db, "users", user.uid)).catch(() => {});
       await deleteDoc(doc(db, "userStats", user.uid)).catch(() => {});
       throw profileError;
@@ -202,12 +219,18 @@ export const signupWithEmail = async (
  * @returns {Promise<Object>} Authentication result and user data.
  */
 
-export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => {
+export const loginWithGoogle = async (
+  selectedRole,
+  isLogin,
+  additionalData
+) => {
   try {
     // INTERCEPT FOR MOCK AUTH MODE
     if (isMockAuthMode) {
-      console.log(`[Mock Auth] Simulating Google Sign-In as: ${selectedRole || "student"}`);
-      
+      console.log(
+        `[Mock Auth] Simulating Google Sign-In as: ${selectedRole || "student"}`
+      );
+
       // Simulate a small network delay for realistic UI loading states/spinners
       await new Promise((resolve) => setTimeout(resolve, 600));
 
@@ -219,12 +242,12 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
         lastLogin: new Date(),
       };
 
-      return { 
-        success: true, 
-        userData: simulatedUserData 
+      return {
+        success: true,
+        userData: simulatedUserData,
       };
     }
-    
+
     if (!auth || !db) {
       return { success: false, error: FIREBASE_CONFIG_ERROR };
     }
@@ -232,7 +255,7 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
-    
+
     // For returning users, read role from custom claims (authoritative source)
     let userRole = null;
 
@@ -272,14 +295,16 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
       if (userDoc.exists()) {
         userRole = userDoc.data().role;
       } else {
-        const nameToUse = 
-          user.displayName?.trim() || 
-          additionalData.fullName?.trim() || 
-          user.email?.split("@")[0] || 
+        const nameToUse =
+          user.displayName?.trim() ||
+          additionalData.fullName?.trim() ||
+          user.email?.split("@")[0] ||
           "Learnova Member";
 
         if (!nameToUse) {
-          console.error(`[google-signup] No name provided for user ${user.uid}, initiating cleanup`);
+          console.error(
+            `[google-signup] No name provided for user ${user.uid}, initiating cleanup`
+          );
           try {
             await fetch("/api/auth/cleanup", {
               method: "POST",
@@ -287,7 +312,10 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
               body: JSON.stringify({ uid: user.uid }),
             });
           } catch (cleanupErr) {
-            console.error(`[google-signup] Cleanup failed for orphaned account ${user.uid}:`, cleanupErr.message);
+            console.error(
+              `[google-signup] Cleanup failed for orphaned account ${user.uid}:`,
+              cleanupErr.message
+            );
           }
 
           await signOut(auth);
@@ -298,11 +326,17 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
         }
 
         try {
-          await createUserProfile(user, selectedRole, {...additionalData, fullName: nameToUse });
+          await createUserProfile(user, selectedRole, {
+            ...additionalData,
+            fullName: nameToUse,
+          });
           await user.getIdToken(true);
           return { success: true, userData: { role: selectedRole } };
         } catch (profileError) {
-          console.error(`[google-signup] Profile creation failed for user ${user.uid}, initiating cleanup`, profileError.message);
+          console.error(
+            `[google-signup] Profile creation failed for user ${user.uid}, initiating cleanup`,
+            profileError.message
+          );
           try {
             await fetch("/api/auth/cleanup", {
               method: "POST",
@@ -310,7 +344,10 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
               body: JSON.stringify({ uid: user.uid }),
             });
           } catch (cleanupErr) {
-            console.error(`[google-signup] Cleanup failed for orphaned account ${user.uid}:`, cleanupErr.message);
+            console.error(
+              `[google-signup] Cleanup failed for orphaned account ${user.uid}:`,
+              cleanupErr.message
+            );
           }
           throw profileError;
         }
@@ -318,12 +355,20 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
     }
 
     // Update last login for existing users
-    await setDoc(doc(db, "users", user.uid), {
-      lastLogin: new Date(),
-    }, { merge: true });
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        lastLogin: new Date(),
+      },
+      { merge: true }
+    );
 
     return { success: true, userData: { role: userRole || selectedRole } };
   } catch (err) {
+    if (err.code === "auth/multi-factor-auth-required") {
+      const resolver = getMultiFactorResolver(auth, err);
+      return { success: false, needsMFA: true, resolver };
+    }
     return {
       success: false,
       error:
@@ -335,7 +380,6 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
     };
   }
 };
-      
 
 /**
  * Triggers a password reset email via the secure backend API route.
@@ -356,7 +400,10 @@ export const resetPassword = async (email) => {
     if (!response.ok) {
       return {
         success: false,
-        error: data.error || getErrorMessage(data.error) || "Failed to send reset email. Please try again.",
+        error:
+          data.error ||
+          getErrorMessage(data.error) ||
+          "Failed to send reset email. Please try again.",
       };
     }
 
@@ -365,7 +412,64 @@ export const resetPassword = async (email) => {
     console.error("Reset password fetch error:", err);
     return {
       success: false,
-      error: "An unexpected error occurred while communicating with the server.",
+      error:
+        "An unexpected error occurred while communicating with the server.",
     };
   }
 };
+/**
+ * Initiates TOTP enrollment.
+ * @param {Object} user - The authenticated Firebase user.
+ * @returns {Promise<Object>} The TOTP secret and QR code URL.
+ */
+export const enrollTOTP = async (user) => {
+  try {
+    const multiFactorSession = await multiFactor(user).getSession();
+    const tfaSecret = await TotpMultiFactorGenerator.generateSecret(multiFactorSession);
+    const qrCodeUrl = tfaSecret.generateQrCodeUrl(user.email, "Learnova");
+    return { success: true, secret: tfaSecret, qrCodeUrl };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Verifies TOTP code and completes enrollment.
+ * @param {Object} user - The authenticated Firebase user.
+ * @param {Object} tfaSecret - The secret from enrollment.
+ * @param {string} code - The 6-digit TOTP code.
+ * @returns {Promise<Object>} Success or error.
+ */
+export const verifyTOTPEnrollment = async (user, tfaSecret, code) => {
+  try {
+    const multiFactorAssertion = TotpMultiFactorGenerator.assertionForEnrollment(tfaSecret, code);
+    await multiFactor(user).enroll(multiFactorAssertion, "TOTP Authenticator");
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Verifies TOTP code during sign-in using a resolver.
+ * @param {Object} resolver - The resolver from the caught error.
+ * @param {string} code - The 6-digit TOTP code.
+ * @returns {Promise<Object>} Authentication result.
+ */
+export const verifyTOTPSignIn = async (resolver, code) => {
+  try {
+    const enrolledFactor = resolver.hints.find(hint => hint.factorId === TotpMultiFactorGenerator.FACTOR_ID);
+    if (!enrolledFactor) throw new Error("No TOTP factor found.");
+
+    const multiFactorAssertion = TotpMultiFactorGenerator.assertionForSignIn(enrolledFactor.uid, code);
+    const userCredential = await resolver.resolveSignIn(multiFactorAssertion);
+    
+    // Set last login
+    await setDoc(doc(db, "users", userCredential.user.uid), { lastLogin: new Date() }, { merge: true });
+
+    return { success: true, userData: { role: undefined } }; // Client handles role via context
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+};
+

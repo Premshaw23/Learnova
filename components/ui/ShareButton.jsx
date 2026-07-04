@@ -17,14 +17,10 @@ export default function ShareButton({ className = "" }) {
   const handleShare = async () => {
     try {
       const shareUrl =
-        typeof window !== "undefined"
-          ? window.location.href
-          : "";
+        typeof window !== "undefined" ? window.location.href : "";
 
       if (!shareUrl) {
-        throw new Error(
-          "Unable to retrieve window.location.href"
-        );
+        throw new Error("Unable to retrieve window.location.href");
       }
 
       if (navigator.share) {
@@ -59,9 +55,7 @@ export default function ShareButton({ className = "" }) {
       }
 
       console.error("Sharing failed:", error);
-      toast.error(
-        "Failed to share link. Please copy it manually."
-      );
+      toast.error("Failed to share link. Please copy it manually.");
     }
   };
 

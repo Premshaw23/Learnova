@@ -1,5 +1,5 @@
-const logger = require('./logger');
-const AppError = require('./appError');
+import logger from "./logger";
+import { AppError } from "./appError";
 
 /**
  * Wraps a Next.js API Route Handler with centralized error handling and logging.
@@ -11,8 +11,8 @@ export function withErrorHandling(handler) {
       return await handler(req, ...args);
     } catch (err) {
       let statusCode = err.statusCode || 500;
-      let message = err.message || 'Something went wrong on our end.';
-      let errorCode = err.isOperational ? err.name : 'INTERNAL_SERVER_ERROR';
+      let message = err.message || "Something went wrong on our end.";
+      let errorCode = err.isOperational ? err.name : "INTERNAL_SERVER_ERROR";
 
       // 1. Log the failure with metadata using Winston
       logger.error({
@@ -25,14 +25,14 @@ export function withErrorHandling(handler) {
       // 2. Return consistent JSON response schema
       return new Response(
         JSON.stringify({
-          status: 'error',
+          status: "error",
           code: errorCode,
           message,
-          ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+          ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
         }),
         {
           status: statusCode,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { "Content-Type": "application/json" },
         }
       );
     }

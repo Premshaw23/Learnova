@@ -94,7 +94,7 @@ const createPdfDownload = (notice) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setFillColor(243, 244, 246); // light slate background
-  
+
   // Calculate text width to make the badge width dynamic
   const catWidth = doc.getTextWidth(category);
   const badgeWidth = catWidth + 8;
@@ -106,9 +106,12 @@ const createPdfDownload = (notice) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(15, 23, 42); // Slate-900 (highly readable dark text)
-  
+
   // Split title to size to handle long titles wrapping
-  const wrappedTitle = doc.splitTextToSize(notice.title || "Untitled Notice", contentWidth);
+  const wrappedTitle = doc.splitTextToSize(
+    notice.title || "Untitled Notice",
+    contentWidth
+  );
   let cursorY = 44;
   wrappedTitle.forEach((line) => {
     doc.text(line, margin, cursorY);
@@ -119,14 +122,22 @@ const createPdfDownload = (notice) => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139); // Slate-500
-  
+
   const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
-  const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-  const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  
+  const dateStr = createdAt.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const timeStr = createdAt.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+
   doc.text(`Author: ${notice.author || "Unknown"}`, margin, cursorY);
   doc.text(`Published: ${dateStr} at ${timeStr}`, margin + 62, cursorY);
-  
+
   // Color-coded priority badges matching UI
   const priority = (notice.priority || "medium").toLowerCase();
   doc.text("Priority:", margin + 130, cursorY);
@@ -134,17 +145,17 @@ const createPdfDownload = (notice) => {
   doc.setFontSize(8);
   if (priority === "high") {
     doc.setFillColor(254, 226, 226); // Red-100
-    doc.setTextColor(220, 38, 38);  // Red-600
+    doc.setTextColor(220, 38, 38); // Red-600
   } else if (priority === "low") {
     doc.setFillColor(209, 250, 229); // Emerald-100
-    doc.setTextColor(5, 150, 105);   // Emerald-600
+    doc.setTextColor(5, 150, 105); // Emerald-600
   } else {
     doc.setFillColor(254, 243, 199); // Amber-100
-    doc.setTextColor(217, 119, 6);   // Amber-600
+    doc.setTextColor(217, 119, 6); // Amber-600
   }
   doc.roundedRect(margin + 144, cursorY - 3.5, 18, 5, 1, 1, "F");
   doc.text(priority.toUpperCase(), margin + 146, cursorY - 0.1);
-  
+
   // Revert defaults
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
@@ -162,7 +173,7 @@ const createPdfDownload = (notice) => {
       const tagText = `#${tag}`;
       const tagWidth = doc.getTextWidth(tagText);
       doc.setFillColor(243, 244, 246); // Slate-100
-      doc.setTextColor(71, 85, 105);   // Slate-600
+      doc.setTextColor(71, 85, 105); // Slate-600
       doc.roundedRect(tagX, cursorY - 3.2, tagWidth + 4, 4.5, 1, 1, "F");
       doc.text(tagText, tagX + 2, cursorY + 0.1);
       tagX += tagWidth + 7;
@@ -184,8 +195,16 @@ const createPdfDownload = (notice) => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10.5);
   doc.setTextColor(51, 65, 85); // Slate-700
-  
-  const lines = doc.splitTextToSize(notice.content || "", contentWidth);
+
+  // ── FIX FOR ISSUE #2007: Safe text extraction and fallback ──
+  const rawContent = notice.content || notice.text;
+  const safeContent =
+    typeof rawContent === "string" && rawContent.trim().length > 0
+      ? rawContent
+      : "No text content provided for this notice.";
+  // ────────────────────────────────────────────────────────────
+
+  const lines = doc.splitTextToSize(safeContent, contentWidth);
   const lineHeight = 6.5;
 
   lines.forEach((line) => {
@@ -195,13 +214,13 @@ const createPdfDownload = (notice) => {
       doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
       doc.text("Official Notice Board • Learnova", margin, pageHeight - 10);
-      
+
       doc.addPage();
-      
+
       // Indigo top bar on the second page
       doc.setFillColor(79, 70, 229);
       doc.rect(0, 0, pageWidth, 4, "F");
-      
+
       cursorY = margin + 10;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10.5);
@@ -216,7 +235,11 @@ const createPdfDownload = (notice) => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  doc.text("Official Campus Notice • Generated via Learnova Smart Notice Board", margin, pageHeight - 10);
+  doc.text(
+    "Official Campus Notice • Generated via Learnova Smart Notice Board",
+    margin,
+    pageHeight - 10
+  );
 
   doc.save(buildNoticeFileName(notice, "pdf"));
 };
@@ -227,7 +250,10 @@ const highlightMatch = (text, query) => {
   const regex = new RegExp(`(${escaped})`, "gi");
   return text.split(regex).map((segment, index) =>
     segment.toLowerCase() === query.toLowerCase() ? (
-      <span key={`${segment}-${index}`} className="rounded-xl bg-amber-300/20 px-0.5 text-amber-100">
+      <span
+        key={`${segment}-${index}`}
+        className="rounded-xl bg-amber-300/20 px-0.5 text-amber-100"
+      >
         {segment}
       </span>
     ) : (
@@ -236,7 +262,13 @@ const highlightMatch = (text, query) => {
   );
 };
 
-const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime }) => {
+const NoticeCard = ({
+  notice,
+  isRead,
+  onToggleRead,
+  searchQuery,
+  getRelativeTime,
+}) => {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const relativeTime = getRelativeTime(notice.createdAt);
   const exportText = formatNoticeForExport(notice, isRead, relativeTime);
@@ -257,9 +289,18 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
   const handleCopyMarkdown = useCallback(async () => {
     if (typeof window === "undefined") return;
 
-    const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
-    const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-    const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const createdAt = notice.createdAt
+      ? new Date(notice.createdAt)
+      : new Date();
+    const dateStr = createdAt.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const timeStr = createdAt.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
     const mdText = [
       `# ${notice.title || "Untitled Notice"}`,
@@ -271,24 +312,55 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
       "",
       "---",
       "",
-      notice.content || ""
+      notice.content || "",
     ].join("\n");
 
     try {
+      // FIX FOR ISSUE #2006: Add toast confirmation on success
       await navigator.clipboard.writeText(mdText);
       setCopyFeedback(true);
+      toast.success("Notice link copied to clipboard!");
       setTimeout(() => setCopyFeedback(false), 2000);
     } catch (err) {
       console.error("Failed to copy markdown to clipboard", err);
+      // Fallback UI/UX error handling
+      toast.error("Failed to copy. Check browser permissions.");
+    }
+  }, [notice]);
+
+  const handleCopyLink = useCallback(async () => {
+    const noticeUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/notices/${notice.id}`
+        : "";
+
+    try {
+      await navigator.clipboard.writeText(noticeUrl);
+
+      setCopyFeedback(true);
+
+      setTimeout(() => {
+        setCopyFeedback(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy notice link", err);
     }
   }, [notice]);
 
   const handleShareNotice = useCallback(async () => {
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    const noticeUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/notices/${notice.id}`
+        : "";
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function"
+    ) {
       try {
         await navigator.share({
           title: notice.title || "Notice",
-          text: exportText,
+          text: notice.content || "",
+          url: noticeUrl,
         });
         return;
       } catch (error) {
@@ -297,9 +369,16 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
         }
       }
     }
-
-    handleExportNotice();
-  }, [exportText, handleExportNotice, notice.title]);
+    try {
+      await navigator.clipboard.writeText(noticeUrl);
+      setCopyFeedback(true);
+      setTimeout(() => {
+        setCopyFeedback(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy notice URL", err);
+    }
+  }, [notice]);
 
   return (
     <motion.article
@@ -372,7 +451,11 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
             }`}
             aria-label={isRead ? "Mark notice unread" : "Mark notice read"}
           >
-            {isRead ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {isRead ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
             {isRead ? "Unread" : "Read"}
           </motion.button>
 
@@ -410,6 +493,18 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
           >
             <Copy className="h-4 w-4" />
             Markdown
+          </motion.button>
+
+          <motion.button
+            type="button"
+            onClick={handleCopyLink}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center gap-2 rounded-3xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20 active:scale-95"
+            aria-label={`Copy link for ${notice.title || "notice"}`}
+          >
+            <Copy className="h-4 w-4" />
+            Copy Link
           </motion.button>
 
           <motion.button
@@ -454,6 +549,57 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
         ))}
       </motion.div>
 
+      {/* Attachments — feat #2184: rich media support */}
+      {notice.attachments?.length > 0 && (
+        <div className="mt-5 space-y-3">
+          <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
+            Attachments
+          </p>
+          {notice.attachments.map((att, i) => (
+            <div key={i}>
+{att.type === "link" ? (
+
+                  <a href={att.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-sky-400 hover:underline break-all"
+                >
+                  🔗 {att.name}
+                </a>
+) : att.type?.startsWith("image/") ? (
+
+                  <a href={att.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    src={att.url}
+                    alt={att.name}
+                    className="rounded-xl max-h-48 w-full object-cover border border-slate-700 hover:opacity-90 transition"
+                  />
+                </a>
+              ) : att.type === "application/pdf" ? (
+                <div className="rounded-xl overflow-hidden border border-slate-700">
+                  <iframe
+                    src={att.url}
+                    title={att.name}
+                    className="w-full h-48"
+                  />
+                  
+<a href={att.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700 transition"
+                  >
+                    📄 {att.name} — Open PDF
+                  </a>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -468,7 +614,9 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
           <Clock className="h-4 w-4" />
           <span>{getRelativeTime(notice.createdAt)}</span>
         </div>
-        <span className={`inline-flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold ${priorityStyles[notice.priority]}`}>
+        <span
+          className={`inline-flex items-center justify-center rounded-full px-3 py-2 text-xs font-semibold ${priorityStyles[notice.priority]}`}
+        >
           {notice.priority}
         </span>
       </motion.div>
@@ -477,4 +625,3 @@ const NoticeCard = ({ notice, isRead, onToggleRead, searchQuery, getRelativeTime
 };
 
 export default NoticeCard;
-

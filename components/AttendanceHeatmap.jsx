@@ -65,7 +65,8 @@ const buildAttendanceValues = (recentActivity = []) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const activity = activityMap.get(dateKey);
     const status = activity?.status ?? mockStatusFromDate(dateKey, isWeekend);
-    const intensity = status === "present" ? getIntensityForPresent(dateKey) : 0;
+    const intensity =
+      status === "present" ? getIntensityForPresent(dateKey) : 0;
 
     return {
       date: dateKey,
@@ -80,10 +81,10 @@ const buildAttendanceValues = (recentActivity = []) => {
         status === "present"
           ? 100 - (4 - intensity) * 10
           : status === "late"
-          ? 72
-          : status === "absent"
-          ? 18
-          : 0,
+            ? 72
+            : status === "absent"
+              ? 18
+              : 0,
       subject: activity?.subject || "Attendance",
     };
   });
@@ -117,15 +118,12 @@ const getCellClassName = (value) => {
 };
 
 const AttendanceHeatmap = ({ recentActivity = [] }) => {
-  const values = useMemo(
-    () => {
-      if (!recentActivity || recentActivity.length === 0) {
-        return [];
-      }
-      return buildAttendanceValues(recentActivity);
-    },
-    [recentActivity],
-  );
+  const values = useMemo(() => {
+    if (!recentActivity || recentActivity.length === 0) {
+      return [];
+    }
+    return buildAttendanceValues(recentActivity);
+  }, [recentActivity]);
 
   const [tooltip, setTooltip] = useState(null);
 
@@ -181,7 +179,8 @@ const AttendanceHeatmap = ({ recentActivity = [] }) => {
             Last 12 weeks overview
           </h3>
           <p className="max-w-xl text-sm text-slate-400">
-            A compact GitHub-style view of your attendance cadence with live hover states and clear daily status.
+            A compact GitHub-style view of your attendance cadence with live
+            hover states and clear daily status.
           </p>
         </div>
 
@@ -191,9 +190,7 @@ const AttendanceHeatmap = ({ recentActivity = [] }) => {
               key={status}
               className={`rounded-2xl border px-3 py-2 ${STATUS_BADGES[status]}`}
             >
-              <span className="block font-semibold text-white">
-                {label}
-              </span>
+              <span className="block font-semibold text-white">{label}</span>
             </div>
           ))}
         </div>
@@ -224,8 +221,9 @@ const AttendanceHeatmap = ({ recentActivity = [] }) => {
       <div className="mt-4 rounded-3xl bg-white/5 border border-white/10 px-4 py-4 text-sm text-slate-400">
         <p className="font-medium text-slate-100">How to read this chart</p>
         <p className="mt-2 leading-6">
-          Darker tiles mean strong presence, amber tiles show late check-ins, and red tiles highlight absences.
-          Weekends are shown as muted tiles for a clean, premium dashboard feel.
+          Darker tiles mean strong presence, amber tiles show late check-ins,
+          and red tiles highlight absences. Weekends are shown as muted tiles
+          for a clean, premium dashboard feel.
         </p>
       </div>
 

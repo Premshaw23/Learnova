@@ -14,8 +14,9 @@ const EmptyState = ({
   className = "",
 }) => {
   return (
-    <div className={`flex flex-col items-center justify-center text-center px-6 py-12 md:py-16 max-w-md mx-auto rounded-2xl bg-white/50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 backdrop-blur-sm shadow-sm transition-all duration-300 ${className}`}>
-      
+    <div
+      className={`flex flex-col items-center justify-center text-center px-6 py-12 md:py-16 max-w-md mx-auto rounded-2xl bg-white/50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 backdrop-blur-sm shadow-sm transition-all duration-300 ${className}`}
+    >
       {/* Icon Wrapper with subtle background pulse/glow */}
       <div className="relative mb-6 flex items-center justify-center w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 group-hover:scale-105 transition-transform duration-300">
         <div className="absolute inset-0 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -55,6 +56,7 @@ const EmptyState = ({
         <button
           onClick={onAction}
           className="relative px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold rounded-xl text-sm shadow-md shadow-indigo-500/20 dark:shadow-indigo-500/10 hover:shadow-indigo-500/30 active:scale-95 active:shadow-sm transition-all duration-200"
+          aria-label="Action button"
         >
           {buttonText}
         </button>

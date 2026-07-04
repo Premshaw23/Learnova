@@ -4,41 +4,15 @@ import { authorizeCronRequest } from "@/lib/cronAuth";
 import { connectDb } from "@/lib/mongodb";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import { evaluateStudentAttendance } from "@/lib/attendanceUtils";
+import { enqueue, JOB_TYPES } from "@/lib/queue";
+import { logger } from "@/lib/logger";
+import { publishEvent } from "@/lib/ssePublisher";
+import { emitWebhookEvent } from "@/lib/webhook/dispatcher";
 
 export const dynamic = "force-dynamic";
 
-function getStudentUid(student) {
-  return student?.uid || student?.firebaseUid;
-}
-
-function buildWarningPayload({ uid, email, name, evaluation, threshold, now }) {
-  const notification = {
-    userId: uid,
-    title: "Low Attendance Warning",
-    message: `Your current attendance is ${evaluation.percentage}%, which is below the required ${threshold}%. Please improve your attendance.`,
-    type: "warning",
-    read: false,
-    createdAt: now,
-  };
-
-  const warningLog = {
-    userId: uid,
-    percentage: evaluation.percentage,
-    threshold,
-    createdAt: now,
-  };
-
-  const emailData = email
-    ? {
-        to_email: email,
-        to_name: name || "Student",
-        attendance_percentage: evaluation.percentage,
-        threshold,
-      }
-    : null;
-
-  return { notification, warningLog, emailData };
-}
+const STUDENT_BATCH_SIZE = 50;
+const FLUSH_THRESHOLD = 500;
 
 async function getRecentWarningUserIds(db, userIds, cooldownDate) {
   if (userIds.length === 0) {
@@ -52,7 +26,9 @@ async function getRecentWarningUserIds(db, userIds, cooldownDate) {
       createdAt: { $gte: cooldownDate },
     });
     const projectedCursor =
-      typeof cursor.project === "function" ? cursor.project({ userId: 1 }) : cursor;
+      typeof cursor.project === "function"
+        ? cursor.project({ userId: 1 })
+        : cursor;
     const recentLogs =
       typeof projectedCursor.toArray === "function"
         ? await projectedCursor.toArray()
@@ -81,88 +57,19 @@ async function getRecentWarningUserIds(db, userIds, cooldownDate) {
   return new Set(checks.filter(Boolean));
 }
 
-async function loadMongoAttendanceByUser(db, instituteId, studentIds) {
-  if (!instituteId || studentIds.length === 0) {
-    return null;
-  }
-
-  const attendanceCollection = db.collection("attendance");
-  if (typeof attendanceCollection.find !== "function") {
-    return null;
-  }
-
-  const records = await attendanceCollection
-    .find({
-      userId: { $in: studentIds },
-      instituteId,
-    })
-    .toArray();
-
-  const attendanceByUser = new Map(studentIds.map((uid) => [uid, []]));
-  for (const record of records) {
-    if (!attendanceByUser.has(record.userId)) {
-      attendanceByUser.set(record.userId, []);
-    }
-    attendanceByUser.get(record.userId).push(record);
-  }
-
-  return attendanceByUser;
-}
-
-async function loadFirestoreAttendanceByUser(firestore, studentIds) {
-  const attendanceByUser = new Map();
-
-  await Promise.all(
-    studentIds.map(async (uid) => {
-      const snapshot = await firestore
-        .collection("attendance_records")
-        .where("userId", "==", uid)
-        .get();
-
-      attendanceByUser.set(
-        uid,
-        snapshot.docs.map((doc) => doc.data())
-      );
-    })
-  );
-
-  return attendanceByUser;
-}
 
 async function sendWarningEmails(emailsToSend) {
-  const hasEmailConfig =
-    process.env.EMAILJS_SERVICE_ID &&
-    process.env.EMAILJS_TEMPLATE_ID &&
-    process.env.EMAILJS_PUBLIC_KEY;
+  const dashboardUrl =
+    process.env.NEXT_PUBLIC_APP_URL || "https://learnova.app";
 
-  if (!hasEmailConfig || emailsToSend.length === 0) {
-    return;
-  }
-
-  const sendEmail = async (emailData) => {
-    try {
-      await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          service_id: process.env.EMAILJS_SERVICE_ID,
-          template_id: process.env.EMAILJS_TEMPLATE_ID,
-          user_id: process.env.EMAILJS_PUBLIC_KEY,
-          template_params: emailData,
-        }),
-      });
-    } catch (error) {
-      console.error(`Failed to send email to ${emailData.to_email}:`, error);
-    }
-  };
-
-  // Process emails in parallel chunks to prevent serverless function timeouts
-  const CHUNK_SIZE = 50;
-  for (let i = 0; i < emailsToSend.length; i += CHUNK_SIZE) {
-    const chunk = emailsToSend.slice(i, i + CHUNK_SIZE);
-    await Promise.allSettled(chunk.map(sendEmail));
+  for (const emailData of emailsToSend) {
+    sendLowAttendanceWarning({
+      email: emailData.to_email,
+      name: emailData.to_name,
+      attendancePercentage: emailData.attendance_percentage,
+      threshold: emailData.threshold,
+      dashboardUrl,
+    });
   }
 }
 
@@ -176,6 +83,16 @@ export async function GET(request) {
     const db = await connectDb();
     initializeFirebase();
     const firestore = admin.firestore();
+
+    // Ensure the warning_logs collection has a compound index on (userId, createdAt)
+    // so the cooldown query does not trigger a full collection scan
+    try {
+      await db
+        .collection("warning_logs")
+        .createIndex({ userId: 1, createdAt: -1 }, { background: true });
+    } catch {
+      // Index may already exist
+    }
 
     const allSettings = await db
       .collection("settings")
@@ -194,15 +111,38 @@ export async function GET(request) {
     const now = new Date();
     const cooldownDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const notificationsToInsert = [];
-    const warningLogsToInsert = [];
+    let notificationsToInsert = [];
+    let warningLogsToInsert = [];
     const emailsToSend = [];
+    let totalWarnings = 0;
+
+    async function flushNotifications() {
+      if (notificationsToInsert.length === 0) return;
+      await db.collection("notifications").insertMany(notificationsToInsert);
+      await db.collection("warning_logs").insertMany(warningLogsToInsert);
+      for (const notif of notificationsToInsert) {
+        publishEvent("notifications", "warning", {
+          _id: notif._id?.toString?.() || notif._id,
+          recipientId: notif.userId,
+          title: notif.title,
+          message: notif.message,
+          type: notif.type,
+          read: false,
+          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+        }).catch(() => {});
+      }
+      notificationsToInsert = [];
+      warningLogsToInsert = [];
+    }
 
     // Fetch all students with an instituteId once
-    const allStudents = await db.collection('users').find({
-      role: 'student',
-      instituteId: { $exists: true }
-    }).toArray();
+    const allStudents = await db
+      .collection("users")
+      .find({
+        role: "student",
+        instituteId: { $exists: true },
+      })
+      .toArray();
 
     // Group students by instituteId
     const studentsByInstitute = new Map();
@@ -216,72 +156,97 @@ export async function GET(request) {
     }
 
     // Collect all student UIDs for batch cooldown check
-    const allStudentUids = allStudents.map(s => s.firebaseUid).filter(Boolean);
-    const recentWarningUserIds = await getRecentWarningUserIds(db, allStudentUids, cooldownDate);
+    const allStudentUids = allStudents
+      .map((s) => s.firebaseUid)
+      .filter(Boolean);
+    const recentWarningUserIds = await getRecentWarningUserIds(
+      db,
+      allStudentUids,
+      cooldownDate
+    );
 
     for (const settings of allSettings) {
       const threshold = settings.institute.lowAttendanceThreshold || 75;
-      const instituteId = settings.instituteId || settings._id?.toString() || settings.userId;
-      if (!instituteId) continue;
+
+      const rawInstituteId = settings.instituteId;
+      if (
+        !rawInstituteId ||
+        typeof rawInstituteId !== "string" ||
+        rawInstituteId.trim() === ""
+      ) {
+        console.warn(
+          "[attendance-warnings] Skipping settings document with missing or invalid instituteId",
+          { settingsId: settings._id?.toString() }
+        );
+        continue;
+      }
+      const instituteId = rawInstituteId.trim();
 
       const instituteStudents = studentsByInstitute.get(instituteId) || [];
-
       if (instituteStudents.length === 0) continue;
 
-      // Load attendance from MongoDB (scoped by institute) for all students in this institute
-      const instituteStudentUids = instituteStudents.map(s => s.firebaseUid).filter(Boolean);
-      const mongoAttendance = await loadMongoAttendanceByUser(db, instituteId, instituteStudentUids);
+      // Process students in batches to keep memory usage bounded
+      for (let i = 0; i < instituteStudents.length; i += STUDENT_BATCH_SIZE) {
+        const batch = instituteStudents.slice(i, i + STUDENT_BATCH_SIZE);
+        const batchUids = batch.map(s => s.uid || s.firebaseUid).filter(Boolean);
+        if (batchUids.length === 0) continue;
 
-      // Build attendanceByUser from mongoAttendance
-      const attendanceByUser = new Map();
-      for (const [uid, records] of mongoAttendance || []) {
-        attendanceByUser.set(uid, records);
-      }
+        // Load attendance records for this batch only
+        const records = await db.collection("attendance").find({
+          userId: { $in: batchUids },
+          instituteId,
+        }).toArray();
 
-      for (const student of instituteStudents) {
-        const studentUid = student.firebaseUid;
-        if (!studentUid) continue;
-
-        // Skip if warned recently (batch cooldown check)
-        if (recentWarningUserIds.has(studentUid)) {
-          continue;
+        const attendanceByUser = new Map(batchUids.map(uid => [uid, []]));
+        for (const record of records) {
+          const userRecords = attendanceByUser.get(record.userId);
+          if (userRecords) {
+            userRecords.push(record);
+          }
         }
 
-        const uid = student.uid || student.firebaseUid;
-        if (!uid) continue;
+        for (const student of batch) {
+          const uid = student.uid || student.firebaseUid;
+          if (!uid || recentWarningUserIds.has(uid)) continue;
 
-        // Use MongoDB attendance data (scoped by institute) instead of Firestore
-        const studentAttendance = attendanceByUser.get(uid) || [];
-        const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
+          const studentAttendance = attendanceByUser.get(uid) || [];
+          const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
 
-        if (evaluation.isBelowThreshold) {
-          const email = student.email;
-          const name = student.name || student.fullName || 'Student';
+          if (evaluation.isBelowThreshold) {
+            const email = student.email;
+            const name = student.name || student.fullName || "Student";
 
-          notificationsToInsert.push({
-            userId: uid,
-            title: 'Low Attendance Warning',
-            message: `Your current attendance is ${evaluation.percentage}%, which is below the required ${threshold}%. Please improve your attendance.`,
-            type: 'warning',
-            read: false,
-            createdAt: now,
-          });
-
-          warningLogsToInsert.push({
-            userId: uid,
-            percentage: evaluation.percentage,
-            threshold,
-            createdAt: now,
-          });
-
-          if (email) {
-            emailsToSend.push({
-              to_email: email,
-              to_name: name,
-              attendance_percentage: evaluation.percentage,
-              threshold,
+            notificationsToInsert.push({
+              userId: uid,
+              title: "Low Attendance Warning",
+              message: `Your current attendance is ${evaluation.percentage}%, which is below the required ${threshold}%. Please improve your attendance.`,
+              type: "warning",
+              read: false,
+              createdAt: now,
             });
+
+            warningLogsToInsert.push({
+              userId: uid,
+              percentage: evaluation.percentage,
+              threshold,
+              createdAt: now,
+            });
+
+            if (email) {
+              emailsToSend.push({
+                to_email: email,
+                to_name: name,
+                attendance_percentage: evaluation.percentage,
+                threshold,
+              });
+            }
+
+            totalWarnings++;
           }
+        }
+
+        if (notificationsToInsert.length >= FLUSH_THRESHOLD) {
+          await flushNotifications();
         }
       }
     }
@@ -289,14 +254,46 @@ export async function GET(request) {
     if (notificationsToInsert.length > 0) {
       await db.collection("notifications").insertMany(notificationsToInsert);
       await db.collection("warning_logs").insertMany(warningLogsToInsert);
+      for (const notif of notificationsToInsert) {
+        publishEvent("notifications", "warning", {
+          _id: notif._id?.toString?.() || notif._id,
+          recipientId: notif.userId,
+          title: notif.title,
+          message: notif.message,
+          type: notif.type,
+          read: false,
+          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+        }).catch(() => {});
+      }
     }
 
-    await sendWarningEmails(emailsToSend);
+    if (emailsToSend.length > 0) {
+      try {
+        const jobId = await enqueue(JOB_TYPES.SEND_BULK_EMAILS, {
+          emails: emailsToSend,
+        });
+        logger.info("[attendance-warnings] Queued bulk email job", {
+          jobId,
+          emailCount: emailsToSend.length,
+        });
+      } catch (queueErr) {
+        logger.error(
+          "[attendance-warnings] Failed to queue bulk email job",
+          {
+            error: queueErr.message,
+          }
+        );
+      }
+    }
+
+    emitWebhookEvent("warning.issued", {
+      totalWarnings,
+    });
 
     return NextResponse.json({
       success: true,
-      warningsIssued: notificationsToInsert.length,
-      message: `Issued ${notificationsToInsert.length} warnings.`,
+      warningsIssued: totalWarnings,
+      message: `Issued ${totalWarnings} warnings.`,
     });
   } catch (error) {
     console.error("Cron job error:", error);

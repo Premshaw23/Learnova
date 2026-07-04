@@ -12,6 +12,9 @@ export async function getOfflineDb() {
         store.createIndex("status", "status");
         store.createIndex("createdAt", "createdAt");
       }
+      if (!db.objectStoreNames.contains("student-labels")) {
+        db.createObjectStore("student-labels", { keyPath: "id" });
+      }
     },
   });
 }
@@ -53,4 +56,31 @@ export async function removePendingAction(id) {
 export async function clearPendingActions() {
   const db = await getOfflineDb();
   await db.clear(STORE_NAME);
+}
+
+export async function saveLabelsToOfflineStore(labels) {
+  try {
+    const db = await getOfflineDb();
+    const tx = db.transaction("student-labels", "readwrite");
+    const store = tx.objectStore("student-labels");
+    await store.put({
+      id: "cached-labels",
+      data: labels,
+      updatedAt: Date.now(),
+    });
+    await tx.done;
+  } catch (err) {
+    console.warn("Failed to cache labels offline:", err);
+  }
+}
+
+export async function getLabelsFromOfflineStore() {
+  try {
+    const db = await getOfflineDb();
+    const record = await db.get("student-labels", "cached-labels");
+    return record ? record.data : [];
+  } catch (err) {
+    console.warn("Failed to retrieve offline labels:", err);
+    return [];
+  }
 }

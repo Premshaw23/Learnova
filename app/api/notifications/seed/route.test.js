@@ -14,8 +14,14 @@ vi.mock("../../../../lib/error-handler", () => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error && (error.statusCode !== undefined || error.name === "AppError")) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
+          if (
+            error &&
+            (error.statusCode !== undefined || error.name === "AppError")
+          ) {
+            const payload =
+              error.originalMessage !== undefined
+                ? error.originalMessage
+                : error.message;
             return {
               status: error.statusCode || 500,
               json: async () => ({ error: payload }),
@@ -23,7 +29,9 @@ vi.mock("../../../../lib/error-handler", () => {
           }
           return {
             status: 500,
-            json: async () => ({ error: error.message || "Internal server error" }),
+            json: async () => ({
+              error: error.message || "Internal server error",
+            }),
           };
         }
       };
@@ -65,7 +73,9 @@ describe("notifications seed route", () => {
   });
 
   const createMockRequest = (headers = {}) => {
-    const headersMap = new Map(Object.entries({ "x-forwarded-for": "127.0.0.1", ...headers }));
+    const headersMap = new Map(
+      Object.entries({ "x-forwarded-for": "127.0.0.1", ...headers })
+    );
     return {
       headers: {
         get: (key) => headersMap.get(key.toLowerCase()) || null,
@@ -74,7 +84,10 @@ describe("notifications seed route", () => {
   };
 
   test("successfully seeds notifications for own account", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email_verified: true });
+    authenticateRequest.mockResolvedValue({
+      uid: "user-123",
+      email_verified: true,
+    });
     parseJSON.mockResolvedValue({ userId: "user-123" });
 
     const response = await POST(createMockRequest());
@@ -90,7 +103,10 @@ describe("notifications seed route", () => {
   });
 
   test("rejects request with 400 Bad Request if userId is missing from request body", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email_verified: true });
+    authenticateRequest.mockResolvedValue({
+      uid: "user-123",
+      email_verified: true,
+    });
     parseJSON.mockResolvedValue({});
 
     const response = await POST(createMockRequest());
@@ -99,22 +115,34 @@ describe("notifications seed route", () => {
   });
 
   test("rejects request with 403 Forbidden if trying to seed notifications for another user", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email_verified: true });
+    authenticateRequest.mockResolvedValue({
+      uid: "user-123",
+      email_verified: true,
+    });
     parseJSON.mockResolvedValue({ userId: "other-user-456" });
 
     const response = await POST(createMockRequest());
-    await assertApiError(response, 403, "Forbidden: You can only seed notifications for your own account");
+    await assertApiError(
+      response,
+      403,
+      "Forbidden: You can only seed notifications for your own account"
+    );
   });
 
   test("rejects request with 401 if unauthorized", async () => {
-    authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+    authenticateRequest.mockRejectedValue(
+      new UnauthorizedError("Unauthorized")
+    );
 
     const response = await POST(createMockRequest());
     await assertApiError(response, 401, "Unauthorized");
   });
 
   test("rejects request with 429 if rate limit is exceeded", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123", email_verified: true });
+    authenticateRequest.mockResolvedValue({
+      uid: "user-123",
+      email_verified: true,
+    });
     parseJSON.mockResolvedValue({ userId: "user-123" });
     checkRateLimit.mockResolvedValue({ allowed: false });
 

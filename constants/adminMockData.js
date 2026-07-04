@@ -10,7 +10,7 @@ export const DEFAULT_CRITICAL_ALERTS = [
     severity: "info",
     message: "System operations normal. Monitoring active.",
     time: "Just now",
-  }
+  },
 ];
 
 export const DEFAULT_FEATURE_USAGE = {

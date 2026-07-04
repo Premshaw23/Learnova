@@ -1,5 +1,9 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { authenticateRequest, parseJSON, withErrorHandler } from "@/lib/error-handler";
+import {
+  authenticateRequest,
+  parseJSON,
+  withErrorHandler,
+} from "@/lib/error-handler";
 import { callGroq } from "@/lib/ai/groq";
 import { checkRateLimit } from "@/lib/rateLimit";
 
@@ -12,6 +16,7 @@ export const POST = withErrorHandler(async (request) => {
   const decodedToken = await authenticateRequest(request);
 
   const rateLimitResult = await checkRateLimit(decodedToken.uid);
+
   if (!rateLimitResult.allowed) {
     return jsonError("Too many requests. Please try again later.", 429);
   }
@@ -35,11 +40,15 @@ export const POST = withErrorHandler(async (request) => {
         "Complete your first focus session to unlock deeper insights.",
       recommendation:
         "Try a 25-minute focus session today to begin building consistency.",
+      weeklyGoal: "Complete at least 5 focus sessions this week.",
+      focusPattern: "Not enough productivity data is available yet.",
+      nextAction: "Start your first focus session today.",
+      productivityScore: 10,
     });
   }
 
   const prompt = `
-You are an expert productivity coach.
+You are an expert productivity coach and study mentor.
 
 Analyze the following productivity metrics:
 
@@ -50,20 +59,33 @@ Focus Streak: ${focusStreak} days
 Consistency Score: ${consistencyScore}%
 Peak Focus Hours: ${peakFocusHours}
 
+Provide detailed productivity insights.
+
 Return ONLY valid JSON.
 
 Format:
 
 {
-  "strength": "one concise strength",
-  "improvement": "one concise improvement area",
-  "recommendation": "one actionable recommendation"
+"strength": "one concise strength",
+"improvement": "one concise improvement area",
+"recommendation": "one actionable recommendation",
+"weeklyGoal": "specific measurable goal for next 7 days",
+"focusPattern": "analysis of focus behavior",
+"nextAction": "immediate next step user should take",
+"productivityScore": 0
 }
 
-Do not include markdown.
-Do not include explanations.
-Do not wrap JSON in code blocks.
-`;
+Rules:
+
+* productivityScore must be between 0 and 100
+* weeklyGoal must be measurable and actionable
+* focusPattern should be concise
+* nextAction should be a single clear action
+* Return valid JSON only
+* No markdown
+* No explanations
+* No code blocks
+  `;
 
   const aiResponse = await callGroq(prompt);
 

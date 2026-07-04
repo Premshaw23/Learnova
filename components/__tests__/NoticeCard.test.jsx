@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import NoticeCard from "../NoticeCard";
 
-const mockPdfInstance = {
+const mockPdfInstance = vi.hoisted(() => ({
   internal: {
     pageSize: {
       getWidth: vi.fn(() => 210),
@@ -13,7 +13,10 @@ const mockPdfInstance = {
   setFont: vi.fn(),
   setFontSize: vi.fn(),
   text: vi.fn(),
-  splitTextToSize: vi.fn(() => ["Exam Schedule Updated", "The exam timetable has been updated for next week." ]),
+  splitTextToSize: vi.fn(() => [
+    "Exam Schedule Updated",
+    "The exam timetable has been updated for next week.",
+  ]),
   addPage: vi.fn(),
   save: vi.fn(),
   setFillColor: vi.fn(),
@@ -24,10 +27,11 @@ const mockPdfInstance = {
   getTextWidth: vi.fn(() => 15),
   roundedRect: vi.fn(),
   setTextColor: vi.fn(),
-};
+}));
 
 vi.mock("jspdf", () => ({
-  jsPDF: vi.fn(() => mockPdfInstance),
+  default: vi.fn(function () { return mockPdfInstance; }),
+  jsPDF: vi.fn(function () { return mockPdfInstance; }),
 }));
 
 const baseNotice = {
@@ -87,12 +91,18 @@ describe("NoticeCard", () => {
     render(<NoticeCard {...defaultProps} />);
 
     expect(
-      screen.getByRole("button", { name: /download exam schedule updated as text/i })
+      screen.getByRole("button", {
+        name: /download exam schedule updated as text/i,
+      })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /download exam schedule updated as pdf/i })
+      screen.getByRole("button", {
+        name: /download exam schedule updated as pdf/i,
+      })
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /share exam schedule updated/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /share exam schedule updated/i })
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /read/i }));
 
@@ -107,7 +117,11 @@ describe("NoticeCard", () => {
 
     render(<NoticeCard {...defaultProps} />);
 
-    await user.click(screen.getByRole("button", { name: /download exam schedule updated as text/i }));
+    await user.click(
+      screen.getByRole("button", {
+        name: /download exam schedule updated as text/i,
+      })
+    );
 
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
@@ -126,10 +140,16 @@ describe("NoticeCard", () => {
 
     render(<NoticeCard {...defaultProps} />);
 
-    await user.click(screen.getByRole("button", { name: /download exam schedule updated as pdf/i }));
+    await user.click(
+      screen.getByRole("button", {
+        name: /download exam schedule updated as pdf/i,
+      })
+    );
 
     expect(mockPdfInstance.setFont).toHaveBeenCalledWith("helvetica", "bold");
-    expect(mockPdfInstance.save).toHaveBeenCalledWith("exam-schedule-updated.pdf");
+    expect(mockPdfInstance.save).toHaveBeenCalledWith(
+      "exam-schedule-updated.pdf"
+    );
   });
 
   test("shares the notice when the Web Share API is available", async () => {
@@ -143,13 +163,17 @@ describe("NoticeCard", () => {
 
     render(<NoticeCard {...defaultProps} />);
 
-    await user.click(screen.getByRole("button", { name: /share exam schedule updated/i }));
+    await user.click(
+      screen.getByRole("button", { name: /share exam schedule updated/i })
+    );
 
     await waitFor(() => expect(shareMock).toHaveBeenCalledTimes(1));
     expect(shareMock).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Exam Schedule Updated",
-        text: expect.stringContaining("The exam timetable has been updated for next week."),
+        text: expect.stringContaining(
+          "The exam timetable has been updated for next week."
+        ),
       })
     );
   });

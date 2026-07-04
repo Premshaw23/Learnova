@@ -1,9 +1,16 @@
 import React, { useState, useRef } from "react";
-import { Upload, X, FileText, CheckCircle, AlertCircle, Loader2, Download } from "lucide-react";
+import {
+  Upload,
+  X,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Download,
+} from "lucide-react";
 import Papa from "papaparse";
 import { toast } from "react-hot-toast";
 import { apiFetch } from "@/lib/apiClient";
-
 
 const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
   const [file, setFile] = useState(null);
@@ -42,7 +49,9 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
       ["Jane Smith", "CS102", "jane.smith@example.com", "Computer Science"],
     ];
 
-    const csvContent = "data:text/csv;charset=utf-8," + templateData.map((e) => e.join(",")).join("\n");
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      templateData.map((e) => e.join(",")).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -83,18 +92,33 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
         data.forEach((row, index) => {
           const { Name, "Roll No": RollNo, Email, Department } = row;
           if (!Name || !RollNo || !Email || !Department) {
-            invalidRows.push({ row: index + 2, reason: "Missing required fields" });
+            invalidRows.push({
+              row: index + 2,
+              reason: "Missing required fields",
+            });
           } else if (!/^\S+@\S+\.\S+$/.test(Email)) {
-            invalidRows.push({ row: index + 2, reason: "Invalid email format" });
+            invalidRows.push({
+              row: index + 2,
+              reason: "Invalid email format",
+            });
           } else {
-            validRows.push({ name: Name, rollNo: RollNo, email: Email, department: Department });
+            validRows.push({
+              name: Name,
+              rollNo: RollNo,
+              email: Email,
+              department: Department,
+            });
           }
         });
 
         setProgress(50);
 
         if (validRows.length === 0) {
-          setResults({ success: 0, failed: invalidRows.length, errors: invalidRows });
+          setResults({
+            success: 0,
+            failed: invalidRows.length,
+            errors: invalidRows,
+          });
           setIsUploading(false);
           return;
         }
@@ -119,7 +143,8 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
           if (response.ok) {
             setResults({
               success: resultData.successfulImports || 0,
-              failed: (resultData.failedImports?.length || 0) + invalidRows.length,
+              failed:
+                (resultData.failedImports?.length || 0) + invalidRows.length,
               errors: [...invalidRows, ...(resultData.failedImports || [])],
             });
             toast.success("Import process completed");
@@ -130,7 +155,11 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
         } catch (error) {
           console.error("Import error:", error);
           toast.error(error.message || "An error occurred during import");
-          setResults({ success: 0, failed: validRows.length + invalidRows.length, errors: [{ reason: "Network or Server Error" }] });
+          setResults({
+            success: 0,
+            failed: validRows.length + invalidRows.length,
+            errors: [{ reason: "Network or Server Error" }],
+          });
         } finally {
           setProgress(100);
           setIsUploading(false);
@@ -171,7 +200,9 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
           {!results ? (
             <div className="space-y-6">
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-blue-400 mb-2">Instructions</h3>
+                <h3 className="text-sm font-semibold text-blue-400 mb-2">
+                  Instructions
+                </h3>
                 <ul className="text-sm text-gray-300 list-disc list-inside space-y-1">
                   <li>Upload a CSV file containing student details.</li>
                   <li>Required columns: Name, Roll No, Email, Department.</li>
@@ -180,6 +211,7 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
                 <button
                   onClick={downloadTemplate}
                   className="mt-3 text-sm text-blue-400 hover:text-blue-300 flex items-center underline"
+                  aria-label="Action button"
                 >
                   <Download className="w-4 h-4 mr-1" /> Download CSV Template
                 </button>
@@ -187,7 +219,9 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
 
               <div
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                  file ? "border-blue-500 bg-blue-500/5" : "border-gray-700 hover:border-gray-500 bg-black/20"
+                  file
+                    ? "border-blue-500 bg-blue-500/5"
+                    : "border-gray-700 hover:border-gray-500 bg-black/20"
                 }`}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
@@ -199,12 +233,14 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
                   ref={fileInputRef}
                   onChange={handleFileChange}
                 />
-                
+
                 {file ? (
                   <div className="flex flex-col items-center">
                     <FileText className="w-12 h-12 text-blue-400 mb-3" />
                     <p className="text-white font-medium">{file.name}</p>
-                    <p className="text-sm text-gray-400 mt-1">{(file.size / 1024).toFixed(2)} KB</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {(file.size / 1024).toFixed(2)} KB
+                    </p>
                     {!isUploading && (
                       <button
                         onClick={() => setFile(null)}
@@ -217,7 +253,9 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
                 ) : (
                   <div className="flex flex-col items-center">
                     <Upload className="w-12 h-12 text-gray-500 mb-3" />
-                    <p className="text-gray-300 font-medium mb-1">Drag and drop your CSV file here</p>
+                    <p className="text-gray-300 font-medium mb-1">
+                      Drag and drop your CSV file here
+                    </p>
                     <p className="text-gray-500 text-sm mb-4">or</p>
                     <button
                       onClick={() => fileInputRef.current?.click()}
@@ -233,7 +271,9 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Importing students...</span>
-                    <span className="text-blue-400 font-medium">{progress}%</span>
+                    <span className="text-blue-400 font-medium">
+                      {progress}%
+                    </span>
                   </div>
                   <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
                     <div
@@ -249,12 +289,18 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex flex-col items-center justify-center text-center">
                   <CheckCircle className="w-8 h-8 text-green-400 mb-2" />
-                  <div className="text-2xl font-bold text-green-400">{results.success}</div>
-                  <div className="text-sm text-gray-400">Successfully Imported</div>
+                  <div className="text-2xl font-bold text-green-400">
+                    {results.success}
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    Successfully Imported
+                  </div>
                 </div>
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex flex-col items-center justify-center text-center">
                   <AlertCircle className="w-8 h-8 text-red-400 mb-2" />
-                  <div className="text-2xl font-bold text-red-400">{results.failed}</div>
+                  <div className="text-2xl font-bold text-red-400">
+                    {results.failed}
+                  </div>
                   <div className="text-sm text-gray-400">Failed Records</div>
                 </div>
               </div>
@@ -266,10 +312,14 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
                   </div>
                   <div className="max-h-48 overflow-y-auto p-4 space-y-2">
                     {results.errors.map((err, idx) => (
-                      <div key={idx} className="flex items-start text-sm bg-red-500/5 p-2 rounded">
+                      <div
+                        key={idx}
+                        className="flex items-start text-sm bg-red-500/5 p-2 rounded"
+                      >
                         <span className="text-red-400 mr-2">•</span>
                         <span className="text-gray-300">
-                          {err.row ? `Row ${err.row}: ` : ""}{err.reason || err.error || "Unknown error"}
+                          {err.row ? `Row ${err.row}: ` : ""}
+                          {err.reason || err.error || "Unknown error"}
                         </span>
                       </div>
                     ))}
@@ -310,12 +360,14 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
               <button
                 onClick={resetModal}
                 className="px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+                aria-label="Action button"
               >
                 Import More
               </button>
               <button
                 onClick={onClose}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors shadow-lg"
+                aria-label="Action button"
               >
                 Done
               </button>

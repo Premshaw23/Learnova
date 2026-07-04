@@ -2,7 +2,7 @@
 import { createContext, useContext } from "react";
 import { useAuth as useFirebaseAuth } from "@/hooks/useAuth";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const auth = useFirebaseAuth();

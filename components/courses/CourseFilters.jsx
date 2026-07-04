@@ -2,7 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Search, X, LayoutGrid, Terminal, Database, Palette } from "lucide-react";
+import {
+  Search,
+  X,
+  LayoutGrid,
+  Terminal,
+  Database,
+  Palette,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 const CATEGORIES = [
@@ -120,7 +127,9 @@ export default function CourseFilters() {
                     : "bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300 hover:text-white"
                 }`}
               >
-                <Icon className={`w-4 h-4 transition-transform duration-300 ${isSelected ? "scale-110" : ""}`} />
+                <Icon
+                  className={`w-4 h-4 transition-transform duration-300 ${isSelected ? "scale-110" : ""}`}
+                />
                 {cat.label}
               </button>
             );

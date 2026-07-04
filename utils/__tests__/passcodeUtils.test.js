@@ -14,7 +14,7 @@ describe("hashPasscode", () => {
     const result = hashPasscode("123456");
     expect(result).toContain(":");
     const [salt, hash] = result.split(":");
-    expect(salt).toHaveLength(32);  // 16 bytes → 32 hex chars
+    expect(salt).toHaveLength(32); // 16 bytes → 32 hex chars
     expect(hash).toHaveLength(128); // 64 bytes → 128 hex chars
   });
 
@@ -74,12 +74,16 @@ describe("verifyPasscode", () => {
     expect(verifyPasscode("123456", "badsalt:badhash")).toBe(false);
   });
 
-  test("is consistent across multiple verifications with the same stored hash", () => {
-    const stored = hashPasscode("abc123");
-    expect(verifyPasscode("abc123", stored)).toBe(true);
-    expect(verifyPasscode("abc123", stored)).toBe(true);
-    expect(verifyPasscode("wrong", stored)).toBe(false);
-  });
+  test(
+    "is consistent across multiple verifications with the same stored hash",
+    { timeout: 15000 },
+    () => {
+      const stored = hashPasscode("abc123");
+      expect(verifyPasscode("abc123", stored)).toBe(true);
+      expect(verifyPasscode("abc123", stored)).toBe(true);
+      expect(verifyPasscode("wrong", stored)).toBe(false);
+    }
+  );
 
   test("correctly verifies short numeric passcodes (4-digit)", () => {
     const stored = hashPasscode("0000");

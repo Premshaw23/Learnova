@@ -27,14 +27,18 @@ describe("AuthForm", () => {
   test("renders login form with correct heading", () => {
     render(<AuthForm {...defaultProps} />);
 
-    expect(screen.getByRole("heading", { name: "Welcome Back" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Welcome Back" })
+    ).toBeInTheDocument();
     expect(screen.getByText(/sign in to your student/i)).toBeInTheDocument();
   });
 
   test("renders signup form when isLogin is false", () => {
     render(<AuthForm {...defaultProps} isLogin={false} />);
 
-    expect(screen.getByRole("heading", { name: "Create Account" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Create Account" })
+    ).toBeInTheDocument();
     expect(screen.getByText(/create your student/i)).toBeInTheDocument();
   });
 
@@ -49,7 +53,9 @@ describe("AuthForm", () => {
   });
 
   test("shows institute name field when role is institute on signup", () => {
-    render(<AuthForm {...defaultProps} isLogin={false} selectedRole="institute" />);
+    render(
+      <AuthForm {...defaultProps} isLogin={false} selectedRole="institute" />
+    );
 
     expect(screen.getByText("Institute Name")).toBeInTheDocument();
   });
@@ -82,7 +88,9 @@ describe("AuthForm", () => {
   });
 
   test("displays submit error when present in errors object", () => {
-    render(<AuthForm {...defaultProps} errors={{ submit: "Invalid credentials" }} />);
+    render(
+      <AuthForm {...defaultProps} errors={{ submit: "Invalid credentials" }} />
+    );
 
     expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
   });
@@ -111,7 +119,9 @@ describe("AuthForm", () => {
     const user = userEvent.setup();
     render(<AuthForm {...defaultProps} />);
 
-    const googleBtn = screen.getByRole("button", { name: /continue with google/i });
+    const googleBtn = screen.getByRole("button", {
+      name: /continue with google/i,
+    });
     await user.click(googleBtn);
 
     expect(defaultProps.onGoogleLogin).toHaveBeenCalledTimes(1);

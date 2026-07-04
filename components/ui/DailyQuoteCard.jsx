@@ -5,16 +5,66 @@ import { motion } from "framer-motion";
 import { Quote } from "lucide-react";
 
 const QUOTES = [
-  { id: 1, text: "Learning never exhausts the mind.", author: "Leonardo da Vinci", category: "learning" },
-  { id: 2, text: "Programs must be written for people to read, and only incidentally for machines to execute.", author: "Harold Abelson", category: "programming" },
-  { id: 3, text: "The expert in anything was once a beginner.", author: "Helen Hayes", category: "learning" },
-  { id: 4, text: "Focus on being productive instead of busy.", author: "Tim Ferriss", category: "productivity" },
-  { id: 5, text: "Creativity is intelligence having fun.", author: "Albert Einstein", category: "creativity" },
-  { id: 6, text: "Code is like humor. When you have to explain it, it’s bad.", author: "Cory House", category: "programming" },
-  { id: 7, text: "Deep work is the superpower of the 21st century.", author: "Cal Newport", category: "focus" },
-  { id: 8, text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi", category: "learning" },
-  { id: 9, text: "Simplicity is the soul of efficiency.", author: "Austin Freeman", category: "productivity" },
-  { id: 10, text: "The only way to do great work is to love what you do.", author: "Steve Jobs", category: "focus" }
+  {
+    id: 1,
+    text: "Learning never exhausts the mind.",
+    author: "Leonardo da Vinci",
+    category: "learning",
+  },
+  {
+    id: 2,
+    text: "Programs must be written for people to read, and only incidentally for machines to execute.",
+    author: "Harold Abelson",
+    category: "programming",
+  },
+  {
+    id: 3,
+    text: "The expert in anything was once a beginner.",
+    author: "Helen Hayes",
+    category: "learning",
+  },
+  {
+    id: 4,
+    text: "Focus on being productive instead of busy.",
+    author: "Tim Ferriss",
+    category: "productivity",
+  },
+  {
+    id: 5,
+    text: "Creativity is intelligence having fun.",
+    author: "Albert Einstein",
+    category: "creativity",
+  },
+  {
+    id: 6,
+    text: "Code is like humor. When you have to explain it, it’s bad.",
+    author: "Cory House",
+    category: "programming",
+  },
+  {
+    id: 7,
+    text: "Deep work is the superpower of the 21st century.",
+    author: "Cal Newport",
+    category: "focus",
+  },
+  {
+    id: 8,
+    text: "Live as if you were to die tomorrow. Learn as if you were to live forever.",
+    author: "Mahatma Gandhi",
+    category: "learning",
+  },
+  {
+    id: 9,
+    text: "Simplicity is the soul of efficiency.",
+    author: "Austin Freeman",
+    category: "productivity",
+  },
+  {
+    id: 10,
+    text: "The only way to do great work is to love what you do.",
+    author: "Steve Jobs",
+    category: "focus",
+  },
 ];
 
 /**
@@ -79,14 +129,16 @@ export default function DailyQuoteCard() {
     >
       {/* Subtle Glow Effect */}
       <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors duration-500" />
-      
+
       <div className="flex flex-col gap-4 relative z-10">
         <div className="flex items-start justify-between">
           <div className="p-2 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-indigo-400">
             <Quote className="w-5 h-5 fill-indigo-400/10" />
           </div>
           {dailyQuote.category && (
-            <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border ${categoryColors[dailyQuote.category] || categoryColors.learning}`}>
+            <span
+              className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border ${categoryColors[dailyQuote.category] || categoryColors.learning}`}
+            >
               {dailyQuote.category}
             </span>
           )}

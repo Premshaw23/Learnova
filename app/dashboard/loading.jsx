@@ -38,14 +38,14 @@ export default function DashboardLoading() {
             <div className="flex justify-between items-center">
               <Skeleton className="h-6 w-32 bg-slate-800/80" />
               <Skeleton className="h-4 w-16 bg-slate-800/60" />
-           </div>
-         {/* 👇 Updated to a 3-column layout showcasing your beautiful skeleton cards */}
-         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-         </div>
-        </div>
+            </div>
+            {/* 👇 Updated to a 3-column layout showcasing your beautiful skeleton cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          </div>
 
           {/* List panel */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">

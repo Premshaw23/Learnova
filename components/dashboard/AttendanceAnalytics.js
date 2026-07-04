@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
 import { db } from "@/lib/firebaseConfig";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Doughnut, Line, Bar } from "react-chartjs-2";
@@ -30,7 +30,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler,
+  Filler
 );
 
 const DEFAULT_SUBJECT_DATA = [
@@ -113,7 +113,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
 
         const attendanceQuery = query(
           collection(db, "attendance_records"),
-          where("userId", "==", userId),
+          where("userId", "==", userId)
         );
 
         const snapshot = await getDocs(attendanceQuery);
@@ -130,7 +130,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
         if (totalAbsent < 0) totalAbsent = 0;
 
         const attendancePercentage = Math.round(
-          (totalPresent / safeTotalClasses) * 100,
+          (totalPresent / safeTotalClasses) * 100
         );
 
         setAttendanceRecords(records);
@@ -162,7 +162,8 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
   const subjectPerformance = useMemo(() => {
     const subjectMap = new Map();
 
-    const source = attendanceRecords.length > 0 ? attendanceRecords : recentActivity;
+    const source =
+      attendanceRecords.length > 0 ? attendanceRecords : recentActivity;
 
     source.forEach((entry) => {
       const subject = entry.subject || "General";
@@ -193,7 +194,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
     const recordsByDate = new Set(
       attendanceRecords
         .filter((record) => typeof record.date === "string")
-        .map((record) => record.date),
+        .map((record) => record.date)
     );
 
     return Array.from({ length: 7 }).map((_, index) => {
@@ -227,9 +228,12 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
     return Array.from({ length: 6 }).map((_, index) => {
       const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      const weekdays = countWeekdaysInMonth(date.getFullYear(), date.getMonth());
+      const weekdays = countWeekdaysInMonth(
+        date.getFullYear(),
+        date.getMonth()
+      );
       const attendance = Math.round(
-        ((recordsByMonth.get(monthKey) || 0) / Math.max(1, weekdays)) * 100,
+        ((recordsByMonth.get(monthKey) || 0) / Math.max(1, weekdays)) * 100
       );
 
       return {
@@ -238,6 +242,34 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
       };
     });
   }, [attendanceRecords]);
+  const trendSummary = useMemo(() => {
+    const trendData = activeTrendTab === "weekly" ? weeklyTrend : monthlyTrend;
+
+    if (trendData.length < 2) {
+      return {
+        trend: "stable",
+        change: 0,
+      };
+    }
+
+    const current = trendData[trendData.length - 1].attendance;
+
+    const previous = trendData[trendData.length - 2].attendance;
+
+    const change = current - previous;
+
+    let trend = "stable";
+
+    if (change > 0) trend = "increase";
+    if (change < 0) trend = "decrease";
+
+    return {
+      trend,
+      change,
+    };
+  }, [weeklyTrend, monthlyTrend, activeTrendTab]);
+
+  const isAtRisk = stats.percentage < 75;
 
   const donutData = useMemo(
     () => ({
@@ -245,14 +277,17 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
       datasets: [
         {
           data: [stats.totalPresent, stats.totalAbsent],
-          backgroundColor: ["rgba(79, 70, 229, 0.9)", "rgba(239, 68, 68, 0.85)"],
+          backgroundColor: [
+            "rgba(79, 70, 229, 0.9)",
+            "rgba(239, 68, 68, 0.85)",
+          ],
           borderColor: ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.1)"],
           borderWidth: 2,
           hoverOffset: 10,
         },
       ],
     }),
-    [stats.totalPresent, stats.totalAbsent],
+    [stats.totalPresent, stats.totalAbsent]
   );
 
   const trendData = useMemo(() => {
@@ -295,7 +330,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
         },
       ],
     }),
-    [subjectPerformance],
+    [subjectPerformance]
   );
 
   const commonOptions = {
@@ -385,7 +420,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {['weekly', 'monthly'].map((tab) => (
+          {["weekly", "monthly"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTrendTab(tab)}
@@ -398,6 +433,65 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
               {tab.charAt(0).toUpperCase() + tab.slice(1)} Trend
             </button>
           ))}
+        </div>
+      </div>
+      <div className="mb-6 rounded-3xl border border-slate-200/70 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-5">
+        <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+          Attendance Trend Summary
+        </h4>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="rounded-2xl bg-white dark:bg-slate-800 p-4">
+            <p className="text-sm text-gray-500">Current Attendance</p>
+
+            <p className="text-3xl font-bold">{stats.percentage}%</p>
+          </div>
+
+          <div className="rounded-2xl bg-white dark:bg-slate-800 p-4">
+            <p className="text-sm text-gray-500 mb-2">Trend Status</p>
+
+            <div className="flex items-center gap-2">
+              {trendSummary.trend === "increase" && (
+                <>
+                  <TrendingUp className="w-5 h-5 text-green-500" />
+                  <span className="text-green-500 font-medium">
+                    Improved by {Math.abs(trendSummary.change)}%
+                  </span>
+                </>
+              )}
+
+              {trendSummary.trend === "decrease" && (
+                <>
+                  <TrendingDown className="w-5 h-5 text-red-500" />
+                  <span className="text-red-500 font-medium">
+                    Decreased by {Math.abs(trendSummary.change)}%
+                  </span>
+                </>
+              )}
+
+              {trendSummary.trend === "stable" && (
+                <>
+                  <Minus className="w-5 h-5 text-yellow-500" />
+                  <span className="text-yellow-500 font-medium">
+                    Stable Attendance
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-white dark:bg-slate-800 p-4">
+            <p className="text-sm text-gray-500 mb-2">Risk Status</p>
+
+            {isAtRisk ? (
+              <div className="flex items-center gap-2 text-red-500">
+                <AlertTriangle className="w-5 h-5" />
+                <span>At Risk (&lt;75%)</span>
+              </div>
+            ) : (
+              <div className="text-green-500 font-medium">Good Standing</div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -414,26 +508,29 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
                 </p>
               </div>
               <div className="w-32 h-32">
-                <Doughnut data={donutData} options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  cutout: "70%",
-                  plugins: {
-                    legend: {
-                      position: "bottom",
-                      labels: {
-                        color: "rgba(100, 116, 139, 0.9)",
-                        boxWidth: 12,
-                        padding: 20,
+                <Doughnut
+                  data={donutData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: "70%",
+                    plugins: {
+                      legend: {
+                        position: "bottom",
+                        labels: {
+                          color: "rgba(100, 116, 139, 0.9)",
+                          boxWidth: 12,
+                          padding: 20,
+                        },
+                      },
+                      tooltip: {
+                        backgroundColor: "rgba(15, 23, 42, 0.95)",
+                        titleColor: "#fff",
+                        bodyColor: "#e2e8f0",
                       },
                     },
-                    tooltip: {
-                      backgroundColor: "rgba(15, 23, 42, 0.95)",
-                      titleColor: "#fff",
-                      bodyColor: "#e2e8f0",
-                    },
-                  },
-                }} />
+                  }}
+                />
               </div>
             </div>
 
@@ -479,7 +576,8 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
             </h4>
           </div>
           <div className="text-sm text-slate-500 dark:text-slate-400">
-            Highest rate {Math.max(...subjectPerformance.map((item) => item.rate), 0)}%
+            Highest rate{" "}
+            {Math.max(...subjectPerformance.map((item) => item.rate), 0)}%
           </div>
         </div>
         <div className="h-80">
