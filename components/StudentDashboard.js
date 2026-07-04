@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
 import { useIsMounted } from "@/hooks/useIsMounted";
+import RecentlyViewed from "@/components/RecentlyViewed";
 
 const AchievementSection = dynamic(
   () => import("./AchievementSection"),
@@ -407,6 +408,11 @@ const StudentDashboard = () => {
       {/* Attendance Insights */}
       <div className="max-w-7xl mx-auto mt-6 px-6">
         <AttendanceInsights recentActivity={recentActivity} />
+      </div>
+
+      {/* Recently Viewed */}
+      <div className="max-w-7xl mx-auto mt-6 px-6">
+        <RecentlyViewed />
       </div>
 
       {/* Adaptive Content Sections */}
