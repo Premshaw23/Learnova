@@ -50,7 +50,11 @@ export const POST = withErrorHandler(async (request) => {
     createdBy: decodedToken.uid,
   });
 
-  return jsonSuccess({ webhook }, 201);
+  return jsonSuccess({
+    webhook,
+    secret,
+    message: "Save this secret securely. It will not be shown again.",
+  }, 201);
 });
 
 export const GET = withErrorHandler(async (request) => {
