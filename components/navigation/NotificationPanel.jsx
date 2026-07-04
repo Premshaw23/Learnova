@@ -6,7 +6,11 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useNotices } from "@/contexts/FirestoreContext";
 import { useAuth } from "@/hooks/useAuth";
 import { dropdownVariants } from "./constants";
-import { dropdownPanelClass, glassPanelStyle, iconBtnClass } from "./glassStyles";
+import {
+  dropdownPanelClass,
+  glassPanelStyle,
+  iconBtnClass,
+} from "./glassStyles";
 
 export default function NotificationPanel({
   isOpen,
@@ -23,7 +27,9 @@ export default function NotificationPanel({
   const { notices } = useNotices();
   const { userProfile } = useAuth();
   const readNoticeIds = new Set(userProfile?.readNotices || []);
-  const unreadNoticeCount = notices.filter((n) => !readNoticeIds.has(n.id)).length;
+  const unreadNoticeCount = notices.filter(
+    (n) => !readNoticeIds.has(n.id)
+  ).length;
 
   // Combined badge — show dot if either notifications OR notices are unread
   const hasAnyUnread = unreadCount > 0 || unreadNoticeCount > 0;
@@ -95,8 +101,9 @@ export default function NotificationPanel({
             </div>
 
             {/* Unread notices summary link */}
-{unreadNoticeCount > 0 && (
-              <a href="/notices"
+            {unreadNoticeCount > 0 && (
+              <a
+                href="/notices"
                 className="flex items-center justify-between border-b border-zinc-100/60 dark:border-white/6 px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
               >
                 <div className="flex items-center gap-2">
@@ -104,7 +111,8 @@ export default function NotificationPanel({
                     <Bell className="h-3.5 w-3.5" />
                   </span>
                   <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                    {unreadNoticeCount} unread notice{unreadNoticeCount !== 1 ? "s" : ""}
+                    {unreadNoticeCount} unread notice
+                    {unreadNoticeCount !== 1 ? "s" : ""}
                   </span>
                 </div>
                 <span className="text-xs text-indigo-500 font-semibold">

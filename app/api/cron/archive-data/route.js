@@ -10,17 +10,20 @@ export async function GET(req) {
     // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     //   return new Response('Unauthorized', { status: 401 });
     // }
-    // Since we don't have CRON_SECRET configured for sure in this environment, 
+    // Since we don't have CRON_SECRET configured for sure in this environment,
     // we'll leave it open for demonstration/manual triggering or rely on Vercel's network layer.
 
     initAdmin();
     const db = getFirestore();
 
     // Fetch config
-    const settingsDoc = await db.collection("settings").doc("data-retention").get();
+    const settingsDoc = await db
+      .collection("settings")
+      .doc("data-retention")
+      .get();
     let config = {
       attendanceRetentionMonths: 24, // default 2 years
-      biometricPurgeMonths: 12 // default 1 year of inactivity
+      biometricPurgeMonths: 12, // default 1 year of inactivity
     };
 
     if (settingsDoc.exists) {
@@ -42,14 +45,15 @@ export async function GET(req) {
     // 1. Archive Old Attendance Logs
     // We fetch attendance records older than threshold
     // (If the dataset is large, in a real prod app we'd paginate this or use batch operations)
-    const attendanceSnapshot = await db.collection("attendance")
+    const attendanceSnapshot = await db
+      .collection("attendance")
       .where("timestamp", "<", attendanceThreshold)
       .limit(500) // limit for safety in a single function execution
       .get();
 
     if (!attendanceSnapshot.empty) {
       const batch = db.batch();
-      attendanceSnapshot.forEach(doc => {
+      attendanceSnapshot.forEach((doc) => {
         // Ideally we'd move to a cold-storage collection before deleting.
         // For now, we simulate archiving by deleting from primary hot storage.
         batch.delete(doc.ref);
@@ -60,20 +64,21 @@ export async function GET(req) {
 
     // 2. Purge Inactive Biometric Data
     // We look for users whose lastLogin was before the threshold, and who still have faceDescriptors
-    const usersSnapshot = await db.collection("users")
+    const usersSnapshot = await db
+      .collection("users")
       .where("lastLogin", "<", biometricThreshold)
       .limit(500)
       .get();
 
     if (!usersSnapshot.empty) {
       const batch = db.batch();
-      usersSnapshot.forEach(doc => {
+      usersSnapshot.forEach((doc) => {
         const data = doc.data();
         if (data.faceDescriptors || data.hasRegisteredFace) {
           batch.update(doc.ref, {
             faceDescriptors: null, // Purge biometric array
             hasRegisteredFace: false,
-            _biometricPurgedAt: new Date()
+            _biometricPurgedAt: new Date(),
           });
           biometricsPurged++;
         }
@@ -92,21 +97,26 @@ export async function GET(req) {
         attendanceArchived,
         biometricsPurged,
         attendanceRetentionMonths,
-        biometricPurgeMonths
-      }
+        biometricPurgeMonths,
+      },
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Data retention policy executed successfully",
-      stats: {
-        attendanceArchived,
-        biometricsPurged
-      }
-    }, { status: 200 });
-
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Data retention policy executed successfully",
+        stats: {
+          attendanceArchived,
+          biometricsPurged,
+        },
+      },
+      { status: 200 }
+    );
   } catch (err) {
     console.error("Cron Error executing data retention policy:", err);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

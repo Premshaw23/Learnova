@@ -104,7 +104,9 @@ export async function recordAttendance({
   let response;
   try {
     if (!navigator.onLine) {
-      console.log("[AttendanceService] Device is offline. Queuing attendance in IndexedDB.");
+      console.log(
+        "[AttendanceService] Device is offline. Queuing attendance in IndexedDB."
+      );
       await queueOfflineAttendance({
         userId,
         studentName,
@@ -135,8 +137,13 @@ export async function recordAttendance({
       }),
     });
   } catch (error) {
-    if (error.message.includes("Failed to fetch") || error.name === "TypeError") {
-      console.warn("Network error during attendance submission. Queuing to IndexedDB.");
+    if (
+      error.message.includes("Failed to fetch") ||
+      error.name === "TypeError"
+    ) {
+      console.warn(
+        "Network error during attendance submission. Queuing to IndexedDB."
+      );
       await queueOfflineAttendance({
         userId,
         studentName,

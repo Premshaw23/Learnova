@@ -25,7 +25,9 @@ export const GET = withErrorHandler(async (request) => {
   const profile = await getUserProfile(decodedToken.uid);
   const targetInstituteId =
     searchParams.get("instituteId") ||
-    (decodedToken.role === "admin" ? null : (profile?.instituteId || decodedToken.instituteId));
+    (decodedToken.role === "admin"
+      ? null
+      : profile?.instituteId || decodedToken.instituteId);
 
   if (!targetInstituteId) {
     throw new AppError("Institute ID is required for admin export", 400);

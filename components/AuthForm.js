@@ -42,7 +42,13 @@ export default function AuthForm({
     mode: "onTouched",
   });
 
-  const { register, handleSubmit, watch, reset, formState: { errors: localErrors } } = methods;
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors: localErrors },
+  } = methods;
   const formData = watch();
 
   useEffect(() => {
@@ -79,7 +85,10 @@ export default function AuthForm({
       <div>
         {/* Selected Role Display */}
         {selectedRoleConfig ? (
-          <SelectedRoleBadge config={selectedRoleConfig} onClick={onRoleChange} />
+          <SelectedRoleBadge
+            config={selectedRoleConfig}
+            onClick={onRoleChange}
+          />
         ) : null}
 
         <div className="bg-card backdrop-blur-xl rounded-2xl shadow-2xl border border-border p-8 min-h-[620px] flex flex-col justify-between transition-all duration-300">
@@ -107,7 +116,8 @@ export default function AuthForm({
                   label="Full Name"
                   name="fullName"
                   register={register("fullName", {
-                    validate: (val) => isLogin ? true : validateAuthField("fullName", val)
+                    validate: (val) =>
+                      isLogin ? true : validateAuthField("fullName", val),
                   })}
                   error={errors.fullName}
                   placeholder="Enter your full name"
@@ -118,7 +128,10 @@ export default function AuthForm({
                     label="Institute Name"
                     name="instituteName"
                     register={register("instituteName", {
-                      validate: (val) => (isLogin || selectedRole !== USER_ROLES.INSTITUTE) ? true : validateAuthField("instituteName", val)
+                      validate: (val) =>
+                        isLogin || selectedRole !== USER_ROLES.INSTITUTE
+                          ? true
+                          : validateAuthField("instituteName", val),
                     })}
                     error={errors.instituteName}
                     placeholder="Enter your institute name"
@@ -133,7 +146,7 @@ export default function AuthForm({
               autoComplete="email"
               maxLength={254}
               register={register("email", {
-                validate: (val) => validateAuthField("email", val)
+                validate: (val) => validateAuthField("email", val),
               })}
               error={errors.email}
               placeholder="Enter your email"
@@ -146,7 +159,8 @@ export default function AuthForm({
               autoComplete={isLogin ? "current-password" : "new-password"}
               maxLength={254}
               register={register("password", {
-                validate: (val) => validateAuthField("password", val, { isLogin })
+                validate: (val) =>
+                  validateAuthField("password", val, { isLogin }),
               })}
               error={errors.password}
               placeholder="Enter your password"
@@ -163,13 +177,18 @@ export default function AuthForm({
                 label="Confirm Password"
                 name="confirmPassword"
                 register={register("confirmPassword", {
-                  validate: (val) => isLogin ? true : validateAuthField("confirmPassword", val, { password })
+                  validate: (val) =>
+                    isLogin
+                      ? true
+                      : validateAuthField("confirmPassword", val, { password }),
                 })}
                 error={errors.confirmPassword}
                 placeholder="Confirm your password"
                 icon={Lock}
                 isVisible={showConfirmPassword}
-                onToggleVisibility={() => setShowConfirmPassword((prev) => !prev)}
+                onToggleVisibility={() =>
+                  setShowConfirmPassword((prev) => !prev)
+                }
               />
             ) : null}
 

@@ -1,10 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Sparkles, Send, FileText, Loader2, CheckCircle } from "lucide-react";
+import {
+  X,
+  Sparkles,
+  Send,
+  FileText,
+  Loader2,
+  CheckCircle,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
 
-export default function AbsentSummaryModal({ isOpen, onClose, absentStudents = [] }) {
+export default function AbsentSummaryModal({
+  isOpen,
+  onClose,
+  absentStudents = [],
+}) {
   const [notes, setNotes] = useState("");
   const [summary, setSummary] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -18,25 +29,25 @@ export default function AbsentSummaryModal({ isOpen, onClose, absentStudents = [
       toast.error("Please enter lecture notes to summarize");
       return;
     }
-    
+
     setIsGenerating(true);
     try {
       const { apiFetch } = await import("@/lib/apiClient");
       const { auth } = await import("@/lib/firebaseConfig");
       const token = await auth.currentUser?.getIdToken();
-      
+
       const res = await apiFetch("/api/study-ai/lecture-summary", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ notes }),
       });
-      
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to generate summary");
-      
+
       setSummary(data.data.summary);
       toast.success("Summary generated successfully");
     } catch (error) {
@@ -61,7 +72,8 @@ export default function AbsentSummaryModal({ isOpen, onClose, absentStudents = [
     try {
       const emailjs = (await import("@emailjs/browser")).default;
       const emailjsServiceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
-      const emailjsTemplateId = process.env.NEXT_PUBLIC_EMAILJS_ATTENDANCE_TEMPLATE_ID; 
+      const emailjsTemplateId =
+        process.env.NEXT_PUBLIC_EMAILJS_ATTENDANCE_TEMPLATE_ID;
       const emailjsPublicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
 
       if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey) {
@@ -76,7 +88,7 @@ export default function AbsentSummaryModal({ isOpen, onClose, absentStudents = [
                 message: summary,
                 risk_level: "Lecture Summary",
                 attendance_rate: "Missed Class",
-                trend: "N/A"
+                trend: "N/A",
               },
               emailjsPublicKey
             );
@@ -109,7 +121,10 @@ export default function AbsentSummaryModal({ isOpen, onClose, absentStudents = [
               AI Lecture Summary
             </h2>
           </div>
-          <button onClick={onClose} className="p-2 text-muted-foreground hover:text-foreground dark:text-gray-400 dark:hover:text-white transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 text-muted-foreground hover:text-foreground dark:text-gray-400 dark:hover:text-white transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -133,7 +148,11 @@ export default function AbsentSummaryModal({ isOpen, onClose, absentStudents = [
               disabled={isGenerating || !notes.trim()}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
             >
-              {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {isGenerating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
               Generate Summary
             </button>
           </div>

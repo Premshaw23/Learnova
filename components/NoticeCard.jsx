@@ -134,7 +134,6 @@ const createPdfDownload = (notice) => {
     minute: "2-digit",
   });
 
-
   doc.text(`Author: ${notice.author || "Unknown"}`, margin, cursorY);
   doc.text(`Published: ${dateStr} at ${timeStr}`, margin + 62, cursorY);
 
@@ -557,21 +556,17 @@ const NoticeCard = ({
           </p>
           {notice.attachments.map((att, i) => (
             <div key={i}>
-{att.type === "link" ? (
-
-                  <a href={att.url}
+              {att.type === "link" ? (
+                <a
+                  href={att.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-sm text-sky-400 hover:underline break-all"
                 >
                   🔗 {att.name}
                 </a>
-) : att.type?.startsWith("image/") ? (
-
-                  <a href={att.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+              ) : att.type?.startsWith("image/") ? (
+                <a href={att.url} target="_blank" rel="noopener noreferrer">
                   <img
                     src={att.url}
                     alt={att.name}
@@ -585,8 +580,9 @@ const NoticeCard = ({
                     title={att.name}
                     className="w-full h-48"
                   />
-                  
-<a href={att.url}
+
+                  <a
+                    href={att.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700 transition"

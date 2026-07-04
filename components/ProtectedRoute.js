@@ -11,8 +11,14 @@ export default function ProtectedRoute({
   allowedRoles = null,
   requireEmailVerification = true,
 }) {
-  const { user, userProfile, loading, isAuthenticated, hasProfile, sessionExpired } =
-  useAuthContext();
+  const {
+    user,
+    userProfile,
+    loading,
+    isAuthenticated,
+    hasProfile,
+    sessionExpired,
+  } = useAuthContext();
   const router = useRouter();
   const pathname = usePathname();
   const [redirecting, setRedirecting] = useState(false);
@@ -29,12 +35,12 @@ export default function ProtectedRoute({
   }, [loading]);
 
   // Handle session expiry from token refresh failures
-useEffect(() => {
-  if (sessionExpired) {
-    toast.error("Your session has expired. Please sign in again.");
-    safeRedirect("/auth");
-  }
-}, [sessionExpired]);
+  useEffect(() => {
+    if (sessionExpired) {
+      toast.error("Your session has expired. Please sign in again.");
+      safeRedirect("/auth");
+    }
+  }, [sessionExpired]);
 
   useEffect(() => {
     if (authTimedOut) {

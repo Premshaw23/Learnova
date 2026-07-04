@@ -6,10 +6,16 @@
  * @param {number} previousInterval - Previous interval in days.
  * @param {number} previousEaseFactor - Previous ease factor (default 2.5).
  */
-export function calculateSRS(quality, repetitions, previousInterval, previousEaseFactor) {
+export function calculateSRS(
+  quality,
+  repetitions,
+  previousInterval,
+  previousEaseFactor
+) {
   let nextInterval;
-  let nextEaseFactor = previousEaseFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-  
+  let nextEaseFactor =
+    previousEaseFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+
   if (nextEaseFactor < 1.3) nextEaseFactor = 1.3;
 
   if (quality >= 3) {

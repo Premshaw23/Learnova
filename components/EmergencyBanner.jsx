@@ -28,7 +28,10 @@ export default function EmergencyBanner() {
       const next = new Set(prev);
       next.add(id);
       try {
-        localStorage.setItem(`emergencyAck_${user?.uid || "anon"}`, JSON.stringify([...next]));
+        localStorage.setItem(
+          `emergencyAck_${user?.uid || "anon"}`,
+          JSON.stringify([...next])
+        );
       } catch (err) {}
       return next;
     });

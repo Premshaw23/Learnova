@@ -73,10 +73,13 @@ export default function MfaEnrollment({ user, onComplete, onCancel }) {
       <div className="bg-indigo-500/20 p-4 rounded-full mb-4">
         <ShieldCheck className="w-8 h-8 text-indigo-400" />
       </div>
-      <h2 className="text-2xl font-bold text-white mb-2">Secure Your Account</h2>
+      <h2 className="text-2xl font-bold text-white mb-2">
+        Secure Your Account
+      </h2>
       <p className="text-slate-400 text-sm text-center mb-6">
-        As an administrator, you are required to enable Multi-Factor Authentication (MFA). 
-        Scan the QR code below using an authenticator app (like Google Authenticator or Authy).
+        As an administrator, you are required to enable Multi-Factor
+        Authentication (MFA). Scan the QR code below using an authenticator app
+        (like Google Authenticator or Authy).
       </p>
 
       {error && (
@@ -87,7 +90,11 @@ export default function MfaEnrollment({ user, onComplete, onCancel }) {
 
       {qrUrl ? (
         <div className="bg-white p-4 rounded-xl shadow-inner mb-6">
-          <img src={qrUrl} alt="MFA QR Code" className="w-40 h-40 object-contain" />
+          <img
+            src={qrUrl}
+            alt="MFA QR Code"
+            className="w-40 h-40 object-contain"
+          />
         </div>
       ) : (
         <div className="w-40 h-40 bg-slate-800 rounded-xl mb-6 flex items-center justify-center border border-slate-700">
@@ -103,7 +110,9 @@ export default function MfaEnrollment({ user, onComplete, onCancel }) {
           <input
             type="text"
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) =>
+              setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
             placeholder="000000"
             className="w-full text-center tracking-[0.5em] font-mono text-2xl p-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
@@ -126,7 +135,11 @@ export default function MfaEnrollment({ user, onComplete, onCancel }) {
             disabled={verifying || code.length !== 6}
             className="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl transition font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
           >
-            {verifying ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify & Enable"}
+            {verifying ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              "Verify & Enable"
+            )}
           </button>
         </div>
       </form>

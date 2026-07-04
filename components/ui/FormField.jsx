@@ -16,7 +16,9 @@ export const FormField = ({
 
   // If useFormContext is called outside of a FormProvider, handle gracefully
   const errors = formContext?.formState?.errors || {};
-  const error = name.split(".").reduce((acc, part) => acc?.[part], errors)?.message;
+  const error = name
+    .split(".")
+    .reduce((acc, part) => acc?.[part], errors)?.message;
 
   const inputId = `${name}-input`;
   const errorId = `${name}-error`;
@@ -29,7 +31,8 @@ export const FormField = ({
     const describedByParts = [];
     if (description) describedByParts.push(descId);
     if (error) describedByParts.push(errorId);
-    const describedBy = describedByParts.length > 0 ? describedByParts.join(" ") : undefined;
+    const describedBy =
+      describedByParts.length > 0 ? describedByParts.join(" ") : undefined;
 
     clonedChild = React.cloneElement(child, {
       id: child.props.id || inputId,

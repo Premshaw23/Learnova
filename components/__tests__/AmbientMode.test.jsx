@@ -34,9 +34,7 @@ describe("AmbientMode", () => {
     render(<AmbientMode />);
 
     expect(
-      screen.getByText(
-        /sink into a serene gradient environment/i
-      )
+      screen.getByText(/sink into a serene gradient environment/i)
     ).toBeInTheDocument();
   });
 
@@ -44,21 +42,19 @@ describe("AmbientMode", () => {
     render(<AmbientMode />);
 
     expect(
-      screen.getByText(
-        "Soft glow edges create a calm visual field."
-      )
+      screen.getByText("Soft glow edges create a calm visual field.")
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        "Smooth ambient motion helps your eyes relax."
-      )
+      screen.getByText("Smooth ambient motion helps your eyes relax.")
     ).toBeInTheDocument();
   });
 
   test("renders motion elements", () => {
     render(<AmbientMode />);
 
-    expect(screen.getAllByTestId("motion-div").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByTestId("motion-div").length).toBeGreaterThanOrEqual(
+      3
+    );
   });
 });

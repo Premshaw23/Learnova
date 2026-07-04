@@ -4,7 +4,10 @@ import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { achievementVerifySchema } from "@/lib/validations/achievements";
-import { getAchievementById, updateAchievement } from "@/lib/models/achievementModel";
+import {
+  getAchievementById,
+  updateAchievement,
+} from "@/lib/models/achievementModel";
 import { assertInstituteScope } from "@/lib/services/achievementAccess";
 import {
   notifyAchievementVerified,
@@ -57,8 +60,15 @@ export const PATCH = withErrorHandler(async (request, context) => {
   if (verificationStatus === "Verified") {
     await notifyAchievementVerified(existing.studentId, existing.title);
   } else {
-    await notifyAchievementRejected(existing.studentId, existing.title, remarks);
+    await notifyAchievementRejected(
+      existing.studentId,
+      existing.title,
+      remarks
+    );
   }
 
-  return jsonSuccess({ achievement, message: `Achievement ${verificationStatus.toLowerCase()}` });
+  return jsonSuccess({
+    achievement,
+    message: `Achievement ${verificationStatus.toLowerCase()}`,
+  });
 });

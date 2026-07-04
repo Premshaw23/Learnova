@@ -52,7 +52,6 @@ describe("MoodTracker Component", () => {
     expect(badges).toHaveLength(1);
   });
 
-
   test("should update the active mood and keep only a single 'Selected' badge", () => {
     render(<MoodTracker />);
 

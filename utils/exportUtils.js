@@ -170,9 +170,10 @@ export const exportAttendanceCSV = (studentData, meta = {}) => {
     "Date Range": safeStr(dateRange),
     "Student Name": safeStr(student.name),
     "Roll No": safeStr(student.rollNo),
-    Date: formatDateReadable(student.date) !== "—"
-      ? formatDateReadable(student.date)
-      : safeStr(dateRange),
+    Date:
+      formatDateReadable(student.date) !== "—"
+        ? formatDateReadable(student.date)
+        : safeStr(dateRange),
     Status: safeStr(student.status, "absent").toUpperCase(),
     "Check-in Time": safeStr(student.time),
     "Confidence Score":
@@ -247,8 +248,7 @@ export const exportAnalyticsCSV = (students, meta = {}) => {
     Teacher: safeStr(teacherName),
     "Student Name": safeStr(s.studentName),
     Email: safeStr(s.email),
-    "Attendance %":
-      s.attendanceRate != null ? `${s.attendanceRate}%` : "—",
+    "Attendance %": s.attendanceRate != null ? `${s.attendanceRate}%` : "—",
     "Days Present": safeStr(s.presentDays),
     "Total Days": safeStr(s.totalDays),
     Trend: safeStr(s.trend),

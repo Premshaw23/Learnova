@@ -1,6 +1,6 @@
 /**
  * hooks/useAchievements.js
- * 
+ *
  * Custom hook for fetching and managing achievements.
  * Provides reusable logic for achievement state management across components.
  */

@@ -53,7 +53,10 @@ export default function InstituteAchievementPanel() {
       Date: a.achievementDate?.slice(0, 10),
       "Issued By": a.issuedBy?.name || "",
     }));
-    exportToCSV(data, `institute_achievements_${new Date().toISOString().slice(0, 10)}`);
+    exportToCSV(
+      data,
+      `institute_achievements_${new Date().toISOString().slice(0, 10)}`
+    );
     toast.success("Report exported to CSV");
   };
 
@@ -69,7 +72,9 @@ export default function InstituteAchievementPanel() {
             <Award className="w-5 h-5 text-teal-400" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Institution Achievement Analytics</h3>
+            <h3 className="text-lg font-bold text-white">
+              Institution Achievement Analytics
+            </h3>
             <p className="text-xs text-gray-400">
               {analytics?.total || 0} total achievements across your institution
             </p>
@@ -97,7 +102,9 @@ export default function InstituteAchievementPanel() {
 
       {analytics?.topPerformers?.length > 0 && (
         <div className="bg-[#0B1120]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-          <h4 className="text-sm font-semibold text-white mb-3">Top Performing Students</h4>
+          <h4 className="text-sm font-semibold text-white mb-3">
+            Top Performing Students
+          </h4>
           <div className="space-y-2">
             {analytics.topPerformers.map((s, i) => (
               <div
@@ -107,7 +114,9 @@ export default function InstituteAchievementPanel() {
                 <span className="text-sm text-gray-300">
                   #{i + 1} {s.studentName}
                 </span>
-                <span className="text-sm font-bold text-teal-400">{s.count} achievements</span>
+                <span className="text-sm font-bold text-teal-400">
+                  {s.count} achievements
+                </span>
               </div>
             ))}
           </div>

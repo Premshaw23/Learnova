@@ -109,9 +109,22 @@ describe("POST /api/register", () => {
   });
 
   test("includes Firestore profile write in the registration saga", async () => {
-    requireAuth.mockResolvedValue({ uid: "user-123", email: "test@example.com" });
+    requireAuth.mockResolvedValue({
+      uid: "user-123",
+      email: "test@example.com",
+    });
 
-    executeSaga.mockResolvedValue({ success: true, context: { _insertedUser: { _id: "mongo-id", name: "Test User", rollNo: "ROLL-123", email: "test@example.com" } } });
+    executeSaga.mockResolvedValue({
+      success: true,
+      context: {
+        _insertedUser: {
+          _id: "mongo-id",
+          name: "Test User",
+          rollNo: "ROLL-123",
+          email: "test@example.com",
+        },
+      },
+    });
 
     const request = {
       formData: async () => createFormData(),
@@ -126,7 +139,9 @@ describe("POST /api/register", () => {
     expect(response.status).toBe(201);
     expect(executeSaga).toHaveBeenCalled();
     const sagaArgs = executeSaga.mock.calls[0][0];
-    expect(sagaArgs.steps.some((step) => step.name === "write_firestore_profile")).toBe(true);
+    expect(
+      sagaArgs.steps.some((step) => step.name === "write_firestore_profile")
+    ).toBe(true);
     expect(result.user.email).toBe("test@example.com");
   });
 });

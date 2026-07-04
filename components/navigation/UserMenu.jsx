@@ -65,7 +65,10 @@ export default function UserMenu({
           transition={{ duration: 0.2 }}
           className="flex"
         >
-          <ChevronDown className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
+          <ChevronDown
+            className="h-3.5 w-3.5 text-zinc-400"
+            aria-hidden="true"
+          />
         </motion.span>
       </motion.button>
 
@@ -95,7 +98,10 @@ export default function UserMenu({
                 onClick={onClose}
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/60"
               >
-                <item.icon className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+                <item.icon
+                  className="h-4 w-4 text-zinc-400"
+                  aria-hidden="true"
+                />
                 {item.label}
               </Link>
             ))}

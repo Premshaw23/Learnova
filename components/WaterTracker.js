@@ -32,7 +32,11 @@ export default function WaterTracker() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const normalized = normalizeWaterGlasses(glasses, DEFAULT_WATER_GLASSES, goal);
+    const normalized = normalizeWaterGlasses(
+      glasses,
+      DEFAULT_WATER_GLASSES,
+      goal
+    );
     safeLocalStorageSet("learnova-wellness-water", normalized);
 
     // Also update today's snapshot so the timeline stays in sync
@@ -132,14 +136,16 @@ export default function WaterTracker() {
             type="button"
             onClick={addWater}
             className="flex items-center justify-center gap-2 rounded-3xl bg-slate-900 text-white px-4 py-3 text-sm font-semibold transition hover:bg-slate-800"
-           aria-label="Add one glass of water">
+            aria-label="Add one glass of water"
+          >
             <ArrowUpRight className="h-4 w-4" /> Add Water
           </button>
           <button
             type="button"
             onClick={removeWater}
             className="flex items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-           aria-label="Remove one glass of water">
+            aria-label="Remove one glass of water"
+          >
             <ArrowDownRight className="h-4 w-4" /> Remove Glass
           </button>
         </div>

@@ -440,7 +440,10 @@ const SuperAdminDashboard = () => {
               <input
                 type="text"
                 value={linkSearchQuery}
-                onChange={(e) => { const val = e.target.value; setLinkSearchQuery(val); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLinkSearchQuery(val);
+                }}
                 placeholder="Search parent/student..."
                 className="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
               />
@@ -779,9 +782,7 @@ const SuperAdminDashboard = () => {
             <Building2 className="w-4 h-4" />
             Add New Institute
           </button>
-          <ExportDropdown
-            className="px-4 py-2 bg-gray-800/60 text-gray-300 rounded-xl hover:bg-gray-700/60 flex items-center gap-2 border border-gray-600/40 transition-all duration-300"
-          >
+          <ExportDropdown className="px-4 py-2 bg-gray-800/60 text-gray-300 rounded-xl hover:bg-gray-700/60 flex items-center gap-2 border border-gray-600/40 transition-all duration-300">
             <Download className="w-4 h-4" />
             Export Report
           </ExportDropdown>
@@ -1577,7 +1578,9 @@ const SuperAdminDashboard = () => {
   }
 
   return (
-    <div className={`min-h-screen p-6 space-y-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-16 ${dashboardContentOffsetClass}`}>
+    <div
+      className={`min-h-screen p-6 space-y-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-16 ${dashboardContentOffsetClass}`}
+    >
       {/* Premium Glassy Top Bar */}
       <Navbar />
       <div className="bg-gradient-to-r from-gray-900/80 via-blue-900/70 to-purple-900/80 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl px-6 py-4 mb-4">
@@ -1642,7 +1645,7 @@ const SuperAdminDashboard = () => {
           "security",
           "sync reconciliation",
           "parent student linking",
-          "data retention"
+          "data retention",
         ].map((tab) => (
           <button
             key={tab}

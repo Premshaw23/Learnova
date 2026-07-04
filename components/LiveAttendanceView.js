@@ -5,7 +5,8 @@ import { UserCheck, Clock, RefreshCw } from "lucide-react";
 import { useRealtimeAttendance } from "@/hooks/useRealtimeAttendance";
 
 const statusColors = {
-  present: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200",
+  present:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200",
   late: "amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-200",
 };
 
@@ -18,8 +19,13 @@ function timeAgo(date) {
   return `${Math.floor(minutes / 60)}h ago`;
 }
 
-export default function LiveAttendanceView({ className, title = "Live Check-Ins" }) {
-  const { liveCheckIns, clearCheckIns } = useRealtimeAttendance({ classFilter: className });
+export default function LiveAttendanceView({
+  className,
+  title = "Live Check-Ins",
+}) {
+  const { liveCheckIns, clearCheckIns } = useRealtimeAttendance({
+    classFilter: className,
+  });
   const [isPaused, setIsPaused] = useState(false);
 
   const visible = isPaused ? [] : liveCheckIns;
@@ -29,7 +35,9 @@ export default function LiveAttendanceView({ className, title = "Live Check-Ins"
       <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
         <div className="flex items-center gap-2">
           <UserCheck className="h-5 w-5 text-emerald-500" />
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50">{title}</h3>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
+            {title}
+          </h3>
           {liveCheckIns.length > 0 && !isPaused && (
             <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
           )}
@@ -89,7 +97,9 @@ export default function LiveAttendanceView({ className, title = "Live Check-Ins"
                 </div>
               </div>
               {record.className && (
-                <span className="shrink-0 text-[11px] text-zinc-400">{record.className}</span>
+                <span className="shrink-0 text-[11px] text-zinc-400">
+                  {record.className}
+                </span>
               )}
             </div>
           ))

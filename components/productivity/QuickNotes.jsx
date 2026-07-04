@@ -20,7 +20,7 @@ export default function QuickNotes() {
   // Save notes to local storage with debounce
   useEffect(() => {
     if (!isOpen) return; // Only save when open to avoid overwriting with initial empty state
-    
+
     setSavedStatus("saving");
     const timeoutId = setTimeout(() => {
       localStorage.setItem("learnova_quick_notes", noteContent);
@@ -76,7 +76,7 @@ export default function QuickNotes() {
                   )}
                   {savedStatus === "saving" ? "Saving..." : "Saved"}
                 </span>
-                
+
                 <button
                   onClick={clearNotes}
                   className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-md transition-colors"
@@ -103,7 +103,7 @@ export default function QuickNotes() {
                 spellCheck="false"
               />
             </div>
-            
+
             {/* Footer */}
             <div className="px-4 py-2 border-t border-white/10 bg-black/20">
               <p className="text-[10px] text-slate-500 text-center">

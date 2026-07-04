@@ -88,11 +88,7 @@ describe("LazyImage", () => {
 
   test("passes additional props to image element", () => {
     render(
-      <LazyImage
-        src="/image.jpg"
-        alt="Test image"
-        data-testid="lazy-image"
-      />
+      <LazyImage src="/image.jpg" alt="Test image" data-testid="lazy-image" />
     );
 
     const image = screen.getByTestId("lazy-image");

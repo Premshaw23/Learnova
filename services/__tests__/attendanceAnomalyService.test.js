@@ -80,20 +80,38 @@ describe("getRiskLevel", () => {
 
 describe("computeRiskScore", () => {
   it("gives higher risk score for lower attendance", () => {
-    const low = computeRiskScore({ currentRate: 50, trend: TREND_DIRECTIONS.STABLE });
-    const high = computeRiskScore({ currentRate: 90, trend: TREND_DIRECTIONS.STABLE });
+    const low = computeRiskScore({
+      currentRate: 50,
+      trend: TREND_DIRECTIONS.STABLE,
+    });
+    const high = computeRiskScore({
+      currentRate: 90,
+      trend: TREND_DIRECTIONS.STABLE,
+    });
     expect(low).toBeGreaterThan(high);
   });
 
   it("penalizes declining trend", () => {
-    const stable = computeRiskScore({ currentRate: 70, trend: TREND_DIRECTIONS.STABLE });
-    const declining = computeRiskScore({ currentRate: 70, trend: TREND_DIRECTIONS.DECLINING });
+    const stable = computeRiskScore({
+      currentRate: 70,
+      trend: TREND_DIRECTIONS.STABLE,
+    });
+    const declining = computeRiskScore({
+      currentRate: 70,
+      trend: TREND_DIRECTIONS.DECLINING,
+    });
     expect(declining).toBeGreaterThan(stable);
   });
 
   it("rewards improving trend", () => {
-    const stable = computeRiskScore({ currentRate: 70, trend: TREND_DIRECTIONS.STABLE });
-    const improving = computeRiskScore({ currentRate: 70, trend: TREND_DIRECTIONS.IMPROVING });
+    const stable = computeRiskScore({
+      currentRate: 70,
+      trend: TREND_DIRECTIONS.STABLE,
+    });
+    const improving = computeRiskScore({
+      currentRate: 70,
+      trend: TREND_DIRECTIONS.IMPROVING,
+    });
     expect(improving).toBeLessThan(stable);
   });
 
@@ -211,8 +229,8 @@ describe("analyzeAttendanceAnomalies", () => {
     const { summary } = analyzeAttendanceAnomalies(mockStudents);
     expect(summary.total).toBe(3);
     expect(summary.critical).toBe(1); // Alice
-    expect(summary.safe).toBe(1);     // Bob
-    expect(summary.atRisk).toBe(1);   // Carol
+    expect(summary.safe).toBe(1); // Bob
+    expect(summary.atRisk).toBe(1); // Carol
   });
 
   it("assigns correct risk levels", () => {

@@ -7,7 +7,10 @@ const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
 const FALLBACK_POLL_MS = 15000;
 
-export function useRealtime(handlers, { enabled = true, pollInterval = FALLBACK_POLL_MS } = {}) {
+export function useRealtime(
+  handlers,
+  { enabled = true, pollInterval = FALLBACK_POLL_MS } = {}
+) {
   const { user } = useAuth();
   const [status, setStatus] = useState("disconnected");
   const eventSourceRef = useRef(null);
@@ -25,9 +28,12 @@ export function useRealtime(handlers, { enabled = true, pollInterval = FALLBACK_
       if (!isMountedRef.current || !user) return;
       try {
         const token = await user.getIdToken();
-        const res = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(
+          `/api/notifications?userId=${encodeURIComponent(user.uid)}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         const data = await res.json();
         if (isMountedRef.current) {
           handlersRef.current?.onNotification?.(data);
@@ -55,12 +61,17 @@ export function useRealtime(handlers, { enabled = true, pollInterval = FALLBACK_
 
     const connect = async () => {
       try {
-        const es = new EventSource("/api/events/stream", { withCredentials: true });
+        const es = new EventSource("/api/events/stream", {
+          withCredentials: true,
+        });
         eventSourceRef.current = es;
         currentEventSource = es;
 
         es.onopen = () => {
-          if (!isMountedRef.current) { es.close(); return; }
+          if (!isMountedRef.current) {
+            es.close();
+            return;
+          }
           setStatus("connected");
           reconnectDelayRef.current = RECONNECT_BASE_MS;
         };
@@ -102,7 +113,10 @@ export function useRealtime(handlers, { enabled = true, pollInterval = FALLBACK_
     connect();
 
     const fallbackTimer = setTimeout(() => {
-      if (isMountedRef.current && currentEventSource?.readyState !== EventSource.OPEN) {
+      if (
+        isMountedRef.current &&
+        currentEventSource?.readyState !== EventSource.OPEN
+      ) {
         setStatus("fallback-polling");
         currentEventSource?.close();
         startPolling();

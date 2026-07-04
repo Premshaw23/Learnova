@@ -317,58 +317,58 @@ export default async function RootLayout({ children }) {
 
         {/* ── All context providers (Theme, Auth, Firestore, Notifications) ── */}
         <NextIntlClientProvider messages={messages}>
-        <AllProviders>
-          {/* Note: Ensure these providers (ThemeProvider, AuthProvider, etc.) 
+          <AllProviders>
+            {/* Note: Ensure these providers (ThemeProvider, AuthProvider, etc.) 
               are actually imported and exported correctly in AllProviders 
               or placed here individually if AllProviders doesn't cover them. */}
 
-          <ScrollProgress />
+            <ScrollProgress />
 
-          {/* ── Route-change loading bar ── */}
-          <NextTopLoader
-            color="#4f46e5"
-            initialPosition={0.08}
-            crawlSpeed={200}
-            height={3}
-            crawl={true}
-            showSpinner={false}
-            easing="ease"
-            speed={200}
-            shadow="0 0 10px #4f46e5,0 0 5px #4f46e5"
-          />
-
-          <Suspense fallback={null}>
-            {/* ── Main page content with error boundary + page transitions ── */}
-            <main id="main-content" className="outline-none" tabIndex="-1">
-              <ErrorBoundary>
-                <PageTransition>{children}</PageTransition>
-              </ErrorBoundary>
-            </main>
-
-            {/* ── Scroll restoration on route change ── */}
-            <ScrollToTop />
-            <Footer />
-
-            {/* ── Client-only layout: modals, chatbot, PWA install, streak sync ── */}
-            <ClientLayout />
-            <BackToTop />
-
-            {/* ── Screen-reader route announcer for accessibility ── */}
-            <RouteAnnouncer />
-            <OfflineIndicator />
-
-            {/* Single Toaster configuration */}
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: { fontWeight: 600 },
-              }}
+            {/* ── Route-change loading bar ── */}
+            <NextTopLoader
+              color="#4f46e5"
+              initialPosition={0.08}
+              crawlSpeed={200}
+              height={3}
+              crawl={true}
+              showSpinner={false}
+              easing="ease"
+              speed={200}
+              shadow="0 0 10px #4f46e5,0 0 5px #4f46e5"
             />
 
-            <CommandPaletteWrapper />
-          </Suspense>
-        </AllProviders>
+            <Suspense fallback={null}>
+              {/* ── Main page content with error boundary + page transitions ── */}
+              <main id="main-content" className="outline-none" tabIndex="-1">
+                <ErrorBoundary>
+                  <PageTransition>{children}</PageTransition>
+                </ErrorBoundary>
+              </main>
+
+              {/* ── Scroll restoration on route change ── */}
+              <ScrollToTop />
+              <Footer />
+
+              {/* ── Client-only layout: modals, chatbot, PWA install, streak sync ── */}
+              <ClientLayout />
+              <BackToTop />
+
+              {/* ── Screen-reader route announcer for accessibility ── */}
+              <RouteAnnouncer />
+              <OfflineIndicator />
+
+              {/* Single Toaster configuration */}
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: { fontWeight: 600 },
+                }}
+              />
+
+              <CommandPaletteWrapper />
+            </Suspense>
+          </AllProviders>
         </NextIntlClientProvider>
       </body>
     </html>

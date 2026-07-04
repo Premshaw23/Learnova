@@ -1,6 +1,6 @@
 /**
  * components/AchievementNotification.js
- * 
+ *
  * Toast notification component for badge unlock events.
  * Uses Framer Motion for smooth animations and React Hot Toast.
  */
@@ -26,8 +26,7 @@ export const showAchievementNotification = (badge, onDismiss = () => {}) => {
       transition={{ type: "spring", stiffness: 200, damping: 15 }}
       className="relative"
     >
-      <div className="bg-gradient-to-r from-yellow-500/20 to-amber-600/20 backdrop-blur-xl border border-yellow-400/50 rounded-xl p-4 shadow-lg shadow-yellow-500/20 max-w-sm"
-      >
+      <div className="bg-gradient-to-r from-yellow-500/20 to-amber-600/20 backdrop-blur-xl border border-yellow-400/50 rounded-xl p-4 shadow-lg shadow-yellow-500/20 max-w-sm">
         {/* Glow effect */}
         <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" />
 
@@ -47,9 +46,7 @@ export const showAchievementNotification = (badge, onDismiss = () => {}) => {
 
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-bold text-white text-lg">
-                {badge.name}
-              </h4>
+              <h4 className="font-bold text-white text-lg">{badge.name}</h4>
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -90,13 +87,10 @@ export const showAchievementNotification = (badge, onDismiss = () => {}) => {
     </motion.div>
   );
 
-  const toastId = toast.custom(
-    (t) => <AchievementToast />,
-    {
-      duration: 5000,
-      position: "top-right",
-    }
-  );
+  const toastId = toast.custom((t) => <AchievementToast />, {
+    duration: 5000,
+    position: "top-right",
+  });
 
   // Call onDismiss callback
   setTimeout(() => onDismiss(badge), 5000);
@@ -160,7 +154,10 @@ export const showMilestoneNotification = (percentage) => {
 /**
  * Achievement notification component for inline display
  */
-export const AchievementNotificationInline = ({ badge, onClose = () => {} }) => {
+export const AchievementNotificationInline = ({
+  badge,
+  onClose = () => {},
+}) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
@@ -187,9 +184,7 @@ export const AchievementNotificationInline = ({ badge, onClose = () => {} }) => 
               <h3 className="text-xl font-bold text-white mb-1">
                 🎉 {badge.name} Unlocked!
               </h3>
-              <p className="text-sm text-gray-300 mb-2">
-                {badge.description}
-              </p>
+              <p className="text-sm text-gray-300 mb-2">{badge.description}</p>
               <div className="inline-block px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-xs font-semibold uppercase">
                 {badge.tier} Tier Achievement
               </div>

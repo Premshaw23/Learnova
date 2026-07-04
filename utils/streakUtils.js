@@ -22,10 +22,13 @@
 }
 
 function getLongestStreak(sortedDates) {
-  let best = 0, current = 0, prev = null;
+  let best = 0,
+    current = 0,
+    prev = null;
   for (const date of [...sortedDates].reverse()) {
-    if (!prev) { current = 1; }
-    else {
+    if (!prev) {
+      current = 1;
+    } else {
       const diff = (new Date(date) - new Date(prev)) / 86400000;
       current = diff === 1 ? current + 1 : 1;
     }

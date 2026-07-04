@@ -60,7 +60,9 @@ describe("POST /api/upload/certificate", () => {
       size: 100,
     };
     processAndUploadCertificate.mockRejectedValue(
-      new ValidationError("Invalid file type. Only PDF, PNG, and JPG are allowed.")
+      new ValidationError(
+        "Invalid file type. Only PDF, PNG, and JPG are allowed."
+      )
     );
 
     const response = await POST(createRequest(file));

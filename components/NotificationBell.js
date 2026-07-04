@@ -75,7 +75,8 @@ export default function NotificationBell() {
   const hasLoadedRef = useRef(false);
 
   const processNotifications = useCallback((data) => {
-    const fetchedNotifications = data.notifications || extractNotificationsFromResponse(data);
+    const fetchedNotifications =
+      data.notifications || extractNotificationsFromResponse(data);
     if (!fetchedNotifications.length) return;
 
     const currentIds = new Set(
@@ -100,7 +101,8 @@ export default function NotificationBell() {
 
   useRealtime(
     {
-      onNotification: (payload) => processNotifications({ notifications: [payload] }),
+      onNotification: (payload) =>
+        processNotifications({ notifications: [payload] }),
     },
     { enabled: !!user?.uid && !loading }
   );
@@ -119,33 +121,36 @@ export default function NotificationBell() {
 
     try {
       const token = await user.getIdToken();
-      const data = await apiFetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const data = await apiFetch(
+        `/api/notifications?userId=${encodeURIComponent(user.uid)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       processNotifications(data);
       const assignmentReminders = [
-  {
-    id: "assignment-1",
-    message: "Math Assignment due tomorrow",
-    type: "assignment_deadline",
-    createdAt: new Date().toISOString(),
-    read: false,
-  },
-  {
-    id: "assignment-2",
-    message: "Science Project due in 3 days",
-    type: "assignment_deadline",
-    createdAt: new Date().toISOString(),
-    read: false,
-  },
-];
+        {
+          id: "assignment-1",
+          message: "Math Assignment due tomorrow",
+          type: "assignment_deadline",
+          createdAt: new Date().toISOString(),
+          read: false,
+        },
+        {
+          id: "assignment-2",
+          message: "Science Project due in 3 days",
+          type: "assignment_deadline",
+          createdAt: new Date().toISOString(),
+          read: false,
+        },
+      ];
 
-processNotifications({
-  notifications: [
-    ...extractNotificationsFromResponse(data),
-    ...assignmentReminders,
-  ],
-});
+      processNotifications({
+        notifications: [
+          ...extractNotificationsFromResponse(data),
+          ...assignmentReminders,
+        ],
+      });
     } catch (err) {
       setError("Unable to load notifications");
       setNotifications([]);

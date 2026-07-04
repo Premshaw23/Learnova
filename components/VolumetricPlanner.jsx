@@ -12,7 +12,7 @@ export default function VolumetricPlanner() {
   // Standard box constraints (e.g., 30x30x30 cm, max 20 kg limit)
   const STUDY_LIMIT = { length: 30, width: 30, height: 30, maxWeight: 20 };
   const TOTAL_CAPACITY =
-  STUDY_LIMIT.length * STUDY_LIMIT.width * STUDY_LIMIT.height;
+    STUDY_LIMIT.length * STUDY_LIMIT.width * STUDY_LIMIT.height;
   const EFFECTIVE_VOLUME_CAPACITY = BOX_VOLUME * 0.8; // 80% realistic packing threshold
 
   // Calculate cumulative totals
@@ -39,11 +39,9 @@ export default function VolumetricPlanner() {
   } else {
     for (let item of items) {
       if (
-        
-  item.l > STUDY_LIMIT.length ||
-  item.w > STUDY_LIMIT.width ||
-  item.h > STUDY_LIMIT.height
-
+        item.l > STUDY_LIMIT.length ||
+        item.w > STUDY_LIMIT.width ||
+        item.h > STUDY_LIMIT.height
       ) {
         status = "Volumetric Overflow";
         statusReason = `Item "${item.name}" dimensions exceed single box boundaries.`;
@@ -85,7 +83,7 @@ export default function VolumetricPlanner() {
     <div className="p-6 bg-white shadow rounded-lg max-w-4xl mx-auto my-6 border border-gray-200 text-gray-800">
       <h2 className="text-2xl font-bold mb-2">Study Resource Planner</h2>
       <p className="text-sm text-gray-500 mb-6">
-         Organize your study materials and manage academic resources efficiently.
+        Organize your study materials and manage academic resources efficiently.
       </p>
 
       {/* Status Banner */}
@@ -213,7 +211,7 @@ export default function VolumetricPlanner() {
                   colSpan="5"
                   className="p-4 text-center text-gray-400 italic"
                 >
-                 No study resources added yet.
+                  No study resources added yet.
                 </td>
               </tr>
             ) : (

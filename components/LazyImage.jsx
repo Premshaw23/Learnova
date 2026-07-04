@@ -25,7 +25,7 @@ export default function LazyImage({
     setError(false);
   }, [src]);
 
-  const imageSrc = error ? fallbackSrc : (src || fallbackSrc);
+  const imageSrc = error ? fallbackSrc : src || fallbackSrc;
 
   return (
     <div className={`relative overflow-hidden ${className}`}>

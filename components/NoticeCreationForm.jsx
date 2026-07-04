@@ -69,7 +69,7 @@ const NoticeCreationForm = ({ onSuccess, onCancel }) => {
         className="p-6 space-y-4 bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl"
       >
         <h3 className="text-xl font-bold text-white">Create Notice</h3>
-        
+
         <FormField name="title">
           <input
             {...register("title", { required: "Title is required" })}
@@ -94,7 +94,7 @@ const NoticeCreationForm = ({ onSuccess, onCancel }) => {
             className="w-full p-3 bg-slate-800 rounded-lg text-white resize-none"
           />
         </FormField>
-        
+
         <div
           className={`text-xs text-right ${descriptionValue.length > 900 ? "text-red-500" : "text-slate-500"}`}
         >

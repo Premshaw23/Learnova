@@ -157,15 +157,11 @@ export const POST = withErrorHandler(async (request) => {
       if (mongoBatch.length === 0) break;
       lastMongoId = mongoBatch[mongoBatch.length - 1]._id;
 
-      const batchUids = mongoBatch
-        .map((u) => u.firebaseUid)
-        .filter(Boolean);
+      const batchUids = mongoBatch.map((u) => u.firebaseUid).filter(Boolean);
 
       if (batchUids.length === 0) continue;
 
-      const docRefs = batchUids.map((uid) =>
-        db.collection("users").doc(uid)
-      );
+      const docRefs = batchUids.map((uid) => db.collection("users").doc(uid));
       const firestoreDocs = await db.getAll(...docRefs);
       const existingFirestoreUids = new Set(
         firestoreDocs.filter((d) => d.exists).map((d) => d.id)

@@ -20,8 +20,7 @@ const InsightCard = ({ icon: Icon, label, value, color }) => {
       "from-purple-500/10 to-purple-600/5 border-purple-500/20 text-purple-400",
   };
 
-  const selectedColorStyle =
-  colorStyles[color] ?? colorStyles.orange;
+  const selectedColorStyle = colorStyles[color] ?? colorStyles.orange;
 
   return (
     <div

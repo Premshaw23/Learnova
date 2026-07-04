@@ -99,17 +99,17 @@ export default function NoticeDetailPage({ params: paramsPromise }) {
   }, [id, user, userProfile]);
 
   // Save notice to Recently Viewed history
-useEffect(() => {
-  if (!notice) return;
+  useEffect(() => {
+    if (!notice) return;
 
-  addRecentlyViewed({
-    id: notice.id,
-    title: notice.title,
-    type: "Notice",
-    url: `/notices/${notice.id}`,
-    viewedAt: new Date().toISOString(),
-  });
-}, [notice]);
+    addRecentlyViewed({
+      id: notice.id,
+      title: notice.title,
+      type: "Notice",
+      url: `/notices/${notice.id}`,
+      viewedAt: new Date().toISOString(),
+    });
+  }, [notice]);
 
   const getRelativeTime = useCallback((date) => {
     const now = new Date();

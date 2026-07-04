@@ -18,7 +18,10 @@ export default function StudyAILoading() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full bg-slate-800/60 rounded-xl" />
+            <Skeleton
+              key={i}
+              className="h-16 w-full bg-slate-800/60 rounded-xl"
+            />
           ))}
         </div>
         <div className="lg:col-span-3 space-y-4">

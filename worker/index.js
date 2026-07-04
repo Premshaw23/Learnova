@@ -171,7 +171,9 @@ self.addEventListener("sync", (event) => {
       handleSync().catch(async (err) => {
         console.error("[SW] Background sync failed:", err);
         const clientsList = await self.clients.matchAll();
-        clientsList.forEach((c) => c.postMessage({ type: "SW_ERROR", error: err.message }));
+        clientsList.forEach((c) =>
+          c.postMessage({ type: "SW_ERROR", error: err.message })
+        );
       })
     );
   }
@@ -183,7 +185,9 @@ self.addEventListener("message", (event) => {
       handleSync().catch(async (err) => {
         console.error("[SW] Message sync failed:", err);
         const clientsList = await self.clients.matchAll();
-        clientsList.forEach((c) => c.postMessage({ type: "SW_ERROR", error: err.message }));
+        clientsList.forEach((c) =>
+          c.postMessage({ type: "SW_ERROR", error: err.message })
+        );
       })
     );
   } else if (event.data && event.data.type === "CLEAR_USER_CACHE") {
@@ -193,7 +197,9 @@ self.addEventListener("message", (event) => {
         clearCacheForUser(userHash).catch(async (err) => {
           console.error("[SW] Clear user cache failed:", err);
           const clientsList = await self.clients.matchAll();
-          clientsList.forEach((c) => c.postMessage({ type: "SW_ERROR", error: err.message }));
+          clientsList.forEach((c) =>
+            c.postMessage({ type: "SW_ERROR", error: err.message })
+          );
         })
       );
     } else {
@@ -201,7 +207,9 @@ self.addEventListener("message", (event) => {
         clearUserCaches().catch(async (err) => {
           console.error("[SW] Clear all caches failed:", err);
           const clientsList = await self.clients.matchAll();
-          clientsList.forEach((c) => c.postMessage({ type: "SW_ERROR", error: err.message }));
+          clientsList.forEach((c) =>
+            c.postMessage({ type: "SW_ERROR", error: err.message })
+          );
         })
       );
     }

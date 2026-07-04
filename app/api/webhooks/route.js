@@ -91,7 +91,10 @@ export const PUT = withErrorHandler(async (request) => {
     }
   }
 
-  if (updates.events && (!Array.isArray(updates.events) || updates.events.length === 0)) {
+  if (
+    updates.events &&
+    (!Array.isArray(updates.events) || updates.events.length === 0)
+  ) {
     throw new ValidationError("events must be a non-empty array");
   }
 

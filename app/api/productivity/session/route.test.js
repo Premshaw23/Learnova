@@ -66,7 +66,11 @@ describe("POST /api/productivity/session", () => {
     expect(body.success).toBe(true);
     expect(body.xpAwarded).toBe(15);
     expect(mockCollection.insertOne).toHaveBeenCalled();
-    expect(awardXp).toHaveBeenCalledWith("user-123", "focus_session_completed", {});
+    expect(awardXp).toHaveBeenCalledWith(
+      "user-123",
+      "focus_session_completed",
+      {}
+    );
   });
 
   test("records a break session and does not award XP", async () => {

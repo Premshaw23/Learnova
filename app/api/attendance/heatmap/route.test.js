@@ -154,9 +154,17 @@ describe("attendance heatmap API route", () => {
     getUserProfile.mockImplementation((uid) => {
       profileCallCount++;
       if (profileCallCount <= 2) {
-        return Promise.resolve({ role: "teacher", subjects: ["Math"], instituteId: "inst-1" });
+        return Promise.resolve({
+          role: "teacher",
+          subjects: ["Math"],
+          instituteId: "inst-1",
+        });
       }
-      return Promise.resolve({ role: "student", subjects: ["History"], instituteId: "inst-1" });
+      return Promise.resolve({
+        role: "student",
+        subjects: ["History"],
+        instituteId: "inst-1",
+      });
     });
 
     const req = mockRequest(

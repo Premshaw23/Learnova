@@ -21,7 +21,9 @@ export async function initOfflineDB() {
       } else if (oldVersion < 2) {
         // Existing store — add the compound index that was missing before v2
         const tx = db.transaction(STORE_NAME, "readwrite");
-        tx.store.createIndex("userId_date", ["userId", "date"], { unique: false });
+        tx.store.createIndex("userId_date", ["userId", "date"], {
+          unique: false,
+        });
       }
     },
   });
@@ -101,7 +103,9 @@ export async function markRecordAsSynced(id) {
     }
     await tx.done;
   } catch (error) {
-    logger.error(`[Offline Sync] Failed to mark record ${id} as synced:`, { error });
+    logger.error(`[Offline Sync] Failed to mark record ${id} as synced:`, {
+      error,
+    });
   }
 }
 
@@ -142,8 +146,10 @@ export async function syncOfflineQueue(syncCallback) {
     return { success: true, synced: 0, failed: 0 };
   }
 
-  logger.info(`[Offline Sync] Attempting to sync ${pendingRecords.length} records...`);
-  
+  logger.info(
+    `[Offline Sync] Attempting to sync ${pendingRecords.length} records...`
+  );
+
   let syncedCount = 0;
   let failedCount = 0;
 
@@ -151,7 +157,7 @@ export async function syncOfflineQueue(syncCallback) {
     try {
       // Call the provided callback to actually send data to the backend
       const success = await syncCallback(record);
-      
+
       if (success) {
         await removeRecordFromQueue(record.id);
         syncedCount++;
@@ -159,16 +165,20 @@ export async function syncOfflineQueue(syncCallback) {
         failedCount++;
       }
     } catch (err) {
-      logger.error(`[Offline Sync] Error syncing record ${record.id}:`, { err });
+      logger.error(`[Offline Sync] Error syncing record ${record.id}:`, {
+        err,
+      });
       failedCount++;
     }
   }
 
-  logger.info(`[Offline Sync] Sync complete. Synced: ${syncedCount}, Failed: ${failedCount}`);
-  
+  logger.info(
+    `[Offline Sync] Sync complete. Synced: ${syncedCount}, Failed: ${failedCount}`
+  );
+
   return {
     success: failedCount === 0,
     synced: syncedCount,
-    failed: failedCount
+    failed: failedCount,
   };
 }

@@ -602,7 +602,10 @@ export default function Timetable({ role = "student" }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `${cls.subject.replace(/\s+/g, '_')}_class.ics`);
+    link.setAttribute(
+      "download",
+      `${cls.subject.replace(/\s+/g, "_")}_class.ics`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

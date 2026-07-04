@@ -36,7 +36,9 @@ const FEATURES = [
 export default function RoleSelection({ onRoleSelect }) {
   const containerRef = useRef(null);
   const handleKeyDown = (e) => {
-    const cards = Array.from(containerRef.current.querySelectorAll("button[type='button']"));
+    const cards = Array.from(
+      containerRef.current.querySelectorAll("button[type='button']")
+    );
     const index = cards.indexOf(document.activeElement);
     if (index === -1) return;
     if (e.key === "ArrowRight") {
@@ -72,12 +74,17 @@ export default function RoleSelection({ onRoleSelect }) {
           features.
         </p>
         <p className="mx-auto mt-2 max-w-lg text-sm font-medium text-muted-foreground">
-          Role selection is required before you can sign in or create an account.
+          Role selection is required before you can sign in or create an
+          account.
         </p>
       </div>
 
       {/* Role cards */}
-      <div ref={containerRef} onKeyDown={handleKeyDown} className="relative z-10 mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div
+        ref={containerRef}
+        onKeyDown={handleKeyDown}
+        className="relative z-10 mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5"
+      >
         {Object.entries(ROLE_CONFIG).map(([role, config]) => {
           const glow =
             ROLE_GLOW[role] ??

@@ -4,7 +4,9 @@ const EngagementBreakdown = ({ breakdown = [] }) => {
   return (
     <div className="bg-card/50 dark:bg-slate-950/80 border border-border rounded-3xl p-6 shadow-lg shadow-slate-900/5">
       <div className="mb-5">
-        <h3 className="text-lg font-semibold text-foreground">Engagement Breakdown</h3>
+        <h3 className="text-lg font-semibold text-foreground">
+          Engagement Breakdown
+        </h3>
         <p className="text-sm text-muted-foreground">
           See how each engagement dimension contributes to overall performance.
         </p>
@@ -14,7 +16,9 @@ const EngagementBreakdown = ({ breakdown = [] }) => {
           <div key={item.label} className="space-y-2">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>{item.label}</span>
-              <span className="font-semibold text-foreground">{Math.round(item.value)}%</span>
+              <span className="font-semibold text-foreground">
+                {Math.round(item.value)}%
+              </span>
             </div>
             <div className="h-2 rounded-full bg-white/10 overflow-hidden">
               <div

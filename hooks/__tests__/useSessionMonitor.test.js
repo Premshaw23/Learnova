@@ -1,6 +1,9 @@
 import { renderHook } from "@testing-library/react";
 import { vi } from "vitest";
-import { SessionAwareFetchProvider, useSessionMonitor } from "../useSessionMonitor";
+import {
+  SessionAwareFetchProvider,
+  useSessionMonitor,
+} from "../useSessionMonitor";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";

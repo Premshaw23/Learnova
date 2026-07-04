@@ -2,7 +2,12 @@ import admin from "firebase-admin";
 
 export async function exportUserData(userId) {
   const db = admin.firestore();
-  const collections = ["users", "attendance_records", "activities", "notifications"];
+  const collections = [
+    "users",
+    "attendance_records",
+    "activities",
+    "notifications",
+  ];
   const data = {};
 
   for (const col of collections) {
@@ -36,11 +41,19 @@ export async function exportAttendance({
 
 export async function exportInstituteData(instituteId) {
   const db = admin.firestore();
-  const collections = ["users", "classes", "attendance_records", "attendance_requests"];
+  const collections = [
+    "users",
+    "classes",
+    "attendance_records",
+    "attendance_requests",
+  ];
   const data = {};
 
   for (const col of collections) {
-    const snap = await db.collection(col).where("instituteId", "==", instituteId).get();
+    const snap = await db
+      .collection(col)
+      .where("instituteId", "==", instituteId)
+      .get();
     data[col] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }
 

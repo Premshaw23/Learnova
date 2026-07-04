@@ -49,7 +49,13 @@ export function sendWelcomeEmail({ email, name, dashboardUrl }) {
   });
 }
 
-export function sendAttendanceAlert({ parentEmail, parentName, studentName, date, dashboardUrl }) {
+export function sendAttendanceAlert({
+  parentEmail,
+  parentName,
+  studentName,
+  date,
+  dashboardUrl,
+}) {
   if (!isEmailConfigured()) return;
   const html = renderTemplate("attendanceAlert", {
     parentName,
@@ -65,7 +71,15 @@ export function sendAttendanceAlert({ parentEmail, parentName, studentName, date
   });
 }
 
-export function sendWeeklyDigest({ email, name, weekRange, presentDays, absentDays, attendanceRate, dashboardUrl }) {
+export function sendWeeklyDigest({
+  email,
+  name,
+  weekRange,
+  presentDays,
+  absentDays,
+  attendanceRate,
+  dashboardUrl,
+}) {
   if (!isEmailConfigured()) return;
   const html = renderTemplate("weeklyDigest", {
     name,
@@ -98,7 +112,13 @@ export function sendPasswordChangeConfirmation({ email, name, dashboardUrl }) {
   });
 }
 
-export function sendLowAttendanceWarning({ email, name, attendancePercentage, threshold, dashboardUrl }) {
+export function sendLowAttendanceWarning({
+  email,
+  name,
+  attendancePercentage,
+  threshold,
+  dashboardUrl,
+}) {
   if (!isEmailConfigured()) return;
   const html = renderTemplate("lowAttendanceWarning", {
     name,
@@ -114,7 +134,15 @@ export function sendLowAttendanceWarning({ email, name, attendancePercentage, th
   });
 }
 
-export function sendBulkAnnouncement({ email, name, subject, body, senderName, instituteName, dashboardUrl }) {
+export function sendBulkAnnouncement({
+  email,
+  name,
+  subject,
+  body,
+  senderName,
+  instituteName,
+  dashboardUrl,
+}) {
   if (!isEmailConfigured()) return;
   const html = renderTemplate("bulkAnnouncement", {
     name,

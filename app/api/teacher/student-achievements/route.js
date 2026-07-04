@@ -1,6 +1,6 @@
 /**
  * app/api/teacher/student-achievements/route.js
- * 
+ *
  * API endpoint for teachers to view student achievements
  * Allows teachers to see which badges their students have earned
  */
@@ -27,10 +27,10 @@ export async function GET(request) {
     const { valid, decodedToken } = await verifyFirebaseToken(token);
 
     if (!valid) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // Verify user is a teacher
@@ -48,7 +48,9 @@ export async function GET(request) {
 
     if (!teacher.instituteId) {
       return new Response(
-        JSON.stringify({ error: "Teacher profile missing institute affiliation" }),
+        JSON.stringify({
+          error: "Teacher profile missing institute affiliation",
+        }),
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -67,10 +69,10 @@ export async function GET(request) {
     // Verify the target student exists and belongs to the same institute
     const targetStudent = await usersCollection.findOne({ uid: studentId });
     if (!targetStudent) {
-      return new Response(
-        JSON.stringify({ error: "Student not found" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Student not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     if (targetStudent.instituteId !== teacher.instituteId) {
@@ -112,7 +114,10 @@ export async function GET(request) {
   } catch (error) {
     console.error("Error fetching student achievements:", error);
     return new Response(
-      JSON.stringify({ error: "Failed to fetch achievements", details: error.message }),
+      JSON.stringify({
+        error: "Failed to fetch achievements",
+        details: error.message,
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

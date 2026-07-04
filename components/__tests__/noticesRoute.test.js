@@ -30,7 +30,7 @@ const mockRedisSet = vi.hoisted(() => vi.fn().mockResolvedValue("OK"));
 const mockRedisZrange = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 
 vi.mock("@upstash/redis", () => ({
-  Redis: vi.fn().mockImplementation(function() {
+  Redis: vi.fn().mockImplementation(function () {
     return {
       zadd: mockRedisZadd,
       expire: mockRedisExpire,

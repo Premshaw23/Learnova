@@ -413,11 +413,7 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminPostLink(makeRequest());
-      await assertApiError(
-        response,
-        400,
-        "Validation failed"
-      );
+      await assertApiError(response, 400, "Validation failed");
     });
 
     it("POST /api/admin/parent-student-link: should return 404 if parent user email does not exist", async () => {
@@ -481,11 +477,7 @@ describe("Parent Portal Feature Tests", () => {
       });
 
       const response = await adminDeleteLink(request);
-      await assertApiError(
-        response,
-        400,
-        "Validation failed"
-      );
+      await assertApiError(response, 400, "Validation failed");
     });
 
     it("POST /api/admin/parent-student-link: should return 500 if the saga coordinator fails to sync the link", async () => {

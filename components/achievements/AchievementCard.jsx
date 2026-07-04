@@ -1,7 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Award, Calendar, Eye, Download, CheckCircle, XCircle, Clock } from "lucide-react";
+import {
+  Award,
+  Calendar,
+  Eye,
+  Download,
+  CheckCircle,
+  XCircle,
+  Clock,
+} from "lucide-react";
 import { STATUS_COLORS, CATEGORY_COLORS } from "./constants";
 
 const StatusIcon = ({ status }) => {
@@ -10,7 +18,12 @@ const StatusIcon = ({ status }) => {
   return <Clock className="w-3.5 h-3.5" />;
 };
 
-export default function AchievementCard({ achievement, onPreview, index = 0, showStudent = false }) {
+export default function AchievementCard({
+  achievement,
+  onPreview,
+  index = 0,
+  showStudent = false,
+}) {
   const categoryStyle =
     CATEGORY_COLORS[achievement.category] || CATEGORY_COLORS.Other;
   const statusStyle =
@@ -30,7 +43,9 @@ export default function AchievementCard({ achievement, onPreview, index = 0, sho
             <Award className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h4 className="font-semibold text-white text-sm">{achievement.title}</h4>
+            <h4 className="font-semibold text-white text-sm">
+              {achievement.title}
+            </h4>
             {showStudent && (
               <p className="text-xs text-gray-400">{achievement.studentName}</p>
             )}
@@ -45,7 +60,9 @@ export default function AchievementCard({ achievement, onPreview, index = 0, sho
         </span>
       </div>
 
-      <p className="text-xs text-gray-400 mt-3 line-clamp-2">{achievement.description}</p>
+      <p className="text-xs text-gray-400 mt-3 line-clamp-2">
+        {achievement.description}
+      </p>
 
       <div className="flex items-center justify-between mt-4">
         <span className="flex items-center gap-1 text-xs text-gray-500">

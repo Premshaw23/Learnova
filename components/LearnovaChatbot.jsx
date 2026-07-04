@@ -823,7 +823,8 @@ export default function LearnovaChatbot() {
     const container = chatContainerRef.current;
     if (!container) return;
 
-    const focusableSelector = 'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])';
+    const focusableSelector =
+      'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])';
     const handleTabKey = (e) => {
       const focusable = container.querySelectorAll(focusableSelector);
       if (focusable.length === 0) return;
@@ -1161,7 +1162,11 @@ export default function LearnovaChatbot() {
               ))}
 
               {isLoading && (
-                <div aria-live="polite" aria-atomic="true" className="flex justify-start items-center space-x-2.5 animate-pulse select-none">
+                <div
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="flex justify-start items-center space-x-2.5 animate-pulse select-none"
+                >
                   <div className={`p-2 rounded-xl ${themeTokens.botAvatar}`}>
                     <Bot size={16} />
                   </div>

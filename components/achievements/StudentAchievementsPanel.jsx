@@ -46,7 +46,7 @@ export default function StudentAchievementsPanel() {
   }, [fetchAchievements]);
 
   const handleDownloadCertificate = (achievement) => {
-  const content = `
+    const content = `
 Learnova Achievement Certificate
 
 Awarded To:
@@ -64,25 +64,29 @@ ${achievement.verificationStatus}
 Congratulations on completing this achievement!
 `;
 
-  const blob = new Blob([content], {
-    type: "text/plain",
-  });
+    const blob = new Blob([content], {
+      type: "text/plain",
+    });
 
-  const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
 
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${achievement.title}-certificate.txt`;
-  link.click();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${achievement.title}-certificate.txt`;
+    link.click();
 
-  URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
 
-  toast.success("Certificate downloaded");
-};
+    toast.success("Certificate downloaded");
+  };
 
   const stats = useMemo(() => {
-    const verified = achievements.filter((a) => a.verificationStatus === "Verified").length;
-    const pending = achievements.filter((a) => a.verificationStatus === "Pending").length;
+    const verified = achievements.filter(
+      (a) => a.verificationStatus === "Verified"
+    ).length;
+    const pending = achievements.filter(
+      (a) => a.verificationStatus === "Pending"
+    ).length;
     return { total: achievements.length, verified, pending };
   }, [achievements]);
 
@@ -92,12 +96,18 @@ Congratulations on completing this achievement!
         <div className="h-8 w-48 bg-white/5 rounded-xl animate-pulse" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-white/5 rounded-2xl animate-pulse" />
+            <div
+              key={i}
+              className="h-32 bg-white/5 rounded-2xl animate-pulse"
+            />
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-40 bg-white/5 rounded-2xl animate-pulse" />
+            <div
+              key={i}
+              className="h-40 bg-white/5 rounded-2xl animate-pulse"
+            />
           ))}
         </div>
       </div>
@@ -112,8 +122,12 @@ Congratulations on completing this achievement!
             <Award className="w-5 h-5 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Digital Certificates</h3>
-            <p className="text-xs text-gray-400">Your achievements & verified certificates</p>
+            <h3 className="text-lg font-bold text-white">
+              Digital Certificates
+            </h3>
+            <p className="text-xs text-gray-400">
+              Your achievements & verified certificates
+            </p>
           </div>
         </div>
         <button
@@ -186,27 +200,30 @@ Congratulations on completing this achievement!
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-white/10 hidden md:block" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:pl-8">
             {achievements.map((a, i) => (
-  <div key={a.achievementId}>
-    <AchievementCard
-      achievement={a}
-      index={i}
-      onPreview={setPreview}
-    />
+              <div key={a.achievementId}>
+                <AchievementCard
+                  achievement={a}
+                  index={i}
+                  onPreview={setPreview}
+                />
 
-    <button
-      onClick={() => handleDownloadCertificate(a)}
-      className="mt-2 w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm"
-    >
-      Download Certificate
-    </button>
-  </div>
-))}
+                <button
+                  onClick={() => handleDownloadCertificate(a)}
+                  className="mt-2 w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm"
+                >
+                  Download Certificate
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {preview && (
-        <CertificatePreviewModal achievement={preview} onClose={() => setPreview(null)} />
+        <CertificatePreviewModal
+          achievement={preview}
+          onClose={() => setPreview(null)}
+        />
       )}
     </div>
   );

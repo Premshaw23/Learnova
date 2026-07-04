@@ -70,7 +70,9 @@ function createTokenRefreshManager(firebaseUser, onSessionExpired) {
         tokenError?.message
       );
       if (consecutiveFailures >= MAX_REFRESH_RETRIES) {
-        console.error("[useAuth] Token refresh failed after max retries. Session may be expired.");
+        console.error(
+          "[useAuth] Token refresh failed after max retries. Session may be expired."
+        );
         if (onSessionExpired) onSessionExpired();
       }
     }
@@ -178,7 +180,7 @@ export const useAuth = () => {
                 if (userDoc.exists()) {
                   const profileData = userDoc.data();
                   setUserProfile(profileData);
-                  const token = await firebaseUser.getIdToken(true); 
+                  const token = await firebaseUser.getIdToken(true);
                   setAuthTokenCookie(token);
                   setCookie("userRole", profileData.role, 7);
                 } else {
@@ -198,7 +200,10 @@ export const useAuth = () => {
               }
             },
             (snapError) => {
-              console.warn("Profile snapshot subscription error:", snapError.message);
+              console.warn(
+                "Profile snapshot subscription error:",
+                snapError.message
+              );
               setError("Failed to sync your profile data.");
               if (!firstSnapshotReceivedRef.current) {
                 firstSnapshotReceivedRef.current = true;

@@ -60,15 +60,16 @@ export const POST = withErrorHandler(
         token
       );
 
-    emitWebhookEvent("attendance.recorded", {
-      studentId: userId,
-      studentName,
-      email,
-      confidence: normalizedConfidence,
-      date: normalizedDate,
-      recordedBy: token.uid,
-    });
+      emitWebhookEvent("attendance.recorded", {
+        studentId: userId,
+        studentName,
+        email,
+        confidence: normalizedConfidence,
+        date: normalizedDate,
+        recordedBy: token.uid,
+      });
 
-    return jsonSuccess({ alreadyRecorded: false }, 201);
-  })
+      return jsonSuccess({ alreadyRecorded: false }, 201);
+    }
+  )
 );

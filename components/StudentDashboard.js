@@ -286,94 +286,94 @@ const StudentDashboard = () => {
   const [level, setLevel] = useState("Beginner");
   const [roadmap, setRoadmap] = useState([]);
   const [studyGroups] = useState([
-  {
-    name: "Web Development Group",
-    subject: "Web Development",
-    members: 15,
-  },
-  {
-    name: "Data Science Circle",
-    subject: "Data Science",
-    members: 10,
-  },
-  {
-    name: "AI Learners Hub",
-    subject: "Artificial Intelligence",
-    members: 12,
-  },
-]);
+    {
+      name: "Web Development Group",
+      subject: "Web Development",
+      members: 15,
+    },
+    {
+      name: "Data Science Circle",
+      subject: "Data Science",
+      members: 10,
+    },
+    {
+      name: "AI Learners Hub",
+      subject: "Artificial Intelligence",
+      members: 12,
+    },
+  ]);
 
-const [events] = useState([
-  {
-    title: "Mathematics Class",
-    date: "10 June",
-    type: "Class",
-    color: "text-blue-400",
-  },
-  {
-    title: "Physics Assignment",
-    date: "12 June",
-    type: "Assignment",
-    color: "text-yellow-400",
-  },
-  {
-    title: "Mid-Term Examination",
-    date: "20 June",
-    type: "Exam",
-    color: "text-red-400",
-  },
-  {
-    title: "Summer Holiday",
-    date: "25 June",
-    type: "Holiday",
-    color: "text-green-400",
-  },
-]);
+  const [events] = useState([
+    {
+      title: "Mathematics Class",
+      date: "10 June",
+      type: "Class",
+      color: "text-blue-400",
+    },
+    {
+      title: "Physics Assignment",
+      date: "12 June",
+      type: "Assignment",
+      color: "text-yellow-400",
+    },
+    {
+      title: "Mid-Term Examination",
+      date: "20 June",
+      type: "Exam",
+      color: "text-red-400",
+    },
+    {
+      title: "Summer Holiday",
+      date: "25 June",
+      type: "Holiday",
+      color: "text-green-400",
+    },
+  ]);
 
-const [performanceData] = useState([
-  {
-    subject: "Mathematics",
-    currentScore: 88,
-    previousScore: 80,
-  },
-  {
-    subject: "Science",
-    currentScore: 92,
-    previousScore: 85,
-  },
-  {
-    subject: "Programming",
-    currentScore: 95,
-    previousScore: 90,
-  },
-]);
+  const [performanceData] = useState([
+    {
+      subject: "Mathematics",
+      currentScore: 88,
+      previousScore: 80,
+    },
+    {
+      subject: "Science",
+      currentScore: 92,
+      previousScore: 85,
+    },
+    {
+      subject: "Programming",
+      currentScore: 95,
+      previousScore: 90,
+    },
+  ]);
 
-const [teacherFeedback] = useState([
-  {
-    subject: "Mathematics",
-    teacher: "Mr. Sharma",
-    rating: "â­â­â­â­â­",
-    comment: "Excellent understanding of concepts and problem solving.",
-    recommendation: "Try advanced mathematical challenges.",
-    status: "Acknowledged",
-  },
-  {
-    subject: "Science",
-    teacher: "Mrs. Patel",
-    rating: "â­â­â­â­",
-    comment: "Good classroom participation and practical skills.",
-    recommendation: "Focus more on written explanations.",
-    status: "Pending",
-  },
-  {
-    subject: "Programming",
-    teacher: "Mr. Johnson",
-    rating: "â­â­â­â­â­",
-    comment: "Shows excellent coding skills and creativity.",
-    recommendation: "Start contributing to real-world projects.",
-    status: "Acknowledged",
-  },
-]);
+  const [teacherFeedback] = useState([
+    {
+      subject: "Mathematics",
+      teacher: "Mr. Sharma",
+      rating: "â­â­â­â­â­",
+      comment: "Excellent understanding of concepts and problem solving.",
+      recommendation: "Try advanced mathematical challenges.",
+      status: "Acknowledged",
+    },
+    {
+      subject: "Science",
+      teacher: "Mrs. Patel",
+      rating: "â­â­â­â­",
+      comment: "Good classroom participation and practical skills.",
+      recommendation: "Focus more on written explanations.",
+      status: "Pending",
+    },
+    {
+      subject: "Programming",
+      teacher: "Mr. Johnson",
+      rating: "â­â­â­â­â­",
+      comment: "Shows excellent coding skills and creativity.",
+      recommendation: "Start contributing to real-world projects.",
+      status: "Acknowledged",
+    },
+  ]);
 
   useEffect(() => {
     const fetchGamification = async () => {
@@ -382,24 +382,18 @@ const [teacherFeedback] = useState([
 
         const token = await user.getIdToken();
 
-        const res = await fetch(
-          "/api/student/gamification",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const res = await fetch("/api/student/gamification", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (res.ok) {
           const data = await res.json();
           setGamificationData(data);
         }
       } catch (err) {
-        console.error(
-          "Failed to load gamification data",
-          err
-        );
+        console.error("Failed to load gamification data", err);
       }
     };
 
@@ -599,35 +593,35 @@ const [teacherFeedback] = useState([
     }
     setShowDiagnosticQuiz(false);
   };
-const generateRoadmap = () => {
-  const ROADMAPS = {
-    "Web Development": {
-      Beginner: ["HTML", "CSS", "JavaScript", "React", "Node.js"],
-    },
-    "Data Science": {
-      Beginner: [
-        "Python",
-        "NumPy",
-        "Pandas",
-        "Data Visualization",
-        "Machine Learning",
-      ],
-    },
-    "Artificial Intelligence": {
-      Beginner: [
-        "Python",
-        "Math Basics",
-        "Machine Learning",
-        "Deep Learning",
-        "LLMs",
-      ],
-    },
+  const generateRoadmap = () => {
+    const ROADMAPS = {
+      "Web Development": {
+        Beginner: ["HTML", "CSS", "JavaScript", "React", "Node.js"],
+      },
+      "Data Science": {
+        Beginner: [
+          "Python",
+          "NumPy",
+          "Pandas",
+          "Data Visualization",
+          "Machine Learning",
+        ],
+      },
+      "Artificial Intelligence": {
+        Beginner: [
+          "Python",
+          "Math Basics",
+          "Machine Learning",
+          "Deep Learning",
+          "LLMs",
+        ],
+      },
+    };
+
+    if (!goal) return;
+
+    setRoadmap(ROADMAPS[goal]?.[level] || []);
   };
-
-  if (!goal) return;
-
-  setRoadmap(ROADMAPS[goal]?.[level] || []);
-};
 
   const handleExportAttendance = (format) => {
     if (!recentActivity || recentActivity.length === 0) {
@@ -727,8 +721,11 @@ const generateRoadmap = () => {
       const newOrder = [...prevOrder];
       newOrder.splice(sourceIndex, 1);
       newOrder.splice(targetIndex, 0, sourceId);
-      
-      localStorage.setItem("learnova_student_widget_order", JSON.stringify(newOrder));
+
+      localStorage.setItem(
+        "learnova_student_widget_order",
+        JSON.stringify(newOrder)
+      );
       return newOrder;
     });
 
@@ -755,7 +752,10 @@ const generateRoadmap = () => {
       newOrder[index] = newOrder[targetIndex];
       newOrder[targetIndex] = temp;
 
-      localStorage.setItem("learnova_student_widget_order", JSON.stringify(newOrder));
+      localStorage.setItem(
+        "learnova_student_widget_order",
+        JSON.stringify(newOrder)
+      );
       return newOrder;
     });
     toast.success("Widget shifted", { id: "shift-toast" });
@@ -764,16 +764,24 @@ const generateRoadmap = () => {
   const hideWidget = (id) => {
     setHiddenWidgets((prevHidden) => {
       const newHidden = [...prevHidden, id];
-      localStorage.setItem("learnova_student_hidden_widgets", JSON.stringify(newHidden));
+      localStorage.setItem(
+        "learnova_student_hidden_widgets",
+        JSON.stringify(newHidden)
+      );
       return newHidden;
     });
-    toast.success("Widget hidden. Recover it from the top editor panel.", { id: "hide-toast" });
+    toast.success("Widget hidden. Recover it from the top editor panel.", {
+      id: "hide-toast",
+    });
   };
 
   const showWidget = (id) => {
     setHiddenWidgets((prevHidden) => {
       const newHidden = prevHidden.filter((item) => item !== id);
-      localStorage.setItem("learnova_student_hidden_widgets", JSON.stringify(newHidden));
+      localStorage.setItem(
+        "learnova_student_hidden_widgets",
+        JSON.stringify(newHidden)
+      );
       return newHidden;
     });
     toast.success("Widget restored.", { id: "show-toast" });
@@ -821,7 +829,9 @@ const generateRoadmap = () => {
                 <option value="">Select Goal</option>
                 <option value="Web Development">Web Development</option>
                 <option value="Data Science">Data Science</option>
-                <option value="Artificial Intelligence">Artificial Intelligence</option>
+                <option value="Artificial Intelligence">
+                  Artificial Intelligence
+                </option>
               </select>
               <select
                 value={level}
@@ -869,8 +879,12 @@ const generateRoadmap = () => {
                   className="p-4 rounded-xl bg-white/5 border border-white/10"
                 >
                   <h3 className="font-semibold text-white">{group.name}</h3>
-                  <p className="text-sm text-gray-400">Subject: {group.subject}</p>
-                  <p className="text-sm text-gray-400 mb-3">Members: {group.members}</p>
+                  <p className="text-sm text-gray-400">
+                    Subject: {group.subject}
+                  </p>
+                  <p className="text-sm text-gray-400 mb-3">
+                    Members: {group.members}
+                  </p>
                   <button className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm">
                     Join Group
                   </button>
@@ -910,7 +924,9 @@ const generateRoadmap = () => {
                     <h3 className="text-white font-semibold">{event.title}</h3>
                     <p className="text-sm text-gray-400">{event.date}</p>
                   </div>
-                  <span className={`font-semibold ${event.color}`}>{event.type}</span>
+                  <span className={`font-semibold ${event.color}`}>
+                    {event.type}
+                  </span>
                 </div>
               ))}
             </div>
@@ -932,8 +948,12 @@ const generateRoadmap = () => {
                   className="p-4 rounded-xl bg-white/5 border border-white/10"
                 >
                   <h3 className="text-white font-semibold">{item.subject}</h3>
-                  <p className="text-blue-400 mt-2">Current Score: {item.currentScore}%</p>
-                  <p className="text-gray-400">Previous Score: {item.previousScore}%</p>
+                  <p className="text-blue-400 mt-2">
+                    Current Score: {item.currentScore}%
+                  </p>
+                  <p className="text-gray-400">
+                    Previous Score: {item.previousScore}%
+                  </p>
                   <p
                     className={`mt-2 font-semibold ${
                       item.currentScore > item.previousScore
@@ -941,7 +961,9 @@ const generateRoadmap = () => {
                         : "text-red-400"
                     }`}
                   >
-                    {item.currentScore > item.previousScore ? "ðŸ“ˆ Improving" : "ðŸ“‰ Needs Improvement"}
+                    {item.currentScore > item.previousScore
+                      ? "ðŸ“ˆ Improving"
+                      : "ðŸ“‰ Needs Improvement"}
                   </p>
                 </div>
               ))}
@@ -963,11 +985,17 @@ const generateRoadmap = () => {
                   key={index}
                   className="p-4 rounded-xl bg-white/5 border border-white/10"
                 >
-                  <h3 className="text-white font-semibold">{feedback.subject}</h3>
-                  <p className="text-blue-400 text-sm">Teacher: {feedback.teacher}</p>
+                  <h3 className="text-white font-semibold">
+                    {feedback.subject}
+                  </h3>
+                  <p className="text-blue-400 text-sm">
+                    Teacher: {feedback.teacher}
+                  </p>
                   <p className="mt-2">{feedback.rating}</p>
                   <p className="text-gray-300 mt-2">"{feedback.comment}"</p>
-                  <p className="text-yellow-400 mt-2 text-sm">ðŸ’¡ {feedback.recommendation}</p>
+                  <p className="text-yellow-400 mt-2 text-sm">
+                    ðŸ’¡ {feedback.recommendation}
+                  </p>
                   <button
                     className={`mt-3 px-3 py-2 rounded-lg text-sm font-semibold ${
                       feedback.status === "Acknowledged"
@@ -993,22 +1021,29 @@ const generateRoadmap = () => {
             </h2>
             {attendanceStats.percentage < 60 ? (
               <ul className="space-y-3 text-red-300">
-                <li>âš ï¸ Your attendance is critically low. Try attending every upcoming class.</li>
+                <li>
+                  âš ï¸ Your attendance is critically low. Try attending every
+                  upcoming class.
+                </li>
                 <li>â° Enable daily reminders to avoid missing classes.</li>
                 <li>ðŸ“… Create a weekly study and attendance schedule.</li>
-                <li>ðŸŽ¯ Target at least 85% attendance over the next month.</li>
+                <li>
+                  ðŸŽ¯ Target at least 85% attendance over the next month.
+                </li>
               </ul>
             ) : attendanceStats.percentage < 75 ? (
               <ul className="space-y-3 text-yellow-300">
-                <li>ðŸ“ˆ Your attendance can be improved with more consistency.</li>
+                <li>
+                  ðŸ“ˆ Your attendance can be improved with more consistency.
+                </li>
                 <li>ðŸ“ Track your attendance progress every week.</li>
                 <li>â° Set alarms before your classes start.</li>
                 <li>ðŸŽ¯ Aim to increase your attendance above 90%.</li>
               </ul>
             ) : (
               <div className="text-green-400">
-                ðŸŽ‰ Excellent work! Your attendance is strong.
-                Keep maintaining your consistency and punctuality.
+                ðŸŽ‰ Excellent work! Your attendance is strong. Keep maintaining
+                your consistency and punctuality.
               </div>
             )}
           </div>
@@ -1030,10 +1065,22 @@ const generateRoadmap = () => {
               <EngagementTrendChart history={engagementHistory} />
               <EngagementBreakdown
                 breakdown={[
-                  { label: "Attendance", value: engagementMetrics.attendanceScore },
-                  { label: "Activity Participation", value: engagementMetrics.activityScore },
-                  { label: "Assignment Submissions", value: engagementMetrics.assignmentScore },
-                  { label: "Academic Performance", value: engagementMetrics.academicScore },
+                  {
+                    label: "Attendance",
+                    value: engagementMetrics.attendanceScore,
+                  },
+                  {
+                    label: "Activity Participation",
+                    value: engagementMetrics.activityScore,
+                  },
+                  {
+                    label: "Assignment Submissions",
+                    value: engagementMetrics.assignmentScore,
+                  },
+                  {
+                    label: "Academic Performance",
+                    value: engagementMetrics.academicScore,
+                  },
                 ]}
               />
             </div>
@@ -1064,7 +1111,9 @@ const generateRoadmap = () => {
         className={`transition-all duration-300 relative ${
           customizingLayout ? "cursor-grab" : ""
         } ${isDragging ? "opacity-45 scale-95 border-2 border-dashed border-purple-500" : ""} ${
-          isDraggedOver ? "border-2 border-dashed border-green-500 scale-[1.01] bg-green-500/5 animate-pulse" : ""
+          isDraggedOver
+            ? "border-2 border-dashed border-green-500 scale-[1.01] bg-green-500/5 animate-pulse"
+            : ""
         }`}
       >
         {customizingLayout && (
@@ -1103,7 +1152,11 @@ const generateRoadmap = () => {
             </div>
           </div>
         )}
-        <div className={customizingLayout ? "pt-2 pointer-events-none opacity-80" : ""}>
+        <div
+          className={
+            customizingLayout ? "pt-2 pointer-events-none opacity-80" : ""
+          }
+        >
           {widgetContent}
         </div>
       </div>
@@ -1193,7 +1246,7 @@ const generateRoadmap = () => {
       {/* Dashboard Customization controls */}
       <div className="max-w-7xl mx-auto px-6 mb-4 flex justify-end gap-3 flex-wrap relative z-20">
         <button
-          onClick={() => setCustomizingLayout(prev => !prev)}
+          onClick={() => setCustomizingLayout((prev) => !prev)}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
             customizingLayout
               ? "bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-lg shadow-purple-500/10"
@@ -1221,10 +1274,13 @@ const generateRoadmap = () => {
               <div className="space-y-1">
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-5 h-5 text-purple-400 animate-pulse" />
-                  <h3 className="text-lg font-bold">Customize Dashboard Layout</h3>
+                  <h3 className="text-lg font-bold">
+                    Customize Dashboard Layout
+                  </h3>
                 </div>
                 <p className="text-sm text-gray-400">
-                  Drag and drop the cards to rearrange them, or use the manual arrow keys. Hide cards you don't need.
+                  Drag and drop the cards to rearrange them, or use the manual
+                  arrow keys. Hide cards you don't need.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -1239,7 +1295,9 @@ const generateRoadmap = () => {
 
             {hiddenWidgets.length > 0 && (
               <div className="mt-4 pt-4 border-t border-white/10">
-                <span className="text-xs text-gray-400 block mb-2 font-semibold tracking-wide uppercase">Hidden Widgets (Click to Restore):</span>
+                <span className="text-xs text-gray-400 block mb-2 font-semibold tracking-wide uppercase">
+                  Hidden Widgets (Click to Restore):
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {hiddenWidgets.map((hiddenId) => {
                     const labelMap = {
@@ -1284,13 +1342,15 @@ const generateRoadmap = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-6">
             <StreakCounter currentStreak={attendancePerformance.streakDays} />
-            <XpProgressBar 
-              currentLevel={gamificationData?.currentLevel ?? 1} 
-              currentXp={gamificationData?.currentXp ?? 0} 
+            <XpProgressBar
+              currentLevel={gamificationData?.currentLevel ?? 1}
+              currentXp={gamificationData?.currentXp ?? 0}
             />
           </div>
           <div>
-            <BadgeGallery unlockedBadges={gamificationData?.unlockedBadges ?? []} />
+            <BadgeGallery
+              unlockedBadges={gamificationData?.unlockedBadges ?? []}
+            />
           </div>
         </div>
       </div>
@@ -1328,11 +1388,10 @@ const generateRoadmap = () => {
           </div>
         </div>
       )}
-      
+
       <QuickNotes />
     </div>
   );
 };
 
 export default StudentDashboard;
-

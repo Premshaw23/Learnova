@@ -11,16 +11,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
-import {
-  getDashboardSidebarItems,
-  isRouteActive,
-} from "@/lib/navigation";
+import { getDashboardSidebarItems, isRouteActive } from "@/lib/navigation";
 import SidebarNavItem from "./SidebarNavItem";
 import { sidebarGlassClass } from "./glassStyles";
-import {
-  sidebarMobileVariants,
-  sidebarVariants,
-} from "./constants";
+import { sidebarMobileVariants, sidebarVariants } from "./constants";
 
 export default function Sidebar({
   collapsed = false,

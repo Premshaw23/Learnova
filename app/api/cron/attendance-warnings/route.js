@@ -57,7 +57,6 @@ async function getRecentWarningUserIds(db, userIds, cooldownDate) {
   return new Set(checks.filter(Boolean));
 }
 
-
 async function sendWarningEmails(emailsToSend) {
   const dashboardUrl =
     process.env.NEXT_PUBLIC_APP_URL || "https://learnova.app";
@@ -128,7 +127,8 @@ export async function GET(request) {
           message: notif.message,
           type: notif.type,
           read: false,
-          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+          createdAt:
+            notif.createdAt?.toISOString?.() || new Date().toISOString(),
         }).catch(() => {});
       }
       notificationsToInsert = [];
@@ -188,16 +188,21 @@ export async function GET(request) {
       // Process students in batches to keep memory usage bounded
       for (let i = 0; i < instituteStudents.length; i += STUDENT_BATCH_SIZE) {
         const batch = instituteStudents.slice(i, i + STUDENT_BATCH_SIZE);
-        const batchUids = batch.map(s => s.uid || s.firebaseUid).filter(Boolean);
+        const batchUids = batch
+          .map((s) => s.uid || s.firebaseUid)
+          .filter(Boolean);
         if (batchUids.length === 0) continue;
 
         // Load attendance records for this batch only
-        const records = await db.collection("attendance").find({
-          userId: { $in: batchUids },
-          instituteId,
-        }).toArray();
+        const records = await db
+          .collection("attendance")
+          .find({
+            userId: { $in: batchUids },
+            instituteId,
+          })
+          .toArray();
 
-        const attendanceByUser = new Map(batchUids.map(uid => [uid, []]));
+        const attendanceByUser = new Map(batchUids.map((uid) => [uid, []]));
         for (const record of records) {
           const userRecords = attendanceByUser.get(record.userId);
           if (userRecords) {
@@ -210,7 +215,10 @@ export async function GET(request) {
           if (!uid || recentWarningUserIds.has(uid)) continue;
 
           const studentAttendance = attendanceByUser.get(uid) || [];
-          const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
+          const evaluation = evaluateStudentAttendance(
+            studentAttendance,
+            threshold
+          );
 
           if (evaluation.isBelowThreshold) {
             const email = student.email;
@@ -262,7 +270,8 @@ export async function GET(request) {
           message: notif.message,
           type: notif.type,
           read: false,
-          createdAt: notif.createdAt?.toISOString?.() || new Date().toISOString(),
+          createdAt:
+            notif.createdAt?.toISOString?.() || new Date().toISOString(),
         }).catch(() => {});
       }
     }
@@ -277,12 +286,9 @@ export async function GET(request) {
           emailCount: emailsToSend.length,
         });
       } catch (queueErr) {
-        logger.error(
-          "[attendance-warnings] Failed to queue bulk email job",
-          {
-            error: queueErr.message,
-          }
-        );
+        logger.error("[attendance-warnings] Failed to queue bulk email job", {
+          error: queueErr.message,
+        });
       }
     }
 

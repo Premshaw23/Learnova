@@ -11,7 +11,10 @@ export default function NoticesLoading() {
       </div>
       <div className="grid gap-4">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 space-y-3">
+          <div
+            key={i}
+            className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 space-y-3"
+          >
             <Skeleton className="h-6 w-3/4 bg-slate-800/80" />
             <Skeleton className="h-4 w-full bg-slate-800/50" />
             <Skeleton className="h-4 w-2/3 bg-slate-800/50" />

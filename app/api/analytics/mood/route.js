@@ -36,16 +36,16 @@ export async function GET(req) {
     const pipeline = [
       {
         $match: {
-          timestamp: { $gte: oneHourAgo }
-        }
+          timestamp: { $gte: oneHourAgo },
+        },
       },
       {
         $group: {
           _id: "$dominantExpression",
           count: { $sum: 1 },
-          avgFocus: { $avg: "$focusScore" }
-        }
-      }
+          avgFocus: { $avg: "$focusScore" },
+        },
+      },
     ];
 
     const results = await moodLogs.aggregate(pipeline).toArray();
@@ -54,13 +54,14 @@ export async function GET(req) {
     let totalFocusScore = 0;
     const moodCounts = {};
 
-    results.forEach(r => {
+    results.forEach((r) => {
       totalLogs += r.count;
-      totalFocusScore += (r.avgFocus * r.count);
+      totalFocusScore += r.avgFocus * r.count;
       moodCounts[r._id] = r.count;
     });
 
-    const averageFocus = totalLogs > 0 ? (totalFocusScore / totalLogs) * 100 : 0;
+    const averageFocus =
+      totalLogs > 0 ? (totalFocusScore / totalLogs) * 100 : 0;
 
     return NextResponse.json({
       success: true,
@@ -68,11 +69,14 @@ export async function GET(req) {
         totalLogs,
         averageFocus: Math.round(averageFocus),
         moodCounts,
-        recentActive: totalLogs > 0
-      }
+        recentActive: totalLogs > 0,
+      },
     });
   } catch (err) {
     console.error("Failed to get mood analytics:", err);
-    return NextResponse.json({ success: false, error: "Failed to load analytics" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Failed to load analytics" },
+      { status: 500 }
+    );
   }
 }
