@@ -119,6 +119,11 @@ const TeacherAchievementPanel = dynamic(
   { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 
+const StudyGroupRecommendation = dynamic(
+  () => import("@/components/dashboard/StudyGroupRecommendation"),
+  { loading: () => <DashboardSkeleton /> }
+);
+
 const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -1099,57 +1104,90 @@ const TeacherDashboard = () => {
                   </div>
                 </ExportDropdown>
 
-                <button
-                  className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
-                  aria-label="Upload schedule"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Upload className="w-5 h-5 text-green-400" />
-                    <div>
-                      <div className="font-medium">Upload Schedule</div>
-                      <div className="text-sm text-muted-foreground dark:text-gray-400">
-                        Weekly timetable
-                      </div>
+          {/* Quick Actions */}
+          <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
+            <h2 className="text-xl font-bold text-foreground dark:text-white mb-6">
+              Quick Actions
+            </h2>
+
+            <div className="space-y-3">
+              <ExportDropdown
+                onExport={handleAttendanceExport}
+                isExporting={isExporting}
+                label="Export Reports"
+                className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left flex justify-start items-center"
+              >
+                <div className="flex items-center space-x-3 text-left">
+                  <Download className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <div className="font-medium text-foreground dark:text-white">
+                      Export Reports
+                    </div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      CSV / PDF formats
+                    </div>
+                  </div>
+                </div>
+              </ExportDropdown>
+
+              <button
+                className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+                aria-label="Upload schedule"
+              >
+                <div className="flex items-center space-x-3">
+                  <Upload className="w-5 h-5 text-green-400" />
+                  <div>
+                    <div className="font-medium">Upload Schedule</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      Weekly timetable
                     </div>
                   </div>
                 </button>
 
-                <button
-                  className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
-                  aria-label="Send notification"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Bell className="w-5 h-5 text-orange-400" />
-                    <div>
-                      <div className="font-medium">Send Notification</div>
-                      <div className="text-sm text-muted-foreground dark:text-gray-400">
-                        To students/parents
-                      </div>
+              <button
+                className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+                aria-label="Send notification"
+              >
+                <div className="flex items-center space-x-3">
+                  <Bell className="w-5 h-5 text-orange-400" />
+                  <div>
+                    <div className="font-medium">Send Notification</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      To students/parents
                     </div>
                   </div>
                 </button>
               </div>
             </div>
 
-            {/* Security Status */}
-            <div key="security" className="h-full">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-400" />
-                    <span className="text-muted-foreground dark:text-gray-300 text-sm">
-                      Face Recognition
-                    </span>
+              <button
+                onClick={() => setShowAbsentSummaryModal(true)}
+                className="w-full bg-gradient-to-r from-indigo-600/20 to-indigo-600/20 hover:from-indigo-600/30 hover:to-indigo-600/30 border border-indigo-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+                aria-label="Action button"
+              >
+                <div className="flex items-center space-x-3">
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                  <div>
+                    <div className="font-medium">AI Lecture Summary</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      Send notes to absent students
+                    </div>
                   </div>
                   <span className="text-green-400 text-sm">Active</span>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-400" />
-                    <span className="text-muted-foreground dark:text-gray-300 text-sm">
-                      GPS Geofencing
-                    </span>
+              <button
+                onClick={() => handleExport("csv")}
+                className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+                aria-label="Action button"
+              >
+                <div className="flex items-center space-x-3">
+                  <Download className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <div className="font-medium">Export Reports</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      CSV format (Instant Download)
+                    </div>
                   </div>
                   <span className="text-green-400 text-sm">Active</span>
                 </div>
@@ -1248,27 +1286,38 @@ const TeacherDashboard = () => {
         <AbsentSummaryModal
           isOpen={showAbsentSummaryModal}
           onClose={() => setShowAbsentSummaryModal(false)}
-          absentStudents={studentAttendanceData.filter(s => s.status === "absent")}
+          absentStudents={studentAttendanceData.filter(
+            (s) => s.status === "absent"
+          )}
         />
       )}
     </div>
   );
 
   const handleExportSingleClass = (cls, day) => {
-    let icsString = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//Learnova//Teacher Schedule//EN",
-      "CALSCALE:GREGORIAN",
-      "METHOD:PUBLISH",
-    ].join("\r\n") + "\r\n";
+    let icsString =
+      [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Learnova//Teacher Schedule//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+      ].join("\r\n") + "\r\n";
 
     const [startStr, endStr] = (cls.time || "").split("-");
     if (!startStr || !endStr) return;
 
     // Helper to get next weekday date
     const getNextWeekdayDate = (dayName, timeStr) => {
-      const weekdays = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+      const weekdays = {
+        Sunday: 0,
+        Monday: 1,
+        Tuesday: 2,
+        Wednesday: 3,
+        Thursday: 4,
+        Friday: 5,
+        Saturday: 6,
+      };
       const targetDay = weekdays[dayName];
       const now = new Date();
       const currentDay = now.getDay();
@@ -1293,27 +1342,41 @@ const TeacherDashboard = () => {
 
     const startDate = getNextWeekdayDate(day, startStr.trim());
     const endDate = getNextWeekdayDate(day, endStr.trim());
-    const byDayMap = { Sunday: "SU", Monday: "MO", Tuesday: "TU", Wednesday: "WE", Thursday: "TH", Friday: "FR", Saturday: "SA" };
+    const byDayMap = {
+      Sunday: "SU",
+      Monday: "MO",
+      Tuesday: "TU",
+      Wednesday: "WE",
+      Thursday: "TH",
+      Friday: "FR",
+      Saturday: "SA",
+    };
 
-    icsString += [
-      "BEGIN:VEVENT",
-      `UID:class-${day}-${Date.now()}@learnova`,
-      `DTSTAMP:${formatDateToICS(new Date())}`,
-      `SUMMARY:${cls.subject}`,
-      `DESCRIPTION:Room: ${cls.room}`,
-      `LOCATION:${cls.room}`,
-      `DTSTART:${formatDateToICS(startDate)}`,
-      `DTEND:${formatDateToICS(endDate)}`,
-      `RRULE:FREQ=WEEKLY;BYDAY=${byDayMap[day]}`,
-      "END:VEVENT",
-    ].join("\r\n") + "\r\n";
+    icsString +=
+      [
+        "BEGIN:VEVENT",
+        `UID:class-${day}-${Date.now()}@learnova`,
+        `DTSTAMP:${formatDateToICS(new Date())}`,
+        `SUMMARY:${cls.subject}`,
+        `DESCRIPTION:Room: ${cls.room}`,
+        `LOCATION:${cls.room}`,
+        `DTSTART:${formatDateToICS(startDate)}`,
+        `DTEND:${formatDateToICS(endDate)}`,
+        `RRULE:FREQ=WEEKLY;BYDAY=${byDayMap[day]}`,
+        "END:VEVENT",
+      ].join("\r\n") + "\r\n";
     icsString += "END:VCALENDAR";
 
-    const blob = new Blob([icsString], { type: "text/calendar;charset=utf-8;" });
+    const blob = new Blob([icsString], {
+      type: "text/calendar;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `${(cls.subject || "Class").replace(/\s+/g, '_')}_schedule.ics`);
+    link.setAttribute(
+      "download",
+      `${(cls.subject || "Class").replace(/\s+/g, "_")}_schedule.ics`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1344,7 +1407,7 @@ const TeacherDashboard = () => {
                   className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50 relative group"
                 >
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
+                    <button
                       onClick={() => handleExportSingleClass(cls, day)}
                       className="p-1 rounded bg-black/40 text-gray-400 hover:text-green-400 transition-colors"
                       title="Add to Calendar"
@@ -1507,6 +1570,7 @@ const TeacherDashboard = () => {
         <div className="flex space-x-1 bg-card/40 dark:bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl p-1 border border-border dark:border-white/10">
           {[
             { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+            { id: "collaboration", label: "Collaboration", icon: Users },
             { id: "curriculum", label: "Curriculum", icon: BookOpen },
             { id: "achievements", label: "Achievements", icon: Award },
             { id: "analytics", label: "Analytics", icon: TrendingUp },
@@ -1548,6 +1612,7 @@ const TeacherDashboard = () => {
       {/* Main Content */}
       <div className="relative z-10 container mx-auto px-6 py-8">
         {activeTab === "dashboard" && renderDashboard()}
+        {activeTab === "collaboration" && <StudyGroupRecommendation />}
         {activeTab === "curriculum" && <CurriculumBuilder />}
         {activeTab === "achievements" && <TeacherAchievementPanel />}
         {activeTab === "analytics" && renderAnalytics()}
