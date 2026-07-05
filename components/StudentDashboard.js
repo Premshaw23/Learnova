@@ -1,5 +1,6 @@
 "use client";
 import StudyStreakWidget from "@/components/StudyStreakWidget";
+import AIStudyScheduleWidget from "@/components/AIStudyScheduleWidget";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
@@ -1141,8 +1142,9 @@ const generateRoadmap = () => {
       className={`min-h-screen bg-background relative overflow-x-hidden ${dashboardContentOffsetClass}`}
     >
       <Navbar />
-      <div className="max-w-7xl mx-auto px-6 mt-6">
+      <div className="max-w-7xl mx-auto px-6 mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <StudyStreakWidget studentId={user?.uid} />
+        <AIStudyScheduleWidget user={user} />
       </div>
 
       {/* Diagnostic Quiz Section */}
