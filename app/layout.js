@@ -24,6 +24,7 @@ import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
 import ScrollToTop from "@/components/ScrollToTop";
 import BackToTop from "@/components/ui/BackToTop";
+import ScrollToTopButton from "@/components/ui/ScrollToTop";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ScrollProgress from "@/components/ui/ScrollProgress";
 import NextTopLoader from "nextjs-toploader";
@@ -355,6 +356,7 @@ export default async function RootLayout({ children }) {
             {/* ── Client-only layout: modals, chatbot, PWA install, streak sync ── */}
             <ClientLayout />
             <BackToTop />
+            <ScrollToTopButton />
 
             {/* ── Screen-reader route announcer for accessibility ── */}
             <RouteAnnouncer />
