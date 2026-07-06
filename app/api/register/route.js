@@ -7,7 +7,7 @@ import { requireAuth } from "@/lib/rbac";
 import { AppError, ValidationError, ForbiddenError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { checkAuthRateLimit } from "@/lib/rate-limit";
 import {
   executeSaga,
   findExistingOperation,
@@ -127,12 +127,18 @@ async function ensureUserIndexes(collection) {
 export const POST = withErrorHandler(async (req) => {
   // Rate limiting
   const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`register_ip_${ip}`);
+  const rateLimitResult = await checkAuthRateLimit(ip);
 
   if (!rateLimitResult.allowed) {
-    throw new AppError(
-      "Too many registration attempts. Please try again later.",
-      429
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many registration attempts. Please try again later.",
+        },
+      },
+      { status: 429 }
     );
   }
 

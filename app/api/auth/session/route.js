@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { checkAuthRateLimit } from "@/lib/rate-limit";
 import { createSession, terminateSession } from "@/lib/sessionManager";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +18,16 @@ function getAuthCookieOptions() {
 
 export const POST = withErrorHandler(async (request) => {
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`session_${ip}`);
+  const rateLimitResult = await checkAuthRateLimit(ip);
   if (!rateLimitResult.allowed) {
     return NextResponse.json(
-      { success: false, error: "Too many requests. Please try again later." },
+      {
+        success: false,
+        error: {
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many requests. Please try again later.",
+        },
+      },
       { status: 429 }
     );
   }

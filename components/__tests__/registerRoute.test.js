@@ -2,10 +2,10 @@ import { POST } from "@/app/api/register/route";
 import { connectDb } from "@/lib/mongodb";
 import { put, del } from "@vercel/blob";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { checkAuthRateLimit } from "@/lib/rate-limit";
 
-vi.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: vi.fn(),
+vi.mock("@/lib/rate-limit", () => ({
+  checkAuthRateLimit: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({
@@ -39,7 +39,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
 
   beforeEach(() => {
     vi.clearAllMocks();
-    checkRateLimit.mockResolvedValue({ allowed: true });
+    checkAuthRateLimit.mockResolvedValue({ allowed: true });
 
     verifyFirebaseToken.mockImplementation(async (token) => {
       if (!token || token === "invalid-token") return null;
@@ -237,7 +237,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     mockFindOne.mockResolvedValue(null);
     mockInsertOne.mockResolvedValue({ insertedId: "mock-id" });
 
-    checkRateLimit.mockResolvedValue({ allowed: false });
+    checkAuthRateLimit.mockResolvedValue({ allowed: false });
 
     const req6 = createMockRequest({
       name: "John Doe",
