@@ -7,7 +7,16 @@ export async function GET(request) {
   try {
     await requireAuth(request);
   } catch {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Authentication required",
+        },
+      },
+      { status: 401 }
+    );
   }
 
   const { searchParams } = new URL(request.url);
@@ -17,13 +26,28 @@ export async function GET(request) {
 
   if (!instituteId) {
     return NextResponse.json(
-      { error: "instituteId is required" },
+      {
+        success: false,
+        error: {
+          code: "BAD_REQUEST",
+          message: "instituteId is required",
+        },
+      },
       { status: 400 }
     );
   }
 
   if (startDate && endDate && startDate > endDate) {
-    return NextResponse.json({ error: "Invalid date range" }, { status: 400 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "BAD_REQUEST",
+          message: "Invalid date range",
+        },
+      },
+      { status: 400 }
+    );
   }
 
   return NextResponse.json({ warnings: [] });

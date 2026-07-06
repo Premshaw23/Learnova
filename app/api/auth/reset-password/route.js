@@ -14,7 +14,13 @@ export async function POST(request) {
 
     if (typeof email !== "string" || !email.trim()) {
       return NextResponse.json(
-        { success: false, error: "Email is required" },
+        {
+          success: false,
+          error: {
+            code: "BAD_REQUEST",
+            message: "Email is required",
+          },
+        },
         { status: 400 }
       );
     }
@@ -23,7 +29,13 @@ export async function POST(request) {
 
     if (!EMAIL_PATTERN.test(sanitizedEmail)) {
       return NextResponse.json(
-        { success: false, error: "Please enter a valid email address." },
+        {
+          success: false,
+          error: {
+            code: "BAD_REQUEST",
+            message: "Please enter a valid email address.",
+          },
+        },
         { status: 400 }
       );
     }
@@ -37,7 +49,10 @@ export async function POST(request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Too many password reset requests. Please try again later.",
+          error: {
+            code: "TOO_MANY_REQUESTS",
+            message: "Too many password reset requests. Please try again later.",
+          },
         },
         { status: 429 }
       );
@@ -47,7 +62,13 @@ export async function POST(request) {
     const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { success: false, error: "Server misconfiguration: missing API key." },
+        {
+          success: false,
+          error: {
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Server misconfiguration: missing API key.",
+          },
+        },
         { status: 500 }
       );
     }
@@ -84,8 +105,10 @@ export async function POST(request) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Failed to send reset email due to a server error. Please try again later.",
+          error: {
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to send reset email due to a server error. Please try again later.",
+          },
         },
         { status: 500 }
       );
@@ -99,8 +122,21 @@ export async function POST(request) {
     });
   } catch (error) {
     if (error.statusCode) {
+      let code = "BAD_REQUEST";
+      if (error.statusCode === 401) code = "UNAUTHORIZED";
+      else if (error.statusCode === 403) code = "FORBIDDEN";
+      else if (error.statusCode === 404) code = "NOT_FOUND";
+      else if (error.statusCode === 429) code = "TOO_MANY_REQUESTS";
+      else if (error.statusCode >= 500) code = "INTERNAL_SERVER_ERROR";
+
       return NextResponse.json(
-        { success: false, error: error.message },
+        {
+          success: false,
+          error: {
+            code,
+            message: error.message,
+          },
+        },
         { status: error.statusCode }
       );
     }
@@ -109,7 +145,10 @@ export async function POST(request) {
     return NextResponse.json(
       {
         success: false,
-        error: "An unexpected error occurred. Please try again.",
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "An unexpected error occurred. Please try again.",
+        },
       },
       { status: 500 }
     );

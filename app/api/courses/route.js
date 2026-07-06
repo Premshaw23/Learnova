@@ -38,7 +38,13 @@ export async function GET(request) {
   } catch (error) {
     console.error("API Course Fetch Error:", error);
     return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
+      {
+        success: false,
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Internal Server Error",
+        },
+      },
       { status: 500 }
     );
   }
