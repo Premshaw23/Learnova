@@ -30,7 +30,7 @@ export default function useUnsavedChangesWarning(isDirty) {
       }
     };
 
-    history.pushState = function (state, title, url) {
+    const customPushState = function (state, title, url) {
       if (
         !suppressNextConfirm &&
         isDirtyRef.current &&
@@ -42,7 +42,7 @@ export default function useUnsavedChangesWarning(isDirty) {
       return originalPushState(state, title, url);
     };
 
-    history.replaceState = function (state, title, url) {
+    const customReplaceState = function (state, title, url) {
       if (
         !suppressNextConfirm &&
         isDirtyRef.current &&
@@ -54,14 +54,21 @@ export default function useUnsavedChangesWarning(isDirty) {
       return originalReplaceState(state, title, url);
     };
 
+    history.pushState = customPushState;
+    history.replaceState = customReplaceState;
+
     window.addEventListener("beforeunload", handleBeforeUnload);
     window.addEventListener("popstate", handlePopState);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       window.removeEventListener("popstate", handlePopState);
-      history.pushState = originalPushState;
-      history.replaceState = originalReplaceState;
+      if (history.pushState === customPushState) {
+        history.pushState = originalPushState;
+      }
+      if (history.replaceState === customReplaceState) {
+        history.replaceState = originalReplaceState;
+      }
     };
   }, [isDirty]);
 }
