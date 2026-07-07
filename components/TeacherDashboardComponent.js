@@ -178,7 +178,11 @@ const TeacherDashboard = () => {
     if (user?.uid) {
       const savedLayout = localStorage.getItem(`learnova_dashboard_layout_${user.uid}`);
       if (savedLayout) {
-        setLayouts(JSON.parse(savedLayout));
+        try {
+          setLayouts(JSON.parse(savedLayout));
+        } catch (err) {
+          console.error("Failed to parse dashboard layout:", err);
+        }
       }
     }
   }, [user]);
