@@ -1259,10 +1259,7 @@ const TeacherDashboard = () => {
                 </div>
               </ExportDropdown>
 
-              <button
-                className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
-                aria-label="Upload schedule"
-              >
+              <button className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Upload schedule">
                 <div className="flex items-center space-x-3">
                   <Upload className="w-5 h-5 text-green-400" />
                   <div>
