@@ -1342,6 +1342,16 @@ const TeacherDashboard = () => {
                 <span className="text-green-400 text-sm">Active</span>
               </div>
 
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    GPS Geofencing
+                  </span>
+                </div>
+                <span className="text-green-400 text-sm">Active</span>
+              </div>
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="w-4 h-4 text-green-400" />
