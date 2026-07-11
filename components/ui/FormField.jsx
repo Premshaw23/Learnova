@@ -32,7 +32,6 @@ export const FormField = ({
     const describedBy = describedByParts.length > 0 ? describedByParts.join(" ") : undefined;
 
     clonedChild = React.cloneElement(child, {
-      id: child.props.id || inputId,
       "aria-invalid": error ? "true" : "false",
       "aria-describedby": child.props["aria-describedby"] || describedBy,
       "aria-errormessage": error ? errorId : undefined,
