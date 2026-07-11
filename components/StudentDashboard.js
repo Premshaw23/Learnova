@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 import StudyStreakWidget from "@/components/StudyStreakWidget";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 
 import {
@@ -22,6 +23,7 @@ import {
   EyeOff,
   ArrowUp,
   ArrowDown,
+  Video,
 } from "lucide-react";
 
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
@@ -217,20 +219,29 @@ const DashboardHeader = ({ user, currentTime, getInitials }) => (
         </div>
       </div>
 
-      <div className="text-left md:text-right">
-        <div className="text-lg sm:text-xl font-mono">
-          {currentTime?.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </div>
+      <div className="flex flex-col md:flex-row md:items-center gap-4 text-left md:text-right">
+        <Link 
+          href="/virtual-class"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 hover:from-blue-600/30 hover:to-cyan-600/30 border border-blue-500/30 text-blue-400 rounded-xl transition-colors font-medium text-sm"
+        >
+          <Video className="w-4 h-4" />
+          Join Virtual Class
+        </Link>
+        <div>
+          <div className="text-lg sm:text-xl font-mono">
+            {currentTime?.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
 
-        <div className="text-xs text-muted-foreground">
-          {currentTime?.toLocaleDateString([], {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          })}
+          <div className="text-xs text-muted-foreground">
+            {currentTime?.toLocaleDateString([], {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}
+          </div>
         </div>
       </div>
     </div>
