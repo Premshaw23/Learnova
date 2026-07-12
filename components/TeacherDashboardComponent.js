@@ -1240,6 +1240,21 @@ const TeacherDashboard = () => {
             </h2>
 
             <div className="space-y-3">
+              <button 
+                onClick={() => router.push('/virtual-class')}
+                className="w-full bg-gradient-to-r from-blue-600/20 to-cyan-600/20 hover:from-blue-600/30 hover:to-cyan-600/30 border border-blue-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" 
+                aria-label="Launch Virtual Class">
+                <div className="flex items-center space-x-3">
+                  <Video className="w-5 h-5 text-blue-400" />
+                  <div>
+                    <div className="font-medium">Launch Virtual Class</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      Interactive Whiteboard
+                    </div>
+                  </div>
+                </div>
+              </button>
+
               <ExportDropdown
                 onExport={handleAttendanceExport}
                 isExporting={isExporting}
@@ -1337,6 +1352,16 @@ const TeacherDashboard = () => {
                   <CheckCircle className="w-4 h-4 text-green-400" />
                   <span className="text-muted-foreground dark:text-gray-300 text-sm">
                     Face Recognition
+                  </span>
+                </div>
+                <span className="text-green-400 text-sm">Active</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    GPS Geofencing
                   </span>
                 </div>
                 <span className="text-green-400 text-sm">Active</span>

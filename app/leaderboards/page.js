@@ -195,46 +195,20 @@ export default function LeaderboardsPage() {
     setMounted(true);
 
     const fetchLeaderboard = async () => {
+      if (!user) return;
       try {
-        const q = query(
-          collection(db, "userStats"),
-          orderBy("totalXp", "desc"),
-          limit(50)
-        );
-        const snapshot = await getDocs(q);
+        const token = await user.getIdToken();
+        const res = await fetch("/api/leaderboards", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
 
-        const fetchedData = await Promise.all(
-          snapshot.docs.map(async (docSnap, index) => {
-            const stats = docSnap.data();
-            const userId = docSnap.id;
-
-            let userData = {};
-            try {
-              const userRef = doc(db, "users", userId);
-              const userSnap = await getDoc(userRef);
-              if (userSnap.exists()) userData = userSnap.data();
-            } catch (e) {
-              console.warn("Could not fetch user details for", userId);
-            }
-
-            return {
-              id: userId,
-              name: userData.displayName || "Unknown Learner",
-              score: stats.totalXp || stats.score || 0,
-              avatar: userData.photoURL || "👩‍🎓",
-              rank: index + 1,
-              change: "same",
-              streak: stats.currentStreak || stats.streak || 0,
-              badges:
-                stats.badges ||
-                (stats.unlockedBadges ? stats.unlockedBadges.length : 0),
-              isCurrentUser: user?.uid === userId,
-            };
-          })
-        );
-
-        if (fetchedData.length > 0) {
-          setLeaderboardData(fetchedData);
+        if (data.success && data.data?.leaderboard?.length > 0) {
+          setLeaderboardData(data.data.leaderboard);
         } else {
           // Fallback to mock data if empty
           setLeaderboardData(LEADERBOARD_DATA);
@@ -247,6 +221,7 @@ export default function LeaderboardsPage() {
         setLoading(false);
       }
     };
+
 
     fetchLeaderboard();
   }, [user]);
