@@ -4,7 +4,22 @@ const OfflineSyncTracker = ({ courseId, currentModuleId, currentProgress }) => {
   const [isOnline, setIsOnline] = useState(true);
   const [syncQueue, setSyncQueue] = useState([]);
   const [syncStatus, setSyncStatus] = useState("Synchronized"); // Synchronized, Queued, Syncing
+  // Restore offline sync queue from localStorage on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const savedQueue = JSON.parse(
+          localStorage.getItem("learnova_offline_sync_queue")
+        ) || [];
 
+        setSyncQueue(savedQueue);
+      } catch (error) {
+        console.error("Failed to restore offline sync queue:", error);
+        localStorage.removeItem("learnova_offline_sync_queue");
+        setSyncQueue([]);
+      }
+    }
+  }, []);
   // 1. Monitor live connection stability states
   useEffect(() => {
     if (typeof window !== "undefined") {
