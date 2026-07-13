@@ -64,7 +64,7 @@ export const POST = withErrorHandler(async (request) => {
 
   const parsed = activitySchema.safeParse(body);
   if (!parsed.success) {
-    const message = parsed.error.errors.map((e) => e.message).join("; ");
+    const message = parsed.error.issues.map((e) => e.message).join("; ");
     return jsonError(message, 400);
   }
 

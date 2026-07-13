@@ -57,15 +57,21 @@ export const getUserActivity = async (userId) => {
   const rawActivities = await getUserActivities(userId);
 
   const grouped = rawActivities.reduce((acc, item) => {
-    const timestamp =
-      item.timestamp instanceof Date
-        ? item.timestamp
-        : new Date(item.timestamp);
-    const dateKey = timestamp.toISOString().slice(0, 10);
+  const timestamp =
+    item.timestamp instanceof Date
+      ? item.timestamp
+      : new Date(item.timestamp);
 
-    acc[dateKey] = (acc[dateKey] || 0) + 1;
+  if (Number.isNaN(timestamp.getTime())) {
     return acc;
-  }, {});
+  }
+
+  const dateKey = timestamp.toISOString().slice(0, 10);
+
+  acc[dateKey] = (acc[dateKey] || 0) + 1;
+
+  return acc;
+}, {});
 
   return Object.entries(grouped)
     .map(([date, count]) => ({ date, count }))

@@ -185,7 +185,7 @@ const LEADERBOARD_DATA = [
 
 export default function LeaderboardsPage() {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("global");
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -195,46 +195,20 @@ export default function LeaderboardsPage() {
     setMounted(true);
 
     const fetchLeaderboard = async () => {
+      if (!user) return;
       try {
-        const q = query(
-          collection(db, "userStats"),
-          orderBy("totalXp", "desc"),
-          limit(50)
-        );
-        const snapshot = await getDocs(q);
+        const token = await user.getIdToken();
+        const res = await fetch("/api/leaderboards", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
 
-        const fetchedData = await Promise.all(
-          snapshot.docs.map(async (docSnap, index) => {
-            const stats = docSnap.data();
-            const userId = docSnap.id;
-
-            let userData = {};
-            try {
-              const userRef = doc(db, "users", userId);
-              const userSnap = await getDoc(userRef);
-              if (userSnap.exists()) userData = userSnap.data();
-            } catch (e) {
-              console.warn("Could not fetch user details for", userId);
-            }
-
-            return {
-              id: userId,
-              name: userData.displayName || "Unknown Learner",
-              score: stats.totalXp || stats.score || 0,
-              avatar: userData.photoURL || "👩‍🎓",
-              rank: index + 1,
-              change: "same",
-              streak: stats.currentStreak || stats.streak || 0,
-              badges:
-                stats.badges ||
-                (stats.unlockedBadges ? stats.unlockedBadges.length : 0),
-              isCurrentUser: user?.uid === userId,
-            };
-          })
-        );
-
-        if (fetchedData.length > 0) {
-          setLeaderboardData(fetchedData);
+        if (data.success && data.data?.leaderboard?.length > 0) {
+          setLeaderboardData(data.data.leaderboard);
         } else {
           // Fallback to mock data if empty
           setLeaderboardData(LEADERBOARD_DATA);
@@ -247,6 +221,7 @@ export default function LeaderboardsPage() {
         setLoading(false);
       }
     };
+
 
     fetchLeaderboard();
   }, [user]);
@@ -307,6 +282,13 @@ export default function LeaderboardsPage() {
     { id: "friends", label: "Friends", icon: Star },
   ];
 
+  if (authLoading) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+    </div>
+  );
+}
   return (
     <>
       <div className="fixed inset-0 -z-10 bg-background overflow-hidden">
@@ -591,7 +573,10 @@ export default function LeaderboardsPage() {
                     {currentUser.score?.toLocaleString()}
                   </span>
                 </div>
-                <button className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors border border-white/10 hidden sm:block" aria-label="Action button">
+                <button
+                  className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors border border-white/10 hidden sm:block"
+                  aria-label="Action button"
+                >
                   View Full Profile
                 </button>
               </div>

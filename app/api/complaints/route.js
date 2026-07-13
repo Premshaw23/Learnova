@@ -5,6 +5,7 @@ import { AppError } from "@/lib/errors";
 import { jsonSuccess, fail } from "@/lib/api-response";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { createComplaintSchema, withValidation } from "@/lib/validations";
+import { enforceContentPolicy } from "@/lib/ai/contentFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,17 @@ export const POST = withErrorHandler(
       try {
         db = await connectDb();
       } catch (error) {
-        throw new AppError("Database connection failed. Please try again.", 503);
+        throw new AppError(
+          "Database connection failed. Please try again.",
+          503
+        );
+      }
+
+      // AI Content Filter: Check description for toxicity
+      try {
+        await enforceContentPolicy(description);
+      } catch (error) {
+        return fail(400, "INAPPROPRIATE_CONTENT", error.message);
       }
 
       await db.collection("complaints").insertOne({

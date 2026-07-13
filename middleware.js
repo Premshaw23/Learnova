@@ -1,24 +1,9 @@
 import { NextResponse } from "next/server";
 import * as jose from "jose";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
-import getApiRouteRule from "@/lib/rbac-policy";
-
-let redisClient;
-
-function getRedisClient() {
-  if (
-    !redisClient &&
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
+import { hasPermission } from "./constants/permissions";
+import { PUBLIC_API_PATHS, default as getApiRouteRule } from "@/lib/rbac-policy";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -38,16 +23,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-function getRedis() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
-
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
 
@@ -63,8 +38,102 @@ const AUTH_RATE_LIMITED_PATHS = [
 
 const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
 
+
 function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
+}
+
+// ─── Secure IP Extraction ────────────────────────────────────────────────────
+// Extracts the real client IP:
+//   1. Prefers x-real-ip (set by reverse proxy, not user-controllable)
+//   2. Falls back to the rightmost IP in x-forwarded-for (last proxy hop)
+//   3. Rejects private/loopback/reserved IPs to prevent spoofing
+
+function expandIpv6(ip) {
+  const normalized = ip.toLowerCase();
+  let parts;
+  const doubleColon = normalized.indexOf('::');
+  if (doubleColon !== -1) {
+    const left = doubleColon === 0 ? [] : normalized.substring(0, doubleColon).split(':');
+    const right = doubleColon === normalized.length - 2 ? [] : normalized.substring(doubleColon + 2).split(':');
+    const missing = 8 - left.length - right.length;
+    parts = [...left, ...Array(missing).fill('0'), ...right];
+  } else {
+    parts = normalized.split(':');
+  }
+  return parts.map(p => p.padStart(4, '0'));
+}
+
+function isValidPublicIpv6(ip) {
+  if (ip === '::1') return false;
+  if (ip === '::') return false;
+
+  const parts = expandIpv6(ip);
+
+  // IPv4-mapped IPv6 (::ffff:x.x.x.x) — validate as IPv4
+  if (/^0000:0000:0000:0000:0000:ffff/i.test(parts.slice(0, 6).join(':'))) {
+    const v4 = `${parseInt(parts[6].substring(0, 2), 16)}.${parseInt(parts[6].substring(2, 4), 16)}.${parseInt(parts[7].substring(0, 2), 16)}.${parseInt(parts[7].substring(2, 4), 16)}`;
+    return isValidPublicIp(v4);
+  }
+
+  const first = parseInt(parts[0], 16);
+
+  // fc00::/7 — unique-local (private)
+  if ((first & 0xfe00) === 0xfc00) return false;
+  // fe80::/10 — link-local
+  if ((first & 0xffc0) === 0xfe80) return false;
+  // ff00::/8 — multicast
+  if (first >= 0xff00) return false;
+  // 2001:db8::/32 — documentation
+  if (first === 0x2001 && parseInt(parts[1], 16) === 0x0db8) return false;
+  // 2001:2::/48 — benchmark testing
+  if (first === 0x2001 && parseInt(parts[1], 16) === 0x0002) return false;
+
+  return true;
+}
+
+function isValidPublicIp(ip) {
+  if (!ip) return false;
+  const ipv4Match = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4Match) {
+    const parts = ipv4Match.slice(1).map(Number);
+    if (parts.some(p => p < 0 || p > 255)) return false;
+    const [a, b, c, d] = parts;
+    if (a === 10) return false;
+    if (a === 127) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 0) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false;
+    if (a === 198 && b === 18 && c === 0 && d === 0) return false;
+    if (a === 198 && b === 51 && c === 100) return false;
+    if (a >= 224) return false;
+    return true;
+  }
+  if (ip.includes(':')) return isValidPublicIpv6(ip);
+  return false;
+}
+
+function extractClientIp(request) {
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp && isValidPublicIp(realIp)) {
+    return realIp;
+  }
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const ips = forwarded.split(",").map(s => s.trim()).filter(Boolean);
+    const rightmost = ips[ips.length - 1];
+    if (rightmost && isValidPublicIp(rightmost)) {
+      return rightmost;
+    }
+    for (const ip of ips) {
+      if (isValidPublicIp(ip)) return ip;
+    }
+  }
+
+  return null;
 }
 
 async function rateLimit(ip, pathname, request) {
@@ -251,77 +320,89 @@ async function fetchUserRoleFromFirestore(uid, token) {
  */
 async function verifyIdToken(token) {
   try {
-    const getJwtExp = (t) => {
+    const getJwtParts = (t) => {
       try {
         const parts = t.split(".");
-        if (parts.length < 2) return null;
-        let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-        while (payload.length % 4) payload += "=";
-        const decoded =
+        if (parts.length !== 3) return null;
+
+        let headerPayload = parts[0]
+          .replace(/-/g, "+")
+          .replace(/_/g, "/");
+        while (headerPayload.length % 4) headerPayload += "=";
+        const headerJson =
           typeof atob === "function"
-            ? atob(payload)
-            : Buffer.from(payload, "base64").toString("utf8");
-        const parsed = JSON.parse(decoded);
-        return {
-          exp: typeof parsed.exp === "number" ? parsed.exp : null,
-          kid: parsed.kid || null,
-        };
+            ? atob(headerPayload)
+            : Buffer.from(headerPayload, "base64").toString("utf8");
+        const header = JSON.parse(headerJson);
+
+        let bodyPayload = parts[1]
+          .replace(/-/g, "+")
+          .replace(/_/g, "/");
+        while (bodyPayload.length % 4) bodyPayload += "=";
+        const bodyJson =
+          typeof atob === "function"
+            ? atob(bodyPayload)
+            : Buffer.from(bodyPayload, "base64").toString("utf8");
+        const body = JSON.parse(bodyJson);
+
+        return { header, body };
       } catch {
         return null;
       }
     };
 
-    const jwtMeta = getJwtExp(token);
-    if (jwtMeta?.exp) {
+    const jwtParts = getJwtParts(token);
+    if (!jwtParts) return null;
+
+    // Reject tokens with wrong algorithm - only allow RS256 for Firebase
+    if (jwtParts.header.alg !== "RS256") {
+      console.error("[auth] Rejected token with unsupported algorithm:", jwtParts.header.alg);
+      return null;
+    }
+
+    // Check expiration early to avoid unnecessary crypto operations
+    if (typeof jwtParts.body.exp === "number") {
       const now = Math.floor(Date.now() / 1000);
-      if (now > jwtMeta.exp + CLOCK_TOLERANCE_SECONDS) {
+      if (now > jwtParts.body.exp + CLOCK_TOLERANCE_SECONDS) {
         return null;
       }
     }
+
+    // Reject tokens missing required Firebase claims
+    if (!jwtParts.body.sub) return null;
 
     if (!FIREBASE_PROJECT_ID) return null;
 
     const publicKeys = await getFirebasePublicKeys();
     if (publicKeys && Object.keys(publicKeys).length > 0) {
-      try {
-        const headerParts = token.split(".");
-        if (headerParts.length >= 1) {
-          let headerPayload = headerParts[0]
-            .replace(/-/g, "+")
-            .replace(/_/g, "/");
-          while (headerPayload.length % 4) headerPayload += "=";
-          const headerJson =
-            typeof atob === "function"
-              ? atob(headerPayload)
-              : Buffer.from(headerPayload, "base64").toString("utf8");
-          const header = JSON.parse(headerJson);
-          const kid = header.kid;
+      const kid = jwtParts.header.kid;
 
-          if (kid && publicKeys[kid]) {
-            const publicKey = await jose.importSPKI(publicKeys[kid], "RS256");
-            const { payload } = await jose.jwtVerify(token, publicKey, {
-              issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
-              audience: FIREBASE_PROJECT_ID,
-              clockTolerance: CLOCK_TOLERANCE_SECONDS,
-            });
+      if (kid && publicKeys[kid]) {
+        try {
+          const publicKey = await jose.importSPKI(publicKeys[kid], "RS256");
+          const { payload } = await jose.jwtVerify(token, publicKey, {
+            issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+            audience: FIREBASE_PROJECT_ID,
+            clockTolerance: CLOCK_TOLERANCE_SECONDS,
+            algorithms: ["RS256"],
+          });
 
-            let role = payload.role || null;
-            if (!role && payload.sub) {
-              role = await fetchUserRoleFromFirestore(payload.sub, token);
-            }
-
-            return {
-              sub: payload.sub,
-              uid: payload.sub,
-              email: payload.email,
-              email_verified: payload.email_verified === true,
-              role,
-              iat: payload.iat,
-            };
+          let role = payload.role || null;
+          if (!role && payload.sub) {
+            role = await fetchUserRoleFromFirestore(payload.sub, token);
           }
+
+          return {
+            sub: payload.sub,
+            uid: payload.sub,
+            email: payload.email,
+            email_verified: payload.email_verified === true,
+            role,
+            iat: payload.iat,
+          };
+        } catch {
+          // Local verification failed, fall through to REST API
         }
-      } catch {
-        // Local verification failed, fall through to REST API
       }
     }
 
@@ -333,6 +414,7 @@ async function verifyIdToken(token) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken: token }),
+        signal: AbortSignal.timeout(5000),
       }
     );
 
@@ -390,6 +472,15 @@ function enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole) {
     return { error: "Forbidden: Email not verified", status: 403 };
   }
 
+  if (rule.permission) {
+    if (!userRole) {
+      return { error: "Forbidden: No role assigned", status: 403 };
+    }
+    if (!hasPermission(userRole, rule.permission)) {
+      return { error: "Forbidden: Insufficient permissions", status: 403 };
+    }
+  }
+
   if (rule.roles && rule.roles.length > 0) {
     if (!userRole) {
       return { error: "Forbidden: No role assigned", status: 403 };
@@ -430,10 +521,7 @@ export async function middleware(request) {
 
   // ── 1. Rate limiting for auth API routes ──
   if (isAuthRoute(pathname)) {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
+    const ip = extractClientIp(request) || "unknown";
 
     const { allowed, remaining, retryAfter } = await rateLimit(ip, pathname, request);
 
@@ -479,29 +567,48 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
-    if (isTokenValid && pathname.startsWith("/api/")) {
-      const sessionId =
-        request.cookies.get("sessionId")?.value ||
-        request.headers.get("x-session-id");
-      if (sessionId) {
-        try {
-          const redis = getRedisClient();
-          if (redis) {
-            const exists = await redis.exists(`session:${sessionId}`);
-            if (exists !== 1) {
-              return NextResponse.json(
-                { error: "Session expired or terminated concurrently" },
-                { status: 401 }
-              );
-            }
+  if (isTokenValid && pathname.startsWith("/api/")) {
+    const sessionId =
+      request.cookies.get("sessionId")?.value ||
+      request.headers.get("x-session-id");
+
+    // Enforce session validation when Redis is configured
+    // Previously, omitting the session cookie would skip validation entirely,
+    // allowing stolen tokens to be used even after session termination
+    const redisConfigured =
+      process.env.UPSTASH_REDIS_REST_URL &&
+      process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (redisConfigured) {
+      if (!sessionId) {
+        return NextResponse.json(
+          { error: "Session required" },
+          { status: 401 }
+        );
+      }
+
+      try {
+        const redis = getRedis();
+        if (redis) {
+          const exists = await redis.exists(`session:${sessionId}`);
+          if (exists !== 1) {
+            return NextResponse.json(
+              { error: "Session expired or terminated concurrently" },
+              { status: 401 }
+            );
           }
-        } catch {
-          // Redis unavailable — continue without session validation
         }
+      } catch {
+        // Redis unavailable — deny request when session validation is required
+        return NextResponse.json(
+          { error: "Session validation unavailable" },
+          { status: 503 }
+        );
       }
     }
+  }
 
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
     const tokenFromCookie = request.cookies.get("authToken")?.value || null;
     if (tokenFromCookie) {
       try {
@@ -665,7 +772,7 @@ export async function middleware(request) {
 }
 
 // Exported for unit testing (in-memory fallback behavior)
-export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
+export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest, extractClientIp, isValidPublicIp };
 
 // Test helper to control cleanup timer
 function resetForTest(now) {

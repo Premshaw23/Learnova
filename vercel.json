@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/attendance-warnings",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/archive-data",
+      "schedule": "0 3 * * *"
     }
   ]
 }

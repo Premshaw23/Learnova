@@ -2,15 +2,39 @@
   "nav": {
     "home": "Home",
     "about": "About",
+    "wellness": "Wellness",
+    "focus": "Focus",
+    "activities": "Activities",
+    "complaints": "Complaints",
     "contact": "Contact",
+    "study": "Study",
     "login": "Login",
-    "signup": "Sign Up"
+    "signup": "Sign Up",
+    "search": "Search",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "logout": "Logout"
   },
   "about": {
     "welcome": "Welcome to Learnova",
     "mission": "Our Mission",
     "impact": "Our Impact",
     "explore": "Explore"
+  },
+  "home": {
+    "hero": {
+      "badge": "Institutional Impact",
+      "title": "Measurable Academic Operational Efficiency",
+      "description": "Hover over our structural hubs to review platform milestones. We embed robust data layers straight into modern campuses to elevate productivity and engagement metrics.",
+      "cta": "View Impact Reports"
+    },
+    "features": {
+      "badge": "Engineered for Scale",
+      "title": "Intelligent Frameworks Built for Modern Classrooms",
+      "description": "Simplify complex department operations with an interconnected ecosystem built on cutting-edge design paradigms."
+    }
   },
   "common": {
     "loading": "Loading...",

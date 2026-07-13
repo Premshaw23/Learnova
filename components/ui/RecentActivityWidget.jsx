@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Clock } from "lucide-react";
 import {
   getRecentActivities,
@@ -88,11 +89,7 @@ export default function RecentActivityWidget({
             <div className="group flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-900/50 transition-colors">
               <div className="w-10 h-10 rounded-md bg-zinc-800 flex items-center justify-center text-indigo-400 text-sm font-bold shrink-0">
                 {it.thumbnail ? (
-                  <img
-                    src={it.thumbnail}
-                    alt=""
-                    className="w-full h-full object-cover rounded-md"
-                  />
+                  <Image src={it.thumbnail} alt={it.title || it.name || "Thumbnail"} width={40} height={40} className="object-cover rounded-md" />
                 ) : PageIcon ? (
                   <PageIcon className="w-4 h-4" />
                 ) : it.type ? (

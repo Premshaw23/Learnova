@@ -1,4 +1,4 @@
-import { resolveConflict } from '../services/syncService';
+import { resolveConflict } from '../lib/syncService';
 
 describe('Version Vectoring & Conflict Resolution Engine', () => {
 

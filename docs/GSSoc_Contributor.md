@@ -111,9 +111,18 @@ Before committing:
 
 Stage files:
 
+-To add all the files which is changed
+
 ```bash
 git add .
 ```
+-To add only selected files
+
+```bash
+git add filename-one, filename-two
+```
+
+
 
 Commit with a meaningful message:
 

@@ -95,7 +95,9 @@ describe("POST /api/courses/curriculum/sync", () => {
       modules: [{ title: "Module 1" }],
     });
 
-    await expect(POST(req)).rejects.toThrow("You do not own this course curriculum");
+    await expect(POST(req)).rejects.toThrow(
+      "You do not own this course curriculum"
+    );
   });
 
   test("allows admin to sync any curriculum even if they are not the creator", async () => {

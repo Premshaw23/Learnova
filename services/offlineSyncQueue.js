@@ -1,4 +1,5 @@
 import { openDB } from "idb";
+import { logger } from "@/lib/logger";
 
 const DB_NAME = "learnova-offline-sync-db";
 const STORE_NAME = "attendance_queue";
@@ -7,8 +8,8 @@ const STORE_NAME = "attendance_queue";
  * Initializes the IndexedDB for offline attendance storage.
  */
 export async function initOfflineDB() {
-  return openDB(DB_NAME, 1, {
-    upgrade(db) {
+  return openDB(DB_NAME, 2, {
+    upgrade(db, oldVersion) {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, {
           keyPath: "id",
@@ -16,6 +17,11 @@ export async function initOfflineDB() {
         });
         store.createIndex("status", "status", { unique: false });
         store.createIndex("timestamp", "timestamp", { unique: false });
+        store.createIndex("userId_date", ["userId", "date"], { unique: false });
+      } else if (oldVersion < 2) {
+        // Existing store — add the compound index that was missing before v2
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        tx.store.createIndex("userId_date", ["userId", "date"], { unique: false });
       }
     },
   });
@@ -23,20 +29,41 @@ export async function initOfflineDB() {
 
 /**
  * Adds an attendance record to the offline IndexedDB queue.
+ * If a pending record for the same userId + date already exists, the
+ * existing record's ID is returned and no duplicate is inserted.
  * @param {Object} record - The attendance data (userId, studentName, etc.)
  */
 export async function queueOfflineAttendance(record) {
   try {
     const db = await initOfflineDB();
+
+    // Deduplication: check for an existing pending record with the same
+    // userId and date before inserting to avoid double-syncing.
+    if (record.userId && record.date) {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const existing = await tx.store
+        .index("userId_date")
+        .getAll(IDBKeyRange.only([record.userId, record.date]));
+      await tx.done;
+
+      const pendingDuplicate = existing.find((r) => r.status === "pending");
+      if (pendingDuplicate) {
+        logger.info(
+          `[Offline Sync] Duplicate skipped — record already queued with ID: ${pendingDuplicate.id}`
+        );
+        return pendingDuplicate.id;
+      }
+    }
+
     const id = await db.add(STORE_NAME, {
       ...record,
       status: "pending",
       timestamp: Date.now(),
     });
-    console.log(`[Offline Sync] Queued attendance record ID: ${id}`);
+    logger.info(`[Offline Sync] Queued attendance record ID: ${id}`);
     return id;
   } catch (error) {
-    console.error("[Offline Sync] Failed to queue record:", error);
+    logger.error("[Offline Sync] Failed to queue record:", { error });
     throw error;
   }
 }
@@ -51,7 +78,7 @@ export async function getPendingOfflineRecords() {
     const index = tx.store.index("status");
     return await index.getAll("pending");
   } catch (error) {
-    console.error("[Offline Sync] Failed to fetch pending records:", error);
+    logger.error("[Offline Sync] Failed to fetch pending records:", { error });
     return [];
   }
 }
@@ -74,7 +101,7 @@ export async function markRecordAsSynced(id) {
     }
     await tx.done;
   } catch (error) {
-    console.error(`[Offline Sync] Failed to mark record ${id} as synced:`, error);
+    logger.error(`[Offline Sync] Failed to mark record ${id} as synced:`, { error });
   }
 }
 
@@ -87,7 +114,7 @@ export async function removeRecordFromQueue(id) {
     const db = await initOfflineDB();
     await db.delete(STORE_NAME, id);
   } catch (error) {
-    console.error(`[Offline Sync] Failed to delete record ${id}:`, error);
+    logger.error(`[Offline Sync] Failed to delete record ${id}:`, { error });
   }
 }
 
@@ -106,7 +133,7 @@ export async function getPendingRecordsCount() {
  */
 export async function syncOfflineQueue(syncCallback) {
   if (!navigator.onLine) {
-    console.warn("[Offline Sync] Cannot sync, device is currently offline.");
+    logger.warn("[Offline Sync] Cannot sync, device is currently offline.");
     return { success: false, synced: 0, failed: 0 };
   }
 
@@ -115,7 +142,7 @@ export async function syncOfflineQueue(syncCallback) {
     return { success: true, synced: 0, failed: 0 };
   }
 
-  console.log(`[Offline Sync] Attempting to sync ${pendingRecords.length} records...`);
+  logger.info(`[Offline Sync] Attempting to sync ${pendingRecords.length} records...`);
   
   let syncedCount = 0;
   let failedCount = 0;
@@ -132,12 +159,12 @@ export async function syncOfflineQueue(syncCallback) {
         failedCount++;
       }
     } catch (err) {
-      console.error(`[Offline Sync] Error syncing record ${record.id}:`, err);
+      logger.error(`[Offline Sync] Error syncing record ${record.id}:`, { err });
       failedCount++;
     }
   }
 
-  console.log(`[Offline Sync] Sync complete. Synced: ${syncedCount}, Failed: ${failedCount}`);
+  logger.info(`[Offline Sync] Sync complete. Synced: ${syncedCount}, Failed: ${failedCount}`);
   
   return {
     success: failedCount === 0,

@@ -95,7 +95,8 @@ function ComplaintDetailModal({ complaint, onClose }) {
               <button
                 onClick={onClose}
                 className="absolute top-2 right-2 p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 text-slate-500 transition cursor-pointer"
-               aria-label="Action button">
+                aria-label="Action button"
+              >
                 <X size={14} />
               </button>
               <p className="text-xs uppercase tracking-[0.3em] text-accent font-mono font-bold">

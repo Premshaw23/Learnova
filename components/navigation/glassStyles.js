@@ -36,7 +36,7 @@ export const iconBtnClass =
   "relative p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all duration-200 hover:bg-zinc-100/80 dark:hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60";
 
 export const navCapsuleClass =
-  "hidden lg:flex items-center bg-zinc-100/60 dark:bg-white/[0.04] border border-zinc-200/50 dark:border-white/10 rounded-2xl p-1 gap-0.5";
+  "hidden xl:flex items-center bg-zinc-100/60 dark:bg-white/[0.04] border border-zinc-200/50 dark:border-white/10 rounded-2xl p-1 gap-0.5";
 
 export const sidebarGlassClass =
   "bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-xl border border-zinc-200/60 dark:border-white/10 shadow-2xl";

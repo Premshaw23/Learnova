@@ -100,12 +100,11 @@ export default function CourseLibrary({
 
     try {
       const nextPage = page + 1;
-      const res = await apiFetch(
+      const data = await apiFetch(
         `/api/courses?q=${encodeURIComponent(q)}&category=${encodeURIComponent(
           category
         )}&page=${nextPage}&limit=${limit}`
       );
-      const data = await res.json();
 
       if (data.success && isMounted()) {
         setCourses((prev) => [...prev, ...data.courses]);

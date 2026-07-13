@@ -18,7 +18,8 @@ export default function Error({ error, reset }) {
           Something went wrong!
         </h2>
         <p className="text-muted-foreground dark:text-gray-400 mb-8 leading-relaxed">
-          We encountered an unexpected error while rendering this section. Our system has logged the issue.
+          We encountered an unexpected error while rendering this section. Our
+          system has logged the issue.
         </p>
         <button
           onClick={() => reset()}

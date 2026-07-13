@@ -10,9 +10,9 @@ export default function VolumetricPlanner() {
   const [weight, setWeight] = useState("");
 
   // Standard box constraints (e.g., 30x30x30 cm, max 20 kg limit)
-  const STANDARD_BOX = { length: 30, width: 30, height: 30, maxWeight: 20 };
-  const BOX_VOLUME =
-    STANDARD_BOX.length * STANDARD_BOX.width * STANDARD_BOX.height;
+  const STUDY_LIMIT = { length: 30, width: 30, height: 30, maxWeight: 20 };
+  const TOTAL_CAPACITY =
+  STUDY_LIMIT.length * STUDY_LIMIT.width * STUDY_LIMIT.height;
   const EFFECTIVE_VOLUME_CAPACITY = BOX_VOLUME * 0.8; // 80% realistic packing threshold
 
   // Calculate cumulative totals
@@ -21,27 +21,29 @@ export default function VolumetricPlanner() {
     0
   );
   const totalWeight = items.reduce((sum, item) => sum + item.wg, 0);
-  const percentageUsed = (totalVolume / BOX_VOLUME) * 100;
+  const percentageUsed = (totalVolume / TOTAL_CAPACITY) * 100;
 
   // Determine packing status
   let status = "Optimal Fit";
   let statusReason = "All items fit cleanly within standard box limits.";
   let isOverflow = false;
 
-  if (totalWeight > STANDARD_BOX.maxWeight) {
+  if (totalWeight > STUDY_LIMIT.maxWeight) {
     status = "Volumetric Overflow";
-    statusReason = `Weight limit exceeded (${totalWeight.toFixed(1)}kg / ${STANDARD_BOX.maxWeight}kg max).`;
+    statusReason = `Weight limit exceeded (${totalWeight.toFixed(1)}kg / ${STUDY_LIMIT.maxWeight}kg max).`;
     isOverflow = true;
   } else if (totalVolume > EFFECTIVE_VOLUME_CAPACITY) {
     status = "Volumetric Overflow";
-    statusReason = `Spatial volume capacity exceeded due to non-reducible gaps.`;
+    statusReason = `Study resource capacity exceeded.`;
     isOverflow = true;
   } else {
     for (let item of items) {
       if (
-        item.l > STANDARD_BOX.length ||
-        item.w > STANDARD_BOX.width ||
-        item.h > STANDARD_BOX.height
+        
+  item.l > STUDY_LIMIT.length ||
+  item.w > STUDY_LIMIT.width ||
+  item.h > STUDY_LIMIT.height
+
       ) {
         status = "Volumetric Overflow";
         statusReason = `Item "${item.name}" dimensions exceed single box boundaries.`;
@@ -81,10 +83,9 @@ export default function VolumetricPlanner() {
 
   return (
     <div className="p-6 bg-white shadow rounded-lg max-w-4xl mx-auto my-6 border border-gray-200 text-gray-800">
-      <h2 className="text-2xl font-bold mb-2">Volumetric Packing Planner</h2>
+      <h2 className="text-2xl font-bold mb-2">Study Resource Planner</h2>
       <p className="text-sm text-gray-500 mb-6">
-        Verify monthly inventory distribution layouts prior to warehouse
-        procurement.
+         Organize your study materials and manage academic resources efficiently.
       </p>
 
       {/* Status Banner */}
@@ -118,7 +119,7 @@ export default function VolumetricPlanner() {
       >
         <div className="col-span-2 md:col-span-2">
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Item Name
+            Resource Name
           </label>
           <input
             type="text"
@@ -187,7 +188,8 @@ export default function VolumetricPlanner() {
         <button
           type="submit"
           className="col-span-2 md:col-span-6 bg-blue-600 text-white p-2 rounded hover:bg-blue-700 font-medium transition-colors"
-         aria-label="Action button">
+          aria-label="Action button"
+        >
           Add Item to Layout
         </button>
       </form>
@@ -198,8 +200,8 @@ export default function VolumetricPlanner() {
           <thead>
             <tr className="bg-gray-100 border-b border-gray-200 text-gray-600 text-xs tracking-wider uppercase">
               <th className="p-3">Item Name</th>
-              <th className="p-3">Dimensions (L×W×H)</th>
-              <th className="p-3">Volume</th>
+              <th className="p-3">Resource Details</th>
+              <th className="p-3">Study Units</th>
               <th className="p-3">Weight</th>
               <th className="p-3 text-right">Action</th>
             </tr>
@@ -211,8 +213,7 @@ export default function VolumetricPlanner() {
                   colSpan="5"
                   className="p-4 text-center text-gray-400 italic"
                 >
-                  No cargo manifest inputs registered for this evaluation
-                  period.
+                 No study resources added yet.
                 </td>
               </tr>
             ) : (

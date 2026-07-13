@@ -1,23 +1,21 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react"; // removed useRef as it's not used
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Clock,
   Sparkles,
-  CheckCircle2,
-  XCircle,
+  CheckCircle2, // removed XCircle as it's not used
   RotateCcw,
   Trophy,
   Play,
   Check,
   ChevronRight,
-  AlertCircle,
-  Award,
+  AlertCircle, // removed Award as it's not used
   Bookmark,
-  ListTodo
+  ListTodo,
 } from "lucide-react";
 import ShareButton from "@/components/ui/ShareButton";
 import toast from "react-hot-toast";
@@ -27,6 +25,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { updateActivityProgress } from "@/services/activityService";
 import { updateUserStat } from "@/services/statsService";
 import { getQuizDataByTitle } from "@/constants/quizData";
+import { useOfflineQuiz } from "@/hooks/useOfflineQuiz";
+import { syncPendingQuizzes } from "@/services/offlineSyncService";
+
 
 // Particle Confetti Shower component for passing scores
 const Confetti = () => {
@@ -123,6 +124,9 @@ export default function ActivityGame() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [hasPassed, setHasPassed] = useState(false);
   const [finalScore, setFinalScore] = useState(null); // { correct, total, percentage }
+  const [isPendingSync, setIsPendingSync] = useState(false);
+
+  const { isOnline, saveProgress, loadProgress, clearProgress, savePendingSubmission } = useOfflineQuiz(params?.id);
 
   useEffect(() => {
     setMounted(true);
@@ -206,6 +210,43 @@ export default function ActivityGame() {
 
     fetchActivity();
   }, [user?.uid, params?.id, isDev]);
+
+  // Handle restoring offline progress
+  useEffect(() => {
+    if (quiz && !isStarted && !isCompleted) {
+      const saved = loadProgress();
+      if (saved && confirm("You have an unfinished quiz session. Do you want to resume?")) {
+        setCurrentQuestionIdx(saved.currentQuestionIdx);
+        setSelectedAnswers(saved.selectedAnswers);
+        setTimeLeft(saved.timeLeft);
+        setMarkedQuestions(saved.markedQuestions || {});
+        setIsStarted(true);
+      }
+    }
+  }, [quiz]);
+
+  // Save progress dynamically
+  useEffect(() => {
+    if (isStarted && !isCompleted) {
+      saveProgress({
+        currentQuestionIdx,
+        selectedAnswers,
+        timeLeft,
+        markedQuestions,
+      });
+    }
+  }, [currentQuestionIdx, selectedAnswers, timeLeft, markedQuestions, isStarted, isCompleted]);
+
+  // Sync when online
+  useEffect(() => {
+    if (isOnline) {
+      syncPendingQuizzes().then(res => {
+        if (res?.successCount > 0) {
+          toast.success(`Successfully synced ${res.successCount} offline quiz result(s)!`);
+        }
+      });
+    }
+  }, [isOnline]);
 
   // Handle active countdown timer when quiz is running
   useEffect(() => {
@@ -309,20 +350,34 @@ export default function ActivityGame() {
     setIsCompleted(true);
     setHasPassed(passed);
     setFinalScore({ correct: correctCount, total: totalCount, percentage });
+    clearProgress();
 
     if (passed) {
-      try {
-        // Update database progress to 100%
-        await updateActivityProgress(activityData.id, 100);
-        // Increment the student's Assignments Done stat by 1 (best-effort)
-        const statResult = await updateUserStat(user.uid, "Assignments Done", 1);
-        if (statResult?.success === false) {
-          console.warn("Stats update failed:", statResult.error);
+      if (!isOnline) {
+        setIsPendingSync(true);
+        savePendingSubmission({
+          activityId: activityData.id,
+          userId: user.uid,
+          passed: true,
+          score: percentage
+        });
+        toast("Saved offline! Will sync when connection is restored.", { icon: "📶" });
+      } else {
+        try {
+          // Update database progress to 100%
+          await updateActivityProgress(activityData.id, 100);
+          // Increment the student's Assignments Done stat by 1 (best-effort)
+          const statResult = await updateUserStat(user.uid, "Assignments Done", 1);
+          if (statResult?.success === false) {
+            console.warn("Stats update failed:", statResult.error);
+          }
+          toast.success("Outstanding job! Activity completed successfully.");
+        } catch (err) {
+          console.error("Failed to sync progress to database:", err);
+          toast.error("Saved progress locally, but failed to sync online.");
+          setIsPendingSync(true);
+          savePendingSubmission({ activityId: activityData.id, userId: user.uid, passed: true, score: percentage });
         }
-        toast.success("Outstanding job! Activity completed successfully.");
-      } catch (err) {
-        console.error("Failed to sync progress to database:", err);
-        toast.error("Saved progress locally, but failed to sync online.");
       }
     } else {
       toast("Keep trying! Double check your answers and try again.", {
@@ -388,14 +443,22 @@ export default function ActivityGame() {
         <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => router.push("/activity")}
-            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
-            type="button"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-            Back to Activities
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/activity")}
+              className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
+              type="button"
+            >
+              <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
+              Back to Activities
+            </button>
+            {!isOnline && (
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                Offline Mode
+              </span>
+            )}
+          </div>
           <ShareButton className="shadow-lg border-zinc-800/60" />
         </header>
 
@@ -484,14 +547,22 @@ export default function ActivityGame() {
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
 
         <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => router.push("/activity")}
-            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
-            type="button"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-            Back to Activities
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/activity")}
+              className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
+              type="button"
+            >
+              <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
+              Back to Activities
+            </button>
+            {!isOnline && (
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                Offline Mode
+              </span>
+            )}
+          </div>
           <ShareButton className="shadow-lg border-zinc-800/60" />
         </header>
 
@@ -525,7 +596,7 @@ export default function ActivityGame() {
               </h2>
               <p className="text-zinc-400 text-sm md:text-base">
                 {isPassing
-                  ? "You passed the quiz, earned points, and finalized this activity."
+                  ? (isPendingSync ? "You passed the quiz! Results will be synced when you're back online." : "You passed the quiz, earned points, and finalized this activity.")
                   : "You need at least 60% score to successfully pass this activity."}
               </p>
             </div>
@@ -565,7 +636,8 @@ export default function ActivityGame() {
                 onClick={handleRetry}
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 border border-zinc-700/50 text-zinc-100 font-bold transition-all duration-200"
-               aria-label="Action button">
+                aria-label="Action button"
+              >
                 <RotateCcw className="w-4 h-4" />
                 Retry Quiz
               </button>
@@ -598,21 +670,39 @@ export default function ActivityGame() {
 
         <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
           <button
-            onClick={() => setIsReviewingSummary(false)}
+            onClick={() => {
+              if (
+                confirm(
+                  "Are you sure you want to exit the quiz? Your progress has been saved locally."
+                )
+              ) {
+                router.push("/activity");
+              }
+            }}
             className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
             type="button"
           >
             <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-            Back to Quiz
+            Exit Quiz
           </button>
+          {!isOnline && (
+            <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20 ml-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+              Offline Mode
+            </span>
+          ) }
 
           {/* Live Quiz Countdown Timer */}
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 font-mono text-sm font-bold ${
-            isTimeLow
-              ? "bg-red-500/10 border-red-500/30 text-red-400 animate-pulse scale-105"
-              : "bg-zinc-900 border-zinc-800/80 text-zinc-300"
-          }`}>
-            <Clock className={`w-4 h-4 ${isTimeLow ? "text-red-400" : "text-zinc-500"}`} />
+          <div
+            className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 font-mono text-sm font-bold ${
+              isTimeLow
+                ? "bg-red-500/10 border-red-500/30 text-red-400 animate-pulse scale-105"
+                : "bg-zinc-900 border-zinc-800/80 text-zinc-300"
+            }`}
+          >
+            <Clock
+              className={`w-4 h-4 ${isTimeLow ? "text-red-400" : "text-zinc-500"}`}
+            />
             <span>{formatTime(timeLeft)}</span>
           </div>
         </header>
@@ -628,24 +718,40 @@ export default function ActivityGame() {
               <ListTodo className="w-6 h-6" />
             </div>
 
-            <h2 className="text-2xl font-bold tracking-tight">Quiz Submission Summary</h2>
+            <h2 className="text-2xl font-bold tracking-tight">
+              Quiz Submission Summary
+            </h2>
             <p className="text-zinc-400 text-sm max-w-md mx-auto">
-              Please review your question answers and status before final submission. Click on any question in the palette below to jump back and revise it.
+              Please review your question answers and status before final
+              submission. Click on any question in the palette below to jump
+              back and revise it.
             </p>
 
             {/* Counts dashboard */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl">
-                <span className="text-zinc-500 text-xs font-semibold block mb-1">Answered</span>
-                <span className="text-2xl font-bold text-green-400">{answeredCount}</span>
+                <span className="text-zinc-500 text-xs font-semibold block mb-1">
+                  Answered
+                </span>
+                <span className="text-2xl font-bold text-green-400">
+                  {answeredCount}
+                </span>
               </div>
               <div className="bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl">
-                <span className="text-zinc-500 text-xs font-semibold block mb-1">Unanswered</span>
-                <span className="text-2xl font-bold text-zinc-400">{unansweredCount}</span>
+                <span className="text-zinc-500 text-xs font-semibold block mb-1">
+                  Unanswered
+                </span>
+                <span className="text-2xl font-bold text-zinc-400">
+                  {unansweredCount}
+                </span>
               </div>
               <div className="bg-zinc-900/50 border border-zinc-800/80 p-4 rounded-2xl">
-                <span className="text-zinc-500 text-xs font-semibold block mb-1">Marked</span>
-                <span className="text-2xl font-bold text-amber-400">{markedCount}</span>
+                <span className="text-zinc-500 text-xs font-semibold block mb-1">
+                  Marked
+                </span>
+                <span className="text-2xl font-bold text-amber-400">
+                  {markedCount}
+                </span>
               </div>
             </div>
 
@@ -670,8 +776,8 @@ export default function ActivityGame() {
                         isMarked
                           ? "bg-amber-500/10 border border-amber-500 text-amber-400 hover:bg-amber-500/20"
                           : isAnswered
-                          ? "bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20"
-                          : "bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 text-zinc-400"
+                            ? "bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20"
+                            : "bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 text-zinc-400"
                       }`}
                       type="button"
                     >
@@ -721,22 +827,28 @@ export default function ActivityGame() {
 
       {/* Header Info */}
       <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-        <button
-          onClick={() => {
-            if (
-              confirm(
-                "Are you sure you want to exit the quiz? Current progress will not be saved."
-              )
-            ) {
-              router.push("/activity");
-            }
-          }}
-          className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
-          type="button"
-        >
-          <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-          Exit Quiz
-        </button>
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  "Are you sure you want to exit the quiz? Your progress has been saved locally."
+                )
+              ) {
+                router.push("/activity");
+              }
+            }}
+            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
+            type="button"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
+            Exit Quiz
+          </button>
+          {!isOnline && (
+            <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20 ml-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+              Offline Mode
+            </span>
+          )}
 
         {/* Live Quiz Countdown Timer */}
         <div
@@ -762,7 +874,9 @@ export default function ActivityGame() {
             <div className="mb-4 space-y-2">
               <div className="flex justify-between items-center text-xs font-semibold text-zinc-400">
                 <span>Progress: {currentProgressPercent}%</span>
-                <span>Question {currentQuestionIdx + 1} of {quiz.questions.length}</span>
+                <span>
+                  Question {currentQuestionIdx + 1} of {quiz.questions.length}
+                </span>
               </div>
               <div className="w-full h-2.5 bg-zinc-900 border border-zinc-800/50 rounded-full overflow-hidden">
                 <motion.div
@@ -814,7 +928,8 @@ export default function ActivityGame() {
                   {/* Single-choice options list */}
                   <div className="space-y-3">
                     {currentQuestion.options.map((option, idx) => {
-                      const isSelected = selectedAnswers[currentQuestionIdx] === idx;
+                      const isSelected =
+                        selectedAnswers[currentQuestionIdx] === idx;
                       const optionLetters = ["A", "B", "C", "D"];
 
                       return (
@@ -829,11 +944,13 @@ export default function ActivityGame() {
                           type="button"
                         >
                           {/* Letter marker tag */}
-                          <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 transition-colors duration-200 ${
-                            isSelected
-                              ? "bg-indigo-500 text-white"
-                              : "bg-zinc-800 text-zinc-400 group-hover:bg-zinc-700 group-hover:text-zinc-200"
-                          }`}>
+                          <span
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 transition-colors duration-200 ${
+                              isSelected
+                                ? "bg-indigo-500 text-white"
+                                : "bg-zinc-800 text-zinc-400 group-hover:bg-zinc-700 group-hover:text-zinc-200"
+                            }`}
+                          >
                             {optionLetters[idx] || idx + 1}
                           </span>
                           <span className="font-semibold text-sm md:text-base flex-grow leading-relaxed">
@@ -874,8 +991,12 @@ export default function ActivityGame() {
                     : "border-zinc-800 hover:bg-zinc-900 text-zinc-400"
                 }`}
               >
-                <Bookmark className={`w-4 h-4 ${markedQuestions[currentQuestionIdx] ? "fill-amber-400" : ""}`} />
-                {markedQuestions[currentQuestionIdx] ? "Marked" : "Mark for Review"}
+                <Bookmark
+                  className={`w-4 h-4 ${markedQuestions[currentQuestionIdx] ? "fill-amber-400" : ""}`}
+                />
+                {markedQuestions[currentQuestionIdx]
+                  ? "Marked"
+                  : "Mark for Review"}
               </button>
 
               <button
@@ -884,7 +1005,9 @@ export default function ActivityGame() {
                 type="button"
                 className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none active:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transition-all duration-200"
               >
-                {currentQuestionIdx === quiz.questions.length - 1 ? "Finish Quiz" : "Next Question"}
+                {currentQuestionIdx === quiz.questions.length - 1
+                  ? "Finish Quiz"
+                  : "Next Question"}
                 <ChevronRight className="w-4 h-4 ml-1" />
               </button>
             </div>
@@ -897,7 +1020,9 @@ export default function ActivityGame() {
                 <ListTodo className="w-4 h-4 text-indigo-400" />
                 Question Palette
               </h4>
-              <p className="text-zinc-500 text-xs mt-1">Jump to any question or review status.</p>
+              <p className="text-zinc-500 text-xs mt-1">
+                Jump to any question or review status.
+              </p>
             </div>
 
             <div className="grid grid-cols-5 gap-2">
@@ -917,10 +1042,10 @@ export default function ActivityGame() {
                       isSelected
                         ? "bg-indigo-600/20 border-2 border-indigo-500 text-indigo-300"
                         : isMarked
-                        ? "bg-amber-500/10 border border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
-                        : isAnswered
-                        ? "bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20"
-                        : "bg-zinc-900/60 border border-zinc-800/80 hover:bg-zinc-900/90 text-zinc-500 hover:text-zinc-300"
+                          ? "bg-amber-500/10 border border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
+                          : isAnswered
+                            ? "bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20"
+                            : "bg-zinc-900/60 border border-zinc-800/80 hover:bg-zinc-900/90 text-zinc-500 hover:text-zinc-300"
                     }`}
                     type="button"
                   >
@@ -937,19 +1062,27 @@ export default function ActivityGame() {
 
             <div className="pt-4 border-t border-zinc-800/80 flex flex-col gap-2.5 text-xs text-zinc-400">
               <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-indigo-600/20 border border-indigo-500 flex items-center justify-center font-bold text-[8px] text-indigo-300">1</span>
+                <span className="w-3.5 h-3.5 rounded bg-indigo-600/20 border border-indigo-500 flex items-center justify-center font-bold text-[8px] text-indigo-300">
+                  1
+                </span>
                 <span>Active Question</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-green-500/10 border border-green-500/30 flex items-center justify-center font-bold text-[8px] text-green-400">2</span>
+                <span className="w-3.5 h-3.5 rounded bg-green-500/10 border border-green-500/30 flex items-center justify-center font-bold text-[8px] text-green-400">
+                  2
+                </span>
                 <span>Answered</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-amber-500/10 border border-amber-500/50 flex items-center justify-center font-bold text-[8px] text-amber-400">3</span>
+                <span className="w-3.5 h-3.5 rounded bg-amber-500/10 border border-amber-500/50 flex items-center justify-center font-bold text-[8px] text-amber-400">
+                  3
+                </span>
                 <span>Marked for Review</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-center font-bold text-[8px] text-zinc-500">4</span>
+                <span className="w-3.5 h-3.5 rounded bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-center font-bold text-[8px] text-zinc-500">
+                  4
+                </span>
                 <span>Unanswered</span>
               </div>
             </div>

@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/apiClient";
 import { extractNotificationsFromResponse } from "@/lib/notificationResponse";
-import { useSafePolling } from "@/hooks/useSafePolling";
+import { useRealtime } from "@/hooks/useRealtime";
 import { useIsMounted } from "@/hooks/useIsMounted";
 
 // AbortController for fetch requests
@@ -47,11 +47,17 @@ function timeAgo(date) {
 }
 
 const typeStyles = {
+  assignment_deadline:
+    "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-200",
   attendance:
     "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200",
   notice:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200",
   alert: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
+  attendance_warning:
+    "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
+  low_attendance:
+    "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
 };
 
 export default function NotificationBell() {
@@ -63,81 +69,95 @@ export default function NotificationBell() {
   const isMounted = useIsMounted();
 
   const dropdownRef = useRef(null);
+  const activeRequestRef = useRef(null);
   const buttonRef = useRef(null);
   const previousIdsRef = useRef(new Set());
   const hasLoadedRef = useRef(false);
 
-  useSafePolling(
-    async (signal) => {
-      if (loading) {
-        return;
-      }
+  const processNotifications = useCallback((data) => {
+    const fetchedNotifications = data.notifications || extractNotificationsFromResponse(data);
+    if (!fetchedNotifications.length) return;
 
-      if (!user?.uid) {
-        setNotifications([]);
-        previousIdsRef.current = new Set();
-        hasLoadedRef.current = false;
-        setError("");
-        return;
-      }
+    const currentIds = new Set(
+      fetchedNotifications
+        .map((n) => n._id?.toString?.() || n._id)
+        .filter(Boolean)
+    );
 
-      setIsLoading(true);
-      setError("");
+    if (hasLoadedRef.current) {
+      const newItems = fetchedNotifications.filter((n) => {
+        const id = n._id?.toString?.() || n._id;
+        return id && !previousIdsRef.current.has(id);
+      });
+      newItems.forEach((n) => toast.success(n.message));
+    }
 
-      try {
-        const token = await user.getIdToken();
-        const data = await apiFetch(
-          `/api/notifications?userId=${encodeURIComponent(user.uid)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            signal,
-          }
-        );
+    previousIdsRef.current = currentIds;
+    hasLoadedRef.current = true;
+    setNotifications(fetchedNotifications);
+    setError("");
+  }, []);
 
-        const fetchedNotifications = extractNotificationsFromResponse(data);
-        const currentIds = new Set(
-          fetchedNotifications
-            .map(
-              (notification) =>
-                notification._id?.toString?.() || notification._id
-            )
-            .filter(Boolean)
-        );
-
-        if (hasLoadedRef.current) {
-          const newNotifications = fetchedNotifications.filter(
-            (notification) => {
-              const id = notification._id?.toString?.() || notification._id;
-              return id && !previousIdsRef.current.has(id);
-            }
-          );
-
-          if (newNotifications.length > 0) {
-            newNotifications.forEach((notification) => {
-              toast.success(notification.message);
-            });
-          }
-        }
-
-        previousIdsRef.current = currentIds;
-        hasLoadedRef.current = true;
-        setNotifications(fetchedNotifications);
-        setError("");
-      } catch (err) {
-        if (err?.name !== "AbortError") {
-          setError("Unable to load notifications");
-          setNotifications([]);
-        }
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
+  useRealtime(
+    {
+      onNotification: (payload) => processNotifications({ notifications: [payload] }),
     },
-    30000,
-    [user?.uid, loading]
+    { enabled: !!user?.uid && !loading }
   );
+
+  const fetchNotifications = useCallback(async () => {
+    if (loading || !user?.uid) {
+      setNotifications([]);
+      previousIdsRef.current = new Set();
+      hasLoadedRef.current = false;
+      setError("");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const token = await user.getIdToken();
+      const data = await apiFetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      processNotifications(data);
+      const assignmentReminders = [
+  {
+    id: "assignment-1",
+    message: "Math Assignment due tomorrow",
+    type: "assignment_deadline",
+    createdAt: new Date().toISOString(),
+    read: false,
+  },
+  {
+    id: "assignment-2",
+    message: "Science Project due in 3 days",
+    type: "assignment_deadline",
+    createdAt: new Date().toISOString(),
+    read: false,
+  },
+];
+
+processNotifications({
+  notifications: [
+    ...extractNotificationsFromResponse(data),
+    ...assignmentReminders,
+  ],
+});
+    } catch (err) {
+      setError("Unable to load notifications");
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.uid, loading, processNotifications]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    fetchNotifications();
+  }, [user?.uid, fetchNotifications]);
 
   const markNotificationsAsRead = useCallback(async () => {
     if (!user?.uid) {

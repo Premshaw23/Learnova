@@ -364,6 +364,7 @@ export default function Timetable({ role = "student" }) {
   };
 
   const getMinutesOfTime = (timeStr) => {
+    if (!timeStr || typeof timeStr !== "string") return 0;
     const [h, m] = timeStr.split(":").map(Number);
     return (h || 0) * 60 + (m || 0);
   };
@@ -559,6 +560,55 @@ export default function Timetable({ role = "student" }) {
     toast.success(`Successfully exported ${eventCount} classes to .ics!`);
   };
 
+  const handleExportSingleClass = (cls, day) => {
+    let icsString =
+      [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Learnova//Student Timetable Scheduler//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+      ].join("\r\n") + "\r\n";
+
+    const [startStr, endStr] = cls.time.split("-");
+    if (!startStr || !endStr) return;
+
+    const startDate = getNextWeekdayDate(day, startStr.trim());
+    const endDate = getNextWeekdayDate(day, endStr.trim());
+
+    const startICS = formatDateToICS(startDate);
+    const endICS = formatDateToICS(endDate);
+    const byDay = byDayMap[day];
+
+    icsString +=
+      [
+        "BEGIN:VEVENT",
+        `UID:class-${day}-${Date.now()}@learnova`,
+        `DTSTAMP:${formatDateToICS(new Date())}`,
+        `SUMMARY:${cls.subject}`,
+        `DESCRIPTION:Instructor: ${cls.teacher}\\nRoom: ${cls.room}`,
+        `LOCATION:${cls.room}`,
+        `DTSTART:${startICS}`,
+        `DTEND:${endICS}`,
+        `RRULE:FREQ=WEEKLY;BYDAY=${byDay}`,
+        "END:VEVENT",
+      ].join("\r\n") + "\r\n";
+
+    icsString += "END:VCALENDAR";
+
+    const blob = new Blob([icsString], {
+      type: "text/calendar;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${cls.subject.replace(/\s+/g, '_')}_class.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Successfully exported ${cls.subject} to .ics!`);
+  };
+
   const classes = timetableData[selectedDay] || [];
 
   return (
@@ -601,7 +651,8 @@ export default function Timetable({ role = "student" }) {
             <button
               onClick={handleExportCalendar}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer shadow-sm"
-              title="Export Weekly Schedule to External Calendar (.ics)" aria-label="Export Weekly Schedule to External Calendar (.ics)"
+              title="Export Weekly Schedule to External Calendar (.ics)"
+              aria-label="Export Weekly Schedule to External Calendar (.ics)"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export (.ics)</span>
@@ -711,6 +762,16 @@ export default function Timetable({ role = "student" }) {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          handleExportSingleClass(cls, selectedDay);
+                        }}
+                        className="p-1.5 rounded-lg bg-white/5 text-white/50 hover:text-green-400 hover:bg-white/10 hover:border-green-500/20 border border-transparent transition-all"
+                        title="Add to Calendar"
+                      >
+                        <CalendarPlus className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleOpenEditModal(cls, index, selectedDay);
                         }}
                         className="p-1.5 rounded-lg bg-white/5 text-white/50 hover:text-cyan-400 hover:bg-white/10 hover:border-cyan-500/20 border border-transparent transition-all"
@@ -805,7 +866,8 @@ export default function Timetable({ role = "student" }) {
                 <button
                   onClick={handleCloseModal}
                   className="rounded-lg p-1.5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
-                 aria-label="Action button">
+                  aria-label="Action button"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -940,13 +1002,15 @@ export default function Timetable({ role = "student" }) {
                     type="button"
                     onClick={handleCloseModal}
                     className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white hover:bg-white/10 transition cursor-pointer"
-                   aria-label="Action button">
+                    aria-label="Action button"
+                  >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:brightness-110 text-sm font-semibold text-white shadow-lg transition flex items-center gap-1.5 cursor-pointer"
-                   aria-label="Action button">
+                    aria-label="Action button"
+                  >
                     <Check className="w-4 h-4" />
                     {modalMode === "add" ? "Add to Schedule" : "Save Settings"}
                   </button>
@@ -1016,7 +1080,8 @@ export default function Timetable({ role = "student" }) {
                   type="button"
                   onClick={confirmDeleteClass}
                   className="px-5 py-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:brightness-110 text-sm font-semibold text-white shadow-lg transition cursor-pointer"
-                 aria-label="Action button">
+                  aria-label="Action button"
+                >
                   Confirm Delete
                 </button>
               </div>
