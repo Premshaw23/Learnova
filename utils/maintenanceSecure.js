@@ -11,8 +11,8 @@
  * - No hardcoded fallback values
  */
 
-import crypto from 'crypto';
-import loggerInstance from './logger';
+import crypto from "crypto";
+import loggerInstance from "./logger";
 
 const logger = loggerInstance;
 
@@ -21,18 +21,18 @@ const logger = loggerInstance;
  * All values must come from environment variables
  */
 function getTokenExpiryMinutes() {
-  return parseInt(process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES || '60', 10);
+  return parseInt(process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES || "60", 10);
 }
 
 const MAINTENANCE_CONFIG = {
   get TOKEN_EXPIRY_MINUTES() {
-    return parseInt(process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES || '60');
+    return parseInt(process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES || "60");
   },
   get MAX_BYPASS_ATTEMPTS_PER_HOUR() {
-    return parseInt(process.env.MAINTENANCE_MAX_ATTEMPTS_PER_HOUR || '10');
+    return parseInt(process.env.MAINTENANCE_MAX_ATTEMPTS_PER_HOUR || "10");
   },
   get REQUIRE_ADMIN_ROLE() {
-    return process.env.MAINTENANCE_REQUIRE_ADMIN_ROLE === 'true';
+    return process.env.MAINTENANCE_REQUIRE_ADMIN_ROLE === "true";
   },
 };
 
@@ -49,7 +49,7 @@ const bypassAttemptLog = new Map();
  * @returns {Object} Token object with token string and expiration time
  */
 export function generateBypassToken() {
-  const token = crypto.randomBytes(32).toString('hex');
+  const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + getTokenExpiryMinutes() * 60 * 1000);
 
   bypassTokenStore.set(token, {
@@ -58,7 +58,7 @@ export function generateBypassToken() {
     usedCount: 0,
   });
 
-  logger.info('Generated new maintenance bypass token', {
+  logger.info("Generated new maintenance bypass token", {
     expiresAt: expiresAt.toISOString(),
     expiryMinutes: getTokenExpiryMinutes(),
   });
@@ -80,39 +80,43 @@ export function verifyBypassToken(token) {
   if (!token) {
     return {
       isValid: false,
-      reason: 'Token is required',
+      reason: "Token is required",
     };
   }
 
   const storedToken = bypassTokenStore.get(token);
 
   if (!storedToken) {
-    logger.warn('Bypass token not found', { token: token.substring(0, 8) + '...' });
+    logger.warn("Bypass token not found", {
+      token: token.substring(0, 8) + "...",
+    });
     return {
       isValid: false,
-      reason: 'Token not found or invalid',
+      reason: "Token not found or invalid",
     };
   }
 
   if (new Date() > storedToken.expiresAt) {
-    logger.warn('Bypass token expired', { token: token.substring(0, 8) + '...' });
+    logger.warn("Bypass token expired", {
+      token: token.substring(0, 8) + "...",
+    });
     bypassTokenStore.delete(token);
     return {
       isValid: false,
-      reason: 'Token has expired',
+      reason: "Token has expired",
     };
   }
 
   storedToken.usedCount += 1;
 
-  logger.info('Bypass token verified successfully', {
-    token: token.substring(0, 8) + '...',
+  logger.info("Bypass token verified successfully", {
+    token: token.substring(0, 8) + "...",
     usedCount: storedToken.usedCount,
   });
 
   return {
     isValid: true,
-    reason: 'Token is valid',
+    reason: "Token is valid",
   };
 }
 
@@ -136,8 +140,10 @@ function isRateLimited(userId) {
   // Remove old attempts outside one hour window
   const recentAttempts = attempts.filter((timestamp) => timestamp > oneHourAgo);
 
-  if (recentAttempts.length >= MAINTENANCE_CONFIG.MAX_BYPASS_ATTEMPTS_PER_HOUR) {
-    logger.error('Rate limit exceeded for maintenance bypass', {
+  if (
+    recentAttempts.length >= MAINTENANCE_CONFIG.MAX_BYPASS_ATTEMPTS_PER_HOUR
+  ) {
+    logger.error("Rate limit exceeded for maintenance bypass", {
       userId,
       attemptCount: recentAttempts.length,
       limit: MAINTENANCE_CONFIG.MAX_BYPASS_ATTEMPTS_PER_HOUR,
@@ -158,11 +164,11 @@ function isRateLimited(userId) {
  * @param {string} userId - Current user ID for audit logging
  * @returns {boolean} True if maintenance mode is active
  */
-export function isMaintenanceModeActive(request, userId = 'unknown') {
+export function isMaintenanceModeActive(request, userId = "unknown") {
   // Check if maintenance mode is enabled
   const isEnabled =
-    process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true' ||
-    process.env.NEXT_PUBLIC_MAINTENANCE_MODE === '1';
+    process.env.NEXT_PUBLIC_MAINTENANCE_MODE === "true" ||
+    process.env.NEXT_PUBLIC_MAINTENANCE_MODE === "1";
 
   if (!isEnabled) {
     return false;
@@ -173,20 +179,24 @@ export function isMaintenanceModeActive(request, userId = 'unknown') {
   }
 
   // Check for bypass token in cookie or header
-  const bypassTokenFromCookie = request.cookies?.get?.('learnova_maintenance_bypass')?.value;
-  const bypassTokenFromHeader = request.headers?.get?.('x-learnova-maintenance-bypass');
+  const bypassTokenFromCookie = request.cookies?.get?.(
+    "learnova_maintenance_bypass"
+  )?.value;
+  const bypassTokenFromHeader = request.headers?.get?.(
+    "x-learnova-maintenance-bypass"
+  );
 
   const bypassToken = bypassTokenFromCookie || bypassTokenFromHeader;
 
   if (!bypassToken) {
     // No bypass token provided, maintenance mode is active
-    logger.debug('No bypass token provided', { userId });
+    logger.debug("No bypass token provided", { userId });
     return true;
   }
 
   // Rate limit check
   if (isRateLimited(userId)) {
-    logger.error('Maintenance bypass attempt rate limited', { userId });
+    logger.error("Maintenance bypass attempt rate limited", { userId });
     return true; // Enforce maintenance mode
   }
 
@@ -194,16 +204,16 @@ export function isMaintenanceModeActive(request, userId = 'unknown') {
   const verification = verifyBypassToken(bypassToken);
 
   if (!verification.isValid) {
-    logger.warn('Invalid maintenance bypass attempt', {
+    logger.warn("Invalid maintenance bypass attempt", {
       userId,
       reason: verification.reason,
-      source: bypassTokenFromCookie ? 'cookie' : 'header',
+      source: bypassTokenFromCookie ? "cookie" : "header",
     });
     return true; // Enforce maintenance mode
   }
 
   // Bypass token is valid, maintenance mode is not active for this user
-  logger.info('Maintenance mode bypassed for user', { userId });
+  logger.info("Maintenance mode bypassed for user", { userId });
   return false;
 }
 
@@ -215,7 +225,9 @@ export function isMaintenanceModeActive(request, userId = 'unknown') {
 export function revokeBypassToken(token) {
   if (bypassTokenStore.has(token)) {
     bypassTokenStore.delete(token);
-    logger.info('Bypass token revoked', { token: token.substring(0, 8) + '...' });
+    logger.info("Bypass token revoked", {
+      token: token.substring(0, 8) + "...",
+    });
   }
 }
 
@@ -234,7 +246,7 @@ export function cleanupExpiredTokens() {
   }
 
   if (cleanedCount > 0) {
-    logger.info('Cleaned up expired bypass tokens', { count: cleanedCount });
+    logger.info("Cleaned up expired bypass tokens", { count: cleanedCount });
   }
 }
 
@@ -245,7 +257,7 @@ export function cleanupExpiredTokens() {
  */
 export function getMaintenanceStatus() {
   return {
-    maintenanceEnabled: process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true',
+    maintenanceEnabled: process.env.NEXT_PUBLIC_MAINTENANCE_MODE === "true",
     activeTokens: bypassTokenStore.size,
     trackedUsers: bypassAttemptLog.size,
     configuration: MAINTENANCE_CONFIG,

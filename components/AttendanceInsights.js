@@ -20,9 +20,12 @@ const InsightCard = ({ icon: Icon, label, value, color }) => {
       "from-purple-500/10 to-purple-600/5 border-purple-500/20 text-purple-400",
   };
 
+  const selectedColorStyle =
+  colorStyles[color] ?? colorStyles.orange;
+
   return (
     <div
-      className={`bg-gradient-to-br ${colorStyles[color]} rounded-xl border p-4 flex items-center gap-3`}
+      className={`bg-gradient-to-br ${selectedColorStyle} rounded-xl border p-4 flex items-center gap-3`}
     >
       <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/5 shrink-0">
         <Icon className="w-5 h-5" />

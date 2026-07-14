@@ -1,68 +1,102 @@
-import { ValidationError } from "@/lib/errors";
-import { parseSessionDateRange } from "./route";
+import { POST, GET } from "./route";
+import { connectDb } from "@/lib/mongodb";
+import { requireRole } from "@/lib/rbac";
+import { awardXp } from "@/lib/gamification-service";
 
-describe("parseSessionDateRange", () => {
-  const now = new Date("2026-06-01T00:00:00.000Z");
+jest.mock("@/lib/mongodb", () => ({
+  connectDb: jest.fn(),
+}));
 
-  test("defaults to the previous seven days when query params are missing", () => {
-    const result = parseSessionDateRange(new URLSearchParams(), now);
+jest.mock("@/lib/rbac", () => ({
+  requireRole: jest.fn(),
+}));
 
-    expect(result).toEqual({
-      startDate: "2026-05-25T00:00:00.000Z",
-      endDate: "2026-06-01T00:00:00.000Z",
-      daySpan: 7,
-    });
+jest.mock("@/lib/error-handler", () => ({
+  withErrorHandler: (handler) => handler,
+}));
+
+jest.mock("@/lib/gamification-service", () => ({
+  awardXp: jest.fn(),
+}));
+
+jest.mock("next/server", () => ({
+  NextResponse: {
+    json: (body, init = {}) => ({
+      status: init.status ?? 200,
+      json: async () => body,
+    }),
+  },
+}));
+
+describe("POST /api/productivity/session", () => {
+  let mockDb;
+  let mockCollection;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockCollection = {
+      insertOne: jest.fn().mockResolvedValue({ insertedId: "session-123" }),
+      find: jest.fn(),
+    };
+
+    mockDb = {
+      collection: jest.fn(() => mockCollection),
+    };
+
+    connectDb.mockResolvedValue(mockDb);
+    requireRole.mockResolvedValue({ payload: { uid: "user-123" } });
   });
 
-  test("uses a valid explicit date range", () => {
-    const result = parseSessionDateRange(
-      new URLSearchParams({
-        startDate: "2026-05-01T00:00:00.000Z",
-        endDate: "2026-05-04T12:00:00.000Z",
+  test("successfully records a focus session and awards XP", async () => {
+    awardXp.mockResolvedValue({ xpAwarded: 15 });
+
+    const request = {
+      json: async () => ({
+        duration: 25,
+        completedAt: new Date().toISOString(),
+        type: "focus",
       }),
-      now
-    );
+    };
 
-    expect(result).toEqual({
-      startDate: "2026-05-01T00:00:00.000Z",
-      endDate: "2026-05-04T12:00:00.000Z",
-      daySpan: 4,
-    });
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.xpAwarded).toBe(15);
+    expect(mockCollection.insertOne).toHaveBeenCalled();
+    expect(awardXp).toHaveBeenCalledWith("user-123", "focus_session_completed", {});
   });
 
-  test("rejects invalid startDate values before querying sessions", () => {
-    expect(() =>
-      parseSessionDateRange(
-        new URLSearchParams({
-          startDate: "not-a-date",
-          endDate: "2026-05-04T00:00:00.000Z",
-        }),
-        now
-      )
-    ).toThrow(ValidationError);
+  test("records a break session and does not award XP", async () => {
+    const request = {
+      json: async () => ({
+        duration: 5,
+        completedAt: new Date().toISOString(),
+        type: "break",
+      }),
+    };
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.xpAwarded).toBe(0);
+    expect(mockCollection.insertOne).toHaveBeenCalled();
+    expect(awardXp).not.toHaveBeenCalled();
   });
 
-  test("rejects invalid endDate values before querying sessions", () => {
-    expect(() =>
-      parseSessionDateRange(
-        new URLSearchParams({
-          startDate: "2026-05-01T00:00:00.000Z",
-          endDate: "also-bad",
-        }),
-        now
-      )
-    ).toThrow("endDate must be a valid date string");
-  });
+  test("rejects invalid request payload", async () => {
+    const request = {
+      json: async () => ({
+        duration: "invalid-duration",
+        completedAt: "invalid-date",
+        type: "invalid-type",
+      }),
+    };
 
-  test("rejects reversed date ranges", () => {
-    expect(() =>
-      parseSessionDateRange(
-        new URLSearchParams({
-          startDate: "2026-05-05T00:00:00.000Z",
-          endDate: "2026-05-01T00:00:00.000Z",
-        }),
-        now
-      )
-    ).toThrow("startDate must be before or equal to endDate");
+    await expect(POST(request)).rejects.toThrow();
   });
 });

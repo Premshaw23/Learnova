@@ -15,19 +15,32 @@ export default function WaterTracker() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = safeLocalStorageGet(
-      "learnova-wellness-water",
-      DEFAULT_WATER_GLASSES
-    );
-    setGlasses(normalizeWaterGlasses(saved, DEFAULT_WATER_GLASSES, goal));
+    const savedDate = safeLocalStorageGet("learnova-wellness-water-date", "");
+    const today = new Date().toLocaleDateString();
+    if (savedDate !== today) {
+      safeLocalStorageSet("learnova-wellness-water", DEFAULT_WATER_GLASSES);
+      safeLocalStorageSet("learnova-wellness-water-date", today);
+      setGlasses(DEFAULT_WATER_GLASSES);
+    } else {
+      const saved = safeLocalStorageGet(
+        "learnova-wellness-water",
+        DEFAULT_WATER_GLASSES
+      );
+      setGlasses(normalizeWaterGlasses(saved, DEFAULT_WATER_GLASSES, goal));
+    }
   }, [goal]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    safeLocalStorageSet(
-      "learnova-wellness-water",
-      normalizeWaterGlasses(glasses, DEFAULT_WATER_GLASSES, goal)
-    );
+    const normalized = normalizeWaterGlasses(glasses, DEFAULT_WATER_GLASSES, goal);
+    safeLocalStorageSet("learnova-wellness-water", normalized);
+
+    // Also update today's snapshot so the timeline stays in sync
+    const today = new Date().toISOString().split("T")[0];
+    const snapshots = safeLocalStorageGet("learnova-wellness-snapshots", {});
+    snapshots[today] = { ...(snapshots[today] || {}), water: normalized };
+    safeLocalStorageSet("learnova-wellness-snapshots", snapshots);
+    window.dispatchEvent(new Event("learnova-wellness-updated"));
   }, [glasses, goal]);
 
   const progress = useMemo(
@@ -70,6 +83,10 @@ export default function WaterTracker() {
           <p className="mt-2 text-xs uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">
             Daily goal
           </p>
+          <p className="mt-1 text-2xl font-semibold text-slate-950 dark:text-slate-50">
+            {goal}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">glasses</p>
         </div>
       </div>
 
@@ -96,7 +113,14 @@ export default function WaterTracker() {
           </div>
         </div>
 
-        <div className="mt-6 h-4 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+        <div
+          className="mt-6 h-4 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
+          role="progressbar"
+          aria-valuenow={glasses}
+          aria-valuemin={0}
+          aria-valuemax={goal}
+          aria-label="Daily water intake progress"
+        >
           <div
             className="h-full rounded-full bg-gradient-to-r from-purple-500 via-violet-600 to-fuchsia-500 transition-all"
             style={{ width: `${progress}%` }}
@@ -108,14 +132,14 @@ export default function WaterTracker() {
             type="button"
             onClick={addWater}
             className="flex items-center justify-center gap-2 rounded-3xl bg-slate-900 text-white px-4 py-3 text-sm font-semibold transition hover:bg-slate-800"
-           aria-label="Action button">
+           aria-label="Add one glass of water">
             <ArrowUpRight className="h-4 w-4" /> Add Water
           </button>
           <button
             type="button"
             onClick={removeWater}
             className="flex items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-           aria-label="Action button">
+           aria-label="Remove one glass of water">
             <ArrowDownRight className="h-4 w-4" /> Remove Glass
           </button>
         </div>

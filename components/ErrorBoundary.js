@@ -28,6 +28,12 @@ class ErrorBoundary extends React.Component {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
+  componentDidMount() {
+    window.addEventListener("popstate", this.handleRetry);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("popstate", this.handleRetry);
+  }
   componentDidUpdate(prevProps) {
     if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
       this.setState({
@@ -75,7 +81,8 @@ class ErrorBoundary extends React.Component {
                 <button
                   onClick={this.handleRetry}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-medium transition-all"
-                 aria-label="Action button">
+                  aria-label="Action button"
+                >
                   <RefreshCw className="w-5 h-5" />
                   Try Again
                 </button>

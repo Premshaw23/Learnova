@@ -95,6 +95,18 @@ Returns a CSRF token for form submissions.
 
 **Auth required:** No
 
+**Response `200`**
+```json
+{
+  "csrfToken": "a1b2c3d4..."
+}
+```
+
+#### CSRF Protection Header
+For unsafe cookie-authenticated requests (e.g., `POST`, `PUT`, `PATCH`, `DELETE`) to `/api/*` routes, the CSRF token must be passed in a header.
+- **Canonical Header:** `x-csrf-token` (case-insensitive)
+- **Supported Fallbacks (case-insensitive):** `x-xsrf-token`, `x-csrftoken`
+
 ---
 
 ### `POST /api/auth/set-role`

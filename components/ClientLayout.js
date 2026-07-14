@@ -9,6 +9,7 @@ import { normalizeStreakCount } from "@/lib/streakUtils";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ShortcutsModal from "@/components/ShortcutsModal";
 import SearchModal from "@/components/SearchModal";
+import EmergencyBanner from "@/components/EmergencyBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
 import { doc, runTransaction } from "firebase/firestore";
@@ -143,8 +144,17 @@ export default function ClientLayout({ children }) {
             const requestHeaders = new Headers(
               requestInput?.headers || init.headers || {}
             );
-            if (!requestHeaders.has("x-csrf-token")) {
-              requestHeaders.set("X-CSRF-Token", csrfToken);
+            const existingToken =
+              requestHeaders.get("x-csrf-token") ||
+              requestHeaders.get("x-xsrf-token") ||
+              requestHeaders.get("x-csrftoken");
+
+            if (!existingToken) {
+              requestHeaders.set("x-csrf-token", csrfToken);
+            } else {
+              if (!requestHeaders.has("x-csrf-token")) {
+                requestHeaders.set("x-csrf-token", existingToken);
+              }
             }
 
             if (requestInput) {
@@ -365,6 +375,7 @@ export default function ClientLayout({ children }) {
 
   return (
     <>
+      <EmergencyBanner />
       {children}
 
       <InstallPWA />

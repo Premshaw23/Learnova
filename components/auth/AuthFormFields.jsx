@@ -2,26 +2,15 @@
 
 import React from "react";
 import { Eye, EyeOff } from "lucide-react";
+import FormField from "@/components/ui/FormField";
 
 const fieldBaseClasses =
   "w-full py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground";
 
-const FieldShell = ({ label, error, children }) => (
-  <div>
-    <label className="block text-sm font-medium text-foreground mb-2">
-      {label}
-    </label>
-    {children}
-    {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
-  </div>
-);
-
 export const TextInputField = ({
   label,
   name,
-  value,
-  onChange,
-  onBlur,
+  register,
   error,
   placeholder,
   icon: Icon,
@@ -29,32 +18,30 @@ export const TextInputField = ({
   autoComplete,
   maxLength,
 }) => (
-  <FieldShell label={label} error={error}>
+  <FormField name={name} label={label}>
     <div className="relative">
       {Icon ? (
         <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
       ) : null}
       <input
         type={type}
-        name={name}
         autoComplete={autoComplete}
         maxLength={maxLength}
         placeholder={placeholder}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={(event) => onBlur?.(event.target.value)}
+        {...register}
+        id={`${name}-input`}
+        aria-invalid={error ? "true" : "false"}
+        aria-describedby={error ? `${name}-error` : undefined}
         className={`${fieldBaseClasses} ${Icon ? "pl-10 pr-4" : "px-4"} ${error ? "border-red-500/50" : "border-border"}`}
       />
     </div>
-  </FieldShell>
+  </FormField>
 );
 
 export const PasswordInputField = ({
   label,
   name,
-  value,
-  onChange,
-  onBlur,
+  register,
   error,
   placeholder,
   icon: Icon,
@@ -66,28 +53,29 @@ export const PasswordInputField = ({
   requirements,
   strength,
 }) => (
-  <FieldShell label={label} error={error}>
+  <FormField name={name} label={label}>
     <div className="relative">
       {Icon ? (
         <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
       ) : null}
       <input
         type={isVisible ? "text" : "password"}
-        name={name}
         autoComplete={autoComplete}
         maxLength={maxLength}
         placeholder={placeholder}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={(event) => onBlur?.(event.target.value)}
+        {...register}
+        id={`${name}-input`}
+        aria-invalid={error ? "true" : "false"}
+        aria-describedby={error ? `${name}-error` : undefined}
         className={`${fieldBaseClasses} ${Icon ? "pl-10 pr-12" : "pl-4 pr-12"} ${error ? "border-red-500/50" : "border-border"}`}
       />
       <button
-        type="button"
-        onClick={onToggleVisibility}
-        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
-        aria-label={isVisible ? "Hide password" : "Show password"}
-      >
+  type="button"
+  onClick={onToggleVisibility}
+  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
+  aria-label={isVisible ? "Hide password" : "Show password"}
+  title={isVisible ? "Hide password" : "Show password"}
+>
         {isVisible ? (
           <Eye className="w-5 h-5" />
         ) : (
@@ -142,30 +130,26 @@ export const PasswordInputField = ({
         </ul>
       </div>
     ) : null}
-  </FieldShell>
+  </FormField>
 );
 
-export const OptionalInstituteField = (props) => {
-  if (!props) {
-    return null;
-  }
-
-  return <TextInputField {...props} />;
-};
+export const OptionalInstituteField = (props) =>
+  props ? <TextInputField {...props} /> : null;
 
 export const SelectedRoleBadge = ({ config, onClick }) => {
-  if (!config) {
-    return null;
-  }
+  if (!config) return null;
 
   const IconComponent = config.icon;
 
   return (
     <div className="mb-6">
       <button
+        type="button"
         onClick={onClick}
+        aria-label={`Change role from ${config.title}`}
         className="inline-flex items-center gap-3 p-4 bg-card backdrop-blur-sm rounded-xl border border-border hover:border-indigo-500/50 transition-all duration-200"
-       aria-label="Action button">
+        aria-label="Action button"
+      >
         <div
           className={`w-10 h-10 rounded-full bg-gradient-to-r ${config.color} p-2`}
         >
@@ -173,8 +157,12 @@ export const SelectedRoleBadge = ({ config, onClick }) => {
         </div>
 
         <div className="text-left">
-          <h4 className="font-semibold text-card-foreground">{config.title}</h4>
-          <p className="text-muted-foreground text-sm">Click to change role</p>
+          <h4 className="font-semibold text-card-foreground">
+            {config.title}
+          </h4>
+          <p className="text-muted-foreground text-sm">
+            Click to change role
+          </p>
         </div>
       </button>
     </div>

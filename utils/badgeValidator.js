@@ -4,7 +4,7 @@
  * Prevents fraud through comprehensive data validation.
  */
 
-import { BADGES, calculateLevel } from './gamification';
+import { BADGES, calculateLevel } from "./gamification";
 
 /**
  * Validates badge requirements with comprehensive data integrity checks
@@ -21,13 +21,13 @@ export class BadgeValidator {
     if (!Array.isArray(attendanceHistory) || attendanceHistory.length === 0) {
       return {
         isValid: false,
-        reason: 'No attendance history provided',
+        reason: "No attendance history provided",
       };
     }
 
     const validEarlyRecords = attendanceHistory.filter((record) => {
       // Validate record structure
-      if (!record.time || typeof record.time !== 'string') {
+      if (!record.time || typeof record.time !== "string") {
         return false;
       }
 
@@ -48,7 +48,7 @@ export class BadgeValidator {
     if (validEarlyRecords.length === 0) {
       return {
         isValid: false,
-        reason: 'No valid early morning attendance records found',
+        reason: "No valid early morning attendance records found",
         validCount: 0,
         totalCount: attendanceHistory.length,
       };
@@ -56,7 +56,7 @@ export class BadgeValidator {
 
     return {
       isValid: true,
-      reason: 'Student has early morning attendance records',
+      reason: "Student has early morning attendance records",
       validCount: validEarlyRecords.length,
       totalCount: attendanceHistory.length,
     };
@@ -70,13 +70,17 @@ export class BadgeValidator {
    * @returns {Object} Validation result with isValid and reason
    */
   static validatePerfectWeekBadge(studentData) {
-    const { currentStreak = 0, attendanceHistory = [], lastAttendanceDate = null } = studentData;
+    const {
+      currentStreak = 0,
+      attendanceHistory = [],
+      lastAttendanceDate = null,
+    } = studentData;
 
     // Validate streak count
-    if (typeof currentStreak !== 'number' || currentStreak < 5) {
+    if (typeof currentStreak !== "number" || currentStreak < 5) {
       return {
         isValid: false,
-        reason: 'Current streak is less than required 5 days',
+        reason: "Current streak is less than required 5 days",
         currentStreak,
         requiredStreak: 5,
       };
@@ -86,19 +90,21 @@ export class BadgeValidator {
     if (!lastAttendanceDate) {
       return {
         isValid: false,
-        reason: 'No recent attendance to validate active streak',
+        reason: "No recent attendance to validate active streak",
       };
     }
 
     const lastAttendance = new Date(lastAttendanceDate);
     const today = new Date();
-    const daysSinceLastAttendance = Math.floor((today - lastAttendance) / (1000 * 60 * 60 * 24));
+    const daysSinceLastAttendance = Math.floor(
+      (today - lastAttendance) / (1000 * 60 * 60 * 24)
+    );
 
     // Streak is only valid if last attendance is from today or yesterday
     if (daysSinceLastAttendance > 1) {
       return {
         isValid: false,
-        reason: 'Streak is broken - last attendance was more than 1 day ago',
+        reason: "Streak is broken - last attendance was more than 1 day ago",
         daysSinceLastAttendance,
       };
     }
@@ -107,7 +113,7 @@ export class BadgeValidator {
     if (!Array.isArray(attendanceHistory) || attendanceHistory.length < 5) {
       return {
         isValid: false,
-        reason: 'Insufficient attendance records to validate 5-day streak',
+        reason: "Insufficient attendance records to validate 5-day streak",
         recordCount: attendanceHistory.length,
       };
     }
@@ -119,7 +125,9 @@ export class BadgeValidator {
     for (let i = 1; i < recentRecords.length; i++) {
       const prevDate = new Date(recentRecords[i - 1].date);
       const currDate = new Date(recentRecords[i].date);
-      const dayDifference = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24));
+      const dayDifference = Math.floor(
+        (currDate - prevDate) / (1000 * 60 * 60 * 24)
+      );
 
       // Days should be consecutive (1 day apart)
       if (dayDifference !== 1) {
@@ -131,13 +139,14 @@ export class BadgeValidator {
     if (!isConsecutive) {
       return {
         isValid: false,
-        reason: 'Attendance records are not consecutive days',
+        reason: "Attendance records are not consecutive days",
       };
     }
 
     return {
       isValid: true,
-      reason: 'Student has maintained a valid 5-day consecutive attendance streak',
+      reason:
+        "Student has maintained a valid 5-day consecutive attendance streak",
       currentStreak,
       daysSinceLastAttendance,
     };
@@ -154,10 +163,10 @@ export class BadgeValidator {
     const { totalXp = 0, currentLevel = 1, xpHistory = [] } = studentData;
 
     // Validate current level
-    if (typeof currentLevel !== 'number' || currentLevel < 5) {
+    if (typeof currentLevel !== "number" || currentLevel < 5) {
       return {
         isValid: false,
-        reason: 'Current level is less than required Level 5',
+        reason: "Current level is less than required Level 5",
         currentLevel,
         requiredLevel: 5,
       };
@@ -168,7 +177,7 @@ export class BadgeValidator {
     if (calculatedLevel !== currentLevel) {
       return {
         isValid: false,
-        reason: 'Level does not match total XP calculation',
+        reason: "Level does not match total XP calculation",
         totalXp,
         calculatedLevel,
         reportedLevel: currentLevel,
@@ -180,10 +189,10 @@ export class BadgeValidator {
       let cumulativeXp = 0;
 
       for (const entry of xpHistory) {
-        if (typeof entry.xp !== 'number' || entry.xp < 0) {
+        if (typeof entry.xp !== "number" || entry.xp < 0) {
           return {
             isValid: false,
-            reason: 'Invalid XP entry in history',
+            reason: "Invalid XP entry in history",
             invalidEntry: entry,
           };
         }
@@ -194,7 +203,7 @@ export class BadgeValidator {
         if (cumulativeXp < 0) {
           return {
             isValid: false,
-            reason: 'Cumulative XP became negative',
+            reason: "Cumulative XP became negative",
           };
         }
       }
@@ -203,7 +212,7 @@ export class BadgeValidator {
       if (cumulativeXp !== totalXp) {
         return {
           isValid: false,
-          reason: 'Reported total XP does not match XP history sum',
+          reason: "Reported total XP does not match XP history sum",
           reportedXp: totalXp,
           calculatedXp: cumulativeXp,
         };
@@ -212,7 +221,7 @@ export class BadgeValidator {
 
     return {
       isValid: true,
-      reason: 'Student has legitimately reached Level 5',
+      reason: "Student has legitimately reached Level 5",
       currentLevel,
       totalXp,
     };
@@ -239,7 +248,9 @@ export class BadgeValidator {
     if (Array.isArray(earnedBadges)) {
       for (const badgeId of earnedBadges) {
         if (badgeId === BADGES.EARLY_BIRD.id) {
-          const result = this.validateEarlyBirdBadge(studentData.attendanceHistory);
+          const result = this.validateEarlyBirdBadge(
+            studentData.attendanceHistory
+          );
           validationReport.validations[badgeId] = result;
           if (!result.isValid) {
             validationReport.isValid = false;
@@ -271,7 +282,7 @@ export class BadgeValidator {
         } else {
           validationReport.validations[badgeId] = {
             isValid: false,
-            reason: 'Unknown badge ID',
+            reason: "Unknown badge ID",
           };
           validationReport.isValid = false;
         }
@@ -318,8 +329,12 @@ export class BadgeValidator {
  * @returns {Object} Result with badges and validation details
  */
 export const calculateVerifiedBadges = (studentData) => {
-  const legitimateBadges = BadgeValidator.calculateLegitimateBadges(studentData);
-  const validation = BadgeValidator.validateAllBadges(legitimateBadges, studentData);
+  const legitimateBadges =
+    BadgeValidator.calculateLegitimateBadges(studentData);
+  const validation = BadgeValidator.validateAllBadges(
+    legitimateBadges,
+    studentData
+  );
 
   return {
     badges: legitimateBadges,

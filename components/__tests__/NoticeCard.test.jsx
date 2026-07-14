@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import NoticeCard from "../NoticeCard";
 
-const mockPdfInstance = {
+const mockPdfInstance = vi.hoisted(() => ({
   internal: {
     pageSize: {
       getWidth: vi.fn(() => 210),
@@ -27,10 +27,11 @@ const mockPdfInstance = {
   getTextWidth: vi.fn(() => 15),
   roundedRect: vi.fn(),
   setTextColor: vi.fn(),
-};
+}));
 
 vi.mock("jspdf", () => ({
-  jsPDF: vi.fn(() => mockPdfInstance),
+  default: vi.fn(function () { return mockPdfInstance; }),
+  jsPDF: vi.fn(function () { return mockPdfInstance; }),
 }));
 
 const baseNotice = {

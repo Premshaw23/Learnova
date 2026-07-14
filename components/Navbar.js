@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Activity, Menu, X, User, Settings, Sparkles, Search, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import {
@@ -203,7 +204,7 @@ export function Navbar() {
           aria-hidden="true"
         />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-4">
           <div className="flex h-16 items-center justify-between gap-3">
             <div className="flex items-center gap-2">
             <NavbarBrand onNavigate={() => setIsMenuOpen(false)} />
@@ -294,7 +295,7 @@ export function Navbar() {
                       size="default"
                       className="relative h-9 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition-all duration-200 hover:from-indigo-500 hover:to-violet-500"
                     >
-                      <Link href="/auth">
+                      <Link href="/auth?direct=true">
                         <span className="flex items-center gap-1.5">
                           Login <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
                         </span>
@@ -312,7 +313,7 @@ export function Navbar() {
                       size="default"
                       className="relative h-9 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition-all duration-200 hover:from-indigo-500 hover:to-violet-500"
                     >
-                      <Link href="/auth?mode=signup">
+                      <Link href="/auth?mode=signup&direct=true">
                         <span className="flex items-center gap-1.5">
                           Sign Up <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
                         </span>
@@ -395,3 +396,4 @@ export function Navbar() {
     </>
   );
 }
+

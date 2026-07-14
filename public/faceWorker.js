@@ -17,6 +17,7 @@ self.addEventListener('message', async (event) => {
       faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
       faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
       faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl),
+      faceapi.nets.faceExpressionNet.loadFromUri(modelUrl),
     ]);
 
     self.postMessage({ type: 'MODELS_LOADED' });

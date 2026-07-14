@@ -1,6 +1,6 @@
 "use client";
-
-import { useEffect, useState } from "react";
+// removed unused imports: useEffect
+import { useState } from "react";
 import { useTimeout } from "./useTimer";
 
 const useDebouncedValue = (value, delay = 220) => {
@@ -9,7 +9,6 @@ const useDebouncedValue = (value, delay = 220) => {
   useTimeout(() => {
     setDebouncedValue(value);
   }, delay);
-
   return debouncedValue;
 };
 

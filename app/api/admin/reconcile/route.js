@@ -10,6 +10,7 @@ import {
   cleanupOldOperations,
 } from "@/lib/transactionCoordinator";
 import { logger } from "@/lib/logger";
+import { logAuditEvent } from "@/lib/auditLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -158,6 +159,14 @@ export const POST = withErrorHandler(async (request) => {
     // Also cleanup stale pending operations as a side-effect
     await cleanupOldOperations();
 
+    logAuditEvent({
+      actor: decodedToken,
+      action: "admin.reconcile_user",
+      target: { type: "user", id: uid },
+      details: { actions },
+      request,
+    });
+
     return jsonSuccess({
       message:
         actions.length > 0
@@ -187,6 +196,14 @@ export const POST = withErrorHandler(async (request) => {
         500
       );
     }
+
+    logAuditEvent({
+      actor: decodedToken,
+      action: "admin.reconcile_user",
+      target: { type: "user", id: uid },
+      details: { action: "orphaned_auth_deleted" },
+      request,
+    });
 
     return jsonSuccess({
       message: "Orphaned Firebase Auth account detected and deleted",
@@ -245,6 +262,14 @@ export const POST = withErrorHandler(async (request) => {
   if (actions.length === 0) {
     return jsonError("User not found in either database", 404);
   }
+
+  logAuditEvent({
+    actor: decodedToken,
+    action: "admin.reconcile_user",
+    target: { type: "user", id: uid },
+    details: { actions },
+    request,
+  });
 
   return jsonSuccess({
     message: "User reconciled successfully",

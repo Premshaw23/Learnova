@@ -2,47 +2,55 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-global.fetch = jest.fn();
+import { vi } from "vitest";
+
+global.fetch = vi.fn();
 
 const mockUser = {
-  getIdToken: jest.fn().mockResolvedValue("mock-token"),
+  getIdToken: vi.fn().mockResolvedValue("mock-token"),
 };
 
-jest.mock("@/hooks/useAuth", () => ({
+vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: mockUser,
   }),
 }));
 
-jest.mock("../Navbar", () => ({
+vi.mock("../Navbar", () => ({
   Navbar: () => <div>Mock Navbar</div>,
 }));
 
-jest.mock("@/components/ui/DashboardSkeleton", () => {
-  return function MockDashboardSkeleton() {
+vi.mock("@/components/ui/DashboardSkeleton", () => ({
+  default: function MockDashboardSkeleton() {
     return <div>Dashboard Loading...</div>;
-  };
-});
+  },
+}));
 
-jest.mock("@/components/ui/ChartSkeleton", () => {
-  return function MockChartSkeleton() {
+vi.mock("@/components/ui/ChartSkeleton", () => ({
+  default: function MockChartSkeleton() {
     return <div>Chart Skeleton</div>;
-  };
-});
+  },
+}));
 
-jest.mock("@/components/ui/SkeletonCard", () => {
-  return function MockSkeletonCard() {
+vi.mock("@/components/ui/SkeletonCard", () => ({
+  default: function MockSkeletonCard() {
     return <div>Skeleton Card</div>;
-  };
-});
+  },
+}));
 
-jest.mock("next/dynamic", () => ({
+vi.mock("next/dynamic", () => ({
   __esModule: true,
   default: () => {
     return function MockDynamicComponent() {
       return <div>Mock Chart</div>;
     };
   },
+}));
+
+vi.mock("@/db/offlineStore", () => ({
+  getPendingActions: vi.fn().mockResolvedValue([]),
+  removePendingAction: vi.fn().mockResolvedValue(true),
+  clearPendingActions: vi.fn().mockResolvedValue(true),
 }));
 
 import AdminDashboard from "../AdminDashboard";
@@ -103,26 +111,26 @@ describe("AdminDashboard", () => {
   beforeEach(() => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue(mockResponse),
+      headers: {
+        get: (name) =>
+          name.toLowerCase() === "content-type" ? "application/json" : null,
+      },
+      json: vi.fn().mockResolvedValue(mockResponse),
     });
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders dashboard after successful fetch", async () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Learnova Admin Center")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Learnova Admin Center")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText("Super Admin Dashboard")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Super Admin Dashboard")).toBeInTheDocument();
 
     expect(
       screen.getByText("System Status: All Services Operational")
@@ -145,9 +153,7 @@ describe("AdminDashboard", () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Learnova Admin Center")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Learnova Admin Center")).toBeInTheDocument();
     });
 
     await user.click(
@@ -156,13 +162,9 @@ describe("AdminDashboard", () => {
       })
     );
 
-    expect(
-      screen.getByText("Institute Management")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Institute Management")).toBeInTheDocument();
 
-    expect(
-      screen.getByText("Delhi Technical University")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Delhi Technical University")).toBeInTheDocument();
   });
 
   test("switches to monitoring tab", async () => {
@@ -171,9 +173,7 @@ describe("AdminDashboard", () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Learnova Admin Center")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Learnova Admin Center")).toBeInTheDocument();
     });
 
     await user.click(
@@ -193,9 +193,7 @@ describe("AdminDashboard", () => {
     render(<AdminDashboard />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Learnova Admin Center")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Learnova Admin Center")).toBeInTheDocument();
     });
 
     await user.click(

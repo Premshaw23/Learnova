@@ -1,7 +1,6 @@
-
 // 1. Enhanced layout.js with proper structured data for sitelinks
-import SyllabusAnalytics from '../components/SyllabusAnalytics';
-import LearningStreakDashboard from '../components/LearningStreakDashboard';
+import SyllabusAnalytics from "../components/SyllabusAnalytics";
+import LearningStreakDashboard from "../components/LearningStreakDashboard";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { FirestoreProvider } from "@/contexts/FirestoreContext";
 
@@ -10,6 +9,8 @@ import { FirestoreProvider } from "@/contexts/FirestoreContext";
 import React from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getLocale } from "next-intl/server";
 
 // ─── Third-party libraries ───────────────────────────────────────────────────
 import { Toaster } from "react-hot-toast";
@@ -47,7 +48,6 @@ import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 
 // 🎯 FIX: Explicitly loading overlays
 import CommandPaletteWrapper from "@/components/CommandPaletteWrapper";
-import ShortcutsModal from "@/components/ShortcutsModal";
 
 // Validate environment variables at startup (server-side only).
 // ─── Environment validation (server-side only, runs once at startup) ─────────
@@ -279,9 +279,11 @@ export const viewport = {
 };
 
 // ─── Root layout ──────────────────────────────────────────────────────────────
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const messages = await getMessages();
+  const locale = await getLocale();
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         {/* ── Favicons ── */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -296,7 +298,7 @@ export default function RootLayout({ children }) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(siteStructuredData),
+            __html: JSON.stringify(siteStructuredData).replace(/</g, "\\u003c"),
           }}
         />
       </head>
@@ -313,6 +315,8 @@ export default function RootLayout({ children }) {
           Skip to Main Content
         </a>
 
+        {/* ── All context providers (Theme, Auth, Firestore, Notifications) ── */}
+        <NextIntlClientProvider messages={messages}>
         <AllProviders>
           {/* Note: Ensure these providers (ThemeProvider, AuthProvider, etc.) 
               are actually imported and exported correctly in AllProviders 
@@ -363,11 +367,9 @@ export default function RootLayout({ children }) {
             />
 
             <CommandPaletteWrapper />
-
-            {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
-            <ShortcutsModal />
           </Suspense>
         </AllProviders>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
