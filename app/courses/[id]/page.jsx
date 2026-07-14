@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react"; // Removed duplicate import of useParams and useRouter
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"; // Removed duplicate import of useParams and useRouter
 import { useParams, useRouter, notFound } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -38,8 +38,9 @@ export default function CourseDetailPage() {
     notFound();
   }
 
-  // Mock course data matching params.id
-  const course = {
+  // Mock course data matching params.id — memoized to prevent infinite re-renders
+  // caused by new object references on every render triggering child effects
+  const course = useMemo(() => ({
     id: params.id || "nextjs-mastery",
     title: "Advanced Next.js & React Architecture",
     description: `Master **React Server Components (RSC)**, advanced rendering patterns (like *Partial Prerendering*), state management, and optimized deployment pipelines for modern web applications.
@@ -94,7 +95,7 @@ export default function CourseDetailPage() {
         ],
       },
     ],
-  };
+  }), [params.id]);
 
   const { user } = useAuth();
 
@@ -122,8 +123,9 @@ export default function CourseDetailPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTimestamps, setFilteredTimestamps] = useState([]);
 
-  // Mock Data mimicking what an AI Video Intelligence API returns
-  const mockVideoAIProperties = {
+  // Mock Data mimicking what an AI Video Intelligence API returns — memoized
+  // to prevent the search effect from re-triggering on every render
+  const mockVideoAIProperties = useMemo(() => ({
     duration: 300,
     videoUrl:
       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
@@ -147,7 +149,7 @@ export default function CourseDetailPage() {
         text: "Next, we will focus on progressive hydration patterns.",
       },
     ],
-  };
+  }), []);
 
   const containerRef = useRef(null);
 
@@ -210,6 +212,7 @@ export default function CourseDetailPage() {
   }, []);
 
   // Update completion percentage and record date when hitting 100%
+  // Guard: only update state when values actually change to prevent unnecessary re-renders
   useEffect(() => {
     if (!mounted) return;
     const totalLessons = course.modules.reduce(
@@ -223,7 +226,9 @@ export default function CourseDetailPage() {
     }, 0);
     const pct =
       totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
-    setCompletionPercentage(pct);
+
+    // Only update state if the value actually changed to avoid re-render cascade
+    setCompletionPercentage((prev) => (prev !== pct ? pct : prev));
 
     if (pct === 100) {
       let date = localStorage.getItem(
@@ -240,12 +245,12 @@ export default function CourseDetailPage() {
           date
         );
       }
-      setCompletionDate(date);
+      setCompletionDate((prev) => (prev !== date ? date : prev));
     } else {
       localStorage.removeItem(`learnova_course_completed_date_${params.id}`);
-      setCompletionDate("");
+      setCompletionDate((prev) => (prev !== "" ? "" : prev));
     }
-  }, [completedLessons, mounted, params.id]);
+  }, [completedLessons, mounted, params.id, course.modules]);
 
   const toggleLesson = (lessonTitle) => {
     const next = {
@@ -284,10 +289,14 @@ export default function CourseDetailPage() {
     }
   };
 
-  // Persist notes when they change
+  // Persist notes when they change — skip initial mount write to avoid overwriting saved notes
+  const notesInitialized = useRef(false);
   useEffect(() => {
-    if (mounted) {
+    if (mounted && notesInitialized.current) {
       localStorage.setItem(`video_notes_${params.id}`, JSON.stringify(notes));
+    }
+    if (mounted && !notesInitialized.current) {
+      notesInitialized.current = true;
     }
   }, [notes, mounted, params.id]);
 
@@ -302,10 +311,10 @@ export default function CourseDetailPage() {
       t.text.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredTimestamps(matches);
-  }, [searchQuery]);
+  }, [searchQuery, mockVideoAIProperties.transcripts]);
 
   // Command the video player HTML element to jump to a specific time
-  const handleSeek = (seconds) => {
+  const handleSeek = useCallback((seconds) => {
     if (videoRef.current) {
       videoRef.current.currentTime = seconds;
       videoRef.current.play();
@@ -313,7 +322,27 @@ export default function CourseDetailPage() {
         `Jumped to ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
       );
     }
-  };
+  }, []);
+
+  // Add a timestamped note at the current video playback position
+  const handleAddNote = useCallback(() => {
+    if (!noteText.trim()) return;
+    const currentTime = videoRef.current ? Math.floor(videoRef.current.currentTime) : 0;
+    const newNote = {
+      id: crypto.randomUUID(),
+      text: noteText.trim(),
+      timestamp: currentTime,
+      formattedTime: `${Math.floor(currentTime / 60)}:${String(currentTime % 60).padStart(2, "0")}`,
+      createdAt: Date.now(),
+    };
+    setNotes((prev) => [...prev, newNote]);
+    setNoteText("");
+  }, [noteText]);
+
+  // Delete a note by its id
+  const deleteNote = useCallback((noteId) => {
+    setNotes((prev) => prev.filter((n) => n.id !== noteId));
+  }, []);
 
   useEffect(() => {
     try {

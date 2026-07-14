@@ -16,6 +16,8 @@ export function useOfflineSync() {
   }, []);
 
   useEffect(() => {
+    // Restore queue count from IndexedDB on mount so pending items
+    // are visible immediately after a page refresh
     refreshQueue();
 
     const handleOfflineActionQueued = () => {
@@ -44,11 +46,22 @@ export function useOfflineSync() {
     };
 
     const handleOnline = () => {
+      // Re-read the queue when coming back online to pick up any items
+      // that were queued while offline
+      refreshQueue();
       if (!("SyncManager" in window)) {
         handleSyncStart();
         navigator.serviceWorker.controller?.postMessage({
           type: "TRIGGER_SYNC_PENDING_ACTIONS",
         });
+      }
+    };
+
+    // When the user returns to the tab after navigating away, refresh the
+    // queue count so that items persisted in IndexedDB appear immediately
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshQueue();
       }
     };
 
@@ -74,6 +87,7 @@ export function useOfflineSync() {
     );
     window.addEventListener("learnova:sync-complete", handleSyncComplete);
     window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     navigator.serviceWorker?.addEventListener("message", handleMessage);
 
     return () => {
@@ -83,6 +97,7 @@ export function useOfflineSync() {
       );
       window.removeEventListener("learnova:sync-complete", handleSyncComplete);
       window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       navigator.serviceWorker?.removeEventListener("message", handleMessage);
     };
   }, [refreshQueue]);

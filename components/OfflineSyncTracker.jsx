@@ -1,11 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 
 const OfflineSyncTracker = ({ courseId, currentModuleId, currentProgress }) => {
   const [isOnline, setIsOnline] = useState(true);
-  const [syncQueue, setSyncQueue] = useState([]);
+  // Restore queue from localStorage on mount so pending items survive page refresh
+  const [syncQueue, setSyncQueue] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("learnova_offline_sync_queue");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [syncStatus, setSyncStatus] = useState("Synchronized"); // Synchronized, Queued, Syncing
 
+  // Keep a ref to the latest queue so the online handler never goes stale
+  const syncQueueRef = useRef(syncQueue);
+  syncQueueRef.current = syncQueue;
+
+  // Stable reference for triggerBackgroundSync — avoids re-registering listeners
+  const triggerBackgroundSync = useCallback(() => {
+    const activeQueue =
+      JSON.parse(localStorage.getItem("learnova_offline_sync_queue")) || [];
+    if (activeQueue.length === 0) return;
+
+    setSyncStatus("Syncing");
+
+    // Simulating batch execution validation sequence natively
+    setTimeout(() => {
+      localStorage.removeItem("learnova_offline_sync_queue");
+      setSyncQueue([]);
+      setSyncStatus("Synchronized");
+    }, 2000);
+  }, []);
+
   // 1. Monitor live connection stability states
+  // NOTE: Removed syncQueue from deps — the online handler uses a ref so it
+  //       always reads the latest queue without needing to re-register listeners.
   useEffect(() => {
     if (typeof window !== "undefined") {
       setIsOnline(navigator.onLine);
@@ -24,7 +55,7 @@ const OfflineSyncTracker = ({ courseId, currentModuleId, currentProgress }) => {
         window.removeEventListener("offline", handleOffline);
       };
     }
-  }, [syncQueue]);
+  }, [triggerBackgroundSync]);
 
   // 2. Queue management interceptor for progress shifts
   useEffect(() => {
@@ -47,21 +78,7 @@ const OfflineSyncTracker = ({ courseId, currentModuleId, currentProgress }) => {
     }
   }, [currentProgress, isOnline]);
 
-  // 3. Background verification and simulation payload recovery
-  const triggerBackgroundSync = async () => {
-    const activeQueue =
-      JSON.parse(localStorage.getItem("learnova_offline_sync_queue")) || [];
-    if (activeQueue.length === 0) return;
-
-    setSyncStatus("Syncing");
-
-    // Simulating batch execution validation sequence natively
-    setTimeout(() => {
-      localStorage.removeItem("learnova_offline_sync_queue");
-      setSyncQueue([]);
-      setSyncStatus("Synchronized");
-    }, 2000);
-  };
+  // triggerBackgroundSync is now defined above as a stable useCallback
 
   return (
     <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs max-w-md mx-auto my-4 transition-all duration-300">
