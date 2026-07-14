@@ -3,7 +3,7 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { getLocalDateKey } from "@/lib/dateUtils";
+import { getLocalDateKey, getWeekdaysSince } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
@@ -279,6 +279,59 @@ async function handleSync(request) {
                   : new Date().getHours(),
                 attendanceDate: recordDate,
               },
+            });
+          },
+          compensate: null,
+        },
+        {
+          name: "write_activity",
+          execute: async (ctx) => {
+            if (ctx._alreadyProcessed) return;
+            const hour = record.queuedAt
+              ? new Date(record.queuedAt).getHours()
+              : new Date().getHours();
+            const minutes = record.queuedAt
+              ? new Date(record.queuedAt).getMinutes()
+              : new Date().getMinutes();
+            const isLate = hour >= 9 && minutes > 10;
+            await db.collection("activities").add({
+              userId: decodedToken.uid,
+              title: "Class Attendance",
+              type: "course",
+              progress: isLate ? 50 : 100,
+              timestamp: FieldValue.serverTimestamp(),
+            });
+          },
+          compensate: null,
+        },
+        {
+          name: "recalculate_stats",
+          execute: async (ctx) => {
+            if (ctx._alreadyProcessed) return;
+            const attendanceQuery = db
+              .collection("attendance_records")
+              .where("userId", "==", decodedToken.uid);
+
+            const snapshot = await attendanceQuery.get();
+            const uniqueDates = new Set(snapshot.docs.map((doc) => doc.data().date).filter(Boolean));
+            const presentDays = uniqueDates.size;
+
+            const userDoc = await db.collection("users").doc(decodedToken.uid).get();
+            let startDate = new Date(new Date().getFullYear(), 0, 1);
+            if (userDoc.exists && userDoc.data().createdAt) {
+              const createdAt = userDoc.data().createdAt;
+              startDate = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
+            }
+
+            const totalDays = getWeekdaysSince(startDate);
+            const rate = Math.min(100, Math.round((presentDays / totalDays) * 100));
+
+            const statsRef = db.collection("userStats").doc(decodedToken.uid);
+            await statsRef.set({}, { merge: true });
+            await statsRef.update({
+              "Attendance Rate": `${rate}%`,
+              attendancePresentDays: presentDays,
+              lastUpdated: FieldValue.serverTimestamp(),
             });
           },
           compensate: null,
