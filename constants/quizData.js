@@ -186,7 +186,6 @@ export const quizDatabase = {
     ]
   }
 };
-};
 
 /**
  * Gets a quiz by title, falling back to a general knowledge quiz if not matched.
