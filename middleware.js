@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
+import { hasPermission } from "./constants/permissions";
 import { PUBLIC_API_PATHS, default as getApiRouteRule } from "@/lib/rbac-policy";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -36,6 +37,7 @@ const AUTH_RATE_LIMITED_PATHS = [
 ];
 
 const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
+
 
 function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
@@ -468,6 +470,15 @@ function enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole) {
 
   if (!isEmailVerified) {
     return { error: "Forbidden: Email not verified", status: 403 };
+  }
+
+  if (rule.permission) {
+    if (!userRole) {
+      return { error: "Forbidden: No role assigned", status: 403 };
+    }
+    if (!hasPermission(userRole, rule.permission)) {
+      return { error: "Forbidden: Insufficient permissions", status: 403 };
+    }
   }
 
   if (rule.roles && rule.roles.length > 0) {

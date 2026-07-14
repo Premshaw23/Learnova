@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
+import {
+  getLabelsFromOfflineStore,
+  saveLabelsToOfflineStore,
+} from "@/db/offlineStore";
 
 export default function useLabels(user) {
   const [labels, setLabels] = useState([]);
@@ -38,19 +42,36 @@ export default function useLabels(user) {
           throw new Error(data.error || "Failed to load labels");
         }
 
-        setLabels(Array.isArray(data.data) ? data.data : []);
+        const labelsData = Array.isArray(data.data) ? data.data : [];
+        setLabels(labelsData);
         setError(null);
+
+        // Cache to IndexedDB for offline use
+        if (labelsData.length > 0) {
+          saveLabelsToOfflineStore(labelsData);
+        }
       } catch (err) {
         console.error("Label Fetch Error:", err);
 
-        if (err.name === "AbortError") {
-          setError("Request timed out. Please try again.");
+        if (
+          err.name === "AbortError" ||
+          !navigator.onLine ||
+          err.message.includes("Failed to load") ||
+          err.message.includes("fetch")
+        ) {
+          console.log("Loading labels from offline IndexedDB cache...");
+          const offlineLabels = await getLabelsFromOfflineStore();
+          if (offlineLabels && offlineLabels.length > 0) {
+            setLabels(offlineLabels);
+            setError(null);
+          } else {
+            setError("You are offline and no cached students were found.");
+            setLabels([]);
+          }
         } else {
           setError("Service temporarily unavailable. Please try again later.");
+          setLabels([]);
         }
-
-        // graceful fallback
-        setLabels([]);
       } finally {
         setLoading(false);
       }
