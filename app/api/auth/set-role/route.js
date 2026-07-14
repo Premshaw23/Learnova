@@ -27,7 +27,15 @@ export const POST = withValidation(
     const { role, fullName, instituteName, inviteCode } = data;
 
     // --- Privilege Escalation Fix: Enforce Invite Codes for Elevated Roles ---
-    if (role === "teacher") {
+    if (role === "admin") {
+      const expectedCode = process.env.ADMIN_INVITE_CODE;
+      if (!expectedCode || inviteCode !== expectedCode) {
+        return jsonError(
+          "Forbidden: Invalid or missing admin invite code.",
+          403
+        );
+      }
+    } else if (role === "teacher") {
       const expectedCode = process.env.TEACHER_INVITE_CODE;
       if (!expectedCode || inviteCode !== expectedCode) {
         return jsonError(
@@ -43,6 +51,10 @@ export const POST = withValidation(
           403
         );
       }
+    } else if (role === "student" || role === "parent") {
+      // Student and parent roles should not require invite codes
+    } else {
+      return jsonError("Forbidden: Invalid role specified.", 403);
     }
     // ------------------------------------------------------------------------
 
@@ -54,6 +66,8 @@ export const POST = withValidation(
       .collection("users")
       .doc(decodedToken.uid)
       .get();
+
+    const ROLE_HIERARCHY = { admin: 4, teacher: 3, institute: 3, parent: 2, student: 1 };
 
     if (existingProfile.exists) {
       const existingRole = existingProfile.data()?.role;
@@ -67,10 +81,14 @@ export const POST = withValidation(
         }
       }
     } else if (decodedToken.role) {
-      return jsonError(
-        `Forbidden: Token already carries role "${decodedToken.role}". Role cannot be changed.`,
-        403
-      );
+      const currentLevel = ROLE_HIERARCHY[decodedToken.role] || 0;
+      const requestedLevel = ROLE_HIERARCHY[role] || 0;
+      if (requestedLevel > currentLevel) {
+        return jsonError(
+          `Forbidden: Cannot escalate from "${decodedToken.role}" to "${role}".`,
+          403
+        );
+      }
     }
 
     const userProfile = {

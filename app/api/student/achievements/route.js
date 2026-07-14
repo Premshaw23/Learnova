@@ -108,32 +108,56 @@ export async function POST(request) {
     }
 
     const userId = decodedToken.uid;
-    const { badges } = await request.json();
 
-    if (!badges || !Array.isArray(badges)) {
+    // Initialize Firebase Admin
+    initializeFirebase();
+    const firestoreDb = admin.firestore();
+
+    // Fetch attendance records from Firestore
+    const attendanceSnapshot = await firestoreDb
+      .collection("attendance_records")
+      .where("userId", "==", userId)
+      .get();
+
+    const attendanceRecords = attendanceSnapshot.docs.map((doc) => doc.data());
+
+    // Connect to MongoDB
+    const mongoDb = await connectDb();
+    const badgesCollection = mongoDb.collection("userAchievements");
+
+    // Fetch existing badges
+    const existingRecord = await badgesCollection.findOne({ userId });
+    const earnedBadges = existingRecord?.badges || [];
+
+    // Calculate newly unlocked badges server-side securely
+    const newlyUnlocked = getNewlyUnlockedBadges(attendanceRecords, earnedBadges);
+
+    if (newlyUnlocked.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Invalid badges array" }),
+        JSON.stringify({ error: "No new badges available to unlock" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Save to MongoDB
-    const mongoDb = await connectDb();
-    const badgesCollection = mongoDb.collection("userAchievements");
+    // Merge new badges
+    const updatedBadges = [
+      ...earnedBadges,
+      ...newlyUnlocked.map((badge) => ({
+        id: badge.id,
+        name: badge.name,
+        earnedDate: new Date(),
+        tier: badge.tier,
+      }))
+    ];
 
-    // Update or create badge record
+    // Update badge record safely
     await badgesCollection.updateOne(
       { userId },
       {
         $set: {
           userId,
           updatedAt: new Date(),
-          badges: badges.map((badge) => ({
-            id: badge.id,
-            name: badge.name,
-            earnedDate: badge.earnedDate || new Date(),
-            tier: badge.tier,
-          })),
+          badges: updatedBadges,
         },
       },
       { upsert: true }

@@ -291,3 +291,59 @@
   outline: 2px solid #005fcc;
   outline-offset: 2px;
 }
+
+/* ========================================================= */
+/* DYNAMIC ROLE-BASED DASHBOARD THEMES */
+/* ========================================================= */
+
+/* Admin (Corporate Blue) */
+:root[data-role-theme="admin"] {
+  --accent: oklch(0.5 0.2 250);
+  --secondary: oklch(0.5 0.2 250);
+  --sidebar-primary: oklch(0.5 0.2 250);
+}
+.dark[data-role-theme="admin"],
+:root[data-role-theme="admin"].dark {
+  --accent: oklch(0.55 0.15 250);
+  --secondary: oklch(0.55 0.15 250);
+  --sidebar-primary: oklch(0.55 0.15 250);
+}
+
+/* Teacher (Professional Teal) */
+:root[data-role-theme="teacher"] {
+  --accent: oklch(0.55 0.12 180);
+  --secondary: oklch(0.55 0.12 180);
+  --sidebar-primary: oklch(0.55 0.12 180);
+}
+.dark[data-role-theme="teacher"],
+:root[data-role-theme="teacher"].dark {
+  --accent: oklch(0.6 0.12 180);
+  --secondary: oklch(0.6 0.12 180);
+  --sidebar-primary: oklch(0.6 0.12 180);
+}
+
+/* Super Admin (Sleek Gold/Dark) */
+:root[data-role-theme="super-admin"] {
+  --accent: oklch(0.65 0.15 80);
+  --secondary: oklch(0.65 0.15 80);
+  --sidebar-primary: oklch(0.65 0.15 80);
+}
+.dark[data-role-theme="super-admin"],
+:root[data-role-theme="super-admin"].dark {
+  --accent: oklch(0.7 0.15 80);
+  --secondary: oklch(0.7 0.15 80);
+  --sidebar-primary: oklch(0.7 0.15 80);
+}
+
+/* Student (Vibrant Purple - default is already close, but we ensure it overrides) */
+:root[data-role-theme="student"] {
+  --accent: oklch(0.646 0.222 280.116);
+  --secondary: oklch(0.646 0.222 280.116);
+  --sidebar-primary: oklch(0.646 0.222 280.116);
+}
+.dark[data-role-theme="student"],
+:root[data-role-theme="student"].dark {
+  --accent: oklch(0.646 0.222 280.116);
+  --secondary: oklch(0.646 0.222 280.116);
+  --sidebar-primary: oklch(0.646 0.222 280.116);
+}

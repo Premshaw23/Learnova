@@ -8,6 +8,11 @@ import React, {
 } from "react";
 import { Navbar } from "./Navbar";
 import { dashboardContentOffsetClass } from "@/components/navigation";
+import { Responsive, WidthProvider } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 import Image from "next/image";
 import CurriculumBuilder from "./dashboard/CurriculumBuilder";
 import { useAuth } from "@/hooks/useAuth";
@@ -119,6 +124,11 @@ const TeacherAchievementPanel = dynamic(
   { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 
+const StudyGroupRecommendation = dynamic(
+  () => import("@/components/dashboard/StudyGroupRecommendation"),
+  { loading: () => <DashboardSkeleton /> }
+);
+
 const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -150,6 +160,53 @@ const TeacherDashboard = () => {
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState(null);
   const [showAbsentSummaryModal, setShowAbsentSummaryModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [layouts, setLayouts] = useState({
+    lg: [
+      { i: 'overview', x: 0, y: 0, w: 8, h: 5 },
+      { i: 'live', x: 0, y: 5, w: 8, h: 3 },
+      { i: 'exceptions', x: 0, y: 8, w: 8, h: 3 },
+      { i: 'classes', x: 8, y: 0, w: 4, h: 3 },
+      { i: 'actions', x: 8, y: 3, w: 4, h: 4 },
+      { i: 'status', x: 8, y: 7, w: 4, h: 4 },
+    ],
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    if (user?.uid) {
+      const savedLayout = localStorage.getItem(`learnova_dashboard_layout_${user.uid}`);
+      if (savedLayout) {
+        setLayouts(JSON.parse(savedLayout));
+      }
+    }
+  }, [user]);
+
+  const onLayoutChange = (layout, layouts) => {
+    setLayouts(layouts);
+    if (user?.uid) {
+      localStorage.setItem(`learnova_dashboard_layout_${user.uid}`, JSON.stringify(layouts));
+    }
+  };
+
+  const resetLayout = () => {
+    const defaultLayouts = {
+      lg: [
+        { i: 'overview', x: 0, y: 0, w: 8, h: 5 },
+        { i: 'live', x: 0, y: 5, w: 8, h: 3 },
+        { i: 'exceptions', x: 0, y: 8, w: 8, h: 3 },
+        { i: 'classes', x: 8, y: 0, w: 4, h: 3 },
+        { i: 'actions', x: 8, y: 3, w: 4, h: 4 },
+        { i: 'status', x: 8, y: 7, w: 4, h: 4 },
+      ],
+    };
+    setLayouts(defaultLayouts);
+    if (user?.uid) {
+      localStorage.removeItem(`learnova_dashboard_layout_${user.uid}`);
+    }
+  };
+
   const pendingRequests = useMemo(() => {
     return attendanceRequests.filter((req) => req.status === "pending");
   }, [attendanceRequests]);
@@ -917,13 +974,57 @@ const TeacherDashboard = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-xl p-4 border border-blue-500/30">
-                  <div className="text-2xl font-bold text-blue-400">
-                    {attendanceStats.totalStudents}
-                  </div>
-                  <div className="text-blue-300 text-sm">Total Students</div>
-                </div>
+      
+      {/* Layout Controls */}
+      <div className="flex justify-end space-x-3 mb-4">
+        {isEditMode && (
+          <button
+            onClick={resetLayout}
+            className="px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-xl transition-colors border border-red-500/30 text-sm font-medium"
+          >
+            Reset Layout
+          </button>
+        )}
+        <button
+          onClick={() => setIsEditMode(!isEditMode)}
+          className="px-4 py-2 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-xl transition-colors border border-blue-500/30 text-sm font-medium flex items-center gap-2"
+        >
+          {isEditMode ? <CheckCircle className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+          {isEditMode ? "Save Layout" : "Customize Layout"}
+        </button>
+      </div>
+
+      {!mounted ? (
+        <div className="h-96 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <ResponsiveGridLayout
+          className="layout -mx-3"
+          layouts={layouts}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+          rowHeight={100}
+          onLayoutChange={onLayoutChange}
+          isDraggable={isEditMode}
+          isResizable={isEditMode}
+          margin={[24, 24]}
+          useCSSTransforms={true}
+        >
+          <div key="overview" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Attendance Overview */}
+          <div className="bg-card/40 h-full overflow-y-auto dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-foreground dark:text-white">
+                Today's Attendance Overview
+              </h2>
+              <button
+                aria-label="Refresh attendance"
+                className="text-accent hover:text-accent/80 transition-colors"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            </div>
 
                 <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-xl p-4 border border-green-500/30">
                   <div className="text-2xl font-bold text-green-400">
@@ -1072,11 +1173,33 @@ const TeacherDashboard = () => {
                 </div>
               )}
             </div>
-
-            {/* Quick Actions */}
-            <div key="actions" className="h-full">
-              <h2 className="text-xl font-bold text-foreground dark:text-white mb-6">
-                Quick Actions
+          </div>
+          </div>
+          <div key="live" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Live Check-Ins */}
+          <LiveAttendanceView title="Live Check-Ins" />
+          </div>
+          <div key="exceptions" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Exception Requests */}
+          <ExceptionRequestsList
+            exceptionRequests={exceptionRequests}
+            isLoadingRequests={isLoadingRequests}
+            requestsError={requestsError}
+            fetchAllRequests={fetchAllRequests}
+            showAllRequestsModal={showAllRequestsModal}
+            setShowAllRequestsModal={setShowAllRequestsModal}
+            allRequests={allRequests}
+            handleExceptionRequest={handleExceptionRequest}
+          />
+        </div>
+          </div>
+          <div key="classes" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Today's Schedule */}
+          <div className="bg-card/40 h-full overflow-y-auto dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
+            <div className="flex items-center space-x-2 mb-6">
+              <Calendar className="w-6 h-6 text-accent" />
+              <h2 className="text-xl font-bold text-foreground dark:text-white">
+                Today's Classes
               </h2>
 
               <div className="space-y-3">
@@ -1097,62 +1220,152 @@ const TeacherDashboard = () => {
                       </div>
                     </div>
                   </div>
-                </ExportDropdown>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                <p className="text-muted-foreground dark:text-gray-400">
+                  No classes scheduled for today
+                </p>
+              </div>
+            )}
+          </div>
+          </div>
+          <div key="actions" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Quick Actions */}
+          <div className="bg-card/40 h-full overflow-y-auto dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
+            <h2 className="text-xl font-bold text-foreground dark:text-white mb-6">
+              Quick Actions
+            </h2>
 
-                <button
-                  className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
-                  aria-label="Upload schedule"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Upload className="w-5 h-5 text-green-400" />
-                    <div>
-                      <div className="font-medium">Upload Schedule</div>
-                      <div className="text-sm text-muted-foreground dark:text-gray-400">
-                        Weekly timetable
-                      </div>
+            <div className="space-y-3">
+              <button 
+                onClick={() => router.push('/virtual-class')}
+                className="w-full bg-gradient-to-r from-blue-600/20 to-cyan-600/20 hover:from-blue-600/30 hover:to-cyan-600/30 border border-blue-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" 
+                aria-label="Launch Virtual Class">
+                <div className="flex items-center space-x-3">
+                  <Video className="w-5 h-5 text-blue-400" />
+                  <div>
+                    <div className="font-medium">Launch Virtual Class</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      Interactive Whiteboard
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              <ExportDropdown
+                onExport={handleAttendanceExport}
+                isExporting={isExporting}
+                label="Export Reports"
+                className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left flex justify-start items-center"
+              >
+                <div className="flex items-center space-x-3 text-left">
+                  <Download className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <div className="font-medium text-foreground dark:text-white">
+                      Export Reports
+                    </div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      CSV / PDF formats
+                    </div>
+                  </div>
+                </div>
+              </ExportDropdown>
+
+              <button className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Upload schedule">
+                <div className="flex items-center space-x-3">
+                  <Upload className="w-5 h-5 text-green-400" />
+                  <div>
+                    <div className="font-medium">Upload Schedule</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      Weekly timetable
                     </div>
                   </div>
                 </button>
 
-                <button
-                  className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
-                  aria-label="Send notification"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Bell className="w-5 h-5 text-orange-400" />
-                    <div>
-                      <div className="font-medium">Send Notification</div>
-                      <div className="text-sm text-muted-foreground dark:text-gray-400">
-                        To students/parents
-                      </div>
+              <button
+                className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+                aria-label="Send notification"
+              >
+                <div className="flex items-center space-x-3">
+                  <Bell className="w-5 h-5 text-orange-400" />
+                  <div>
+                    <div className="font-medium">Send Notification</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      To students/parents
                     </div>
                   </div>
                 </button>
               </div>
             </div>
 
-            {/* Security Status */}
-            <div key="security" className="h-full">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-400" />
-                    <span className="text-muted-foreground dark:text-gray-300 text-sm">
-                      Face Recognition
-                    </span>
+              <button
+                onClick={() => setShowAbsentSummaryModal(true)}
+                className="w-full bg-gradient-to-r from-indigo-600/20 to-indigo-600/20 hover:from-indigo-600/30 hover:to-indigo-600/30 border border-indigo-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+                aria-label="Action button"
+              >
+                <div className="flex items-center space-x-3">
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                  <div>
+                    <div className="font-medium">AI Lecture Summary</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      Send notes to absent students
+                    </div>
                   </div>
                   <span className="text-green-400 text-sm">Active</span>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-400" />
-                    <span className="text-muted-foreground dark:text-gray-300 text-sm">
-                      GPS Geofencing
-                    </span>
+              <button
+                onClick={() => handleExport("csv")}
+                className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
+                aria-label="Action button"
+              >
+                <div className="flex items-center space-x-3">
+                  <Download className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <div className="font-medium">Export Reports</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      CSV format (Instant Download)
+                    </div>
                   </div>
                   <span className="text-green-400 text-sm">Active</span>
                 </div>
+              </button>
+            </div>
+          </div>
+          </div>
+          <div key="status" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Security Status */}
+          <div className="bg-card/40 h-full overflow-y-auto dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
+            <div className="flex items-center space-x-2 mb-6">
+              <Shield className="w-6 h-6 text-green-400" />
+              <h2 className="text-xl font-bold text-foreground dark:text-white">
+                System Status
+              </h2>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    Face Recognition
+                  </span>
+                </div>
+                <span className="text-green-400 text-sm">Active</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    GPS Geofencing
+                  </span>
+                </div>
+                <span className="text-green-400 text-sm">Active</span>
+              </div>
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -1176,8 +1389,9 @@ const TeacherDashboard = () => {
                 </div>
               </div>
             </div>
-          </DraggableDashboardLayout>
-        </div>
+          </div>
+        </ResponsiveGridLayout>
+      )}
 
         <AttendancePasscodeModal
           showPasscodeModal={showPasscodeModal}
@@ -1248,27 +1462,38 @@ const TeacherDashboard = () => {
         <AbsentSummaryModal
           isOpen={showAbsentSummaryModal}
           onClose={() => setShowAbsentSummaryModal(false)}
-          absentStudents={studentAttendanceData.filter(s => s.status === "absent")}
+          absentStudents={studentAttendanceData.filter(
+            (s) => s.status === "absent"
+          )}
         />
       )}
     </div>
   );
 
   const handleExportSingleClass = (cls, day) => {
-    let icsString = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//Learnova//Teacher Schedule//EN",
-      "CALSCALE:GREGORIAN",
-      "METHOD:PUBLISH",
-    ].join("\r\n") + "\r\n";
+    let icsString =
+      [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Learnova//Teacher Schedule//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+      ].join("\r\n") + "\r\n";
 
     const [startStr, endStr] = (cls.time || "").split("-");
     if (!startStr || !endStr) return;
 
     // Helper to get next weekday date
     const getNextWeekdayDate = (dayName, timeStr) => {
-      const weekdays = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+      const weekdays = {
+        Sunday: 0,
+        Monday: 1,
+        Tuesday: 2,
+        Wednesday: 3,
+        Thursday: 4,
+        Friday: 5,
+        Saturday: 6,
+      };
       const targetDay = weekdays[dayName];
       const now = new Date();
       const currentDay = now.getDay();
@@ -1293,27 +1518,41 @@ const TeacherDashboard = () => {
 
     const startDate = getNextWeekdayDate(day, startStr.trim());
     const endDate = getNextWeekdayDate(day, endStr.trim());
-    const byDayMap = { Sunday: "SU", Monday: "MO", Tuesday: "TU", Wednesday: "WE", Thursday: "TH", Friday: "FR", Saturday: "SA" };
+    const byDayMap = {
+      Sunday: "SU",
+      Monday: "MO",
+      Tuesday: "TU",
+      Wednesday: "WE",
+      Thursday: "TH",
+      Friday: "FR",
+      Saturday: "SA",
+    };
 
-    icsString += [
-      "BEGIN:VEVENT",
-      `UID:class-${day}-${Date.now()}@learnova`,
-      `DTSTAMP:${formatDateToICS(new Date())}`,
-      `SUMMARY:${cls.subject}`,
-      `DESCRIPTION:Room: ${cls.room}`,
-      `LOCATION:${cls.room}`,
-      `DTSTART:${formatDateToICS(startDate)}`,
-      `DTEND:${formatDateToICS(endDate)}`,
-      `RRULE:FREQ=WEEKLY;BYDAY=${byDayMap[day]}`,
-      "END:VEVENT",
-    ].join("\r\n") + "\r\n";
+    icsString +=
+      [
+        "BEGIN:VEVENT",
+        `UID:class-${day}-${Date.now()}@learnova`,
+        `DTSTAMP:${formatDateToICS(new Date())}`,
+        `SUMMARY:${cls.subject}`,
+        `DESCRIPTION:Room: ${cls.room}`,
+        `LOCATION:${cls.room}`,
+        `DTSTART:${formatDateToICS(startDate)}`,
+        `DTEND:${formatDateToICS(endDate)}`,
+        `RRULE:FREQ=WEEKLY;BYDAY=${byDayMap[day]}`,
+        "END:VEVENT",
+      ].join("\r\n") + "\r\n";
     icsString += "END:VCALENDAR";
 
-    const blob = new Blob([icsString], { type: "text/calendar;charset=utf-8;" });
+    const blob = new Blob([icsString], {
+      type: "text/calendar;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `${(cls.subject || "Class").replace(/\s+/g, '_')}_schedule.ics`);
+    link.setAttribute(
+      "download",
+      `${(cls.subject || "Class").replace(/\s+/g, "_")}_schedule.ics`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1344,7 +1583,7 @@ const TeacherDashboard = () => {
                   className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50 relative group"
                 >
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
+                    <button
                       onClick={() => handleExportSingleClass(cls, day)}
                       className="p-1 rounded bg-black/40 text-gray-400 hover:text-green-400 transition-colors"
                       title="Add to Calendar"
@@ -1507,6 +1746,7 @@ const TeacherDashboard = () => {
         <div className="flex space-x-1 bg-card/40 dark:bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl p-1 border border-border dark:border-white/10">
           {[
             { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+            { id: "collaboration", label: "Collaboration", icon: Users },
             { id: "curriculum", label: "Curriculum", icon: BookOpen },
             { id: "achievements", label: "Achievements", icon: Award },
             { id: "analytics", label: "Analytics", icon: TrendingUp },
@@ -1548,6 +1788,7 @@ const TeacherDashboard = () => {
       {/* Main Content */}
       <div className="relative z-10 container mx-auto px-6 py-8">
         {activeTab === "dashboard" && renderDashboard()}
+        {activeTab === "collaboration" && <StudyGroupRecommendation />}
         {activeTab === "curriculum" && <CurriculumBuilder />}
         {activeTab === "achievements" && <TeacherAchievementPanel />}
         {activeTab === "analytics" && renderAnalytics()}

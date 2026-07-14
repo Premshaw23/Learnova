@@ -1,10 +1,11 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
-import { initFirebaseAdmin } from "@/lib/firebase-admin";
+import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { connectDb } from "@/lib/mongodb";
 import { z } from "zod";
 
 const overrideSchema = z.object({
@@ -58,5 +59,35 @@ export const POST = withErrorHandler(async (request) => {
     }
   });
 
+  // Fetch student profile details from Firestore
+  const userProfile = await getUserProfile(studentId);
+  const resolvedName = userProfile?.fullName || userProfile?.name || "Unknown User";
+  const resolvedEmail = userProfile?.email || "unknown@learnova.edu";
+  const instituteId = userProfile?.instituteId || null;
+
+  // Sync the override to MongoDB
+  const mongoDB = await connectDb();
+  await mongoDB.collection("attendance").updateOne(
+    { userId: studentId, date },
+    {
+      $set: {
+        status,
+        overriddenBy: token.uid,
+        overriddenAt: new Date(),
+        timestamp: new Date(),
+        offlineSynced: false,
+      },
+      $setOnInsert: {
+        userId: studentId,
+        date,
+        studentName: resolvedName,
+        email: resolvedEmail,
+        instituteId,
+      },
+    },
+    { upsert: true }
+  );
+
   return jsonSuccess({ updated: true });
 });
+
