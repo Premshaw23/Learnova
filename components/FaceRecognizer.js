@@ -80,6 +80,8 @@ export default function FaceRecognizer({ authUser }) {
   }, [stopAllMedia]);
 
 
+  // Load models from local bundled files (not from CDN) for supply chain security
+  // Issue #3964: Prevents model tampering via CDN compromise or MITM attacks
   const MODEL_URL = "/models";
   const labels = fetchedLabels;
 
