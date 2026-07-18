@@ -50,6 +50,7 @@ vi.mock("@/lib/gamification-service", () => ({
 
 vi.mock("@/lib/dateUtils", () => ({
   getLocalDateKey: vi.fn(() => "2026-05-25"),
+  getWeekdaysSince: vi.fn(() => 5),
 }));
 
 vi.mock("@/lib/ssePublisher", () => ({
@@ -132,8 +133,19 @@ describe("attendance record route — webhook/response gating on saga outcome", 
       instituteId: "inst-999",
     });
 
-    const docRef = {};
-    const collectionRef = { doc: vi.fn(() => docRef) };
+    const docRef = {
+      get: vi.fn().mockResolvedValue({ exists: true, data: () => ({ createdAt: new Date() }) }),
+      set: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn().mockResolvedValue({}),
+    };
+    const collectionRef = {
+      doc: vi.fn(() => docRef),
+      add: vi.fn().mockResolvedValue({ id: "activity-id" }),
+      where: vi.fn(() => ({
+        get: vi.fn().mockResolvedValue({ docs: [], size: 0 }),
+      })),
+    };
     const transactionGet = vi.fn().mockResolvedValue({ exists: false });
 
     getFirestore.mockReturnValue({
@@ -162,8 +174,19 @@ describe("attendance record route — webhook/response gating on saga outcome", 
       instituteId: "inst-999",
     });
 
-    const docRef = {};
-    const collectionRef = { doc: vi.fn(() => docRef) };
+    const docRef = {
+      get: vi.fn().mockResolvedValue({ exists: true, data: () => ({ createdAt: new Date() }) }),
+      set: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn().mockResolvedValue({}),
+    };
+    const collectionRef = {
+      doc: vi.fn(() => docRef),
+      add: vi.fn().mockResolvedValue({ id: "activity-id" }),
+      where: vi.fn(() => ({
+        get: vi.fn().mockResolvedValue({ docs: [], size: 0 }),
+      })),
+    };
     // Document already exists -> write_attendance step sets _alreadyRecorded = true
     const transactionGet = vi.fn().mockResolvedValue({ exists: true });
 
