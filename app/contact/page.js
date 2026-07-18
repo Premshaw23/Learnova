@@ -1,7 +1,7 @@
 "use client";
 import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,6 @@ import {
   Facebook,
   Sparkles,
 } from "lucide-react";
-import emailjs from "@emailjs/browser";
 import toast from "react-hot-toast";
 
 export default function Contact() {
@@ -176,41 +175,21 @@ export default function Contact() {
       return;
     }
 
-    if (
-      !process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID ||
-      !process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ||
-      !process.env.NEXT_PUBLIC_EMAILJS_USER_ID
-    ) {
-      setSubmitStatus({
-        type: "error",
-        message: `Contact form is currently unavailable. Please reach us directly at ${CONTACT_INFO.email}`,
-      });
-      return;
-    }
-
     setIsSubmitting(true);
     setSubmitStatus(null);
 
     try {
-      const templateParams = {
-        from_name: formData.name,
-        reply_to: formData.email,
-        from_email: formData.email,
-        company_name: formData.company || "Not Provided",
-        message: formData.message,
-        subject: `New Contact Form Message from ${formData.name}`,
-        to_email: "test-admin@learnova.com",
-        to_name: "Learnova Admin",
-        email: "test-admin@learnova.com",
-        receiver_email: "test-admin@learnova.com",
-      };
+      const res = await fetch("/api/contact/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-      await emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
-        templateParams,
-        process.env.NEXT_PUBLIC_EMAILJS_USER_ID
-      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to send email");
+      }
 
       setSubmitStatus({
         type: "success",
@@ -227,10 +206,10 @@ export default function Contact() {
       setErrors({});
       startCooldown();
     } catch (error) {
-      console.error("[Contact Form] EmailJS error:", error);
+      console.error("[Contact Form] API error:", error);
       setSubmitStatus({
         type: "error",
-        message: "Sorry, something went wrong. Please try again later.",
+        message: error.message || "Sorry, something went wrong. Please try again later.",
       });
       toast.error("Failed to send message");
     } finally {
