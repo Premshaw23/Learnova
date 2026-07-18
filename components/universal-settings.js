@@ -89,6 +89,10 @@ export default function UniversalSettings() {
   const [pushPermission, setPushPermission] = useState("default");
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [instituteSettings, setInstituteSettings] = useState({
+    enableAttendanceAutomation: false,
+    lowAttendanceThreshold: 75,
+  });
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem("learnova-language");
@@ -408,6 +412,31 @@ export default function UniversalSettings() {
               avatar: getUserPhoto() || prev.profile.avatar,
             },
           }));
+
+          // Load institute-level attendance automation settings for admin/institute roles
+          const role = user?.role || "student";
+          if (["admin", "institute"].includes(role)) {
+            try {
+              const res = await apiFetch("/api/settings", {
+                method: "GET",
+                credentials: "include",
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data?.institute) {
+                  setInstituteSettings((prev) => ({
+                    ...prev,
+                    enableAttendanceAutomation:
+                      data.institute.enableAttendanceAutomation ?? prev.enableAttendanceAutomation,
+                    lowAttendanceThreshold:
+                      data.institute.lowAttendanceThreshold ?? prev.lowAttendanceThreshold,
+                  }));
+                }
+              }
+            } catch (instituteErr) {
+              console.warn("Could not load institute settings:", instituteErr);
+            }
+          }
         }
       } catch (err) {
         setError("Failed to load settings. Please try again.");
@@ -483,17 +512,29 @@ export default function UniversalSettings() {
         }
       }
 
+      // Save other settings
+      const role = user?.role || "student";
+      const body = {
+        ...settings,
+        profile: {
+          ...settings.profile,
+          avatar: avatarUrl,
+        },
+        userId: user?.uid,
+      };
+
+      // Include institute-level attendance automation settings for privileged roles
+      if (["admin", "institute"].includes(role)) {
+        body.institute = {
+          enableAttendanceAutomation: instituteSettings.enableAttendanceAutomation,
+          lowAttendanceThreshold: Number(instituteSettings.lowAttendanceThreshold),
+        };
+      }
+
       const response = await apiFetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...settings,
-          profile: {
-            ...settings.profile,
-            avatar: avatarUrl,
-          },
-          userId: user?.uid,
-        }),
+        body: JSON.stringify(body),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -1008,6 +1049,67 @@ export default function UniversalSettings() {
                     )}
                   </div>
                 </SettingCard>
+
+                {/* Attendance Automation — institute/admin only */}
+                {["admin", "institute"].includes(user?.role) && (
+                  <SettingCard
+                    title="Attendance Automation"
+                    description="Automatically notify students by email when their attendance drops below the configured threshold. Requires EmailJS environment variables to be configured."
+                  >
+                    <div className="space-y-5">
+                      <ToggleSwitch
+                        enabled={instituteSettings.enableAttendanceAutomation}
+                        onChange={(value) => {
+                          setInstituteSettings((prev) => ({
+                            ...prev,
+                            enableAttendanceAutomation: value,
+                          }));
+                          setHasChanges(true);
+                        }}
+                        label="Enable Attendance Automation"
+                        description="Run a daily cron job to detect students with low attendance and send email warnings."
+                      />
+
+                      <div
+                        className={`transition-opacity duration-300 ${
+                          instituteSettings.enableAttendanceAutomation
+                            ? "opacity-100"
+                            : "opacity-40 pointer-events-none"
+                        }`}
+                      >
+                        <label className="block text-white/80 text-sm font-medium mb-2">
+                          Low Attendance Threshold:{" "}
+                          <span className="text-blue-400 font-bold">
+                            {instituteSettings.lowAttendanceThreshold}%
+                          </span>
+                        </label>
+                        <p className="text-white/50 text-xs mb-3">
+                          Students whose overall attendance falls below this percentage will receive an automated email warning.
+                        </p>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={instituteSettings.lowAttendanceThreshold}
+                          onChange={(e) => {
+                            setInstituteSettings((prev) => ({
+                              ...prev,
+                              lowAttendanceThreshold: Number(e.target.value),
+                            }));
+                            setHasChanges(true);
+                          }}
+                          className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                        <div className="flex justify-between text-white/40 text-xs mt-1">
+                          <span>0%</span>
+                          <span>50%</span>
+                          <span>100%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </SettingCard>
+                )}
               </div>
             )}
 
