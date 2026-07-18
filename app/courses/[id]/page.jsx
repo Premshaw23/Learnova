@@ -13,6 +13,7 @@ import {
   Users,
   Trash2,
   Award,
+  Star,
 } from "lucide-react";
 import ShareButton from "@/components/ui/ShareButton";
 import StudyDeck from "@/components/flashcards/StudyDeck";
@@ -102,6 +103,73 @@ export default function CourseDetailPage() {
 
   const [mounted, setMounted] = useState(false);
   const [isPodActive, setIsPodActive] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewComment, setNewReviewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  useEffect(() => {
+    if (mounted && params.id) {
+      fetch(`/api/reviews?courseId=${params.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data?.reviews) {
+            setReviews(data.data.reviews);
+          }
+        })
+        .catch((err) => console.error("Failed to load reviews:", err));
+    }
+  }, [mounted, params.id]);
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!newReviewComment.trim()) {
+      toast.error("Review comment cannot be empty.");
+      return;
+    }
+
+    const lastSubmittedKey = `last_submitted_review_${params.id}`;
+    const lastSubmittedTime = localStorage.getItem(lastSubmittedKey);
+    if (lastSubmittedTime && Date.now() - parseInt(lastSubmittedTime, 10) < 60 * 1000) {
+      toast.error("⚠️ Consecutive review submission blocked. Please wait a minute before trying again.");
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          courseId: params.id,
+          rating: newReviewRating,
+          comment: newReviewComment.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast.error("⚠️ Too many requests. Rate limit is 2 reviews per hour.");
+        } else {
+          toast.error(data.error || "Failed to submit review.");
+        }
+        return;
+      }
+
+      toast.success("Review submitted successfully!");
+      setNewReviewComment("");
+      setReviews((prev) => [data.data.review, ...prev]);
+      localStorage.setItem(lastSubmittedKey, Date.now().toString());
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to submit review due to connection error.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
   const [selectionText, setSelectionText] = useState("");
   const [selectionRect, setSelectionRect] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -619,6 +687,104 @@ export default function CourseDetailPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </section>
+
+              {/* 🌟 COURSE REVIEWS & RATINGS SECTION 🌟 */}
+              <section className="mb-12 p-6 rounded-2xl border border-zinc-800 bg-zinc-900/20 backdrop-blur-sm">
+                <h2 className="text-2xl font-bold tracking-tight text-zinc-100 mb-6 flex items-center gap-2">
+                  <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+                  Course Reviews & Feedback
+                </h2>
+
+                {user ? (
+                  <form onSubmit={handleReviewSubmit} className="mb-8 p-5 rounded-xl border border-zinc-800 bg-zinc-950/40">
+                    <h3 className="text-sm font-semibold text-zinc-300 mb-4">Write a Review</h3>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-sm text-zinc-400">Rating:</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setNewReviewRating(val)}
+                            className="p-1 focus:outline-none cursor-pointer"
+                          >
+                            <Star
+                              className={`w-5 h-5 transition-colors ${
+                                val <= newReviewRating
+                                  ? "text-yellow-500 fill-yellow-500"
+                                  : "text-zinc-600 hover:text-yellow-400"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <textarea
+                        rows={3}
+                        placeholder="Share your thoughts about this course..."
+                        value={newReviewComment}
+                        onChange={(e) => setNewReviewComment(e.target.value)}
+                        className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors text-sm"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmittingReview}
+                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shrink-0 shadow-lg shadow-indigo-600/10 active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSubmittingReview ? "Submitting..." : "Submit Review"}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/20 text-center text-sm text-zinc-500 mb-8">
+                    Please log in to write a course review.
+                  </div>
+                )}
+
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {reviews.length > 0 ? (
+                    reviews.map((rev, index) => (
+                      <div
+                        key={rev._id || index}
+                        className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/20 space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-indigo-400">
+                            {rev.userEmail ? rev.userEmail.split("@")[0].substring(0, 3) + "***@" + rev.userEmail.split("@")[1] : "anonymous@learnova.edu"}
+                          </span>
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`w-3.5 h-3.5 ${
+                                  s <= rev.rating
+                                    ? "text-yellow-500 fill-yellow-500"
+                                    : "text-zinc-700"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-zinc-300 leading-relaxed">
+                          {rev.comment}
+                        </p>
+                        <span className="text-[10px] text-zinc-500 block">
+                          {new Date(rev.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-10 rounded-xl border border-dashed border-zinc-800/80 bg-zinc-950/10">
+                      <p className="text-sm text-zinc-500 italic">
+                        No reviews yet. Be the first to share your thoughts!
+                      </p>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
