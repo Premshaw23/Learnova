@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
@@ -80,6 +80,8 @@ export default function FaceRecognizer({ authUser }) {
   }, [stopAllMedia]);
 
 
+  // Load models from local bundled files (not from CDN) for supply chain security
+  // Issue #3964: Prevents model tampering via CDN compromise or MITM attacks
   const MODEL_URL = "/models";
   const labels = fetchedLabels;
 
@@ -427,16 +429,7 @@ export default function FaceRecognizer({ authUser }) {
       signal?.aborted
     ) {
       return;
-    const processVideo = async (signal) => {
-      if (
-        !videoRef.current ||
-        !canvasRef.current ||
-        !faceMatcherRef.current ||
-        !isMounted.current ||
-        signal?.aborted
-      ) {
-        return;
-      }
+    }
 
       const faceapi = await import("face-api.js");
       faceapiRef.current = faceapi;
@@ -621,8 +614,6 @@ export default function FaceRecognizer({ authUser }) {
       }
 
       if (isMounted.current && !finished && !signal?.aborted) {
-        // Loop execution only if not finished
-        // To prevent race conditions, check if we just transitioned to AUTHENTICATED
         setLivenessState((currentLiveness) => {
           if (
             currentLiveness !== "AUTHENTICATED" &&
@@ -636,75 +627,75 @@ export default function FaceRecognizer({ authUser }) {
           return currentLiveness;
         });
       }
-    };
+  };
 
-    useEffect(() => {
-      if (analytics) {
-        try {
-          logEvent(analytics, "page_view", { page: "attendance" });
-        } catch (err) {
-          console.warn(
-            "Analytics page_view logEvent was blocked or failed:",
-            err
-          );
-        }
+  useEffect(() => {
+    if (analytics) {
+      try {
+        logEvent(analytics, "page_view", { page: "attendance" });
+      } catch (err) {
+        console.warn(
+          "Analytics page_view logEvent was blocked or failed:",
+          err
+        );
       }
-    }, []);
+    }
+  }, []);
 
-    useEffect(() => {
-      const persistAttendance = async () => {
-        if (
-          !finished ||
-          !detectedPerson ||
-          !authUser?.uid ||
-          livenessState !== "AUTHENTICATED"
-        )
-          return;
-        if (isSubmittingRef.current) return;
+  useEffect(() => {
+    const persistAttendance = async () => {
+      if (
+        !finished ||
+        !detectedPerson ||
+        !authUser?.uid ||
+        livenessState !== "AUTHENTICATED"
+      )
+        return;
+      if (isSubmittingRef.current) return;
+      if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+        return;
+      if (confidence < MIN_CONFIDENCE_TO_RECORD) {
+        setAttendanceState("low-confidence");
+        return;
+      }
+      const detectedEmail = detectedPerson.email?.trim().toLowerCase();
+      const userEmail = authUser.email?.trim().toLowerCase();
+      if (detectedEmail && userEmail && detectedEmail !== userEmail) {
+        setAttendanceState("mismatch");
+        setMessage("Face does not match signed-in account.");
+        return;
+      }
+      isSubmittingRef.current = true;
+      setAttendanceState("saving");
+      try {
+        const result = await recordAttendance({
+          userId: authUser.uid,
+          studentName: detectedPerson.name,
+          email: detectedPerson.email || authUser.email,
+          confidenceScore: confidence,
+        });
         if (!isMounted.current || abortControllerRef.current?.signal.aborted)
           return;
-        if (confidence < MIN_CONFIDENCE_TO_RECORD) {
-          setAttendanceState("low-confidence");
+        if (result.queuedOffline) {
+          setAttendanceState("queued-offline");
+          setMessage("Offline - Syncing later");
+        } else {
+          setAttendanceState(
+            result.alreadyRecorded ? "already-recorded" : "saved"
+          );
+        }
+      } catch (err) {
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted)
           return;
-        }
-        const detectedEmail = detectedPerson.email?.trim().toLowerCase();
-        const userEmail = authUser.email?.trim().toLowerCase();
-        if (detectedEmail && userEmail && detectedEmail !== userEmail) {
-          setAttendanceState("mismatch");
-          setMessage("Face does not match signed-in account.");
-          return;
-        }
-        isSubmittingRef.current = true;
-        setAttendanceState("saving");
-        try {
-          const result = await recordAttendance({
-            userId: authUser.uid,
-            studentName: detectedPerson.name,
-            email: detectedPerson.email || authUser.email,
-            confidenceScore: confidence,
-          });
-          if (!isMounted.current || abortControllerRef.current?.signal.aborted)
-            return;
-          if (result.queuedOffline) {
-            setAttendanceState("queued-offline");
-            setMessage("Offline - Syncing later");
-          } else {
-            setAttendanceState(
-              result.alreadyRecorded ? "already-recorded" : "saved"
-            );
-          }
-        } catch (err) {
-          if (!isMounted.current || abortControllerRef.current?.signal.aborted)
-            return;
-          setAttendanceState("error");
-          setMessage(err.message || "Could not save attendance.");
-        }
-      };
-      persistAttendance();
-    }, [authUser, confidence, detectedPerson, finished, livenessState]);
+        setAttendanceState("error");
+        setMessage(err.message || "Could not save attendance.");
+      }
+    };
+    persistAttendance();
+  }, [authUser, confidence, detectedPerson, finished, livenessState]);
 
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4 relative">
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4 relative">
         {isOffline && (
           <div className="w-full max-w-4xl mb-4 bg-amber-500/10 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-amber-500/5 animate-in fade-in slide-in-from-top-4 duration-300 relative z-50">
             <div className="flex items-center gap-3">
@@ -937,6 +928,4 @@ export default function FaceRecognizer({ authUser }) {
         )}
       </div>
     );
-  };
-}
 }

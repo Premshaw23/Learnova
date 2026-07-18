@@ -138,20 +138,16 @@ const BulkImportModal = ({ isOpen, onClose, onImportComplete }) => {
 
           setProgress(90);
 
-          const resultData = await response.json();
+          const resultData = response;
 
-          if (response.ok) {
-            setResults({
-              success: resultData.successfulImports || 0,
-              failed:
-                (resultData.failedImports?.length || 0) + invalidRows.length,
-              errors: [...invalidRows, ...(resultData.failedImports || [])],
-            });
-            toast.success("Import process completed");
-            if (onImportComplete) onImportComplete();
-          } else {
-            throw new Error(resultData.error || "Failed to import students");
-          }
+          setResults({
+            success: resultData.successfulImports || 0,
+            failed:
+              (resultData.failedImports?.length || 0) + invalidRows.length,
+            errors: [...invalidRows, ...(resultData.failedImports || [])],
+          });
+          toast.success("Import process completed");
+          if (onImportComplete) onImportComplete();
         } catch (error) {
           console.error("Import error:", error);
           toast.error(error.message || "An error occurred during import");
