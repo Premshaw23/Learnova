@@ -24,7 +24,6 @@ export const POST = withErrorHandler(
 
       const { userId, studentName, email, confidenceScore, date } =
         validatedData;
-      const normalizedDate = date || getLocalDateKey();
 
       // 2. Ensure they are only submitting attendance for their own UID, OR they are a teacher/admin!
       const isTeacherOrAdmin =
@@ -34,6 +33,32 @@ export const POST = withErrorHandler(
           "Forbidden: Cannot submit attendance for another user",
           403
         );
+      }
+
+      // 2b. Only teachers/admins may back-date attendance. Students always
+      // record for the server's current day, otherwise a student could POST
+      // any past `date` and silently backfill an attendance record for a day
+      // they never attended (issue #4061). Also reject future dates outright.
+      const serverDate = getLocalDateKey();
+      let normalizedDate = serverDate;
+      if (date) {
+        if (!isTeacherOrAdmin) {
+          if (date !== serverDate) {
+            return jsonError(
+              "Forbidden: Only teachers/admins may record attendance for a past date",
+              403
+            );
+          }
+          normalizedDate = serverDate;
+        } else {
+          if (date > serverDate) {
+            return jsonError(
+              "Bad Request: Cannot record attendance for a future date",
+              400
+            );
+          }
+          normalizedDate = date;
+        }
       }
 
       // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)

@@ -272,6 +272,82 @@ describe("attendance record route", () => {
     await assertApiError(response, 400, "Validation failed");
   });
 
+  test("rejects student self-submission for a past date with 403 (issue #4061)", async () => {
+    const { requireAuth } = await import("@/lib/rbac");
+    // Student role (no `role` field is treated as non-teacher/admin)
+    requireAuth.mockResolvedValue({ uid: "user-123" });
+    parseJSON.mockResolvedValue({
+      userId: "user-123",
+      studentName: "Test",
+      email: "test@example.com",
+      confidenceScore: 90,
+      // `getLocalDateKey` mock returns "2026-05-25", so this is a back-dated request
+      date: "2026-03-14",
+    });
+
+    const response = await POST(createMockRequest());
+    await assertApiError(
+      response,
+      403,
+      "Forbidden: Only teachers/admins may record attendance for a past date"
+    );
+  });
+
+  test("allows teacher to record attendance for a past date (issue #4061)", async () => {
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "teacher-1", role: "teacher" });
+    parseJSON.mockResolvedValue({
+      userId: "student-42",
+      studentName: "Some Student",
+      email: "student@example.com",
+      confidenceScore: 90,
+      date: "2026-03-14",
+    });
+
+    getUserProfile.mockResolvedValue({
+      fullName: "Some Student",
+      email: "student@example.com",
+      instituteId: "inst-1",
+    });
+
+    const docRef = {};
+    const collectionRef = { doc: vi.fn(() => docRef) };
+    const transactionSet = vi.fn();
+    const transactionGet = vi.fn().mockResolvedValue({ exists: false });
+
+    getFirestore.mockReturnValue({
+      runTransaction: vi.fn(async (callback) =>
+        callback({ get: transactionGet, set: transactionSet })
+      ),
+      collection: vi.fn(() => collectionRef),
+    });
+
+    const response = await POST(createMockRequest());
+    await assertApiSuccess(response, 201);
+    // Teacher path honors the client-supplied past date
+    expect(collectionRef.doc).toHaveBeenCalledWith("student-42_2026-03-14");
+  });
+
+  test("rejects future-dated attendance from a teacher with 400 (issue #4061)", async () => {
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "teacher-1", role: "teacher" });
+    parseJSON.mockResolvedValue({
+      userId: "student-42",
+      studentName: "Some Student",
+      email: "student@example.com",
+      confidenceScore: 90,
+      // `getLocalDateKey` mock returns "2026-05-25", so 2027 is a future date
+      date: "2027-01-01",
+    });
+
+    const response = await POST(createMockRequest());
+    await assertApiError(
+      response,
+      400,
+      "Bad Request: Cannot record attendance for a future date"
+    );
+  });
+
   test("rejects request if rate limit exceeded", async () => {
     const { requireAuth } = await import("@/lib/rbac");
     requireAuth.mockResolvedValue({ uid: "user-123" });
