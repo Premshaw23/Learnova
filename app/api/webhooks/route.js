@@ -10,6 +10,7 @@ import {
   deleteWebhook,
   listWebhooks,
 } from "@/lib/models/webhookModel";
+import { validateWebhookUrl } from "@/lib/webhook/urlValidator";
 
 export const dynamic = "force-dynamic";
 
@@ -35,10 +36,20 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError("events must be a non-empty array");
   }
 
+  let parsedUrl;
   try {
-    new URL(url);
+    parsedUrl = new URL(url);
   } catch {
     throw new ValidationError("Invalid webhook URL");
+  }
+
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    throw new ValidationError("Only HTTP and HTTPS protocols are allowed");
+  }
+
+  const urlValidation = await validateWebhookUrl(url);
+  if (!urlValidation.valid) {
+    throw new ValidationError(`Webhook URL rejected: ${urlValidation.reason}`);
   }
 
   const webhook = await createWebhook({
@@ -50,7 +61,11 @@ export const POST = withErrorHandler(async (request) => {
     createdBy: decodedToken.uid,
   });
 
-  return jsonSuccess({ webhook }, 201);
+  return jsonSuccess({
+    webhook,
+    secret,
+    message: "Save this secret securely. It will not be shown again.",
+  }, 201);
 });
 
 export const GET = withErrorHandler(async (request) => {
@@ -84,10 +99,20 @@ export const PUT = withErrorHandler(async (request) => {
   }
 
   if (updates.url) {
+    let parsedUrl;
     try {
-      new URL(updates.url);
+      parsedUrl = new URL(updates.url);
     } catch {
       throw new ValidationError("Invalid webhook URL");
+    }
+
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      throw new ValidationError("Only HTTP and HTTPS protocols are allowed");
+    }
+
+    const urlValidation = await validateWebhookUrl(updates.url);
+    if (!urlValidation.valid) {
+      throw new ValidationError(`Webhook URL rejected: ${urlValidation.reason}`);
     }
   }
 

@@ -8,6 +8,11 @@ import React, {
 } from "react";
 import { Navbar } from "./Navbar";
 import { dashboardContentOffsetClass } from "@/components/navigation";
+import { Responsive, WidthProvider } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 import Image from "next/image";
 import CurriculumBuilder from "./dashboard/CurriculumBuilder";
 import { useAuth } from "@/hooks/useAuth";
@@ -155,6 +160,57 @@ const TeacherDashboard = () => {
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState(null);
   const [showAbsentSummaryModal, setShowAbsentSummaryModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [layouts, setLayouts] = useState({
+    lg: [
+      { i: 'overview', x: 0, y: 0, w: 8, h: 5 },
+      { i: 'live', x: 0, y: 5, w: 8, h: 3 },
+      { i: 'exceptions', x: 0, y: 8, w: 8, h: 3 },
+      { i: 'classes', x: 8, y: 0, w: 4, h: 3 },
+      { i: 'actions', x: 8, y: 3, w: 4, h: 4 },
+      { i: 'status', x: 8, y: 7, w: 4, h: 4 },
+    ],
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    if (user?.uid) {
+      const savedLayout = localStorage.getItem(`learnova_dashboard_layout_${user.uid}`);
+      if (savedLayout) {
+        try {
+          setLayouts(JSON.parse(savedLayout));
+        } catch (err) {
+          console.error("Failed to parse dashboard layout:", err);
+        }
+      }
+    }
+  }, [user]);
+
+  const onLayoutChange = (layout, layouts) => {
+    setLayouts(layouts);
+    if (user?.uid) {
+      localStorage.setItem(`learnova_dashboard_layout_${user.uid}`, JSON.stringify(layouts));
+    }
+  };
+
+  const resetLayout = () => {
+    const defaultLayouts = {
+      lg: [
+        { i: 'overview', x: 0, y: 0, w: 8, h: 5 },
+        { i: 'live', x: 0, y: 5, w: 8, h: 3 },
+        { i: 'exceptions', x: 0, y: 8, w: 8, h: 3 },
+        { i: 'classes', x: 8, y: 0, w: 4, h: 3 },
+        { i: 'actions', x: 8, y: 3, w: 4, h: 4 },
+        { i: 'status', x: 8, y: 7, w: 4, h: 4 },
+      ],
+    };
+    setLayouts(defaultLayouts);
+    if (user?.uid) {
+      localStorage.removeItem(`learnova_dashboard_layout_${user.uid}`);
+    }
+  };
+
   const pendingRequests = useMemo(() => {
     return attendanceRequests.filter((req) => req.status === "pending");
   }, [attendanceRequests]);
@@ -922,13 +978,57 @@ const TeacherDashboard = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-xl p-4 border border-blue-500/30">
-                  <div className="text-2xl font-bold text-blue-400">
-                    {attendanceStats.totalStudents}
-                  </div>
-                  <div className="text-blue-300 text-sm">Total Students</div>
-                </div>
+      
+      {/* Layout Controls */}
+      <div className="flex justify-end space-x-3 mb-4">
+        {isEditMode && (
+          <button
+            onClick={resetLayout}
+            className="px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-xl transition-colors border border-red-500/30 text-sm font-medium"
+          >
+            Reset Layout
+          </button>
+        )}
+        <button
+          onClick={() => setIsEditMode(!isEditMode)}
+          className="px-4 py-2 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-xl transition-colors border border-blue-500/30 text-sm font-medium flex items-center gap-2"
+        >
+          {isEditMode ? <CheckCircle className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+          {isEditMode ? "Save Layout" : "Customize Layout"}
+        </button>
+      </div>
+
+      {!mounted ? (
+        <div className="h-96 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <ResponsiveGridLayout
+          className="layout -mx-3"
+          layouts={layouts}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+          rowHeight={100}
+          onLayoutChange={onLayoutChange}
+          isDraggable={isEditMode}
+          isResizable={isEditMode}
+          margin={[24, 24]}
+          useCSSTransforms={true}
+        >
+          <div key="overview" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Attendance Overview */}
+          <div className="bg-card/40 h-full overflow-y-auto dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-foreground dark:text-white">
+                Today's Attendance Overview
+              </h2>
+              <button
+                aria-label="Refresh attendance"
+                className="text-accent hover:text-accent/80 transition-colors"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            </div>
 
                 <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-xl p-4 border border-green-500/30">
                   <div className="text-2xl font-bold text-green-400">
@@ -1077,11 +1177,33 @@ const TeacherDashboard = () => {
                 </div>
               )}
             </div>
-
-            {/* Quick Actions */}
-            <div key="actions" className="h-full">
-              <h2 className="text-xl font-bold text-foreground dark:text-white mb-6">
-                Quick Actions
+          </div>
+          </div>
+          <div key="live" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Live Check-Ins */}
+          <LiveAttendanceView title="Live Check-Ins" />
+          </div>
+          <div key="exceptions" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Exception Requests */}
+          <ExceptionRequestsList
+            exceptionRequests={exceptionRequests}
+            isLoadingRequests={isLoadingRequests}
+            requestsError={requestsError}
+            fetchAllRequests={fetchAllRequests}
+            showAllRequestsModal={showAllRequestsModal}
+            setShowAllRequestsModal={setShowAllRequestsModal}
+            allRequests={allRequests}
+            handleExceptionRequest={handleExceptionRequest}
+          />
+        </div>
+          </div>
+          <div key="classes" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Today's Schedule */}
+          <div className="bg-card/40 h-full overflow-y-auto dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
+            <div className="flex items-center space-x-2 mb-6">
+              <Calendar className="w-6 h-6 text-accent" />
+              <h2 className="text-xl font-bold text-foreground dark:text-white">
+                Today's Classes
               </h2>
 
               <div className="space-y-3">
@@ -1102,15 +1224,41 @@ const TeacherDashboard = () => {
                       </div>
                     </div>
                   </div>
-                </ExportDropdown>
-
-          {/* Quick Actions */}
-          <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                <p className="text-muted-foreground dark:text-gray-400">
+                  No classes scheduled for today
+                </p>
+              </div>
+            )}
+          </div>
+          </div>
+          <div key="actions" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Quick Actions */}
+          <div className="bg-card/40 h-full overflow-y-auto dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
             <h2 className="text-xl font-bold text-foreground dark:text-white mb-6">
               Quick Actions
             </h2>
 
             <div className="space-y-3">
+              <button 
+                onClick={() => router.push('/virtual-class')}
+                className="w-full bg-gradient-to-r from-blue-600/20 to-cyan-600/20 hover:from-blue-600/30 hover:to-cyan-600/30 border border-blue-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" 
+                aria-label="Launch Virtual Class">
+                <div className="flex items-center space-x-3">
+                  <Video className="w-5 h-5 text-blue-400" />
+                  <div>
+                    <div className="font-medium">Launch Virtual Class</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                      Interactive Whiteboard
+                    </div>
+                  </div>
+                </div>
+              </button>
+
               <ExportDropdown
                 onExport={handleAttendanceExport}
                 isExporting={isExporting}
@@ -1130,10 +1278,7 @@ const TeacherDashboard = () => {
                 </div>
               </ExportDropdown>
 
-              <button
-                className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
-                aria-label="Upload schedule"
-              >
+              <button className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Upload schedule">
                 <div className="flex items-center space-x-3">
                   <Upload className="w-5 h-5 text-green-400" />
                   <div>
@@ -1191,6 +1336,40 @@ const TeacherDashboard = () => {
                   </div>
                   <span className="text-green-400 text-sm">Active</span>
                 </div>
+              </button>
+            </div>
+          </div>
+          </div>
+          <div key="status" className={`${isEditMode ? 'cursor-move ring-2 ring-blue-500 rounded-2xl' : ''}`}>
+            {/* Security Status */}
+          <div className="bg-card/40 h-full overflow-y-auto dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
+            <div className="flex items-center space-x-2 mb-6">
+              <Shield className="w-6 h-6 text-green-400" />
+              <h2 className="text-xl font-bold text-foreground dark:text-white">
+                System Status
+              </h2>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    Face Recognition
+                  </span>
+                </div>
+                <span className="text-green-400 text-sm">Active</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-muted-foreground dark:text-gray-300 text-sm">
+                    GPS Geofencing
+                  </span>
+                </div>
+                <span className="text-green-400 text-sm">Active</span>
+              </div>
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -1214,8 +1393,9 @@ const TeacherDashboard = () => {
                 </div>
               </div>
             </div>
-          </DraggableDashboardLayout>
-        </div>
+          </div>
+        </ResponsiveGridLayout>
+      )}
 
         <AttendancePasscodeModal
           showPasscodeModal={showPasscodeModal}

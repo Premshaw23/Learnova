@@ -13,7 +13,7 @@ export default function VolumetricPlanner() {
   const STUDY_LIMIT = { length: 30, width: 30, height: 30, maxWeight: 20 };
   const TOTAL_CAPACITY =
   STUDY_LIMIT.length * STUDY_LIMIT.width * STUDY_LIMIT.height;
-  const EFFECTIVE_VOLUME_CAPACITY = BOX_VOLUME * 0.8; // 80% realistic packing threshold
+  const EFFECTIVE_VOLUME_CAPACITY = TOTAL_CAPACITY * 0.8; // 80% realistic packing threshold
 
   // Calculate cumulative totals
   const totalVolume = items.reduce(

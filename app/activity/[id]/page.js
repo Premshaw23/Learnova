@@ -25,6 +25,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { updateActivityProgress } from "@/services/activityService";
 import { updateUserStat } from "@/services/statsService";
 import { getQuizDataByTitle } from "@/constants/quizData";
+import { useOfflineQuiz } from "@/hooks/useOfflineQuiz";
+import { syncPendingQuizzes } from "@/services/offlineSyncService";
+
 
 // Particle Confetti Shower component for passing scores
 const Confetti = () => {
@@ -121,6 +124,9 @@ export default function ActivityGame() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [hasPassed, setHasPassed] = useState(false);
   const [finalScore, setFinalScore] = useState(null); // { correct, total, percentage }
+  const [isPendingSync, setIsPendingSync] = useState(false);
+
+  const { isOnline, saveProgress, loadProgress, clearProgress, savePendingSubmission } = useOfflineQuiz(params?.id);
 
   useEffect(() => {
     setMounted(true);
@@ -204,6 +210,43 @@ export default function ActivityGame() {
 
     fetchActivity();
   }, [user?.uid, params?.id, isDev]);
+
+  // Handle restoring offline progress
+  useEffect(() => {
+    if (quiz && !isStarted && !isCompleted) {
+      const saved = loadProgress();
+      if (saved && confirm("You have an unfinished quiz session. Do you want to resume?")) {
+        setCurrentQuestionIdx(saved.currentQuestionIdx);
+        setSelectedAnswers(saved.selectedAnswers);
+        setTimeLeft(saved.timeLeft);
+        setMarkedQuestions(saved.markedQuestions || {});
+        setIsStarted(true);
+      }
+    }
+  }, [quiz]);
+
+  // Save progress dynamically
+  useEffect(() => {
+    if (isStarted && !isCompleted) {
+      saveProgress({
+        currentQuestionIdx,
+        selectedAnswers,
+        timeLeft,
+        markedQuestions,
+      });
+    }
+  }, [currentQuestionIdx, selectedAnswers, timeLeft, markedQuestions, isStarted, isCompleted]);
+
+  // Sync when online
+  useEffect(() => {
+    if (isOnline) {
+      syncPendingQuizzes().then(res => {
+        if (res?.successCount > 0) {
+          toast.success(`Successfully synced ${res.successCount} offline quiz result(s)!`);
+        }
+      });
+    }
+  }, [isOnline]);
 
   // Handle active countdown timer when quiz is running
   useEffect(() => {
@@ -307,20 +350,34 @@ export default function ActivityGame() {
     setIsCompleted(true);
     setHasPassed(passed);
     setFinalScore({ correct: correctCount, total: totalCount, percentage });
+    clearProgress();
 
     if (passed) {
-      try {
-        // Update database progress to 100%
-        await updateActivityProgress(activityData.id, 100);
-        // Increment the student's Assignments Done stat by 1 (best-effort)
-        const statResult = await updateUserStat(user.uid, "Assignments Done", 1);
-        if (statResult?.success === false) {
-          console.warn("Stats update failed:", statResult.error);
+      if (!isOnline) {
+        setIsPendingSync(true);
+        savePendingSubmission({
+          activityId: activityData.id,
+          userId: user.uid,
+          passed: true,
+          score: percentage
+        });
+        toast("Saved offline! Will sync when connection is restored.", { icon: "📶" });
+      } else {
+        try {
+          // Update database progress to 100%
+          await updateActivityProgress(activityData.id, 100);
+          // Increment the student's Assignments Done stat by 1 (best-effort)
+          const statResult = await updateUserStat(user.uid, "Assignments Done", 1);
+          if (statResult?.success === false) {
+            console.warn("Stats update failed:", statResult.error);
+          }
+          toast.success("Outstanding job! Activity completed successfully.");
+        } catch (err) {
+          console.error("Failed to sync progress to database:", err);
+          toast.error("Saved progress locally, but failed to sync online.");
+          setIsPendingSync(true);
+          savePendingSubmission({ activityId: activityData.id, userId: user.uid, passed: true, score: percentage });
         }
-        toast.success("Outstanding job! Activity completed successfully.");
-      } catch (err) {
-        console.error("Failed to sync progress to database:", err);
-        toast.error("Saved progress locally, but failed to sync online.");
       }
     } else {
       toast("Keep trying! Double check your answers and try again.", {
@@ -386,14 +443,22 @@ export default function ActivityGame() {
         <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => router.push("/activity")}
-            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
-            type="button"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-            Back to Activities
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/activity")}
+              className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
+              type="button"
+            >
+              <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
+              Back to Activities
+            </button>
+            {!isOnline && (
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                Offline Mode
+              </span>
+            )}
+          </div>
           <ShareButton className="shadow-lg border-zinc-800/60" />
         </header>
 
@@ -482,14 +547,22 @@ export default function ActivityGame() {
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
 
         <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => router.push("/activity")}
-            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
-            type="button"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-            Back to Activities
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/activity")}
+              className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
+              type="button"
+            >
+              <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
+              Back to Activities
+            </button>
+            {!isOnline && (
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                Offline Mode
+              </span>
+            )}
+          </div>
           <ShareButton className="shadow-lg border-zinc-800/60" />
         </header>
 
@@ -523,7 +596,7 @@ export default function ActivityGame() {
               </h2>
               <p className="text-zinc-400 text-sm md:text-base">
                 {isPassing
-                  ? "You passed the quiz, earned points, and finalized this activity."
+                  ? (isPendingSync ? "You passed the quiz! Results will be synced when you're back online." : "You passed the quiz, earned points, and finalized this activity.")
                   : "You need at least 60% score to successfully pass this activity."}
               </p>
             </div>
@@ -597,13 +670,27 @@ export default function ActivityGame() {
 
         <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
           <button
-            onClick={() => setIsReviewingSummary(false)}
+            onClick={() => {
+              if (
+                confirm(
+                  "Are you sure you want to exit the quiz? Your progress has been saved locally."
+                )
+              ) {
+                router.push("/activity");
+              }
+            }}
             className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
             type="button"
           >
             <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-            Back to Quiz
+            Exit Quiz
           </button>
+          {!isOnline && (
+            <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20 ml-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+              Offline Mode
+            </span>
+          ) }
 
           {/* Live Quiz Countdown Timer */}
           <div
@@ -740,22 +827,28 @@ export default function ActivityGame() {
 
       {/* Header Info */}
       <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-        <button
-          onClick={() => {
-            if (
-              confirm(
-                "Are you sure you want to exit the quiz? Current progress will not be saved."
-              )
-            ) {
-              router.push("/activity");
-            }
-          }}
-          className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
-          type="button"
-        >
-          <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-          Exit Quiz
-        </button>
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  "Are you sure you want to exit the quiz? Your progress has been saved locally."
+                )
+              ) {
+                router.push("/activity");
+              }
+            }}
+            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-200 group"
+            type="button"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
+            Exit Quiz
+          </button>
+          {!isOnline && (
+            <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20 ml-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+              Offline Mode
+            </span>
+          )}
 
         {/* Live Quiz Countdown Timer */}
         <div
