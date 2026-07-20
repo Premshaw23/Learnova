@@ -8,6 +8,7 @@ import { enqueue, JOB_TYPES } from "@/lib/queue";
 import { logger } from "@/lib/logger";
 import { publishEvent } from "@/lib/ssePublisher";
 import { emitWebhookEvent } from "@/lib/webhook/dispatcher";
+import { sendLowAttendanceWarning } from "@/services/emailService";
 
 export const dynamic = "force-dynamic";
 
