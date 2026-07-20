@@ -1,6 +1,6 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireAdmin, requireAuth } from "@/lib/rbac";
+import { requireAdmin } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { connectDb } from "@/lib/mongodb";
@@ -119,7 +119,8 @@ export const POST = withErrorHandler(async (request) => {
     return jsonError(`Parent with email "${parentEmail}" not found`, 404);
   }
 
-  const parentProfile = parentQuery.docs[0].data();
+  const parentDoc = parentQuery.docs[0];
+  const parentProfile = parentDoc.data();
   if (parentProfile.role !== "parent") {
     return jsonError(
       `User "${parentEmail}" is registered as "${parentProfile.role}", not "parent"`,
@@ -138,7 +139,8 @@ export const POST = withErrorHandler(async (request) => {
     return jsonError(`Student with email "${studentEmail}" not found`, 404);
   }
 
-  const studentProfile = studentQuery.docs[0].data();
+  const studentDoc = studentQuery.docs[0];
+  const studentProfile = studentDoc.data();
   if (studentProfile.role !== "student") {
     return jsonError(
       `User "${studentEmail}" is registered as "${studentProfile.role}", not "student"`,
@@ -157,8 +159,14 @@ export const POST = withErrorHandler(async (request) => {
     );
   }
 
-  const parentId = parentProfile.uid;
-  const studentId = studentProfile.uid;
+  const parentId = parentDoc.id;
+  const studentId = studentDoc.id;
+  if (!parentId || !studentId) {
+    return jsonError(
+      "Could not resolve parent or student user id from Firestore document",
+      400
+    );
+  }
   const linkId = `${parentId}_${studentId}`;
 
   // Check if link already exists
@@ -218,20 +226,19 @@ export const POST = withErrorHandler(async (request) => {
     );
   }
 
-    logAuditEvent({
-      actor: payload,
-      action: "parent_student_link.create",
-      target: { type: "user", id: studentId },
-      details: { parentId, studentId, parentEmail: validatedData.parentEmail, studentEmail: validatedData.studentEmail },
-      request,
-    });
+  logAuditEvent({
+    actor: payload,
+    action: "parent_student_link.create",
+    target: { type: "user", id: studentId },
+    details: { parentId, studentId },
+    request,
+  });
 
-    return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
-  })
-);
+  return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
+});
 
 export const DELETE = withErrorHandler(async (request) => {
-  const payload = await requireAuth(request);
+  const { payload } = await requireAdmin(request);
   const url = new URL(request.url);
 
   const queryParams = {

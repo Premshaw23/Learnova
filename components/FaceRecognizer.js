@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import { getAverageEAR } from "@/utils/livenessUtils";
-import { syncAttendanceQueue } from "@/lib/syncService";
+import { syncOfflineQueue, getPendingRecordsCount } from "@/services/offlineSyncQueue";
 
 const MIN_CONFIDENCE_TO_RECORD = 60;
 const EAR_THRESHOLD = 0.25;
@@ -35,6 +35,8 @@ export default function FaceRecognizer({ authUser }) {
     blinkCount: 0,
     requiredBlinks: 2,
     lastBlinkTime: 0,
+    challengeType: "blink",
+    smileDetected: false,
   });
 
   const {
@@ -77,12 +79,15 @@ export default function FaceRecognizer({ authUser }) {
     return stopAllMedia;
   }, [stopAllMedia]);
 
+
+  // Load models from local bundled files (not from CDN) for supply chain security
+  // Issue #3964: Prevents model tampering via CDN compromise or MITM attacks
   const MODEL_URL = "/models";
   const labels = fetchedLabels;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handleOnline = () => {
+    const handleOnline = async () => {
       if (!isMounted.current) return;
       setIsOffline(false);
       setAttendanceState((prev) => {
@@ -92,7 +97,30 @@ export default function FaceRecognizer({ authUser }) {
         }
         return prev;
       });
-      syncAttendanceQueue();
+      
+      try {
+        const count = await getPendingRecordsCount();
+        if (count > 0 && authUser) {
+          const token = await authUser.getIdToken();
+          await syncOfflineQueue(async (record) => {
+            try {
+              const res = await fetch("/api/attendance/record", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(record),
+              });
+              return res.ok;
+            } catch (e) {
+              return false;
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Offline sync error:", err);
+      }
     };
     const handleOffline = () => {
       if (!isMounted.current) return;
@@ -147,6 +175,8 @@ export default function FaceRecognizer({ authUser }) {
             blinkCount: 0,
             requiredBlinks: Math.floor(Math.random() * 2) + 1,
             lastBlinkTime: 0,
+            challengeType: Math.random() > 0.5 ? "blink" : "smile",
+            smileDetected: false,
           };
           setBlinkPrompt("");
 
@@ -272,6 +302,9 @@ export default function FaceRecognizer({ authUser }) {
 
               blinkStateRef.current.requiredBlinks =
                 Math.floor(Math.random() * 2) + 1;
+              blinkStateRef.current.challengeType = 
+                Math.random() > 0.5 ? "blink" : "smile";
+              blinkStateRef.current.smileDetected = false;
               processVideo(signal);
             });
           };
@@ -396,16 +429,7 @@ export default function FaceRecognizer({ authUser }) {
       signal?.aborted
     ) {
       return;
-    const processVideo = async (signal) => {
-      if (
-        !videoRef.current ||
-        !canvasRef.current ||
-        !faceMatcherRef.current ||
-        !isMounted.current ||
-        signal?.aborted
-      ) {
-        return;
-      }
+    }
 
       const faceapi = await import("face-api.js");
       faceapiRef.current = faceapi;
@@ -514,42 +538,55 @@ export default function FaceRecognizer({ authUser }) {
           setLivenessState((prevState) => {
             if (prevState === "DETECTING_FACE" || prevState === "IDLE") {
               setMessage(`Recognized: ${label}. Checking liveness...`);
-              setBlinkPrompt(
-                `Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`
-              );
+              if (blinkStateRef.current.challengeType === "smile") {
+                setBlinkPrompt(`Please smile naturally for the camera.`);
+              } else {
+                setBlinkPrompt(
+                  `Please blink ${blinkStateRef.current.requiredBlinks} time(s) naturally.`
+                );
+              }
               return "VERIFYING_LIVENESS";
             }
             if (prevState === "VERIFYING_LIVENESS") {
-              const leftEye = face.landmarks.getLeftEye();
-              const rightEye = face.landmarks.getRightEye();
-              const ear = getAverageEAR(leftEye, rightEye);
-
-              if (ear < EAR_THRESHOLD) {
-                blinkStateRef.current.isEyeClosed = true;
+              if (blinkStateRef.current.challengeType === "smile") {
+                if (face.expressions && face.expressions.happy > 0.7) {
+                  setMessage("Liveness verified. Authentication successful!");
+                  setBlinkPrompt("Success!");
+                  setFinished(true);
+                  return "AUTHENTICATED";
+                }
               } else {
-                if (blinkStateRef.current.isEyeClosed) {
-                  blinkStateRef.current.isEyeClosed = false;
-                  const blinkTime = Date.now();
-                  if (
-                    blinkTime - blinkStateRef.current.lastBlinkTime >
-                    BLINK_COOLDOWN_MS
-                  ) {
-                    blinkStateRef.current.blinkCount += 1;
-                    blinkStateRef.current.lastBlinkTime = blinkTime;
-                    const remaining =
-                      blinkStateRef.current.requiredBlinks -
-                      blinkStateRef.current.blinkCount;
-                    if (remaining > 0) {
-                      setBlinkPrompt(
-                        `Blink detected! ${remaining} more to go.`
-                      );
-                    } else {
-                      setMessage(
-                        "Liveness verified. Authentication successful!"
-                      );
-                      setBlinkPrompt("Success!");
-                      setFinished(true);
-                      return "AUTHENTICATED";
+                const leftEye = face.landmarks.getLeftEye();
+                const rightEye = face.landmarks.getRightEye();
+                const ear = getAverageEAR(leftEye, rightEye);
+
+                if (ear < EAR_THRESHOLD) {
+                  blinkStateRef.current.isEyeClosed = true;
+                } else {
+                  if (blinkStateRef.current.isEyeClosed) {
+                    blinkStateRef.current.isEyeClosed = false;
+                    const blinkTime = Date.now();
+                    if (
+                      blinkTime - blinkStateRef.current.lastBlinkTime >
+                      BLINK_COOLDOWN_MS
+                    ) {
+                      blinkStateRef.current.blinkCount += 1;
+                      blinkStateRef.current.lastBlinkTime = blinkTime;
+                      const remaining =
+                        blinkStateRef.current.requiredBlinks -
+                        blinkStateRef.current.blinkCount;
+                      if (remaining > 0) {
+                        setBlinkPrompt(
+                          `Blink detected! ${remaining} more to go.`
+                        );
+                      } else {
+                        setMessage(
+                          "Liveness verified. Authentication successful!"
+                        );
+                        setBlinkPrompt("Success!");
+                        setFinished(true);
+                        return "AUTHENTICATED";
+                      }
                     }
                   }
                 }
@@ -577,8 +614,6 @@ export default function FaceRecognizer({ authUser }) {
       }
 
       if (isMounted.current && !finished && !signal?.aborted) {
-        // Loop execution only if not finished
-        // To prevent race conditions, check if we just transitioned to AUTHENTICATED
         setLivenessState((currentLiveness) => {
           if (
             currentLiveness !== "AUTHENTICATED" &&
@@ -592,75 +627,75 @@ export default function FaceRecognizer({ authUser }) {
           return currentLiveness;
         });
       }
-    };
+  };
 
-    useEffect(() => {
-      if (analytics) {
-        try {
-          logEvent(analytics, "page_view", { page: "attendance" });
-        } catch (err) {
-          console.warn(
-            "Analytics page_view logEvent was blocked or failed:",
-            err
-          );
-        }
+  useEffect(() => {
+    if (analytics) {
+      try {
+        logEvent(analytics, "page_view", { page: "attendance" });
+      } catch (err) {
+        console.warn(
+          "Analytics page_view logEvent was blocked or failed:",
+          err
+        );
       }
-    }, []);
+    }
+  }, []);
 
-    useEffect(() => {
-      const persistAttendance = async () => {
-        if (
-          !finished ||
-          !detectedPerson ||
-          !authUser?.uid ||
-          livenessState !== "AUTHENTICATED"
-        )
-          return;
-        if (isSubmittingRef.current) return;
+  useEffect(() => {
+    const persistAttendance = async () => {
+      if (
+        !finished ||
+        !detectedPerson ||
+        !authUser?.uid ||
+        livenessState !== "AUTHENTICATED"
+      )
+        return;
+      if (isSubmittingRef.current) return;
+      if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+        return;
+      if (confidence < MIN_CONFIDENCE_TO_RECORD) {
+        setAttendanceState("low-confidence");
+        return;
+      }
+      const detectedEmail = detectedPerson.email?.trim().toLowerCase();
+      const userEmail = authUser.email?.trim().toLowerCase();
+      if (detectedEmail && userEmail && detectedEmail !== userEmail) {
+        setAttendanceState("mismatch");
+        setMessage("Face does not match signed-in account.");
+        return;
+      }
+      isSubmittingRef.current = true;
+      setAttendanceState("saving");
+      try {
+        const result = await recordAttendance({
+          userId: authUser.uid,
+          studentName: detectedPerson.name,
+          email: detectedPerson.email || authUser.email,
+          confidenceScore: confidence,
+        });
         if (!isMounted.current || abortControllerRef.current?.signal.aborted)
           return;
-        if (confidence < MIN_CONFIDENCE_TO_RECORD) {
-          setAttendanceState("low-confidence");
+        if (result.queuedOffline) {
+          setAttendanceState("queued-offline");
+          setMessage("Offline - Syncing later");
+        } else {
+          setAttendanceState(
+            result.alreadyRecorded ? "already-recorded" : "saved"
+          );
+        }
+      } catch (err) {
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted)
           return;
-        }
-        const detectedEmail = detectedPerson.email?.trim().toLowerCase();
-        const userEmail = authUser.email?.trim().toLowerCase();
-        if (detectedEmail && userEmail && detectedEmail !== userEmail) {
-          setAttendanceState("mismatch");
-          setMessage("Face does not match signed-in account.");
-          return;
-        }
-        isSubmittingRef.current = true;
-        setAttendanceState("saving");
-        try {
-          const result = await recordAttendance({
-            userId: authUser.uid,
-            studentName: detectedPerson.name,
-            email: detectedPerson.email || authUser.email,
-            confidenceScore: confidence,
-          });
-          if (!isMounted.current || abortControllerRef.current?.signal.aborted)
-            return;
-          if (result.queuedOffline) {
-            setAttendanceState("queued-offline");
-            setMessage("Offline - Syncing later");
-          } else {
-            setAttendanceState(
-              result.alreadyRecorded ? "already-recorded" : "saved"
-            );
-          }
-        } catch (err) {
-          if (!isMounted.current || abortControllerRef.current?.signal.aborted)
-            return;
-          setAttendanceState("error");
-          setMessage(err.message || "Could not save attendance.");
-        }
-      };
-      persistAttendance();
-    }, [authUser, confidence, detectedPerson, finished, livenessState]);
+        setAttendanceState("error");
+        setMessage(err.message || "Could not save attendance.");
+      }
+    };
+    persistAttendance();
+  }, [authUser, confidence, detectedPerson, finished, livenessState]);
 
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4 relative">
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4 relative">
         {isOffline && (
           <div className="w-full max-w-4xl mb-4 bg-amber-500/10 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-amber-500/5 animate-in fade-in slide-in-from-top-4 duration-300 relative z-50">
             <div className="flex items-center gap-3">
@@ -893,5 +928,4 @@ export default function FaceRecognizer({ authUser }) {
         )}
       </div>
     );
-  };
 }

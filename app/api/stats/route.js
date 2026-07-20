@@ -88,8 +88,9 @@ export const POST = withErrorHandler(async (request) => {
       .collection("attendance_records")
       .where("userId", "==", decodedToken.uid);
 
-    const countSnapshot = await attendanceQuery.count().get();
-    const presentDays = countSnapshot.data().count;
+    const snapshot = await attendanceQuery.get();
+    const uniqueDates = new Set(snapshot.docs.map((doc) => doc.data().date).filter(Boolean));
+    const presentDays = uniqueDates.size;
 
     const userDoc = await db.collection("users").doc(decodedToken.uid).get();
     let startDate = new Date(new Date().getFullYear(), 0, 1);

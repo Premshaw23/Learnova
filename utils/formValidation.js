@@ -2,6 +2,7 @@
  * Centrally managed validators for Learnova forms.
  * Each function returns `true` if validation passes, or an error message `string` if it fails.
  */
+import { isValidEmail } from "./emailValidation";
 
 /**
  * Validates that a value is present and not blank.
@@ -33,6 +34,7 @@ export const validateMinLength = (value, min, fieldName = "Field") => {
   return true;
 };
 
+
 /**
  * Validates an email address.
  * @param {string} value - The email address to validate.
@@ -42,8 +44,7 @@ export const validateEmail = (value) => {
   const presenceCheck = validateRequired(value, "Email");
   if (presenceCheck !== true) return presenceCheck;
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(value)) {
+  if (!isValidEmail(value)) {                        
     return "Please enter a valid email";
   }
   return true;

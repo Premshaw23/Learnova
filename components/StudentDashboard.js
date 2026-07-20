@@ -1,7 +1,10 @@
 "use client";
+import StudyStreakWidget from "@/components/StudyStreakWidget";
+import AIStudyScheduleWidget from "@/components/AIStudyScheduleWidget";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 
 import {
@@ -21,6 +24,7 @@ import {
   EyeOff,
   ArrowUp,
   ArrowDown,
+  Video,
 } from "lucide-react";
 
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
@@ -89,7 +93,7 @@ const DAY_NAMES = [
 const ATTENDANCE_WINDOW_START_HOUR = 9;
 const ATTENDANCE_WINDOW_END_MINUTE = 10;
 
-// ── Utility Functions ──────────────────────────────────────────────────────
+// â”€â”€ Utility Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const getUserInitials = (user) => {
   if (!user?.displayName && !user?.email) {
@@ -153,7 +157,7 @@ const getTodaySchedule = (now, schedule = weeklySchedule) => {
 const getScheduleTickKey = (now) =>
   `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}`;
 
-// ── Components ─────────────────────────────────────────────────────────────
+// â”€â”€ Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const DashboardError = ({ error, onRetry }) => (
   <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -216,20 +220,29 @@ const DashboardHeader = ({ user, currentTime, getInitials }) => (
         </div>
       </div>
 
-      <div className="text-left md:text-right">
-        <div className="text-lg sm:text-xl font-mono">
-          {currentTime?.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </div>
+      <div className="flex flex-col md:flex-row md:items-center gap-4 text-left md:text-right">
+        <Link 
+          href="/virtual-class"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 hover:from-blue-600/30 hover:to-cyan-600/30 border border-blue-500/30 text-blue-400 rounded-xl transition-colors font-medium text-sm"
+        >
+          <Video className="w-4 h-4" />
+          Join Virtual Class
+        </Link>
+        <div>
+          <div className="text-lg sm:text-xl font-mono">
+            {currentTime?.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
 
-        <div className="text-xs text-muted-foreground">
-          {currentTime?.toLocaleDateString([], {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          })}
+          <div className="text-xs text-muted-foreground">
+            {currentTime?.toLocaleDateString([], {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -257,7 +270,7 @@ const StatCard = ({ color, label, value }) => {
   );
 };
 
-// ── Main Component ─────────────────────────────────────────────────────────
+// â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -354,7 +367,7 @@ const [teacherFeedback] = useState([
   {
     subject: "Mathematics",
     teacher: "Mr. Sharma",
-    rating: "⭐⭐⭐⭐⭐",
+    rating: "â­â­â­â­â­",
     comment: "Excellent understanding of concepts and problem solving.",
     recommendation: "Try advanced mathematical challenges.",
     status: "Acknowledged",
@@ -362,7 +375,7 @@ const [teacherFeedback] = useState([
   {
     subject: "Science",
     teacher: "Mrs. Patel",
-    rating: "⭐⭐⭐⭐",
+    rating: "â­â­â­â­",
     comment: "Good classroom participation and practical skills.",
     recommendation: "Focus more on written explanations.",
     status: "Pending",
@@ -370,7 +383,7 @@ const [teacherFeedback] = useState([
   {
     subject: "Programming",
     teacher: "Mr. Johnson",
-    rating: "⭐⭐⭐⭐⭐",
+    rating: "â­â­â­â­â­",
     comment: "Shows excellent coding skills and creativity.",
     recommendation: "Start contributing to real-world projects.",
     status: "Acknowledged",
@@ -489,7 +502,7 @@ const [teacherFeedback] = useState([
   const upcomingClass = scheduleState.upcomingClass;
   const isAttendanceWindow = scheduleState.isAttendanceWindow;
 
-  // ── Effects ────────────────────────────────────────────────────────────
+  // â”€â”€ Effects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Fetch engagement history
   useEffect(() => {
@@ -666,7 +679,7 @@ const generateRoadmap = () => {
     }
   };
 
-  // ── Dashboard Customization & Reordering State ──────────────────────────
+  // â”€â”€ Dashboard Customization & Reordering State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [widgetOrder, setWidgetOrder] = useState([
     "roadmap",
     "studyGroups",
@@ -900,7 +913,7 @@ const generateRoadmap = () => {
         widgetContent = (
           <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
             <h2 className="text-xl font-bold text-white mb-4">
-              📅 Classroom Event Calendar
+              ðŸ“… Classroom Event Calendar
             </h2>
             <div className="space-y-3">
               {events.map((event, index) => (
@@ -925,7 +938,7 @@ const generateRoadmap = () => {
         widgetContent = (
           <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
             <h2 className="text-xl font-bold text-white mb-4">
-              📊 Student Performance Comparison Dashboard
+              ðŸ“Š Student Performance Comparison Dashboard
             </h2>
             <div className="grid md:grid-cols-3 gap-4">
               {performanceData.map((item, index) => (
@@ -943,7 +956,7 @@ const generateRoadmap = () => {
                         : "text-red-400"
                     }`}
                   >
-                    {item.currentScore > item.previousScore ? "📈 Improving" : "📉 Needs Improvement"}
+                    {item.currentScore > item.previousScore ? "ðŸ“ˆ Improving" : "ðŸ“‰ Needs Improvement"}
                   </p>
                 </div>
               ))}
@@ -957,7 +970,7 @@ const generateRoadmap = () => {
         widgetContent = (
           <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
             <h2 className="text-xl font-bold text-white mb-4">
-              📝 Teacher Feedback & Reviews
+              ðŸ“ Teacher Feedback & Reviews
             </h2>
             <div className="grid md:grid-cols-3 gap-4">
               {teacherFeedback.map((feedback, index) => (
@@ -969,7 +982,7 @@ const generateRoadmap = () => {
                   <p className="text-blue-400 text-sm">Teacher: {feedback.teacher}</p>
                   <p className="mt-2">{feedback.rating}</p>
                   <p className="text-gray-300 mt-2">"{feedback.comment}"</p>
-                  <p className="text-yellow-400 mt-2 text-sm">💡 {feedback.recommendation}</p>
+                  <p className="text-yellow-400 mt-2 text-sm">ðŸ’¡ {feedback.recommendation}</p>
                   <button
                     className={`mt-3 px-3 py-2 rounded-lg text-sm font-semibold ${
                       feedback.status === "Acknowledged"
@@ -991,25 +1004,25 @@ const generateRoadmap = () => {
         widgetContent = (
           <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
             <h2 className="text-xl font-bold text-white mb-4">
-              🤖 Smart Attendance Improvement Suggestions
+              ðŸ¤– Smart Attendance Improvement Suggestions
             </h2>
             {attendanceStats.percentage < 60 ? (
               <ul className="space-y-3 text-red-300">
-                <li>⚠️ Your attendance is critically low. Try attending every upcoming class.</li>
-                <li>⏰ Enable daily reminders to avoid missing classes.</li>
-                <li>📅 Create a weekly study and attendance schedule.</li>
-                <li>🎯 Target at least 85% attendance over the next month.</li>
+                <li>âš ï¸ Your attendance is critically low. Try attending every upcoming class.</li>
+                <li>â° Enable daily reminders to avoid missing classes.</li>
+                <li>ðŸ“… Create a weekly study and attendance schedule.</li>
+                <li>ðŸŽ¯ Target at least 85% attendance over the next month.</li>
               </ul>
             ) : attendanceStats.percentage < 75 ? (
               <ul className="space-y-3 text-yellow-300">
-                <li>📈 Your attendance can be improved with more consistency.</li>
-                <li>📝 Track your attendance progress every week.</li>
-                <li>⏰ Set alarms before your classes start.</li>
-                <li>🎯 Aim to increase your attendance above 90%.</li>
+                <li>ðŸ“ˆ Your attendance can be improved with more consistency.</li>
+                <li>ðŸ“ Track your attendance progress every week.</li>
+                <li>â° Set alarms before your classes start.</li>
+                <li>ðŸŽ¯ Aim to increase your attendance above 90%.</li>
               </ul>
             ) : (
               <div className="text-green-400">
-                🎉 Excellent work! Your attendance is strong.
+                ðŸŽ‰ Excellent work! Your attendance is strong.
                 Keep maintaining your consistency and punctuality.
               </div>
             )}
@@ -1112,7 +1125,7 @@ const generateRoadmap = () => {
     );
   };
 
-  // ── Render ────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -1129,6 +1142,10 @@ const generateRoadmap = () => {
       className={`min-h-screen bg-background relative overflow-x-hidden ${dashboardContentOffsetClass}`}
     >
       <Navbar />
+      <div className="max-w-7xl mx-auto px-6 mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <StudyStreakWidget studentId={user?.uid} />
+        <AIStudyScheduleWidget user={user} />
+      </div>
 
       {/* Diagnostic Quiz Section */}
       {showDiagnosticQuiz ? (
@@ -1278,7 +1295,7 @@ const generateRoadmap = () => {
       {/* Gamification System */}
       <div className="max-w-7xl mx-auto mt-8 px-6">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <span className="text-2xl">🎮</span> Gamification & Progress
+          <span className="text-2xl">ðŸŽ®</span> Gamification & Progress
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-6">
@@ -1299,7 +1316,7 @@ const generateRoadmap = () => {
         <div className="max-w-7xl mx-auto mt-6 px-6">
           <div className="p-5 bg-purple-500/10 border border-purple-500/20 rounded-xl">
             <h4 className="text-purple-400 font-bold text-sm mb-1">
-              🚀 Fast-Track Projects Unlocked
+              ðŸš€ Fast-Track Projects Unlocked
             </h4>
             <p className="text-xs text-gray-400">
               The layout has automatically removed foundational reading
@@ -1313,7 +1330,7 @@ const generateRoadmap = () => {
         <div className="max-w-7xl mx-auto mt-6 px-6">
           <div className="p-5 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
             <h4 className="text-yellow-400 font-bold text-sm mb-1">
-              💡 Supplemental Booster Modules Active
+              ðŸ’¡ Supplemental Booster Modules Active
             </h4>
             <p className="text-xs text-gray-400">
               We have populated extra summary workflows and alternative video
@@ -1329,3 +1346,4 @@ const generateRoadmap = () => {
 };
 
 export default StudentDashboard;
+

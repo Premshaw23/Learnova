@@ -121,8 +121,8 @@ export default function Footer() {
   ];
 // Landing page section shortcuts
   const sectionLinks = [
-    { label: "Mission", href: "/#mission" },
-    { label: "Values", href: "/#values" },
+    { label: "Mission", href: "/mission" },
+    { label: "Values", href: "/values" },
     { label: "Productivity", href: "/#productivity" },
     { label: "Impact", href: "/#impact" },
   ];

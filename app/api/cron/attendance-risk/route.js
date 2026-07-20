@@ -1,6 +1,8 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { authorizeCronRequest } from "@/lib/cronAuth";
 import { connectDb } from "@/lib/mongodb";
+import { sendEmail, isEmailConfigured } from "@/lib/email/provider";
+import { renderTemplate } from "@/lib/email/renderTemplate";
 
 /**
  * GET /api/cron/attendance-risk
@@ -224,10 +226,67 @@ export const GET = async (request) => {
             };
           });
 
-        if (alertInserts.length > 0) {
-          await db.collection("attendance_alerts").insertMany(alertInserts);
-          alertsSent += alertInserts.length;
+      if (alertInserts.length > 0) {
+        await db.collection("attendance_alerts").insertMany(alertInserts);
+        alertsSent += alertInserts.length;
+
+        if (isEmailConfigured()) {
+          const dashboardUrl =
+            process.env.NEXT_PUBLIC_APP_URL || "https://learnova.app";
+          await Promise.all(
+            alertInserts.map(async (alert) => {
+              try {
+                const html = renderTemplate("lowAttendanceWarning", {
+                  name: alert.studentName,
+                  attendancePercentage: alert.attendanceRate,
+                  threshold: 80,
+                  dashboardUrl,
+                });
+
+                await sendEmail({
+                  to: alert.email,
+                  subject: `Attendance Warning: ${alert.attendanceRate}% - Below 80% Threshold`,
+                  html,
+                  text: `Your attendance is ${alert.attendanceRate}%, below the required 80%. Please improve attendance.`,
+                });
+
+                await db.collection("attendance_alerts").updateOne(
+                  {
+                    userId: alert.userId,
+                    instituteId: alert.instituteId,
+                    alertDate: todayStr,
+                  },
+                  {
+                    $set: {
+                      emailStatus: "sent",
+                      sentAt: new Date().toISOString(),
+                    },
+                  }
+                );
+              } catch (emailError) {
+                errors.push({
+                  userId: alert.userId,
+                  instituteId: alert.instituteId,
+                  message: emailError.message,
+                });
+
+                await db.collection("attendance_alerts").updateOne(
+                  {
+                    userId: alert.userId,
+                    instituteId: alert.instituteId,
+                    alertDate: todayStr,
+                  },
+                  {
+                    $set: {
+                      emailStatus: "failed",
+                    },
+                  }
+                );
+              }
+            })
+          );
         }
+      }
       }
 
       processed += records.length;

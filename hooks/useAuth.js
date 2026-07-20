@@ -265,6 +265,17 @@ export const useAuth = () => {
     }
   }, []);
 
+  const getUserRoleFromToken = useCallback(async () => {
+    if (!user) return null;
+    try {
+      const tokenResult = await user.getIdTokenResult(true);
+      return tokenResult.claims?.role || null;
+    } catch (err) {
+      console.error("[useAuth] Failed to get role from token:", err);
+      return null;
+    }
+  }, [user]);
+
   return {
     user,
     userProfile,
@@ -274,6 +285,7 @@ export const useAuth = () => {
     error,
     signOut,
     forceTokenRefresh,
+    getUserRoleFromToken,
     isAuthenticated: !!user,
     hasProfile: !!userProfile,
     sessionExpired,

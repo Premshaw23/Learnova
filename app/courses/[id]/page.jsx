@@ -13,6 +13,7 @@ import {
   Users,
   Trash2,
   Award,
+  Star,
 } from "lucide-react";
 import ShareButton from "@/components/ui/ShareButton";
 import StudyDeck from "@/components/flashcards/StudyDeck";
@@ -27,6 +28,8 @@ import { apiFetch } from "@/lib/apiClient";
 import { addRecentActivity } from "@/utils/recentActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { generateCertificatePDF } from "@/utils/pdf/generateCertificatePDF";
+import { updateUserStat } from "@/services/statsService";
+import VideoPlayer from "@/components/VideoPlayer";
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -100,6 +103,73 @@ export default function CourseDetailPage() {
 
   const [mounted, setMounted] = useState(false);
   const [isPodActive, setIsPodActive] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewComment, setNewReviewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  useEffect(() => {
+    if (mounted && params.id) {
+      fetch(`/api/reviews?courseId=${params.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data?.reviews) {
+            setReviews(data.data.reviews);
+          }
+        })
+        .catch((err) => console.error("Failed to load reviews:", err));
+    }
+  }, [mounted, params.id]);
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!newReviewComment.trim()) {
+      toast.error("Review comment cannot be empty.");
+      return;
+    }
+
+    const lastSubmittedKey = `last_submitted_review_${params.id}`;
+    const lastSubmittedTime = localStorage.getItem(lastSubmittedKey);
+    if (lastSubmittedTime && Date.now() - parseInt(lastSubmittedTime, 10) < 60 * 1000) {
+      toast.error("⚠️ Consecutive review submission blocked. Please wait a minute before trying again.");
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          courseId: params.id,
+          rating: newReviewRating,
+          comment: newReviewComment.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast.error("⚠️ Too many requests. Rate limit is 2 reviews per hour.");
+        } else {
+          toast.error(data.error || "Failed to submit review.");
+        }
+        return;
+      }
+
+      toast.success("Review submitted successfully!");
+      setNewReviewComment("");
+      setReviews((prev) => [data.data.review, ...prev]);
+      localStorage.setItem(lastSubmittedKey, Date.now().toString());
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to submit review due to connection error.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
   const [selectionText, setSelectionText] = useState("");
   const [selectionRect, setSelectionRect] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -108,19 +178,11 @@ export default function CourseDetailPage() {
   const [originText, setOriginText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [lastProgress, setLastProgress] = useState(null);
-  const [notes, setNotes] = useState([]);
-  const [noteText, setNoteText] = useState("");
-
   // --- Dynamic Completion & Certificate States ---
   const [completedLessons, setCompletedLessons] = useState({});
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [completionDate, setCompletionDate] = useState("");
   const [showCertificateModal, setShowCertificateModal] = useState(false);
-
-  // --- AI TIMELINE FEATURE STATES ---
-  const videoRef = useRef(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filteredTimestamps, setFilteredTimestamps] = useState([]);
 
   // Mock Data mimicking what an AI Video Intelligence API returns
   const mockVideoAIProperties = {
@@ -164,15 +226,7 @@ export default function CourseDetailPage() {
         }
       }
 
-      // Load timestamp notes
-      const savedNotes = localStorage.getItem(`video_notes_${params.id}`);
-      if (savedNotes) {
-        try {
-          setNotes(JSON.parse(savedNotes));
-        } catch (e) {
-          console.error("Failed to parse notes", e);
-        }
-      }
+
 
       // Load completed lessons
       const savedCompleted = localStorage.getItem(
@@ -284,36 +338,7 @@ export default function CourseDetailPage() {
     }
   };
 
-  // Persist notes when they change
-  useEffect(() => {
-    if (mounted) {
-      localStorage.setItem(`video_notes_${params.id}`, JSON.stringify(notes));
-    }
-  }, [notes, mounted, params.id]);
-
   const toggleStudyPod = () => setIsPodActive(!isPodActive);
-
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredTimestamps([]);
-      return;
-    }
-    const matches = mockVideoAIProperties.transcripts.filter((t) =>
-      t.text.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredTimestamps(matches);
-  }, [searchQuery]);
-
-  // Command the video player HTML element to jump to a specific time
-  const handleSeek = (seconds) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = seconds;
-      videoRef.current.play();
-      toast.success(
-        `Jumped to ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
-      );
-    }
-  };
 
   useEffect(() => {
     try {
@@ -536,152 +561,14 @@ export default function CourseDetailPage() {
               className={`transition-all duration-300 ${isPodActive ? "w-full lg:flex-1" : "w-full"}`}
             >
               {/* 🌟 AI INTERACTIVE TIMELINE INTERFACE 🌟 */}
-              <div className="my-8 p-6 rounded-2xl border border-zinc-800 bg-zinc-900/30 shadow-xl">
-                {/* The Video Stream */}
-                <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black mb-4">
-                  <video
-                    ref={videoRef}
-                    src={mockVideoAIProperties.videoUrl}
-                    controls
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-
-                {/* Segmented AI Concept Map Progress Track */}
-                <div className="mb-6">
-                  <span className="text-xs font-semibold text-zinc-400 block mb-2 tracking-wider uppercase">
-                    AI Concept Map Timeline
-                  </span>
-                  <div className="h-3 w-full bg-zinc-800 rounded-full flex overflow-hidden">
-                    {mockVideoAIProperties.conceptMap.map((segment, index) => {
-                      const segmentWidth =
-                        ((segment.end - segment.start) /
-                          mockVideoAIProperties.duration) *
-                        100;
-                      const trackColors = [
-                        "bg-indigo-600/60",
-                        "bg-purple-600/60",
-                        "bg-pink-600/60",
-                      ];
-                      return (
-                        <div
-                          key={index}
-                          style={{ width: `${segmentWidth}%` }}
-                          className={`${trackColors[index % trackColors.length]} h-full border-r border-zinc-950/40 cursor-pointer transition-all hover:brightness-125`}
-                          onClick={() => handleSeek(segment.start)}
-                          title={`${segment.concept} (Click to jump)`}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* User Search Input Field */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Type a topic to scan video timeline (e.g., 'backpropagation')..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
-                </div>
-
-                {/* Dropdown list of timestamps found by AI string filtering */}
-                {filteredTimestamps.length > 0 && (
-                  <div className="mt-3 bg-zinc-950 rounded-xl border border-zinc-800 p-3 space-y-2 max-h-48 overflow-y-auto">
-                    <span className="text-xs text-indigo-400 font-bold block px-1">
-                      AI Matches Found:
-                    </span>
-                    {filteredTimestamps.map((item, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleSeek(item.start)}
-                        className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-900 transition-colors text-sm"
-                      >
-                        <span className="text-indigo-400 font-mono font-semibold">
-                          {Math.floor(item.start / 60)}:$
-                          {String(item.start % 60).padStart(2, "0")}
-                        </span>
-                        <span className="text-zinc-300 line-clamp-1">
-                          {item.text}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* 📝 VIDEO TIMESTAMP NOTES SECTION 📝 */}
-                <div className="mt-8 pt-6 border-t border-zinc-800/60">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                      Personal Timestamp Notes
-                    </h3>
-                    <span className="text-[10px] text-zinc-500 font-medium px-2 py-0.5 rounded-full bg-zinc-800/50">
-                      {notes.length} Total
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2 mb-6">
-                    <input
-                      type="text"
-                      placeholder="Take a quick note at the current video time..."
-                      value={noteText}
-                      onChange={(e) => setNoteText(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
-                      className="flex-1 px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
-                    />
-                    <button
-                      onClick={handleAddNote}
-                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shrink-0 shadow-lg shadow-indigo-600/10 active:scale-95"
-                      aria-label="Action button"
-                    >
-                      Save Note
-                    </button>
-                  </div>
-
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    {notes.length > 0 ? (
-                      notes.map((note) => (
-                        <div
-                          key={note.id}
-                          className="group relative bg-zinc-950/40 border border-zinc-800/50 rounded-xl p-4 hover:border-zinc-700/80 hover:bg-zinc-900/40 transition-all cursor-pointer"
-                          onClick={() => handleSeek(note.timestamp)}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex gap-4">
-                              <span className="text-indigo-400 font-mono text-xs font-bold shrink-0 mt-0.5 px-2 py-1 rounded bg-indigo-500/5 border border-indigo-500/10">
-                                {note.formattedTime}
-                              </span>
-                              <p className="text-sm text-zinc-300 leading-relaxed font-medium">
-                                {note.text}
-                              </p>
-                            </div>
-                            <Tooltip content="Delete note" placement="top">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteNote(note.id);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </Tooltip>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-10 rounded-2xl bg-zinc-950/20 border border-dashed border-zinc-800/80">
-                        <p className="text-sm text-zinc-500 italic">
-                          No timestamp notes yet. Save a moment to revisit it
-                          later.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <VideoPlayer
+                videoUrl={mockVideoAIProperties.videoUrl}
+                conceptMap={mockVideoAIProperties.conceptMap}
+                transcripts={mockVideoAIProperties.transcripts}
+                courseId={params.id}
+                user={user}
+                updateUserStat={updateUserStat}
+              />
 
               <div className="mb-8 max-w-3xl">
                 <MarkdownRenderer content={course.description} />
@@ -800,6 +687,104 @@ export default function CourseDetailPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </section>
+
+              {/* 🌟 COURSE REVIEWS & RATINGS SECTION 🌟 */}
+              <section className="mb-12 p-6 rounded-2xl border border-zinc-800 bg-zinc-900/20 backdrop-blur-sm">
+                <h2 className="text-2xl font-bold tracking-tight text-zinc-100 mb-6 flex items-center gap-2">
+                  <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+                  Course Reviews & Feedback
+                </h2>
+
+                {user ? (
+                  <form onSubmit={handleReviewSubmit} className="mb-8 p-5 rounded-xl border border-zinc-800 bg-zinc-950/40">
+                    <h3 className="text-sm font-semibold text-zinc-300 mb-4">Write a Review</h3>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-sm text-zinc-400">Rating:</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setNewReviewRating(val)}
+                            className="p-1 focus:outline-none cursor-pointer"
+                          >
+                            <Star
+                              className={`w-5 h-5 transition-colors ${
+                                val <= newReviewRating
+                                  ? "text-yellow-500 fill-yellow-500"
+                                  : "text-zinc-600 hover:text-yellow-400"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <textarea
+                        rows={3}
+                        placeholder="Share your thoughts about this course..."
+                        value={newReviewComment}
+                        onChange={(e) => setNewReviewComment(e.target.value)}
+                        className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors text-sm"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmittingReview}
+                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shrink-0 shadow-lg shadow-indigo-600/10 active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSubmittingReview ? "Submitting..." : "Submit Review"}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/20 text-center text-sm text-zinc-500 mb-8">
+                    Please log in to write a course review.
+                  </div>
+                )}
+
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {reviews.length > 0 ? (
+                    reviews.map((rev, index) => (
+                      <div
+                        key={rev._id || index}
+                        className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/20 space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-indigo-400">
+                            {rev.userEmail ? rev.userEmail.split("@")[0].substring(0, 3) + "***@" + rev.userEmail.split("@")[1] : "anonymous@learnova.edu"}
+                          </span>
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`w-3.5 h-3.5 ${
+                                  s <= rev.rating
+                                    ? "text-yellow-500 fill-yellow-500"
+                                    : "text-zinc-700"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-zinc-300 leading-relaxed">
+                          {rev.comment}
+                        </p>
+                        <span className="text-[10px] text-zinc-500 block">
+                          {new Date(rev.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-10 rounded-xl border border-dashed border-zinc-800/80 bg-zinc-950/10">
+                      <p className="text-sm text-zinc-500 italic">
+                        No reviews yet. Be the first to share your thoughts!
+                      </p>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

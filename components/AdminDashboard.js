@@ -62,6 +62,11 @@ const AdminAchievementDashboard = dynamic(
   { ssr: false, loading: () => <DashboardSkeleton /> }
 );
 
+const DataRetentionSettings = dynamic(
+  () => import("@/components/DataRetentionSettings"),
+  { ssr: false, loading: () => <DashboardSkeleton /> }
+);
+
 const SuperAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
@@ -1637,6 +1642,7 @@ const SuperAdminDashboard = () => {
           "security",
           "sync reconciliation",
           "parent student linking",
+          "data retention"
         ].map((tab) => (
           <button
             key={tab}
@@ -1663,6 +1669,7 @@ const SuperAdminDashboard = () => {
           {activeTab === "sync reconciliation" && renderSyncInspector()}
           {activeTab === "parent student linking" &&
             renderParentStudentLinking()}
+          {activeTab === "data retention" && <DataRetentionSettings />}
         </div>
       </div>
     </div>

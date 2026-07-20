@@ -113,7 +113,14 @@ export default function WaterTracker() {
           </div>
         </div>
 
-        <div className="mt-6 h-4 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+        <div
+          className="mt-6 h-4 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
+          role="progressbar"
+          aria-valuenow={glasses}
+          aria-valuemin={0}
+          aria-valuemax={goal}
+          aria-label="Daily water intake progress"
+        >
           <div
             className="h-full rounded-full bg-gradient-to-r from-purple-500 via-violet-600 to-fuchsia-500 transition-all"
             style={{ width: `${progress}%` }}

@@ -18,9 +18,17 @@ service cloud.firestore {
     // Users Collection
     // Users can read their own profile; teachers can read all profiles for class management
     // Users can only edit their own profile
+    // Role field is protected: create forces 'student' default, update prevents role changes
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isTeacher());
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+
+      allow create: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'student';
+
+      allow update: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.role == resource.data.role;
     }
 
     // Courses Collection

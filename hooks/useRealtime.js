@@ -20,10 +20,11 @@ export function useRealtime(handlers, { enabled = true, pollInterval = FALLBACK_
 
   handlersRef.current = handlers;
 
-  const startPolling = useCallback((token) => {
+  const startPolling = useCallback(() => {
     const poll = async () => {
-      if (!isMountedRef.current || !token) return;
+      if (!isMountedRef.current || !user) return;
       try {
+        const token = await user.getIdToken();
         const res = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -54,9 +55,7 @@ export function useRealtime(handlers, { enabled = true, pollInterval = FALLBACK_
 
     const connect = async () => {
       try {
-        const token = await user.getIdToken();
-        const url = `/api/events/stream?token=${encodeURIComponent(token)}`;
-        const es = new EventSource(url);
+        const es = new EventSource("/api/events/stream", { withCredentials: true });
         eventSourceRef.current = es;
         currentEventSource = es;
 

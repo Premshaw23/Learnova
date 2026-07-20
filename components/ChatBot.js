@@ -3,22 +3,29 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   Send,
   Bot,
+  User,
   MessageCircle,
   X,
   Minimize2,
   Maximize2,
+  Moon,
+  Sun,
+  RefreshCw,
   BookOpen,
   Shield,
   BarChart3,
   Zap,
   Clock,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 
 export default function ChatBot() {
+  const { theme, setTheme } = useTheme();
+  const { user } = useAuthContext();
   const t = useTranslations("ChatBot");
 
   const [isOpen, setIsOpen] = useState(false);
@@ -124,6 +131,7 @@ export default function ChatBot() {
     return (
       <button
         onClick={() => setIsOpen(true)}
+        aria-label="Open Learnova AI chat"
         className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition"
       >
         <MessageCircle size={28} />
@@ -141,10 +149,13 @@ export default function ChatBot() {
           <span className="font-semibold">Learnova AI</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setIsMinimized(!isMinimized)}>
+          <button
+            onClick={() => setIsMinimized(!isMinimized)}
+            aria-label={isMinimized ? "Expand chat" : "Minimize chat"}
+          >
             {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
           </button>
-          <button onClick={() => setIsOpen(false)}>
+          <button onClick={() => setIsOpen(false)} aria-label="Close chat">
             <X size={16} />
           </button>
         </div>
@@ -199,7 +210,11 @@ export default function ChatBot() {
           </div>
 
           <div className="p-3 border-t border-gray-200 dark:border-gray-800 flex gap-2">
+            <label htmlFor="chatbot-input" className="sr-only">
+              Type your message
+            </label>
             <input
+              id="chatbot-input"
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -209,6 +224,7 @@ export default function ChatBot() {
             />
             <button
               onClick={() => handleSend()}
+              aria-label="Send message"
               className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
             >
               <Send size={16} />
