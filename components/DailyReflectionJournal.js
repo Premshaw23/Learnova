@@ -41,6 +41,9 @@ export default function DailyReflectionJournal() {
         })
       );
       setSaved(true);
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+      }
       timeoutRef.current = window.setTimeout(() => setSaved(false), 3000);
 
       // Trigger Sentiment Analysis
