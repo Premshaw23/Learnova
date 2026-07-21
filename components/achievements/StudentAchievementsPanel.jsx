@@ -6,6 +6,7 @@ import { Award, Search, Filter, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch } from "@/lib/apiClient";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
 import AchievementCard from "./AchievementCard";
 import CertificatePreviewModal from "./CertificatePreviewModal";
 import { ACHIEVEMENT_CATEGORIES } from "./constants";
@@ -18,13 +19,15 @@ export default function StudentAchievementsPanel() {
   const [category, setCategory] = useState("");
   const [preview, setPreview] = useState(null);
 
+  const debouncedSearch = useDebouncedValue(search, 300);
+
   const fetchAchievements = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
       const token = await user.getIdToken();
       const params = new URLSearchParams();
-      if (search) params.set("search", search);
+      if (debouncedSearch) params.set("search", debouncedSearch);
       if (category) params.set("category", category);
       const qs = params.toString() ? `?${params}` : "";
       const result = await apiFetch(
@@ -39,7 +42,7 @@ export default function StudentAchievementsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [user, search, category]);
+  }, [user, debouncedSearch, category]);
 
   useEffect(() => {
     fetchAchievements();
