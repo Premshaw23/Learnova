@@ -9,8 +9,8 @@ export async function POST(request) {
     const token = await requireAuth(request);
     
     // Only students can submit assignments for plagiarism check
-    if (token.role !== 'student' && token.role !== 'teacher') {
-        // allowing teacher for testing purposes
+    if (token.role !== 'student') {
+      throw new AppError('Forbidden: Only students can submit assignments', 403);
     }
 
     const { title, content, assignmentId } = await request.json();
