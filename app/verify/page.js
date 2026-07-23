@@ -93,9 +93,9 @@ export default function EmailVerificationPage() {
 
     try {
       await reload(user);
-      if (user.emailVerified) {
+      if (auth.currentUser?.emailVerified) {
         // Force refresh of the token so the cookie is updated with emailVerified: true
-        await user.getIdToken(true);
+        await auth.currentUser.getIdToken(true);
         setMessage("Email verified successfully! Redirecting...");
         setTimeout(() => {
           router.push(getDashboardLink(userProfile?.role));
