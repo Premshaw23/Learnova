@@ -121,6 +121,7 @@ useEffect(() => {
     authTimedOut,
     tokenRole,
     tokenRoleLoaded,
+    pathname,
   ]);
 
   const safeRedirect = (target) => {

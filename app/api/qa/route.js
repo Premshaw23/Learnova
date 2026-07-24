@@ -182,15 +182,16 @@ export const POST = withErrorHandler(async (request) => {
       return jsonError("Already upvoted", 400);
     }
 
-    await db.collection("qa_questions").updateOne(
+    const updated = await db.collection("qa_questions").findOneAndUpdate(
       { _id: new ObjectId(questionId) },
       {
         $inc: { upvotes: 1 },
         $push: { upvotedBy: decodedToken.uid },
-      }
+      },
+      { returnDocument: 'after' }
     );
 
-    const newUpvotes = question.upvotes + 1;
+    const newUpvotes = updated.upvotes;
     await publishEvent(`qa:${sessionId}`, "question_upvoted", { questionId, upvotes: newUpvotes });
 
     return success({ success: true, upvotes: newUpvotes });
