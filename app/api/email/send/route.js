@@ -6,6 +6,8 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { sendBulkAnnouncement } from "@/services/emailService";
 import { connectDb } from "@/lib/mongodb";
 
+const VALID_ROLES = ["student", "teacher", "admin", "institute", "parent"];
+
 export const dynamic = "force-dynamic";
 
 export const POST = withErrorHandler(async (request) => {
@@ -31,8 +33,14 @@ export const POST = withErrorHandler(async (request) => {
   const query = {};
 
   if (targetIds && Array.isArray(targetIds)) {
-    query.uid = { $in: targetIds };
+    if (!targetIds.every(id => typeof id === "string")) {
+      throw new AppError("Invalid target IDs", 400);
+    }
+    query.uid = { $in: targetIds.map(s => s.trim()).filter(Boolean) };
   } else if (recipientRole) {
+    if (typeof recipientRole !== "string" || !VALID_ROLES.includes(recipientRole)) {
+      throw new AppError("Invalid recipient role", 400);
+    }
     query.role = recipientRole;
   }
 

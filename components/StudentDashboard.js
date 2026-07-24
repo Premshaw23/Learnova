@@ -390,36 +390,6 @@ const [teacherFeedback] = useState([
   },
 ]);
 
-  useEffect(() => {
-    const fetchGamification = async () => {
-      try {
-        if (!user) return;
-
-        const token = await user.getIdToken();
-
-        const res = await fetch(
-          "/api/student/gamification",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (res.ok) {
-          const data = await res.json();
-          setGamificationData(data);
-        }
-      } catch (err) {
-        console.error(
-          "Failed to load gamification data",
-          err
-        );
-      }
-    };
-
-    fetchGamification();
-  }, [user]);
   const attendanceStats = useMemo(() => {
     const counts = recentActivity.reduce(
       (acc, curr) => {
