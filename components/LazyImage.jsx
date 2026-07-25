@@ -43,6 +43,7 @@ export default function LazyImage({
         onError={() => {
           if (currentSrc !== fallbackSrc) {
             setError(true);
+            setCurrentSrc(fallbackSrc);
           }
         }}
         className={`w-full h-full object-cover transition-opacity duration-500 ease-in-out ${
