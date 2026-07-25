@@ -10,7 +10,10 @@ export async function POST(request) {
     
     // Only students can submit assignments for plagiarism check
     if (token.role !== 'student' && token.role !== 'teacher') {
-        // allowing teacher for testing purposes
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 403 }
+      );
     }
 
     const { title, content, assignmentId } = await request.json();
