@@ -59,7 +59,6 @@ export default function UniversalProfile() {
   const [activeTab, setActiveTab] = useState("overview");
   const isMounted = useIsMounted();
 
-  useUnsavedChangesWarning(isEditing && isProfileDirty);
 
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [imageError, setImageError] = useState(false);
@@ -113,6 +112,7 @@ export default function UniversalProfile() {
   const { register, handleSubmit, reset, watch, formState: { errors, isDirty } } = methods;
   const formData = watch();
   const isProfileDirty = isDirty;
+  useUnsavedChangesWarning(isEditing && isProfileDirty);
 
   useEffect(() => {
     if (analytics) {
