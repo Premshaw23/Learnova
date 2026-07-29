@@ -11,24 +11,32 @@
  * Issue: #4223
  */
 const { test, expect } = require('@playwright/test');
-const { USERS, getTodayKey, loginAs, apiRequest } = require('../../fixtures/attendance');
+const { USERS, getTodayKey, loginAs, setupAttendanceMocks } = require('../../fixtures/attendance');
 
 test.describe('Offline Sync Attendance Flow', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, USERS.student);
+    await setupAttendanceMocks(page);
   });
 
   test('attendance API responds normally when online', async ({ page }) => {
     const today = getTodayKey();
-    const response = await apiRequest(page, 'POST', '/api/attendance/record', {
-      userId: USERS.student.uid,
-      studentName: USERS.student.name,
-      email: USERS.student.email,
-      confidenceScore: 85,
-      date: today,
-    }, USERS.student.token);
+    const response = await page.request.fetch('/api/attendance/record', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${USERS.student.token}`,
+      },
+      data: {
+        userId: USERS.student.uid,
+        studentName: USERS.student.name,
+        email: USERS.student.email,
+        confidenceScore: 85,
+        date: today,
+      },
+    });
 
-    expect([200, 201]).toContain(response.status);
+    expect([200, 201]).toContain(response.status());
   });
 
   test('page works correctly when going offline and back online', async ({ page }) => {
@@ -50,15 +58,22 @@ test.describe('Offline Sync Attendance Flow', () => {
 
     // Should be able to make API calls again
     const today = getTodayKey();
-    const response = await apiRequest(page, 'POST', '/api/attendance/record', {
-      userId: USERS.student.uid,
-      studentName: USERS.student.name,
-      email: USERS.student.email,
-      confidenceScore: 85,
-      date: today,
-    }, USERS.student.token);
+    const response = await page.request.fetch('/api/attendance/record', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${USERS.student.token}`,
+      },
+      data: {
+        userId: USERS.student.uid,
+        studentName: USERS.student.name,
+        email: USERS.student.email,
+        confidenceScore: 85,
+        date: today,
+      },
+    });
 
-    expect([200, 201]).toContain(response.status);
+    expect([200, 201]).toContain(response.status());
   });
 
   test('IndexedDB is available for offline storage', async ({ page }) => {
@@ -99,13 +114,12 @@ test.describe('Offline Sync Attendance Flow', () => {
       return false;
     });
 
-    // Service worker should be registered for offline support
     expect(typeof swRegistered).toBe('boolean');
   });
 
   test('offline indicator component exists in the DOM', async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.waitForTimeout(2000);
+    await page.goto('/');
+    await page.waitForTimeout(1000);
 
     const hasOfflineIndicator = await page.evaluate(() => {
       const elements = document.querySelectorAll(
@@ -118,8 +132,8 @@ test.describe('Offline Sync Attendance Flow', () => {
   });
 
   test('sync status badge component exists', async ({ page }) => {
-    await page.goto('/dashboard');
-    await page.waitForTimeout(2000);
+    await page.goto('/');
+    await page.waitForTimeout(1000);
 
     const hasSyncStatus = await page.evaluate(() => {
       const elements = document.querySelectorAll(

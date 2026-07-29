@@ -62,7 +62,7 @@
     "react-chartjs-2": "^5.3.1",
     "react-circular-progressbar": "^2.2.0",
     "react-csv": "^2.2.2",
-    "react-dom": "19.1.0",
+    "react-dom": "^19.1.0",
     "react-grid-layout": "^2.2.3",
     "react-hot-toast": "^2.6.0",
     "react-i18next": "^17.0.8",
