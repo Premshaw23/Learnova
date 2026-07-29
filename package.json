@@ -32,6 +32,7 @@
     "@excalidraw/excalidraw": "^0.18.1",
     "@gsap/react": "^2.1.2",
     "@radix-ui/react-slot": "^1.2.3",
+    "@upstash/redis": "^1.38.0",
     "@vercel/blob": "^1.1.1",
     "@xyflow/react": "^12.11.2",
     "chart.js": "^4.5.1",
