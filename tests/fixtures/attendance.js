@@ -60,7 +60,7 @@ function getPastDate(daysAgo = 1) {
 
 // Mock login by setting cookies and localStorage
 async function loginAs(page, user) {
-  await page.goto('/');
+  
   await page.context().addCookies([
     {
       name: 'authToken',
