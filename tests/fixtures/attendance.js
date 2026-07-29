@@ -121,7 +121,7 @@ async function setupAttendanceMocks(page, { alreadyRecorded = false } = {}) {
 
       // Check for another user (student trying to submit for someone else)
       const authHeader = request.headers()['authorization'] || '';
-      const isTeacherOrAdmin = authHeader.includes('teacher') || authHeader.includes('admin');
+      const isTeacherOrAdmin = authHeader === 'Bearer mock-teacher-token-e2e-001' || authHeader === 'Bearer mock-admin-token-e2e-001';
       if (!isTeacherOrAdmin && body.userId !== 'student-e2e-001') {
         await route.fulfill({
           status: 403,
@@ -176,7 +176,7 @@ async function setupAttendanceMocks(page, { alreadyRecorded = false } = {}) {
 
       // Check role (only teacher/admin)
       const authHeader = request.headers()['authorization'] || '';
-      const isTeacherOrAdmin = authHeader.includes('teacher') || authHeader.includes('admin');
+      const isTeacherOrAdmin = authHeader === 'Bearer mock-teacher-token-e2e-001' || authHeader === 'Bearer mock-admin-token-e2e-001';
       if (!isTeacherOrAdmin) {
         await route.fulfill({
           status: 403,
@@ -250,7 +250,7 @@ async function setupAttendanceMocks(page, { alreadyRecorded = false } = {}) {
   await page.route('**/api/parent/dashboard', async (route) => {
     const request = route.request();
     const authHeader = request.headers()['authorization'] || '';
-    const hasToken = authHeader.includes('mock-parent');
+    const hasToken = authHeader === 'Bearer mock-parent-token-e2e-001';
 
     if (!hasToken) {
       await route.fulfill({
@@ -278,7 +278,7 @@ async function setupAttendanceMocks(page, { alreadyRecorded = false } = {}) {
   await page.route('**/api/parent/student/*/attendance', async (route) => {
     const request = route.request();
     const authHeader = request.headers()['authorization'] || '';
-    const hasToken = authHeader.includes('mock-parent');
+    const hasToken = authHeader === 'Bearer mock-parent-token-e2e-001';
 
     if (!hasToken) {
       await route.fulfill({
