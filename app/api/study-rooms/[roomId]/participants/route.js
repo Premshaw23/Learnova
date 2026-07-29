@@ -1,14 +1,14 @@
 /**
  * Study Room Participants API - Participant management (join, leave, heartbeat).
  *
-export const dynamic = "force-dynamic";
  * Issue: #4222
  */
+export const dynamic = "force-dynamic";
+
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { joinRoom, leaveRoom, getParticipants, updateHeartbeat } from "@/lib/studyRoomManager";
-
 
 export const GET = withErrorHandler(async (request, { params }) => {
   await requireAuth(request);
@@ -20,7 +20,6 @@ export const GET = withErrorHandler(async (request, { params }) => {
 export const POST = withErrorHandler(async (request, { params }) => {
   const token = await requireAuth(request);
   const { roomId } = await params;
-
   try {
     const participant = await joinRoom(
       roomId,
@@ -37,20 +36,17 @@ export const POST = withErrorHandler(async (request, { params }) => {
 export const PATCH = withErrorHandler(async (request, { params }) => {
   const token = await requireAuth(request);
   const { roomId } = await params;
-
   const body = await parseJSON(request, 512);
   if (body.action === "heartbeat") {
     await updateHeartbeat(roomId, token.uid);
     return jsonSuccess({ success: true });
   }
-
   return jsonError("Invalid action", 400);
 });
 
 export const DELETE = withErrorHandler(async (request, { params }) => {
   const token = await requireAuth(request);
   const { roomId } = await params;
-
   await leaveRoom(roomId, token.uid);
   return jsonSuccess({ success: true });
 });
