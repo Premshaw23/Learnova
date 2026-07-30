@@ -1,0 +1,180 @@
+/**
+ * ============================================================================
+ * ♿ ACCESSIBILITY CSS (Issue #4226)
+ * ============================================================================
+ * CSS for high-contrast mode and reduced motion preferences.
+ * Import this file in your global CSS or _app.js/_layout.js.
+ */
+
+/* ---------------------------------------------------------------------------
+   Screen Reader Only (Visually Hidden)
+   --------------------------------------------------------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Skip Links
+   --------------------------------------------------------------------------- */
+.skip-links {
+  position: relative;
+  z-index: 9999;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 9999;
+  padding: 12px 24px;
+  background-color: #1e293b;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: 0 0 8px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Focus Indicators
+   --------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 3px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---------------------------------------------------------------------------
+   High Contrast Mode
+   --------------------------------------------------------------------------- */
+body.high-contrast {
+  --color-bg: #ffffff;
+  --color-text: #000000;
+  --color-primary: #0000cc;
+  --color-link: #0000cc;
+  --color-border: #000000;
+  --color-focus: #ff6600;
+  --color-error: #cc0000;
+  --color-success: #006600;
+}
+
+body.high-contrast * {
+  border-color: #000000 !important;
+}
+
+body.high-contrast a {
+  color: #0000cc;
+  text-decoration: underline;
+}
+
+body.high-contrast a:hover {
+  color: #6600cc;
+}
+
+body.high-contrast :focus-visible {
+  outline: 3px solid #ff6600 !important;
+  outline-offset: 2px !important;
+}
+
+body.high-contrast button,
+body.high-contrast [role="button"] {
+  border: 2px solid #000000 !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+body.high-contrast button:hover,
+body.high-contrast [role="button"]:hover {
+  background-color: #e5e5e5 !important;
+}
+
+body.high-contrast input,
+body.high-contrast textarea,
+body.high-contrast select {
+  border: 2px solid #000000 !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+body.high-contrast [role="alert"],
+body.high-contrast [role="status"] {
+  border: 2px solid #000000 !important;
+  background-color: #ffffcc !important;
+  color: #000000 !important;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced Motion
+   --------------------------------------------------------------------------- */
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Respect system preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   High Contrast + Reduced Motion combined
+   --------------------------------------------------------------------------- */
+body.high-contrast.reduced-motion *,
+body.high-contrast.reduced-motion *::before,
+body.high-contrast.reduced-motion *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ---------------------------------------------------------------------------
+   Print Styles (Accessibility)
+   --------------------------------------------------------------------------- */
+@media print {
+  .skip-links,
+  .sr-only,
+  nav[aria-label="Skip navigation"] {
+    display: none !important;
+  }
+
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  a[href^="#"]::after,
+  a[href^="javascript:"]::after {
+    content: "";
+  }
+}
