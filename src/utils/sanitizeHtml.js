@@ -4,18 +4,11 @@
  * event handlers, and unsafe URI protocols.
  */
 
-const ALLOWED_TAGS = new Set([
-  'p', 'b', 'i', 'em', 'strong', 'u', 's', 'sub', 'sup',
-  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-  'ul', 'ol', 'li', 'br', 'hr',
-  'blockquote', 'code', 'pre', 'span', 'div', 'a'
-]);
-
-const FORBIDDEN_TAGS = new Set([
+const FORBIDDEN_TAGS = [
   'script', 'iframe', 'object', 'embed', 'style', 'link',
   'form', 'input', 'button', 'select', 'option', 'textarea',
-  'base', 'meta', 'applet'
-]);
+  'base', 'meta', 'applet', 'svg', 'math'
+];
 
 /**
  * Sanitize raw HTML string to prevent XSS.
@@ -35,11 +28,11 @@ export function sanitizeHtml(html) {
     sanitized = sanitized.replace(tagRegex, '');
   });
 
-  // 2. Remove all inline event handlers (e.g., onerror=..., onload=..., onclick=...)
-  sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '');
+  // 2. Remove all inline event handlers (e.g., onerror=..., onload=..., onclick=..., onanimationstart=...)
+  sanitized = sanitized.replace(/\s+on[a-z0-9_\-]+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '');
 
-  // 3. Remove dangerous URIs (javascript:, vbscript:, data:) in href or src attributes
-  sanitized = sanitized.replace(/(href|src)\s*=\s*(?:'|")?\s*(?:javascript|vbscript|data):[^'"\s>]*(?:'|")?/gi, '');
+  // 3. Remove dangerous URIs (javascript:, vbscript:, data:) in href, src, action, formaction, or xlink:href
+  sanitized = sanitized.replace(/(href|src|action|formaction|xlink:href|srcdoc)\s*=\s*(?:'|")?\s*(?:javascript|vbscript|data):[^'"\s>]*(?:'|")?/gi, '');
 
   // 4. Enforce rel="noopener noreferrer" on external anchor tags
   sanitized = sanitized.replace(/<a\s+([^>]*href=["'][^"']+["'][^>]*)>/gi, (match, p1) => {

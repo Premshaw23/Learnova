@@ -12,12 +12,13 @@ describe('Stored XSS HTML Sanitizer Security Tests (#4214)', () => {
     expect(output).toContain('<b>Learn More</b>');
   });
 
-  it('strips <iframe>, <object>, and <embed> malicious tags', () => {
-    const maliciousInput = '<div>Header</div><iframe src="http://evil.com"></iframe><embed src="malware.swf">';
+  it('strips <iframe>, <object>, <embed>, and <svg> malicious tags', () => {
+    const maliciousInput = '<div>Header</div><iframe src="http://evil.com"></iframe><svg onload="alert(1)"></svg><embed src="malware.swf">';
     const output = sanitizeHtml(maliciousInput);
 
     expect(output).not.toContain('iframe');
     expect(output).not.toContain('embed');
+    expect(output).not.toContain('svg');
     expect(output).toContain('<div>Header</div>');
   });
 
