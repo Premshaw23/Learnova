@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { calculateHmacSignature } from '../../../pages/api/quiz/submit.js';
+import { calculateHmacSignature, serializeDeterministic } from '../../../pages/api/quiz/submit.js';
 
 /**
  * QuizPlayer Component
@@ -32,7 +32,7 @@ export function QuizPlayer({
 
     try {
       const timestamp = Date.now();
-      const dataToSign = `${quizId}:${JSON.stringify(selectedAnswers)}:${timestamp}`;
+      const dataToSign = `${quizId}:${serializeDeterministic(selectedAnswers)}:${timestamp}`;
       const signature = calculateHmacSignature(dataToSign, hmacSecret);
 
       const response = await fetch('/api/quiz/submit', {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verifyQuizSubmission, calculateHmacSignature } from '../../../pages/api/quiz/submit.js';
+import { verifyQuizSubmission, calculateHmacSignature, serializeDeterministic } from '../../../pages/api/quiz/submit.js';
 
 describe('Server-side Quiz Submission & Anti-Tampering Security Tests (#4213)', () => {
   const secret = 'test-secret-key-123';
@@ -17,7 +17,7 @@ describe('Server-side Quiz Submission & Anti-Tampering Security Tests (#4213)', 
       q3: 'Wrong Answer',
     };
     const timestamp = Date.now();
-    const dataToSign = `${quizId}:${JSON.stringify(answers)}:${timestamp}`;
+    const dataToSign = `${quizId}:${serializeDeterministic(answers)}:${timestamp}`;
     const signature = calculateHmacSignature(dataToSign, secret);
 
     const result = verifyQuizSubmission({
@@ -35,6 +35,17 @@ describe('Server-side Quiz Submission & Anti-Tampering Security Tests (#4213)', 
     expect(result.passed).toBe(false); // < 70%
   });
 
+  it('verifies HMAC signature deterministically regardless of key order', () => {
+    const answers1 = { q1: 'A', q2: 'B' };
+    const answers2 = { q2: 'B', q1: 'A' };
+    const timestamp = Date.now();
+
+    const dataToSign1 = `${quizId}:${serializeDeterministic(answers1)}:${timestamp}`;
+    const dataToSign2 = `${quizId}:${serializeDeterministic(answers2)}:${timestamp}`;
+
+    expect(calculateHmacSignature(dataToSign1, secret)).toBe(calculateHmacSignature(dataToSign2, secret));
+  });
+
   it('passes quiz when score is >= 70%', () => {
     const answers = {
       q1: 'Option A',
@@ -42,7 +53,7 @@ describe('Server-side Quiz Submission & Anti-Tampering Security Tests (#4213)', 
       q3: 'Option B',
     };
     const timestamp = Date.now();
-    const dataToSign = `${quizId}:${JSON.stringify(answers)}:${timestamp}`;
+    const dataToSign = `${quizId}:${serializeDeterministic(answers)}:${timestamp}`;
     const signature = calculateHmacSignature(dataToSign, secret);
 
     const result = verifyQuizSubmission({
@@ -83,7 +94,7 @@ describe('Server-side Quiz Submission & Anti-Tampering Security Tests (#4213)', 
   it('rejects replay attacks with expired timestamps (> 5 mins old)', () => {
     const answers = { q1: 'Option A' };
     const expiredTimestamp = Date.now() - 10 * 60 * 1000; // 10 minutes ago
-    const dataToSign = `${quizId}:${JSON.stringify(answers)}:${expiredTimestamp}`;
+    const dataToSign = `${quizId}:${serializeDeterministic(answers)}:${expiredTimestamp}`;
     const signature = calculateHmacSignature(dataToSign, secret);
 
     expect(() =>

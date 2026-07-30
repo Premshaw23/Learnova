@@ -9,6 +9,19 @@ export function calculateHmacSignature(payload, secret) {
   return crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }
 
+/**
+ * Helper to serialize objects with sorted keys for deterministic HMAC generation
+ */
+export function serializeDeterministic(obj) {
+  if (!obj || typeof obj !== 'object') return String(obj);
+  const sortedKeys = Object.keys(obj).sort();
+  const sortedObj = {};
+  for (const key of sortedKeys) {
+    sortedObj[key] = obj[key];
+  }
+  return JSON.stringify(sortedObj);
+}
+
 export function verifyQuizSubmission({
   quizId,
   answers,
@@ -33,8 +46,8 @@ export function verifyQuizSubmission({
     throw new Error('Quiz submission timestamp expired or invalid');
   }
 
-  // Verify HMAC signature
-  const dataToSign = `${quizId}:${JSON.stringify(answers)}:${timestamp}`;
+  // Verify HMAC signature deterministically
+  const dataToSign = `${quizId}:${serializeDeterministic(answers)}:${timestamp}`;
   const expectedSignature = calculateHmacSignature(dataToSign, secret);
 
   if (signature !== expectedSignature) {
