@@ -56,7 +56,7 @@ export async function GET(request) {
 
       return {
         id: s.uid,
-        name: s.displayName || s.email.split("@")[0],
+        name: s.displayName || (s.email ? s.email.split("@")[0] : "Student"),
         email: s.email,
         attendanceRate,
         academicScore,

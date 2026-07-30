@@ -46,6 +46,7 @@ export function useTimetableReminders() {
     )
       return;
 
+    if (!cls?.time || typeof cls.time !== "string") return;
     const [startStr] = cls.time.split("-");
     if (!startStr) return;
     const [hours, minutes] = startStr.split(":").map(Number);
@@ -95,6 +96,7 @@ export function useTimetableReminders() {
     const todayClasses = timetableData[todayName] || [];
 
     todayClasses.forEach((cls) => {
+      if (!cls?.time || typeof cls.time !== "string") return;
       const [startStr] = cls.time.split("-");
       if (!startStr) return;
       const [hours, minutes] = startStr.split(":").map(Number);

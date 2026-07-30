@@ -78,7 +78,7 @@ export const GET = withErrorHandler(async (request) => {
     const student = await db.collection("users").findOne({ firebaseUid: userId });
     return jsonSuccess({
       userId,
-      fullName: userProfile?.fullName || student?.name || decodedToken.name || "Unknown Student",
+      fullName: student?.fullName || student?.name || "Unknown Student",
       faceDescriptor: student?.faceDescriptor || null,
       imageUrl: student?.imageUrl || null,
     }, 200);

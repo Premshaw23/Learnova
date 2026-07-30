@@ -33,7 +33,7 @@ export default function BreathingExercise() {
         return current - 1;
       });
     }, 1000);
-    return () => window.if (timer) clearInterval(timer);
+    return () => { if (timer) clearInterval(timer); };
   }, [isActive, activePhase]);
 
   useEffect(() => {

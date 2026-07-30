@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Timer, Play, Pause, RotateCcw, Headphones, Users, Flame } from "lucide-react";
 import toast from "react-hot-toast";
 import { Navbar } from "@/components/Navbar";
+import Link from "next/link";
 
 export default function PomodoroRoomsPage() {
   const { user, loading } = useAuth();
@@ -138,6 +139,13 @@ export default function PomodoroRoomsPage() {
             >
               <RotateCcw className="w-6 h-6" />
             </button>
+          </div>
+
+          {/* Whiteboard Link */}
+          <div className="mt-8 border-t border-zinc-800 pt-6 z-10 w-full">
+            <Link href="/student/pomodoro/whiteboard" className="w-full py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 font-medium rounded-xl flex items-center justify-center gap-2 transition-all">
+              Open Group Whiteboard
+            </Link>
           </div>
         </div>
 
