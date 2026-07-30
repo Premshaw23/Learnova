@@ -347,3 +347,34 @@
   --secondary: oklch(0.646 0.222 280.116);
   --sidebar-primary: oklch(0.646 0.222 280.116);
 }
+
+/* =====================================================
+   Dyslexia-Friendly Reading Mode (#4175)
+   Applied to <body> via JS toggle, persisted in localStorage.
+   ===================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
+
+.dyslexia-mode,
+.dyslexia-mode * {
+  font-family: 'Lexend', Arial, sans-serif !important;
+  letter-spacing: 0.05em !important;
+  word-spacing: 0.15em !important;
+  line-height: 1.9 !important;
+}
+
+.dyslexia-mode p,
+.dyslexia-mode li,
+.dyslexia-mode td,
+.dyslexia-mode span,
+.dyslexia-mode label,
+.dyslexia-mode textarea,
+.dyslexia-mode input {
+  font-size: 1.05rem !important;
+  max-width: 80ch !important;
+}
+
+.dyslexia-mode h1,
+.dyslexia-mode h2,
+.dyslexia-mode h3 {
+  letter-spacing: 0.03em !important;
+}
