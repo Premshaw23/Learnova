@@ -38,6 +38,12 @@ const exceptionUpdateSchema = z.object({
 export const PUT = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
   const profile = await getUserProfile(decodedToken.uid);
+  if (!profile) {
+    throw new ForbiddenError("Forbidden: User profile not found.");
+  }
+  if (profile.role === "student") {
+    throw new ForbiddenError("Forbidden: Students cannot update exceptions.");
+  }
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `exceptions_update_${ip}_${decodedToken.uid}`
