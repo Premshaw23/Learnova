@@ -20,7 +20,7 @@ export const GET = withErrorHandler(async (request) => {
 
   const { searchParams } = new URL(request.url);
   const cursor = searchParams.get("cursor");
-  const limit = parseInt(searchParams.get("limit") || "20", 10);
+  const limit = parseInt(searchParams.get("limit", 10) || "20", 10);
 
   const db = admin.firestore();
   const uid = decodedToken.uid;
