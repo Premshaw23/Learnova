@@ -1,5 +1,5 @@
 ﻿export function calculateStreak(activeDates) {
-  const sorted = [...new Set(activeDates)].sort().reverse();
+  const sorted = [...new Set(activeDates)].sort((a, b) => a - b).reverse();
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 

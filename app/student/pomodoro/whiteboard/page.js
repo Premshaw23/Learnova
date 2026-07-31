@@ -100,7 +100,7 @@ export default function WhiteboardPage() {
             type="range" 
             min="1" max="20" 
             value={strokeWidth} 
-            onChange={(e) => setStrokeWidth(parseInt(e.target.value))}
+            onChange={(e) => setStrokeWidth(parseInt(e.target.value,10))}
             className="w-24 mx-2 accent-indigo-500"
             title="Stroke Width"
           />
