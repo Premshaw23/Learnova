@@ -8,19 +8,19 @@ import toast from "react-hot-toast";
 import { Navbar } from "@/components/Navbar";
 
 export default function CareerPathsPage() {
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const router = useRouter();
   
   const [careers, setCareers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && (!user || user.role !== 'student')) {
+    if (!loading && (!user || userProfile?.role !== 'student')) {
       router.push("/auth");
     } else if (user) {
       fetchCareers();
     }
-  }, [user, loading, router]);
+  }, [user, userProfile, loading, router]);
 
   const fetchCareers = async () => {
     try {
