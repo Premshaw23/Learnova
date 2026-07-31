@@ -1,6 +1,7 @@
 import { connectDb } from "@/lib/mongodb";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
+import { ObjectId } from "mongodb";
 
 export const POST = withErrorHandler(async (req) => {
   const payload = await requireAuth(req);
@@ -47,7 +48,7 @@ export const POST = withErrorHandler(async (req) => {
     });
   }
 
-  const quiz = await db.collection("quizzes").findOne({ _id: session.quizId });
+  const quiz = await db.collection("quizzes").findOne({ _id: new ObjectId(session.quizId) });
   const questionExists = quiz.questions.some((q) => q._id === questionId);
 
   if (!questionExists) {
