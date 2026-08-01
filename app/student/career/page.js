@@ -25,7 +25,8 @@ export default function CareerPathsPage() {
   const fetchCareers = async () => {
     try {
       const res = await fetch("/api/career-recommend");
-      const data = await res.json();
+      if (!res.ok) throw new Error("Request failed");
+const data = await res.json();
       if (data.success) {
         setCareers(data.careers);
       } else {
