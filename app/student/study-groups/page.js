@@ -25,7 +25,8 @@ export default function StudyGroupsPage() {
   const fetchMatches = async () => {
     try {
       const res = await fetch("/api/study-match");
-      const data = await res.json();
+      if (!res.ok) throw new Error("Request failed");
+const data = await res.json();
       if (data.success) {
         setMatches(data.matches);
       } else {
