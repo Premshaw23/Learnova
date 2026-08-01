@@ -51,12 +51,12 @@ export async function GET(request) {
 
         request.signal.addEventListener("abort", () => cleanup());
 
-        let lastEventTime = new Date();
-
+        let lastSequence = 0;
+ 
         const pollForEvents = async () => {
           if (!isConnected) return;
           try {
-            const notifications = await pollEvents("notifications", lastEventTime);
+            const notifications = await pollEvents("notifications", lastSequence);
             for (const doc of notifications) {
               if (!isConnected) break;
               if (doc.payload?.recipientId && String(doc.payload.recipientId) === String(userId)) {
@@ -64,19 +64,17 @@ export async function GET(request) {
               } else if (!doc.payload?.recipientId) {
                 sendEvent("notification", doc.payload);
               }
-              const ts = doc._timestamp || new Date(doc.payload?.createdAt).getTime();
-              if (ts > lastEventTime.getTime()) {
-                lastEventTime = new Date(ts);
+              if (doc._sequence > lastSequence) {
+                lastSequence = doc._sequence;
               }
             }
 
-            const attendance = await pollEvents("attendance", lastEventTime);
+            const attendance = await pollEvents("attendance", lastSequence);
             for (const doc of attendance) {
               if (!isConnected) break;
               sendEvent("attendance", doc.payload);
-              const ts = doc._timestamp || new Date(doc.payload?.timestamp).getTime();
-              if (ts > lastEventTime.getTime()) {
-                lastEventTime = new Date(ts);
+              if (doc._sequence > lastSequence) {
+                lastSequence = doc._sequence;
               }
             }
           } catch {}
