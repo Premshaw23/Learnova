@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import {
   extractImageFileFromFormData,
   updateUserImageInDb,
+  allowedImageHosts,
 } from "@/lib/images/imagesService";
 import {
   processAndUploadFile,
@@ -46,11 +47,35 @@ export const POST = withErrorHandler(async (request) => {
   );
 
   try {
-    await updateUserImageInDb({
+    const { previousImageUrl } = await updateUserImageInDb({
       firebaseUid: decodedToken.uid,
       imageUrl: url,
       faceDescriptor: null,
     });
+
+    if (
+      previousImageUrl &&
+      previousImageUrl !== url
+    ) {
+      try {
+        const hostname = new URL(previousImageUrl).hostname;
+
+        const isBlobHost = allowedImageHosts.some(
+          (host) =>
+            hostname === host ||
+            hostname.endsWith(`.${host}`)
+        );
+
+        if (
+          isBlobHost &&
+          hostname.includes("blob.vercel-storage.com")
+        ) {
+          await activeStorage.delete(previousImageUrl);
+        }
+      } catch {
+        // Ignore malformed URLs or cleanup failures
+      }
+    }
   } catch (error) {
     await activeStorage.delete(url).catch(() => {});
     throw error;
