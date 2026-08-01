@@ -297,7 +297,7 @@ export const loginWithGoogle = async (
       } else {
         const nameToUse =
           user.displayName?.trim() ||
-          additionalData.fullName?.trim() ||
+          additionalData?.fullName?.trim() ||
           user.email?.split("@")[0] ||
           "Learnova Member";
 

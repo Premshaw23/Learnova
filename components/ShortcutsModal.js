@@ -167,7 +167,7 @@ export default function ShortcutsModal() {
                 {shortcut.description}
               </span>
               <div className="flex items-center gap-1">
-                {(isMac ? shortcut.mac : shortcut.keys).map((key, i) => (
+                {(isMac && shortcut.mac ? shortcut.mac : shortcut.keys).map((key, i) => (
                   <kbd
                     key={i}
                     className="px-2 py-1 bg-white/10 text-white text-xs rounded-md font-mono border border-white/20 shadow-sm"
