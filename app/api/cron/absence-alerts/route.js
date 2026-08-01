@@ -66,11 +66,21 @@ export async function POST(request) {
 
       // If threshold is met (e.g., >= 3 consecutive absences)
       if (consecutiveAbsences >= 3) {
+        const userProfile = await db.collection("users").findOne({
+          $or: [
+            { firebaseUid: student._id },
+            { userId: student._id },
+            { _id: student._id },
+          ],
+        });
+
         const sent = await sendAbsenceAlert(
           {
             userId: student._id,
-            studentName: student.studentName,
+            studentName: student.studentName || userProfile?.displayName || userProfile?.name || "Student",
             email: student.email,
+            guardianEmail: userProfile?.guardianEmail || userProfile?.parentEmail || null,
+            guardianPhone: userProfile?.guardianPhone || userProfile?.parentPhone || null,
           },
           consecutiveAbsences
         );
