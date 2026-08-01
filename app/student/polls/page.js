@@ -32,7 +32,8 @@ export default function StudentPollsPage() {
   const fetchPolls = async () => {
     try {
       const res = await fetch("/api/polls");
-      const data = await res.json();
+      if (!res.ok) throw new Error("Request failed");
+const data = await res.json();
       if (data.success) {
         setPolls(data.polls);
       }
@@ -51,7 +52,8 @@ export default function StudentPollsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pollId, answerIndex })
       });
-      const data = await res.json();
+      if (!res.ok) throw new Error("Request failed");
+const data = await res.json();
 
       if (data.success) {
         toast.dismiss(loadingToast);

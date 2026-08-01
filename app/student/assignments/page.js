@@ -27,7 +27,8 @@ export default function StudentAssignmentsPage() {
   const fetchAssignments = async () => {
     try {
       const res = await fetch("/api/assignments");
-      const data = await res.json();
+      if (!res.ok) throw new Error("Request failed");
+const data = await res.json();
       if (data.success) {
         setAssignments(data.assignments);
       }
@@ -54,7 +55,8 @@ export default function StudentAssignmentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content }),
       });
-      const data = await res.json();
+      if (!res.ok) throw new Error("Request failed");
+const data = await res.json();
 
       if (data.success) {
         toast.success("Assignment submitted successfully!", { id: loadingToast });
