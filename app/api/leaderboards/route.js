@@ -35,35 +35,44 @@ export const GET = withErrorHandler(async (request) => {
 
   const firestoreDb = getAdminDb();
 
-  const formattedLeaderboard = await Promise.all(
-    topStudentsCursor.map(async (student, index) => {
-      const userId = student.firebaseUid;
-      let userData = {};
-      
-      try {
-        if (userId) {
-          const userSnap = await firestoreDb.collection("users").doc(userId).get();
-          if (userSnap.exists) {
-            userData = userSnap.data();
-          }
-        }
-      } catch (err) {
-        console.warn(`Could not fetch Firestore details for user ${userId}`);
-      }
+  const validUserIds = topStudentsCursor
+    .map((student) => student.firebaseUid)
+    .filter(Boolean);
 
-      return {
-        id: userId || student._id.toString(),
-        name: userData.displayName || userData.fullName || "Unknown Learner",
-        score: student.totalXp || 0,
-        avatar: userData.photoURL || "👩‍🎓",
-        rank: index + 1,
-        change: "same",
-        streak: student.currentStreak || 0,
-        badges: student.unlockedBadges ? student.unlockedBadges.length : 0,
-        isCurrentUser: decodedToken.uid === userId,
-      };
-    })
-  );
+  const userDataMap = new Map();
+
+  if (validUserIds.length > 0) {
+    try {
+      const docRefs = validUserIds.map((id) =>
+        firestoreDb.collection("users").doc(id)
+      );
+      const userSnaps = await firestoreDb.getAll(...docRefs);
+      userSnaps.forEach((snap) => {
+        if (snap.exists) {
+          userDataMap.set(snap.id, snap.data());
+        }
+      });
+    } catch (err) {
+      console.warn("Could not batch fetch Firestore user details:", err.message);
+    }
+  }
+
+  const formattedLeaderboard = topStudentsCursor.map((student, index) => {
+    const userId = student.firebaseUid;
+    const userData = userDataMap.get(userId) || {};
+
+    return {
+      id: userId || student._id.toString(),
+      name: userData.displayName || userData.fullName || "Unknown Learner",
+      score: student.totalXp || 0,
+      avatar: userData.photoURL || "👩‍🎓",
+      rank: index + 1,
+      change: "same",
+      streak: student.currentStreak || 0,
+      badges: student.unlockedBadges ? student.unlockedBadges.length : 0,
+      isCurrentUser: decodedToken.uid === userId,
+    };
+  });
 
   return success({ leaderboard: formattedLeaderboard });
 });
