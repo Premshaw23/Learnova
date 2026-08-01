@@ -48,7 +48,9 @@ export const POST = withErrorHandler(async (request, { params }) => {
   // Send email confirmation (Best effort)
   try {
     const { sendEmail } = await import('@/lib/email/provider');
-    const teacherEmail = meeting.teacherId; // Placeholder - ideally lookup teacher email
+    const { getUserProfile } = await import('@/lib/firebase-admin');
+    const teacherProfile = await getUserProfile(meeting.teacherId);
+    const teacherEmail = teacherProfile?.email || null;
     const parentEmail = token.email || token.uid; 
     const dateStr = new Date(meeting.startTime).toLocaleString();
     

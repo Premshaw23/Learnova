@@ -51,17 +51,6 @@ export const POST = withErrorHandler(async (request) => {
   if (process.env.MONGODB_URI) {
     const db = await connectDb();
 
-    if (profile?.role !== "admin") {
-      const existing = await db
-        .collection("course_curriculums")
-        .findOne({ courseId }, { projection: { ownerId: 1 } });
-      if (existing && existing.ownerId !== decodedToken.uid) {
-        throw new ForbiddenError(
-          "Forbidden: You do not own this course curriculum"
-        );
-      }
-    }
-
     const structuredModules = modules.map((mod, modIdx) => ({
       id: mod.id,
       title: mod.title.trim(),
@@ -76,8 +65,19 @@ export const POST = withErrorHandler(async (request) => {
       })),
     }));
 
-    await db.collection("course_curriculums").updateOne(
-      { courseId },
+    const filter =
+      profile?.role === "admin"
+        ? { courseId }
+        : {
+            courseId,
+            $or: [
+              { ownerId: decodedToken.uid },
+              { ownerId: { $exists: false } },
+            ],
+          };
+
+    const result = await db.collection("course_curriculums").updateOne(
+      filter,
       {
         $set: {
           modules: structuredModules,
@@ -90,6 +90,16 @@ export const POST = withErrorHandler(async (request) => {
       },
       { upsert: true }
     );
+
+    if (
+      profile?.role !== "admin" &&
+      result.matchedCount === 0 &&
+      result.upsertedCount === 0
+    ) {
+      throw new ForbiddenError(
+        "Forbidden: You do not own this course curriculum"
+      );
+    }
     isDbPersisted = true;
   }
 
