@@ -92,10 +92,21 @@ export default function VideoPlayer({
     toast.success("Note removed");
   }, []);
 
+  const lastStateUpdateTimeRef = useRef(0);
+  const [currentTimeState, setCurrentTimeState] = useState(0);
+
   // Throttled progress save effect
   const handleTimeUpdate = useCallback(async () => {
     if (!videoRef.current) return;
+    const now = Date.now();
     const currentTime = Math.floor(videoRef.current.currentTime);
+
+    // Throttle state updates to at most once per second (1000ms) to prevent infinite re-render loops
+    if (now - lastStateUpdateTimeRef.current >= 1000) {
+      lastStateUpdateTimeRef.current = now;
+      setCurrentTimeState(currentTime);
+    }
+
     const diff = Math.abs(currentTime - lastSavedTimeRef.current);
 
     if (diff >= 10) {
