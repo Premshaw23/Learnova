@@ -51,7 +51,8 @@ export default function MindMapPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: inputText })
       });
-      const data = await res.json();
+      if (!res.ok) throw new Error("Request failed");
+const data = await res.json();
       if (data.success && data.mindmapData) {
         setNodes(data.mindmapData.nodes || []);
         setEdges(data.mindmapData.edges || []);
