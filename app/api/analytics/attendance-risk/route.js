@@ -30,6 +30,10 @@ export const GET = withErrorHandler(async (request) => {
     return jsonError("User not found", 404);
   }
 
+  if (profile.role !== "teacher" && profile.role !== "admin") {
+    return jsonError("Forbidden: Only teachers can view risk analytics", 403);
+  }
+
   const instituteId = profile.instituteId || profile.uid;
 
   // Two-week window dates

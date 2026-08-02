@@ -37,9 +37,8 @@ export function useRoleSync() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (!response.ok) return;
-
-        const data = await response.json();
+        const data = response;
+        if (!data) return;
 
         // If Firestore role differs from JWT role, force a token refresh
         if (data.role !== data.jwtRole) {
