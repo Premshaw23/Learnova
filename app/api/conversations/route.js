@@ -41,9 +41,9 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   const { searchParams } = new URL(request.url);
-  const page = Math.max(1, parseInt(searchParams.get("page")) || 1);
+  const page = Math.max(1, parseInt(searchParams.get("page", 10)) || 1);
   const limit = Math.min(
-    Math.max(1, parseInt(searchParams.get("limit")) || 20),
+    Math.max(1, parseInt(searchParams.get("limit", 10)) || 20),
     MAX_PAGE_LIMIT
   );
   const skip = (page - 1) * limit;
