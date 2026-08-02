@@ -48,7 +48,8 @@ export default function PomodoroRoomsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ minutesFocused: 25 })
         });
-        const data = await res.json();
+        if (!res.ok) throw new Error("Request failed");
+const data = await res.json();
         if (data.success) {
           toast.success(`You earned ${data.xpEarned} XP!`, { icon: '🔥' });
         }
