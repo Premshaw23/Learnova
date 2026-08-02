@@ -1,20 +1,19 @@
 import { NextResponse } from "next/server";
-import { getFirestore } from "firebase-admin/firestore";
-import { initAdmin } from "@/lib/firebaseAdmin";
+import admin from "firebase-admin";
+import { initializeFirebase } from "@/lib/firebase-admin";
+import { authorizeCronRequest } from "@/lib/cronAuth";
 
-export async function GET(req) {
+export const dynamic = "force-dynamic";
+
+export async function GET(request) {
   try {
-    // Basic protection to prevent random unauthenticated triggers if not hitting via Vercel Cron.
-    // Ideally we would verify Vercel's CRON_SECRET:
-    // const authHeader = req.headers.get('authorization');
-    // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    //   return new Response('Unauthorized', { status: 401 });
-    // }
-    // Since we don't have CRON_SECRET configured for sure in this environment, 
-    // we'll leave it open for demonstration/manual triggering or rely on Vercel's network layer.
+    const cronAuth = authorizeCronRequest(request);
+    if (!cronAuth.authorized) {
+      return cronAuth.response;
+    }
 
-    initAdmin();
-    const db = getFirestore();
+    initializeFirebase();
+    const db = admin.firestore();
 
     // Fetch config
     const settingsDoc = await db.collection("settings").doc("data-retention").get();

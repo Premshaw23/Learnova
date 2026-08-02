@@ -1,6 +1,7 @@
 import { connectDb } from "@/lib/mongodb";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
+import { ObjectId } from "mongodb";
 
 export const GET = withErrorHandler(async (req, { params }) => {
   const payload = await requireAuth(req);
@@ -33,7 +34,7 @@ export const GET = withErrorHandler(async (req, { params }) => {
     });
   }
 
-  const quiz = await db.collection("quizzes").findOne({ _id: session.quizId });
+  const quiz = await db.collection("quizzes").findOne({ _id: new ObjectId(session.quizId) });
 
   return new Response(
     JSON.stringify({

@@ -11,12 +11,14 @@ export default function ProtectedRoute({
   allowedRoles = null,
   requireEmailVerification = true,
 }) {
-  const { user, userProfile, loading, isAuthenticated, hasProfile, sessionExpired } =
+  const { user, userProfile, loading, isAuthenticated, hasProfile, sessionExpired, getUserRoleFromToken } =
   useAuthContext();
   const router = useRouter();
   const pathname = usePathname();
   const [redirecting, setRedirecting] = useState(false);
   const [authTimedOut, setAuthTimedOut] = useState(false);
+  const [tokenRole, setTokenRole] = useState(null);
+  const [tokenRoleLoaded, setTokenRoleLoaded] = useState(false);
 
   useEffect(() => {
     if (!loading) return;
@@ -27,6 +29,28 @@ export default function ProtectedRoute({
 
     return () => clearTimeout(timer);
   }, [loading]);
+
+  // Verify user role from Firebase custom claims (not client-side state)
+  useEffect(() => {
+    if (!isAuthenticated || !allowedRoles) {
+      setTokenRoleLoaded(true);
+      return;
+    }
+
+    const loadTokenRole = async () => {
+      try {
+        const role = await getUserRoleFromToken();
+        setTokenRole(role);
+      } catch (err) {
+        console.error("[ProtectedRoute] Error loading token role:", err);
+        setTokenRole(null);
+      } finally {
+        setTokenRoleLoaded(true);
+      }
+    };
+
+    loadTokenRole();
+  }, [isAuthenticated, allowedRoles, getUserRoleFromToken]);
 
   // Handle session expiry from token refresh failures
 useEffect(() => {
@@ -42,7 +66,7 @@ useEffect(() => {
       return;
     }
 
-    if (loading) return;
+    if (loading || (allowedRoles && !tokenRoleLoaded)) return;
 
     if (!isAuthenticated) {
       safeRedirect("/auth");
@@ -59,16 +83,14 @@ useEffect(() => {
       return;
     }
 
-    if (
-      allowedRoles &&
-      userProfile &&
-      !allowedRoles.includes(userProfile.role)
-    ) {
+    // Verify role using Firebase custom claims (tokenRole) for authorization
+    // This prevents client-side role manipulation attacks
+    if (allowedRoles && tokenRole !== null && !allowedRoles.includes(tokenRole)) {
       toast.error(
         "Access Denied: You do not have permission to view this page."
       );
       let target = "/auth";
-      switch (userProfile.role) {
+      switch (tokenRole) {
         case "student":
           target = "/student/dashboard";
           break;
@@ -97,6 +119,9 @@ useEffect(() => {
     requireEmailVerification,
     allowedRoles,
     authTimedOut,
+    tokenRole,
+    tokenRoleLoaded,
+    pathname,
   ]);
 
   const safeRedirect = (target) => {
@@ -106,7 +131,7 @@ useEffect(() => {
     }
   };
 
-  if (loading || redirecting) {
+  if (loading || redirecting || (allowedRoles && !tokenRoleLoaded)) {
     return (
       <div className="min-h-screen bg-[#050816] text-white p-6 animate-pulse">
         {/* Navbar */}
@@ -224,7 +249,7 @@ useEffect(() => {
   // If redirect conditions triggered, don’t render children
   if (!isAuthenticated || !hasProfile) return null;
   if (requireEmailVerification && user && !user.emailVerified) return null;
-  if (allowedRoles && userProfile && !allowedRoles.includes(userProfile.role))
+  if (allowedRoles && tokenRole !== null && !allowedRoles.includes(tokenRole))
     return null;
 
   // ✅ Allowed → show children

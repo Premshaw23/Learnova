@@ -32,6 +32,7 @@ export const TextInputField = ({
         id={`${name}-input`}
         aria-invalid={error ? "true" : "false"}
         aria-describedby={error ? `${name}-error` : undefined}
+        aria-errormessage={error ? `${name}-error` : undefined}
         className={`${fieldBaseClasses} ${Icon ? "pl-10 pr-4" : "px-4"} ${error ? "border-red-500/50" : "border-border"}`}
       />
     </div>
@@ -67,6 +68,7 @@ export const PasswordInputField = ({
         id={`${name}-input`}
         aria-invalid={error ? "true" : "false"}
         aria-describedby={error ? `${name}-error` : undefined}
+        aria-errormessage={error ? `${name}-error` : undefined}
         className={`${fieldBaseClasses} ${Icon ? "pl-10 pr-12" : "pl-4 pr-12"} ${error ? "border-red-500/50" : "border-border"}`}
       />
       <button

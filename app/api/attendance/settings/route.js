@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import admin from "firebase-admin";
 import { z } from "zod";
 import { hashPasscode } from "@/utils/passcodeUtils";
+import { geolocationSchema } from "@/lib/validations/attendance";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ const postSchema = z.object({
     .int("expiresInMinutes must be an integer")
     .min(1, "Expiry must be at least 1 minute")
     .max(1440, "Expiry cannot exceed 24 hours"),
+  gpsLocation: geolocationSchema.optional(),
 });
 
 export const GET = withErrorHandler(async (request) => {
@@ -55,12 +57,28 @@ export const GET = withErrorHandler(async (request) => {
   const settings = settingsDoc.data();
   delete settings.passcode;
 
+  if (settings.gpsLocation) {
+    settings.gpsLocation = {
+      lat: Number(settings.gpsLocation.lat),
+      lng: Number(settings.gpsLocation.lng),
+      radius:
+        Number(
+          settings.gpsLocation.radius ??
+            settings.gpsLocation.radius_meters ??
+            settings.gpsLocation.radiusMeters
+        ) || 0,
+    };
+  }
+
   return NextResponse.json(settings);
 });
 
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
   const profile = await getUserProfile(decodedToken.uid);
+  if (!profile || (profile.role !== "teacher" && profile.role !== "admin")) {
+    throw new AppError("Forbidden: Only teachers can manage attendance settings", 403);
+  }
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `attendance_settings_${ip}_${profile.uid}`
@@ -79,7 +97,7 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError(firstError);
   }
 
-  const { passcode, expiresInMinutes } = validation.data;
+  const { passcode, expiresInMinutes, gpsLocation } = validation.data;
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + expiresInMinutes * 60 * 1000);
@@ -98,6 +116,15 @@ export const POST = withErrorHandler(async (request) => {
         createdAt: now.toISOString(),
         expiresAt: expiresAt.toISOString(),
         createdBy: profile.name || profile.email || "teacher",
+        ...(gpsLocation
+          ? {
+              gpsLocation: {
+                lat: gpsLocation.lat,
+                lng: gpsLocation.lng,
+                radius: gpsLocation.radius,
+              },
+            }
+          : {}),
       },
       { merge: true }
     );
@@ -111,6 +138,9 @@ export const POST = withErrorHandler(async (request) => {
 export const DELETE = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
   const profile = await getUserProfile(decodedToken.uid);
+  if (!profile || (profile.role !== "teacher" && profile.role !== "admin")) {
+    throw new AppError("Forbidden: Only teachers can manage attendance settings", 403);
+  }
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(
     `attendance_settings_delete_${ip}_${profile.uid}`

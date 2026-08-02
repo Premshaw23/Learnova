@@ -23,7 +23,7 @@ export default function AIAttendanceDashboard({ riskData = [], tenantId }) {
     setIsExporting(true);
     try {
       const filteredData = riskData.filter(
-        (item) => item.tenantId === tenantId
+        (item) => !tenantId || item.tenantId === tenantId
       );
       if (filteredData.length === 0) {
         toast.error("No data available for export.");

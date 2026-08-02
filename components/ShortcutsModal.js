@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X, Keyboard } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const shortcuts = [
   {
@@ -32,13 +33,13 @@ const shortcuts = [
     keys: ["Ctrl", "H"],
     mac: ["⌘", "H"],
     description: "go to home/dashboard",
-    action: () => (window.location.href = "/"),
+    action: (router) => router.push("/"),
   },
   {
     keys: ["Ctrl", "L"],
     mac: ["⌘", "L"],
     description: "go to leaderboard",
-    action: () => (window.location.href = "/leaderboard"),
+    action: (router) => router.push("/leaderboard"),
   },
   {
     keys: ["Ctrl", "N"],
@@ -52,6 +53,7 @@ const shortcuts = [
 export default function ShortcutsModal() {
   const [isOpen, setIsOpen] = useState(false);
   const closeBtnRef = useRef(null);
+  const router = useRouter();
 
   const onClose = () => setIsOpen(false);
   const onOpen = () => setIsOpen(true);
@@ -75,7 +77,7 @@ export default function ShortcutsModal() {
     }
   }, [isOpen]);
 
-  // 3. Global Key Listener Engine (Executes actions + handles Escape/Tab)
+  // 3. Global Key Listener Engine (Executes actions + handles Escape)
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Ignore global shortcut triggers if the user is writing text inside input fields
@@ -98,13 +100,6 @@ export default function ShortcutsModal() {
         return;
       }
 
-      // Accessibility focus trap management
-      if (e.key === "Tab" && isOpen) {
-        e.preventDefault();
-        closeBtnRef.current?.focus();
-        return;
-      }
-
       // Match system actions
       if (isModifier) {
         if (e.key === "/") {
@@ -118,14 +113,14 @@ export default function ShortcutsModal() {
         );
         if (match && typeof match.action === "function") {
           e.preventDefault();
-          match.action();
+          match.action(router);
         }
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isMac]);
+  }, [isOpen, isMac, router]);
 
   return (
     <div
@@ -172,7 +167,7 @@ export default function ShortcutsModal() {
                 {shortcut.description}
               </span>
               <div className="flex items-center gap-1">
-                {(isMac ? shortcut.mac : shortcut.keys).map((key, i) => (
+                {(isMac && shortcut.mac ? shortcut.mac : shortcut.keys).map((key, i) => (
                   <kbd
                     key={i}
                     className="px-2 py-1 bg-white/10 text-white text-xs rounded-md font-mono border border-white/20 shadow-sm"

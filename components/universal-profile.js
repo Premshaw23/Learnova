@@ -38,6 +38,8 @@ import {
   Bell,
   Eye,
   Smartphone,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -57,7 +59,6 @@ export default function UniversalProfile() {
   const [activeTab, setActiveTab] = useState("overview");
   const isMounted = useIsMounted();
 
-  useUnsavedChangesWarning(isEditing && isProfileDirty);
 
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [imageError, setImageError] = useState(false);
@@ -111,6 +112,7 @@ export default function UniversalProfile() {
   const { register, handleSubmit, reset, watch, formState: { errors, isDirty } } = methods;
   const formData = watch();
   const isProfileDirty = isDirty;
+  useUnsavedChangesWarning(isEditing && isProfileDirty);
 
   useEffect(() => {
     if (analytics) {
@@ -796,14 +798,30 @@ export default function UniversalProfile() {
               label: "Awards",
               icon: Award,
             },
+            {
+              id: "merits",
+              label: "Merit Points",
+              icon: TrendingUp,
+              color: "text-green-400"
+            },
+            {
+              id: "demerits",
+              label: "Demerit Points",
+              icon: TrendingDown,
+              color: "text-red-400"
+            },
           ].map((stat) => (
             <div
               key={stat.id}
               className="bg-black/20 border border-white/10 rounded-2xl p-6"
             >
-              <stat.icon className="w-8 h-8 text-blue-400 mb-4" />
+              <stat.icon className={`w-8 h-8 mb-4 ${stat.color || 'text-blue-400'}`} />
 
-              <h3 className="text-3xl font-bold">{stats?.[stat.id] || "0"}</h3>
+              <h3 className="text-3xl font-bold">{
+                stat.id === "merits" ? userData?.meritPoints || 0 :
+                stat.id === "demerits" ? userData?.demeritPoints || 0 :
+                stats?.[stat.id] || "0"
+              }</h3>
 
               <p className="text-white/60 mt-1">{stat.label}</p>
             </div>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Activity, Menu, X, User, Settings, Sparkles, Search, PanelLeft } from "lucide-react";
+import { Activity, Menu, X, User, Settings, Sparkles, Search, PanelLeft, Flame, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useTranslations } from "next-intl";
@@ -37,6 +37,7 @@ export function Navbar() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [dyslexiaMode, setDyslexiaMode] = useState(false);
 
   const { user, userProfile, signOut, isAuthenticated, loading } =
     useAuthContext();
@@ -54,7 +55,29 @@ export function Navbar() {
     window.location.reload();
   };
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem("dyslexia-mode") === "true";
+    setDyslexiaMode(saved);
+    if (saved) document.body.classList.add("dyslexia-mode");
+  }, []);
+
+  const toggleDyslexiaMode = () => {
+    setDyslexiaMode(prev => {
+      const next = !prev;
+      localStorage.setItem("dyslexia-mode", String(next));
+      document.body.classList.toggle("dyslexia-mode", next);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetch("/api/users/streak", { method: "POST" })
+        .then(res => res.json())
+        .catch(console.error);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -240,6 +263,15 @@ export function Navbar() {
 
               <ThemeToggle />
 
+              <button
+                onClick={toggleDyslexiaMode}
+                title={dyslexiaMode ? "Disable Dyslexia Mode" : "Enable Dyslexia-Friendly Mode"}
+                className={`p-2 rounded-lg transition-all border ${dyslexiaMode ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
+                aria-label="Toggle Dyslexia-Friendly Reading Mode"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+
               <div className="flex items-center gap-1 rounded-lg border border-zinc-200/50 p-1 dark:border-white/10">
                 <button
                   onClick={() => switchLanguage("en")}
@@ -261,6 +293,12 @@ export function Navbar() {
                 <div className="h-9 w-24 animate-pulse rounded-xl bg-zinc-200 dark:bg-zinc-800" />
               ) : isAuthenticated ? (
                 <div className="flex items-center gap-2 border-l border-zinc-200/60 pl-2 dark:border-white/10">
+                  {userProfile && (
+                    <div className="hidden sm:flex items-center gap-1 bg-orange-500/10 text-orange-500 px-2.5 py-1 rounded-full text-xs font-bold border border-orange-500/20 mr-1" title="Daily Activity Streak">
+                      <Flame className="w-3.5 h-3.5 fill-current" />
+                      {userProfile.streak || 0}
+                    </div>
+                  )}
                   <NotificationPanel
                     isOpen={isNotificationOpen}
                     onToggle={() => setIsNotificationOpen((open) => !open)}

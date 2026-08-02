@@ -215,8 +215,12 @@ export async function GET(request) {
           const noticesCollection = db.collection("notices");
           const initialNotices = await noticesCollection
             .find({
-              targetAudience: userRole,
               instituteId: instituteId,
+              $or: [
+                { targetAudience: userRole },
+                { targetAudience: "all" },
+                { targetAudience: { $exists: false } },
+              ],
             })
             .sort({ isPinned: -1, createdAt: -1 })
             .limit(50)
@@ -272,8 +276,12 @@ export async function GET(request) {
                     : typeof doc.targetAudience === "string"
                       ? [doc.targetAudience]
                       : [];
+                  const matchesAudience =
+                    docAudience.length === 0 ||
+                    docAudience.includes(userRole) ||
+                    docAudience.includes("all");
                   if (
-                    docAudience.includes(userRole) &&
+                    matchesAudience &&
                     doc.instituteId &&
                     String(doc.instituteId) === String(instituteId)
                   ) {
@@ -299,9 +307,13 @@ export async function GET(request) {
               const noticesCollection = db.collection("notices");
               const newNotices = await noticesCollection
                 .find({
-                  targetAudience: userRole,
                   instituteId: instituteId,
                   createdAt: { $gt: lastNoticeTime },
+                  $or: [
+                    { targetAudience: userRole },
+                    { targetAudience: "all" },
+                    { targetAudience: { $exists: false } },
+                  ],
                 })
                 .sort({ createdAt: -1 })
                 .limit(20)
