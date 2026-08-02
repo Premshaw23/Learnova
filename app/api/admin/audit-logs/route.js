@@ -15,8 +15,8 @@ export const GET = withErrorHandler(async (request) => {
   if (searchParams.get("targetType")) filter.targetType = searchParams.get("targetType");
   if (searchParams.get("startDate")) filter.startDate = searchParams.get("startDate");
   if (searchParams.get("endDate")) filter.endDate = searchParams.get("endDate");
-  const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 200);
-  const skip = parseInt(searchParams.get("skip") || "0", 10);
+  const limit = Math.min(parseInt(searchParams.get("limit", 10) || "50", 10), 200);
+  const skip = parseInt(searchParams.get("skip", 10) || "0", 10);
 
   const logs = await queryAuditLogs(filter, { limit, skip });
   return jsonSuccess({ logs });

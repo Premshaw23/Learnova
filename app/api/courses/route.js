@@ -15,12 +15,10 @@ export async function GET(request) {
     const q = searchParams.get("q") || "";
     const category = searchParams.get("category") || "all";
 
-    const rawPage = parseInt(
-      searchParams.get("page") || String(DEFAULT_PAGE),
+    const rawPage = parseInt(searchParams.get("page", 10) || String(DEFAULT_PAGE),
       10
     );
-    const rawLimit = parseInt(
-      searchParams.get("limit") || String(DEFAULT_LIMIT),
+    const rawLimit = parseInt(searchParams.get("limit", 10) || String(DEFAULT_LIMIT),
       10
     );
 
