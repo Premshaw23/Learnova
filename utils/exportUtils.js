@@ -19,7 +19,7 @@ export const formatDateReadable = (value, fallback = "—") => {
   if (!value) return fallback;
   try {
     const d = value instanceof Date ? value : new Date(value);
-    if (isNaN(d.getTime())) return String(value);
+    if (Number.isNaN(d.getTime())) return String(value);
     return d.toLocaleDateString(undefined, {
       year: "numeric",
       month: "short",
