@@ -7,6 +7,7 @@ import { db } from '@/lib/firebaseAdmin';
  * Compiles and dispatches a weekly progress report for a student to their parent.
  * In production, this would be triggered by a scheduled Cloud Function (cron).
  * A teacher/admin can also trigger it manually for any student.
+ * Note: Configured to run every Friday afternoon (CRON: 0 15 * * 5)
  */
 export async function POST(request) {
   try {
