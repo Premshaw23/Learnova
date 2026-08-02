@@ -18,7 +18,7 @@ function normalizeName(name, path) {
       .split("/")
       .filter(Boolean)
       .map((segment) => segment.replace(/[-_]/g, " "))
-      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .map((segment) => segment[0].toUpperCase() + segment.slice(1))
       .join(" ") || FALLBACK_PAGE_NAME
   );
 }

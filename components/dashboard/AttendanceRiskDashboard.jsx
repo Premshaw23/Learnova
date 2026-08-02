@@ -184,7 +184,7 @@ export default function AttendanceRiskDashboard() {
             <p className="text-xs text-muted-foreground mt-0.5">
               {data.atRiskCount ?? 0} at risk · {data.warningCount ?? 0} warning ·{" "}
               {data.totalStudents ?? 0} total · updated{" "}
-              {data.generatedAt && !isNaN(new Date(data.generatedAt).getTime())
+              {data.generatedAt && !Number.isNaN(new Date(data.generatedAt).getTime())
                 ? new Date(data.generatedAt).toLocaleTimeString()
                 : "N/A"}
             </p>

@@ -30,7 +30,7 @@ export class OfflineSyncValidator {
     }
 
     const dateObj = new Date(record.date);
-    if (isNaN(dateObj.getTime())) {
+    if (Number.isNaN(dateObj.getTime())) {
       return {
         isValid: false,
         reason: "Date is not a valid ISO format",
@@ -237,7 +237,7 @@ export class OfflineSyncValidator {
     }
 
     const payloadTime = new Date(timestamp);
-    if (isNaN(payloadTime.getTime())) {
+    if (Number.isNaN(payloadTime.getTime())) {
       return {
         isValid: false,
         reason: "Timestamp must be valid ISO format",
