@@ -154,7 +154,7 @@ export default function NoticeForm({ onClose, onSuccess }) {
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {c.charAt(0).toUpperCase() + c.slice(1)}
+                    {c[0].toUpperCase() + c.slice(1)}
                   </option>
                 ))}
               </select>
@@ -170,7 +170,7 @@ export default function NoticeForm({ onClose, onSuccess }) {
               >
                 {PRIORITIES.map((p) => (
                   <option key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {p[0].toUpperCase() + p.slice(1)}
                   </option>
                 ))}
               </select>
