@@ -173,7 +173,7 @@ const Navbar = ({ username = "Jane Doe" }) => {
           {/* User Profile */}
           <div className="flex items-center space-x-2 border-l border-slate-200 dark:border-slate-800 pl-3">
             <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-xs">
-              {username.charAt(0)}
+              {username[0]}
             </div>
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 hidden sm:inline">
               {username}

@@ -90,7 +90,7 @@ export default function AttendanceChart() {
                 : "bg-white/10 text-white/60 hover:text-white"
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab[0].toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>

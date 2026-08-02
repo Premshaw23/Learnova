@@ -430,7 +430,7 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
                   : "bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300 hover:bg-slate-900 hover:text-white"
               }`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)} Trend
+              {tab[0].toUpperCase() + tab.slice(1)} Trend
             </button>
           ))}
         </div>

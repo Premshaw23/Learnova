@@ -68,7 +68,7 @@ export default function LiveAttendanceView({ className, title = "Live Check-Ins"
               className="flex items-center gap-3 border-b border-zinc-100 px-4 py-3 last:border-b-0 dark:border-zinc-900"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300">
-                {record.studentName.charAt(0).toUpperCase()}
+                {record.studentName[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
