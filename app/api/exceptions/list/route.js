@@ -43,7 +43,7 @@ export const GET = withErrorHandler(async (request) => {
     : 10;
 
   // Validate pagination parameters
-  if (isNaN(page) || isNaN(limit)) {
+  if (Number.isNaN(page) || Number.isNaN(limit)) {
     const { ValidationError } = require("@/lib/errors");
     throw new ValidationError("Invalid pagination parameters");
   }
