@@ -24,7 +24,7 @@ export const POST = withErrorHandler(async (request) => {
   const payload = await parseJSON(request, MAX_BODY_BYTES);
   const { notes } = payload;
 
-  if (!notes || notes.trim() === "") {
+  if (!notes || notes.trim().length === 0) {
     return jsonError("Lecture notes are required.", 400);
   }
 

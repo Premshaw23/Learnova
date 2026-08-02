@@ -173,7 +173,7 @@ export async function GET(request) {
       if (
         !rawInstituteId ||
         typeof rawInstituteId !== "string" ||
-        rawInstituteId.trim() === ""
+        rawInstituteId.trim().length === 0
       ) {
         console.warn(
           "[attendance-warnings] Skipping settings document with missing or invalid instituteId",
