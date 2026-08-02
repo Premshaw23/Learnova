@@ -26,7 +26,8 @@ export default function MentorshipPage() {
   const fetchMentors = async () => {
     try {
       const res = await fetch("/api/mentors");
-      const data = await res.json();
+      if (!res.ok) throw new Error("Request failed");
+const data = await res.json();
       if (data.success) {
         setMentors(data.mentors);
       } else {
