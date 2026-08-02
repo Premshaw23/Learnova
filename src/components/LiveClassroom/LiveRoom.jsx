@@ -1,13 +1,21 @@
-import React, { useEffect, useRef } from 'react';
-import { useWebRTC } from '../../hooks/useWebRTC.js';
+import React, { useEffect, useRef } from "react";
+import { useWebRTC } from "../../hooks/useWebRTC.js";
+import { useAuth } from "@/hooks/useAuth";
+import LivePollWidget from "./LivePollWidget";
+import ActivePollWidget from "./ActivePollWidget";
 
 /**
  * LiveRoom Component
  * Interactive Live Video Classroom component consuming useWebRTC hook.
  * Binds video elements to streams and ensures cleanup when leaving the classroom.
  */
-export function LiveRoom({ roomId = 'classroom-101', roomTitle = 'Live Lecture' }) {
-  const { isConnected, localStream, remoteStream, error, cleanupWebRTC } = useWebRTC(roomId);
+export function LiveRoom({
+  roomId = "classroom-101",
+  roomTitle = "Live Lecture",
+}) {
+  const { isConnected, localStream, remoteStream, error, cleanupWebRTC } =
+    useWebRTC(roomId);
+  const { userProfile } = useAuth();
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -29,8 +37,12 @@ export function LiveRoom({ roomId = 'classroom-101', roomTitle = 'Live Lecture' 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">{roomTitle}</h1>
         <div className="flex items-center gap-2">
-          <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-sm font-medium">{isConnected ? 'Live' : 'Disconnected'}</span>
+          <span
+            className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
+          />
+          <span className="text-sm font-medium">
+            {isConnected ? "Live" : "Disconnected"}
+          </span>
         </div>
       </div>
 
@@ -42,7 +54,9 @@ export function LiveRoom({ roomId = 'classroom-101', roomTitle = 'Live Lecture' 
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="video-card bg-gray-800 p-4 rounded-lg flex flex-col items-center">
-          <h3 className="text-sm font-semibold mb-2 text-gray-300">Your Video (Local)</h3>
+          <h3 className="text-sm font-semibold mb-2 text-gray-300">
+            Your Video (Local)
+          </h3>
           <video
             ref={localVideoRef}
             autoPlay
@@ -53,7 +67,9 @@ export function LiveRoom({ roomId = 'classroom-101', roomTitle = 'Live Lecture' 
         </div>
 
         <div className="video-card bg-gray-800 p-4 rounded-lg flex flex-col items-center">
-          <h3 className="text-sm font-semibold mb-2 text-gray-300">Instructor / Remote Feed</h3>
+          <h3 className="text-sm font-semibold mb-2 text-gray-300">
+            Instructor / Remote Feed
+          </h3>
           <video
             ref={remoteVideoRef}
             autoPlay
@@ -61,6 +77,14 @@ export function LiveRoom({ roomId = 'classroom-101', roomTitle = 'Live Lecture' 
             className="w-full h-48 bg-black rounded object-cover"
           />
         </div>
+      </div>
+
+      <div className="mt-8">
+        {userProfile?.role === "teacher" || userProfile?.role === "admin" ? (
+          <LivePollWidget roomId={roomId} />
+        ) : (
+          <ActivePollWidget />
+        )}
       </div>
 
       <div className="mt-6 flex justify-end">
