@@ -42,7 +42,7 @@ export const useNoticeFilters = (notices) => {
     () =>
       Array.from(
         new Set(notices.flatMap((notice) => notice.tags || []))
-      ).sort(),
+      ).sort((a, b) => a - b),
     [notices]
   );
 
@@ -56,7 +56,7 @@ export const useNoticeFilters = (notices) => {
         notice.tags.forEach((tag) => suggestions.add(tag));
       }
     });
-    return Array.from(suggestions).sort();
+    return Array.from(suggestions).sort((a, b) => a - b);
   }, [notices]);
 
   // Toggle tag selection
