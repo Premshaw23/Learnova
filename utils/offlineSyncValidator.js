@@ -1,17 +1,115 @@
 /**
- * Offline Progress Sync Validator
- * Validates all offline progress data before synchronization
- * Prevents cheating through modified local data
+ * ============================================================================
+ * 🔒 OFFLINE SYNC VALIDATOR (Updated for Issue #4224)
+ * ============================================================================
+ * Updated to work with the unified offline storage schema.
+ * Validates records against the new OfflineRecord structure while
+ * maintaining backward compatibility with legacy validation.
+ *
+ * Key improvements:
+ *   - Schema validation for unified OfflineRecord format
+ *   - Vector clock validation
+ *   - Enhanced fraud detection
+ *   - Integration with CRDT conflict resolver
  */
 
 import logger from "./logger";
 
+// ---------------------------------------------------------------------------
+// Unified Record Schema Validation
+// ---------------------------------------------------------------------------
+
 /**
- * Validates offline progress synchronization data
+ * Validate a unified OfflineRecord against the expected schema.
  */
+export function validateUnifiedRecord(record) {
+  const errors = [];
+
+  if (!record || typeof record !== "object") {
+    return { isValid: false, errors: ["Record must be an object"] };
+  }
+
+  // Required fields
+  if (!record.id || typeof record.id !== "string") {
+    errors.push("Missing or invalid 'id' (must be a UUID string)");
+  }
+
+  const validTypes = [
+    "attendance",
+    "quiz",
+    "activity",
+    "complaint",
+    "general",
+  ];
+  if (!record.type || !validTypes.includes(record.type)) {
+    errors.push(`Invalid 'type'. Must be one of: ${validTypes.join(", ")}`);
+  }
+
+  if (!record.collection || typeof record.collection !== "string") {
+    errors.push("Missing or invalid 'collection'");
+  }
+
+  if (!record.data || typeof record.data !== "object") {
+    errors.push("Missing or invalid 'data' object");
+  }
+
+  if (typeof record.version !== "number" || record.version < 1) {
+    errors.push("Missing or invalid 'version' (must be a positive integer)");
+  }
+
+  if (!record.vectorClock || typeof record.vectorClock !== "object") {
+    errors.push("Missing or invalid 'vectorClock'");
+  }
+
+  if (typeof record.updatedAt !== "number") {
+    errors.push("Missing or invalid 'updatedAt' (must be epoch ms)");
+  }
+
+  if (!record.deviceId || typeof record.deviceId !== "string") {
+    errors.push("Missing or invalid 'deviceId'");
+  }
+
+  // Validate vector clock structure
+  if (record.vectorClock) {
+    for (const [node, counter] of Object.entries(record.vectorClock)) {
+      if (typeof counter !== "number" || counter < 0) {
+        errors.push(`Invalid vector clock counter for node '${node}'`);
+      }
+    }
+  }
+
+  // Validate status
+  const validStatuses = [
+    "pending",
+    "syncing",
+    "synced",
+    "conflict",
+    "failed",
+  ];
+  if (record.status && !validStatuses.includes(record.status)) {
+    errors.push(`Invalid 'status'. Must be one of: ${validStatuses.join(", ")}`);
+  }
+
+  // Validate priority
+  if (record.priority !== undefined) {
+    if (typeof record.priority !== "number" || record.priority < 1) {
+      errors.push("Invalid 'priority' (must be a positive integer)");
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Legacy Validation (Backward Compatible)
+// ---------------------------------------------------------------------------
+
 export class OfflineSyncValidator {
   /**
-   * Validate attendance record structure and values
+   * Validate attendance record structure and values (legacy format).
    */
   static validateAttendanceRecord(record) {
     if (!record || typeof record !== "object") {
@@ -19,6 +117,11 @@ export class OfflineSyncValidator {
         isValid: false,
         reason: "Record must be an object",
       };
+    }
+
+    // Handle unified format
+    if (record.type === "attendance" && record.data) {
+      return this.validateAttendanceRecord(record.data);
     }
 
     // Validate date format (ISO string)
@@ -76,7 +179,7 @@ export class OfflineSyncValidator {
   }
 
   /**
-   * Validate progress data consistency
+   * Validate progress data consistency.
    */
   static validateProgressConsistency(currentServerData, offlineChanges) {
     if (!currentServerData || typeof currentServerData !== "object") {
@@ -103,7 +206,6 @@ export class OfflineSyncValidator {
         };
       }
 
-      // Validate operation data
       if (!change.data || typeof change.data !== "object") {
         return {
           isValid: false,
@@ -129,7 +231,7 @@ export class OfflineSyncValidator {
   }
 
   /**
-   * Detect conflicting or suspicious offline changes
+   * Detect conflicting or suspicious offline changes.
    */
   static checkForConflicts(serverData, offlineChanges) {
     const suspiciousPatterns = {
@@ -137,6 +239,7 @@ export class OfflineSyncValidator {
       impossibleProgressJump: false,
       timestampTampering: false,
       duplicateChanges: false,
+      vectorClockAnomaly: false,
     };
 
     // Check for duplicate changes
@@ -151,14 +254,16 @@ export class OfflineSyncValidator {
 
     // Check for massive XP gain
     let totalXpGained = 0;
-    const xpChanges = offlineChanges.filter((c) => c.data.xp);
+    const xpChanges = offlineChanges.filter(
+      (c) => c.data.xp || (c.data?.data?.xp)
+    );
     for (const change of xpChanges) {
-      if (typeof change.data.xp === "number") {
-        totalXpGained += change.data.xp;
+      const xp = change.data.xp || change.data?.data?.xp;
+      if (typeof xp === "number") {
+        totalXpGained += xp;
       }
     }
 
-    // More than 1000 XP in a single offline session is suspicious
     if (totalXpGained > 1000) {
       suspiciousPatterns.massiveXpGain = true;
     }
@@ -167,7 +272,9 @@ export class OfflineSyncValidator {
     if (
       serverData.level &&
       offlineChanges.some(
-        (c) => c.data.level && c.data.level > serverData.level + 5
+        (c) =>
+          (c.data.level && c.data.level > serverData.level + 5) ||
+          (c.data?.data?.level && c.data.data.level > serverData.level + 5)
       )
     ) {
       suspiciousPatterns.impossibleProgressJump = true;
@@ -178,10 +285,23 @@ export class OfflineSyncValidator {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     for (const change of offlineChanges) {
-      if (change.data.date) {
-        const changeDate = new Date(change.data.date);
+      const date = change.data.date || change.data?.data?.date;
+      if (date) {
+        const changeDate = new Date(date);
         if (changeDate < thirtyDaysAgo) {
           suspiciousPatterns.timestampTampering = true;
+          break;
+        }
+      }
+    }
+
+    // Check for vector clock anomalies
+    for (const change of offlineChanges) {
+      const vc = change.vectorClock || change.data?.vectorClock;
+      if (vc && typeof vc === "object") {
+        const counters = Object.values(vc);
+        if (counters.some((c) => typeof c !== "number" || c < 0)) {
+          suspiciousPatterns.vectorClockAnomaly = true;
           break;
         }
       }
@@ -206,7 +326,7 @@ export class OfflineSyncValidator {
   }
 
   /**
-   * Validate entire offline sync payload
+   * Validate entire offline sync payload (legacy format).
    */
   static validateOfflineSyncPayload(payload, currentServerData) {
     if (!payload || typeof payload !== "object") {
@@ -215,6 +335,18 @@ export class OfflineSyncValidator {
         reason: "Payload must be an object",
         fraudScore: 100,
       };
+    }
+
+    // Handle unified record format
+    if (payload.type && payload.data) {
+      const schemaValidation = validateUnifiedRecord(payload);
+      if (!schemaValidation.isValid) {
+        return {
+          isValid: false,
+          reason: schemaValidation.errors.join("; "),
+          fraudScore: 75,
+        };
+      }
     }
 
     const { userId, timestamp, changes, signature } = payload;
@@ -301,7 +433,7 @@ export class OfflineSyncValidator {
   }
 
   /**
-   * Generate fraud score (0-100) for offline sync
+   * Generate fraud score (0-100) for offline sync.
    */
   static calculateFraudScore(payload, serverData) {
     let score = 0;
@@ -322,6 +454,7 @@ export class OfflineSyncValidator {
         if (validation.suspiciousPatterns?.impossibleProgressJump) score += 35;
         if (validation.suspiciousPatterns?.timestampTampering) score += 40;
         if (validation.suspiciousPatterns?.duplicateChanges) score += 25;
+        if (validation.suspiciousPatterns?.vectorClockAnomaly) score += 30;
       }
     }
 
@@ -329,8 +462,12 @@ export class OfflineSyncValidator {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Safe Offline Sync Wrapper
+// ---------------------------------------------------------------------------
+
 /**
- * Safe offline sync wrapper with validation
+ * Safe offline sync wrapper with validation.
  */
 export async function validateAndSyncOfflineProgress(
   payload,
@@ -407,3 +544,9 @@ export async function validateAndSyncOfflineProgress(
     changes: payload.changes,
   };
 }
+
+export default {
+  validateUnifiedRecord,
+  OfflineSyncValidator,
+  validateAndSyncOfflineProgress,
+};
