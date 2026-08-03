@@ -7,26 +7,29 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 const byDayMap = {
-  Sunday: "SU",
-  Monday: "MO",
-  Tuesday: "TU",
-  Wednesday: "WE",
-  Thursday: "TH",
-  Friday: "FR",
-  Saturday: "SA",
+  sunday: "SU",
+  monday: "MO",
+  tuesday: "TU",
+  wednesday: "WE",
+  thursday: "TH",
+  friday: "FR",
+  saturday: "SA",
 };
 
 const getNextWeekdayDate = (dayName, timeStr) => {
   const weekdays = {
-    Sunday: 0,
-    Monday: 1,
-    Tuesday: 2,
-    Wednesday: 3,
-    Thursday: 4,
-    Friday: 5,
-    Saturday: 6,
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6,
   };
-  const targetDay = weekdays[dayName];
+  const normalizedDay = String(dayName || "").trim().toLowerCase();
+  const targetDay = weekdays[normalizedDay];
+  if (targetDay === undefined) return null;
+
   const now = new Date();
   const currentDay = now.getDay();
 
@@ -111,10 +114,12 @@ export async function GET(request, { params }) {
 
       const startDate = getNextWeekdayDate(day, startStr.trim());
       const endDate = getNextWeekdayDate(day, endStr.trim());
+      if (!startDate || !endDate) return;
 
       const startICS = formatDateToICSFloating(startDate);
       const endICS = formatDateToICSFloating(endDate);
-      const byDay = byDayMap[day];
+      const normalizedDay = day.trim().toLowerCase();
+      const byDay = byDayMap[normalizedDay];
 
       icsString +=
         [
