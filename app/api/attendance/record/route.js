@@ -63,15 +63,18 @@ export const POST = withErrorHandler(
 
       // 3. Ensure they actually matched the face threshold (60 is the minimum configured in the frontend)
       const parsedConfidence = Number(confidenceScore);
-      if (parsedConfidence < 60) {
+      if (!Number.isFinite(parsedConfidence) || parsedConfidence < 60) {
         return jsonError(
           "Bad Request: Invalid or spoofed confidence score",
           400
         );
       }
 
+      // Clamp confidence score to 0-100 bounds before normalization
+      const clampedConfidence = Math.min(100, Math.max(0, parsedConfidence));
+
       // Normalize confidence score to 0-1 range for consistency across the DB and dashboards
-      const normalizedConfidence = parsedConfidence / 100;
+      const normalizedConfidence = clampedConfidence / 100;
 
       // 4. Record attendance using the domain service
       const sagaResult = await AttendanceService.recordAttendance(
