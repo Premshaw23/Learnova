@@ -1,6 +1,6 @@
 /**
  * mentorshipMatchingService.js
- * 
+ *
  * Service responsible for the Peer-to-Peer Mentorship Matching Algorithm.
  * Pairs current students with alumni or advanced students based on shared interests,
  * timezone compatibility, and specific course overlap for 1-on-1 mentorship.
@@ -16,7 +16,7 @@ export class MentorshipMatchingService {
   async findBestMatch(learnerId, preferences) {
     try {
       console.log(`Initiating mentorship matching for learner: ${learnerId}`);
-      
+
       const { timezone, courseId, interests = [] } = preferences;
 
       // Stub: Simulate database lookup and algorithm processing time
@@ -24,9 +24,27 @@ export class MentorshipMatchingService {
 
       // Mock database of potential mentors
       const availableMentors = [
-        { mentorId: 'm1', name: 'Alice Smith', timezone: 'UTC-5', expertise: ['React', 'Node'], courses: ['CS101'] },
-        { mentorId: 'm2', name: 'Bob Jones', timezone: 'UTC+1', expertise: ['Python', 'AI'], courses: ['CS102'] },
-        { mentorId: 'm3', name: 'Charlie Lee', timezone: 'UTC-5', expertise: ['React', 'CSS'], courses: ['CS101'] },
+        {
+          mentorId: "m1",
+          name: "Alice Smith",
+          timezone: "UTC-5",
+          expertise: ["React", "Node"],
+          courses: ["CS101"],
+        },
+        {
+          mentorId: "m2",
+          name: "Bob Jones",
+          timezone: "UTC+1",
+          expertise: ["Python", "AI"],
+          courses: ["CS102"],
+        },
+        {
+          mentorId: "m3",
+          name: "Charlie Lee",
+          timezone: "UTC-5",
+          expertise: ["React", "CSS"],
+          courses: ["CS101"],
+        },
       ];
 
       // Extremely simplified scoring algorithm
@@ -35,12 +53,14 @@ export class MentorshipMatchingService {
 
       for (const mentor of availableMentors) {
         let score = 0;
-        
+
         if (mentor.timezone === timezone) score += 50;
         if (mentor.courses.includes(courseId)) score += 30;
-        
-        const sharedInterests = mentor.expertise.filter(exp => interests.includes(exp));
-        score += (sharedInterests.length * 10);
+
+        const sharedInterests = mentor.expertise.filter((exp) =>
+          interests.includes(exp)
+        );
+        score += sharedInterests.length * 10;
 
         if (score > highestScore) {
           highestScore = score;
@@ -49,7 +69,7 @@ export class MentorshipMatchingService {
       }
 
       if (!bestMatch) {
-        throw new Error('No suitable mentor found at this time.');
+        throw new Error("No suitable mentor found at this time.");
       }
 
       const matchData = {
@@ -57,15 +77,17 @@ export class MentorshipMatchingService {
         mentorId: bestMatch.mentorId,
         mentorName: bestMatch.name,
         matchScore: highestScore,
-        status: 'pending_mentor_approval',
-        createdAt: new Date().toISOString()
+        status: "pending_mentor_approval",
+        createdAt: new Date().toISOString(),
       };
 
-      console.log(`Matched learner ${learnerId} with mentor ${bestMatch.mentorId} (Score: ${highestScore})`);
-      
+      console.log(
+        `Matched learner ${learnerId} with mentor ${bestMatch.mentorId} (Score: ${highestScore})`
+      );
+
       return matchData;
     } catch (error) {
-      console.error('Error finding mentor match:', error);
+      console.error("Error finding mentor match:", error);
       throw error;
     }
   }
