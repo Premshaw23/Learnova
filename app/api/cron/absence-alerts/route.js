@@ -2,16 +2,14 @@ import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { logger } from "@/lib/logger";
 import { sendAbsenceAlert } from "@/lib/services/notificationService";
+import { authorizeCronRequest } from "@/lib/cronAuth";
 
-// Note: This endpoint should be secured by a cron secret in production
+// Note: Secured by CRON_SECRET token authorization
 export async function POST(request) {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (
-      process.env.CRON_SECRET &&
-      authHeader !== `Bearer ${process.env.CRON_SECRET}`
-    ) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const cronAuth = authorizeCronRequest(request);
+    if (!cronAuth.authorized) {
+      return cronAuth.response;
     }
 
     const db = await connectDb();
