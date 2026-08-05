@@ -3,12 +3,16 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { getLocalDateKey, getWeekdaysSince } from "@/lib/dateUtils";
+import { getLocalDateKey } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
 import { enqueue, JOB_TYPES } from "@/lib/queue";
 import { connectDb } from "@/lib/mongodb";
+import {
+  recalculateStats,
+  mapWithConcurrency,
+} from "@/lib/services/attendanceService";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +37,10 @@ const syncSchema = z.object({
 // Minimum face-match confidence required to record attendance.
 // Must stay in sync with the threshold enforced in app/api/attendance/record/route.js.
 const MIN_CONFIDENCE_THRESHOLD = 0.6;
+
+// Max number of records processed concurrently. Keeps burst Firestore/MongoDB
+// write pressure bounded on serverless runtimes while parallelizing the batch.
+const SYNC_CONCURRENCY = 5;
 
 export function normalizeConfidenceScore(confidenceScore) {
   let parsedScore = Number(confidenceScore);
@@ -73,6 +81,146 @@ function resolveAttendanceIdentity(decodedToken, userProfile) {
     studentName: profileName || "Unknown User",
     email: profileEmail || "",
   };
+}
+
+/**
+ * Builds the saga steps for a single attendance record. `recalculate_stats`
+ * is intentionally NOT a step here: it re-scans the entire attendance_records
+ * collection for the user, so running it per record makes a batch O(N²). The
+ * sync handler runs it exactly once after the whole batch completes.
+ */
+function buildSyncSagaSteps({
+  db,
+  mongoDb,
+  uid,
+  recordDate,
+  serverIdentity,
+  instituteId,
+  normalizedConfidence,
+  queuedAt,
+}) {
+  return [
+    {
+      name: "write_attendance",
+      // Fix for #3559: use field-level update() on existing documents instead of a
+      // full set(), so concurrent offline syncs for the same user-date cannot
+      // silently overwrite fields written by a racing request that arrived first.
+      execute: async (ctx) => {
+        const newDocRef = db
+          .collection("attendance_records")
+          .doc(`${uid}_${recordDate}`);
+
+        await db.runTransaction(async (transaction) => {
+          const existingAttendance = await transaction.get(newDocRef);
+
+          if (existingAttendance.exists) {
+            // Document already exists — another write (online or a prior sync)
+            // got here first. Mark as already processed so downstream steps
+            // (MongoDB write, XP award) are skipped, preserving the original
+            // record's integrity.
+            ctx._alreadyProcessed = true;
+            return;
+          }
+
+          // Document does not exist — safe to create it with a full set().
+          // No merge flag: we own this new document entirely.
+          transaction.set(newDocRef, {
+            userId: uid,
+            studentName: serverIdentity.studentName,
+            email: serverIdentity.email,
+            instituteId,
+            timestamp: FieldValue.serverTimestamp(),
+            date: recordDate,
+            status: "present",
+            confidenceScore: normalizedConfidence,
+            offlineSynced: true,
+            queuedAt: new Date(queuedAt),
+          });
+        });
+      },
+      compensate: null, // Attendance writes are append-only; no rollback needed
+    },
+    {
+      name: "write_mongodb_attendance",
+      execute: async (ctx) => {
+        if (ctx._alreadyProcessed) return;
+        try {
+          // $set is inherently field-level in MongoDB — only the listed fields are
+          // touched; no risk of clobbering unrelated fields on a concurrent write.
+          await mongoDb.collection("attendance").updateOne(
+            { userId: uid, date: recordDate },
+            {
+              $set: {
+                userId: uid,
+                studentName: serverIdentity.studentName,
+                email: serverIdentity.email,
+                instituteId,
+                timestamp: new Date(queuedAt),
+                date: recordDate,
+                status: "present",
+                confidenceScore: normalizedConfidence,
+                offlineSynced: true,
+                queuedAt: new Date(queuedAt),
+              },
+            },
+            { upsert: true }
+          );
+        } catch (err) {
+          // E11000 = duplicate key — another concurrent request already wrote
+          // this record. Mark as processed so we don't fail the whole batch.
+          if (err?.code === 11000) {
+            ctx._alreadyProcessed = true;
+            return;
+          }
+          throw err;
+        }
+      },
+      compensate: async () => {
+        await mongoDb.collection("attendance").deleteOne({
+          userId: uid,
+          date: recordDate,
+        });
+      },
+    },
+    {
+      name: "award_xp",
+      execute: async (ctx) => {
+        if (ctx._alreadyProcessed) return;
+        await enqueue(JOB_TYPES.AWARD_GAMIFICATION_XP, {
+          firebaseUid: uid,
+          actionType: "attendance_marked",
+          metadata: {
+            attendanceHour: queuedAt
+              ? new Date(queuedAt).getHours()
+              : new Date().getHours(),
+            attendanceDate: recordDate,
+          },
+        });
+      },
+      compensate: null,
+    },
+    {
+      name: "write_activity",
+      execute: async (ctx) => {
+        if (ctx._alreadyProcessed) return;
+        const hour = queuedAt
+          ? new Date(queuedAt).getHours()
+          : new Date().getHours();
+        const minutes = queuedAt
+          ? new Date(queuedAt).getMinutes()
+          : new Date().getMinutes();
+        const isLate = hour >= 9 && minutes > 10;
+        await db.collection("activities").add({
+          userId: uid,
+          title: "Class Attendance",
+          type: "course",
+          progress: isLate ? 50 : 100,
+          timestamp: FieldValue.serverTimestamp(),
+        });
+      },
+      compensate: null,
+    },
+  ];
 }
 
 async function handleSync(request) {
@@ -118,12 +266,15 @@ async function handleSync(request) {
   const successfulIds = [];
   const rejectedIds = [];
 
-  // We use a Set to keep track of processed user-dates to prevent duplicate attendance
-  // even within the same batch.
-  const processedUserDates = new Set();
-
   const now = Date.now();
   const MAX_OFFLINE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+  // Validate the batch up front and collapse duplicate (uid, date) records
+  // into a single write. Duplicate dates are acknowledged as success so the
+  // client clears them from its local queue, matching the previous behavior.
+  const seenUserDates = new Set();
+  const dedupAckByDate = new Map();
+  const recordsToSync = [];
 
   for (const record of records) {
     // Only allow users to sync their own records (unless they are admin, but attendance is usually self-submitted)
@@ -156,8 +307,10 @@ async function handleSync(request) {
 
     const userDateKey = `${decodedToken.uid}_${recordDate}`;
 
-    if (processedUserDates.has(userDateKey)) {
-      successfulIds.push(record.id); // Acknowledge as success to remove from local queue
+    if (seenUserDates.has(userDateKey)) {
+      const ackIds = dedupAckByDate.get(userDateKey) || [];
+      ackIds.push(record.id);
+      dedupAckByDate.set(userDateKey, ackIds);
       continue;
     }
 
@@ -176,179 +329,67 @@ async function handleSync(request) {
       continue;
     }
 
-    // Use saga to atomically write attendance + award XP.
-    // If XP awarding fails, attendance is still recorded (it's the primary write),
-    // but the saga tracks the failure for reconciliation.
-    const sagaResult = await executeSaga({
-      operationType: "attendance_sync",
-      uid: decodedToken.uid,
-      steps: [
-        {
-          name: "write_attendance",
-          // Fix for #3559: use field-level update() on existing documents instead of a
-          // full set(), so concurrent offline syncs for the same user-date cannot
-          // silently overwrite fields written by a racing request that arrived first.
-          execute: async (ctx) => {
-            const newDocRef = db
-              .collection("attendance_records")
-              .doc(`${decodedToken.uid}_${recordDate}`);
+    seenUserDates.add(userDateKey);
+    recordsToSync.push({ record, recordDate, normalizedConfidence });
+  }
 
-            await db.runTransaction(async (transaction) => {
-              const existingAttendance = await transaction.get(newDocRef);
+  if (recordsToSync.length > 0) {
+    // Resolve the Mongo connection once and share it across the batch instead
+    // of re-awaiting connectDb() inside every record's saga.
+    const mongoDb = await connectDb();
 
-              if (existingAttendance.exists) {
-                // Document already exists — another write (online or a prior sync)
-                // got here first. Mark as already processed so downstream steps
-                // (MongoDB write, XP award) are skipped, preserving the original
-                // record's integrity.
-                ctx._alreadyProcessed = true;
-                return;
-              }
+    // Run the per-record sagas with bounded concurrency. Idempotency is safe
+    // because the deterministic document id (uid_date) plus the MongoDB unique
+    // index guard against duplicates even when records run in parallel.
+    const results = await mapWithConcurrency(
+      recordsToSync,
+      SYNC_CONCURRENCY,
+      ({ record, recordDate, normalizedConfidence }) =>
+        executeSaga({
+          operationType: "attendance_sync",
+          uid: decodedToken.uid,
+          steps: buildSyncSagaSteps({
+            db,
+            mongoDb,
+            uid: decodedToken.uid,
+            recordDate,
+            serverIdentity,
+            instituteId,
+            normalizedConfidence,
+            queuedAt: record.queuedAt,
+          }),
+        }).then((sagaResult) => ({ record, recordDate, sagaResult }))
+    );
 
-              // Document does not exist — safe to create it with a full set().
-              // No merge flag: we own this new document entirely.
-              transaction.set(newDocRef, {
-                userId: decodedToken.uid,
-                studentName: serverIdentity.studentName,
-                email: serverIdentity.email,
-                instituteId,
-                timestamp: FieldValue.serverTimestamp(),
-                date: recordDate,
-                status: "present",
-                confidenceScore: normalizedConfidence,
-                offlineSynced: true,
-                queuedAt: new Date(record.queuedAt),
-              });
-            });
-          },
-          compensate: null, // Attendance writes are append-only; no rollback needed
-        },
-        {
-          name: "write_mongodb_attendance",
-          execute: async (ctx) => {
-            if (ctx._alreadyProcessed) return;
-            const mongoDB = await connectDb();
-            try {
-              // $set is inherently field-level in MongoDB — only the listed fields are
-              // touched; no risk of clobbering unrelated fields on a concurrent write.
-              await mongoDB.collection("attendance").updateOne(
-                { userId: decodedToken.uid, date: recordDate },
-                {
-                  $set: {
-                    userId: decodedToken.uid,
-                    studentName: serverIdentity.studentName,
-                    email: serverIdentity.email,
-                    instituteId,
-                    timestamp: new Date(record.queuedAt),
-                    date: recordDate,
-                    status: "present",
-                    confidenceScore: normalizedConfidence,
-                    offlineSynced: true,
-                    queuedAt: new Date(record.queuedAt),
-                  },
-                },
-                { upsert: true }
-              );
-            } catch (err) {
-              // E11000 = duplicate key — another concurrent request already wrote
-              // this record. Mark as processed so we don't fail the whole batch.
-              if (err?.code === 11000) {
-                ctx._alreadyProcessed = true;
-                return;
-              }
-              throw err;
-            }
-          },
-          compensate: async () => {
-            const mongoDB = await connectDb();
-            await mongoDB
-              .collection("attendance")
-              .deleteOne({ userId: decodedToken.uid, date: recordDate });
-          },
-        },
-        {
-          name: "award_xp",
-          execute: async (ctx) => {
-            if (ctx._alreadyProcessed) return;
-            await enqueue(JOB_TYPES.AWARD_GAMIFICATION_XP, {
-              firebaseUid: decodedToken.uid,
-              actionType: "attendance_marked",
-              metadata: {
-                attendanceHour: record.queuedAt
-                  ? new Date(record.queuedAt).getHours()
-                  : new Date().getHours(),
-                attendanceDate: recordDate,
-              },
-            });
-          },
-          compensate: null,
-        },
-        {
-          name: "write_activity",
-          execute: async (ctx) => {
-            if (ctx._alreadyProcessed) return;
-            const hour = record.queuedAt
-              ? new Date(record.queuedAt).getHours()
-              : new Date().getHours();
-            const minutes = record.queuedAt
-              ? new Date(record.queuedAt).getMinutes()
-              : new Date().getMinutes();
-            const isLate = hour >= 9 && minutes > 10;
-            await db.collection("activities").add({
-              userId: decodedToken.uid,
-              title: "Class Attendance",
-              type: "course",
-              progress: isLate ? 50 : 100,
-              timestamp: FieldValue.serverTimestamp(),
-            });
-          },
-          compensate: null,
-        },
-        {
-          name: "recalculate_stats",
-          execute: async (ctx) => {
-            if (ctx._alreadyProcessed) return;
-            const attendanceQuery = db
-              .collection("attendance_records")
-              .where("userId", "==", decodedToken.uid);
+    let wroteNewAttendance = false;
 
-            const snapshot = await attendanceQuery.get();
-            const uniqueDates = new Set(snapshot.docs.map((doc) => doc.data().date).filter(Boolean));
-            const presentDays = uniqueDates.size;
-
-            const userDoc = await db.collection("users").doc(decodedToken.uid).get();
-            let startDate = new Date(new Date().getFullYear(), 0, 1);
-            if (userDoc.exists && userDoc.data().createdAt) {
-              const createdAt = userDoc.data().createdAt;
-              startDate = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
-            }
-
-            const totalDays = getWeekdaysSince(startDate);
-            const rate = Math.min(100, Math.round((presentDays / totalDays) * 100));
-
-            const statsRef = db.collection("userStats").doc(decodedToken.uid);
-            await statsRef.set({}, { merge: true });
-            await statsRef.update({
-              "Attendance Rate": `${rate}%`,
-              attendancePresentDays: presentDays,
-              lastUpdated: FieldValue.serverTimestamp(),
-            });
-          },
-          compensate: null,
-        },
-      ],
-    });
-
-    if (sagaResult.success) {
-      successfulIds.push(record.id);
-      processedUserDates.add(userDateKey);
-    } else {
-      console.error(
-        `[attendance-sync] Saga failed for user ${decodedToken.uid} date ${recordDate}: ${sagaResult.error}`
-      );
-      if (record.id !== undefined) {
-        rejectedIds.push(record.id);
+    for (const { record, recordDate, sagaResult } of results) {
+      if (sagaResult.success) {
+        successfulIds.push(record.id);
+        const dedupAcks = dedupAckByDate.get(
+          `${decodedToken.uid}_${recordDate}`
+        );
+        if (dedupAcks && dedupAcks.length > 0) {
+          successfulIds.push(...dedupAcks);
+        }
+        if (!sagaResult.context?._alreadyProcessed) {
+          wroteNewAttendance = true;
+        }
+      } else {
+        console.error(
+          `[attendance-sync] Saga failed for user ${decodedToken.uid} date ${recordDate}: ${sagaResult.error}`
+        );
+        if (record.id !== undefined) {
+          rejectedIds.push(record.id);
+        }
       }
+    }
+
+    // Recalculate the user's attendance stats exactly once for the whole batch.
+    // The result depends only on the full attendance_records set, so N recalculations
+    // were never more correct than one. Skipped entirely when nothing new was written.
+    if (wroteNewAttendance) {
+      await recalculateStats(db, decodedToken.uid);
     }
   }
 

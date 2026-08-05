@@ -308,6 +308,7 @@ describe("attendance record route", () => {
       fullName: "Some Student",
       email: "student@example.com",
       instituteId: "inst-1",
+      role: "student",
     });
 
     const docRef = {};
