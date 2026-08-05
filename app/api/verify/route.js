@@ -1,7 +1,11 @@
 import { connectDb } from "@/lib/mongodb";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { checkRateLimit } from "@/lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { getUserProfile } from "@/lib/firebase-admin";
@@ -14,7 +18,7 @@ export const dynamic = "force-dynamic";
  */
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
   
   const rateLimitResult = await checkRateLimit(`verify_post_${ip}_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {

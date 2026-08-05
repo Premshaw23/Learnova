@@ -3,7 +3,11 @@ import { connectDb } from "@/lib/mongodb";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { ForbiddenError, ValidationError, AppError } from "@/lib/errors";
-import { checkRateLimit } from "@/lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 import { publishEvent } from "@/lib/ssePublisher";
 
 export const dynamic = "force-dynamic";
@@ -34,12 +38,7 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   // 4. Rate limiting check
-  const ip =
-    request.headers.get("x-real-ip") ||
-    request.headers.get("x-vercel-proxied-for") ||
-    request.ip ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
 
   const rateLimitResult = await checkRateLimit(
     `notifications_seed_${ip}_${userId}`
