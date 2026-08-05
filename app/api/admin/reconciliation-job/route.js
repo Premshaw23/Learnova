@@ -7,7 +7,9 @@ import { connectDb } from "@/lib/mongodb";
 import {
   findStaleOperations,
   cleanupOldOperations,
+  reconcileStuckOperation,
 } from "@/lib/transactionCoordinator";
+import "@/lib/compensationHandlers";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +34,7 @@ export const POST = withErrorHandler(async (request) => {
 
   const results = {
     staleOperationsReviewed: 0,
+    stuckOperationsReconciled: 0,
     orphanedAuthDeleted: 0,
     firestoreToMongoReconciled: 0,
     mongoToFirestoreReconciled: 0,
@@ -53,7 +56,7 @@ export const POST = withErrorHandler(async (request) => {
         }
       );
 
-      // If operation failed and was fully compensated, mark as resolved
+      // Fully compensated compensating operations are already resolved
       if (op.status === "compensating" && op.fullyCompensated) {
         await mongoDB.collection("pending_operations").updateOne(
           { operationId: op.operationId },
@@ -64,7 +67,24 @@ export const POST = withErrorHandler(async (request) => {
             },
           }
         );
+        continue;
       }
+
+      // Stuck in_progress (or not-fully-compensated compensating) operations:
+      // mark them failed with a needs_review flag so the deterministic
+      // idempotency key is released, and dispatch compensation for any steps
+      // that were committed before the crash.
+      const outcome = await reconcileStuckOperation(op);
+      results.stuckOperationsReconciled++;
+      logger.warn(
+        `[reconciliation-job] Reconciled stuck operation: ${op.operationId}`,
+        {
+          status: outcome.status,
+          needsReview: outcome.needs_review,
+          fullyCompensated: outcome.fullyCompensated,
+          compensationResults: outcome.compensationResults,
+        }
+      );
     }
   } catch (err) {
     results.errors.push(`Stale operations review failed: ${err.message}`);
