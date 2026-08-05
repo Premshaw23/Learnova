@@ -378,3 +378,40 @@
 .dyslexia-mode h3 {
   letter-spacing: 0.03em !important;
 }
+/* =====================================================
+   Custom Cursor Styles (#4398)
+   Applied to <body> via JS toggle, persisted in localStorage.
+   ===================================================== */
+
+.cursor-glow {
+  cursor: none;
+}
+
+.cursor-glow-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle, oklch(0.646 0.222 280.116 / 0.5), transparent 70%);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.2s ease;
+  will-change: transform;
+}
+
+.cursor-trail-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: oklch(0.646 0.222 280.116);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+}
