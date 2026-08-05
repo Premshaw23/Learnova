@@ -5,6 +5,10 @@ import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { ValidationError, AppError } from "@/lib/errors";
 import { getRedis } from "@/lib/redis";
+import {
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 
 const RATE_LIMIT_WINDOW_MS = 3600 * 1000; // 1 hour window
@@ -124,7 +128,7 @@ export const GET = withErrorHandler(async (request) => {
  */
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
 
   const allowed = await checkReviewRateLimit(decodedToken.uid, ip);
   if (!allowed) {

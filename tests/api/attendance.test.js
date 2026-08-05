@@ -38,6 +38,8 @@ vi.mock("@/lib/dateUtils", () => ({
 
 vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn(() => ({ allowed: true })),
+  extractClientIp: vi.fn(() => "203.0.113.10"),
+  RATE_LIMIT_IP_FALLBACK: "rate-limit-no-ip",
 }));
 
 vi.mock("@/lib/mongodb", () => ({

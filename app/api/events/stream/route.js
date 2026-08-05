@@ -1,7 +1,11 @@
 import { authenticateRequest } from "@/lib/error-handler";
 import { pollEvents } from "@/lib/ssePublisher";
 import { connectDbForSSE } from "@/lib/mongodb";
-import { checkRateLimit } from "@/lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +18,7 @@ export async function GET(request) {
     const decodedToken = await authenticateRequest(request);
     const userId = decodedToken.uid;
 
-    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
     const rateLimitResult = await checkRateLimit(
       `events_stream_${ip}_${userId}`
     );

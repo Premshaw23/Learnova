@@ -2,7 +2,11 @@ import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { getLocalDateKey } from "@/lib/dateUtils";
-import { checkRateLimit } from "@/lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { recordAttendanceSchema, withValidation } from "@/lib/validations";
 import { AttendanceService } from "@/lib/services/attendanceService";
@@ -14,7 +18,7 @@ export const POST = withErrorHandler(
     async (request, validatedData, context) => {
       const token = await requireAuth(request);
 
-      const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+      const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
       const rateLimitResult = await checkRateLimit(
         `attendance_record_${ip}_${token.uid}`
       );

@@ -60,3 +60,4 @@ next-env.d.ts
 /.pwa-cache/
 /sw-cache/
 /workbox-*.json
+commitpulse_tmp/
