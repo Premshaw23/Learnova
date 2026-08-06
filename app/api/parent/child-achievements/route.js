@@ -39,7 +39,13 @@ export async function GET(request) {
     const usersCollection = mongoDb.collection("users");
 
     // Verify user is a parent
-    const parent = await usersCollection.findOne({ uid: parentId });
+    const parent = await usersCollection.findOne({
+      $or: [
+        { firebaseUid: parentId },
+        { uid: parentId },
+        { userId: parentId },
+      ],
+    });
     if (!parent || parent.role !== "parent") {
       return new Response(
         JSON.stringify({ error: "Only parents can access this endpoint" }),
@@ -59,8 +65,20 @@ export async function GET(request) {
     }
 
     // Verify parent-child relationship
-    const child = await usersCollection.findOne({ uid: childId });
-    if (!child || child.parentId !== parentId) {
+    const child = await usersCollection.findOne({
+      $or: [
+        { firebaseUid: childId },
+        { uid: childId },
+        { userId: childId },
+      ],
+    });
+    const isParentMatch =
+      child &&
+      (child.parentId === parentId ||
+        child.parentId === parent.firebaseUid ||
+        (child.parentEmail && parent.email && child.parentEmail === parent.email));
+
+    if (!child || !isParentMatch) {
       return new Response(
         JSON.stringify({
           error: "You do not have permission to view this child's data",

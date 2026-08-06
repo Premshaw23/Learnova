@@ -17,9 +17,9 @@ const overrideSchema = z.object({
 export const POST = withErrorHandler(async (request) => {
   const token = await requireAuth(request);
 
-  // Only teachers and admins can override
-  if (token.role !== "teacher" && token.role !== "admin") {
-    throw new AppError("Forbidden", 403);
+  // Allow teachers, admins, and institute hosts to override attendance
+  if (token.role !== "teacher" && token.role !== "admin" && token.role !== "institute") {
+    throw new AppError("Forbidden: Only teachers, admins, or institute hosts can override attendance", 403);
   }
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
@@ -30,6 +30,32 @@ export const POST = withErrorHandler(async (request) => {
   const { studentId, date, status } = overrideSchema.parse(body);
 
   initFirebaseAdmin();
+
+  // Fetch student profile details from Firestore
+  const userProfile = await getUserProfile(studentId);
+  if (!userProfile) {
+    throw new AppError("Student not found", 404);
+  }
+
+  // Enforce Tenant Isolation for non-admin users
+  if (token.role !== "admin") {
+    const requesterProfile = await getUserProfile(token.uid);
+    const requesterInstituteId =
+      requesterProfile?.instituteId || (token.role === "institute" ? token.uid : null);
+    const studentInstituteId = userProfile?.instituteId || null;
+
+    if (
+      !requesterInstituteId ||
+      !studentInstituteId ||
+      requesterInstituteId !== studentInstituteId
+    ) {
+      throw new AppError(
+        "Forbidden: You are not authorized to override attendance for students outside your institute",
+        403
+      );
+    }
+  }
+
   const db = getFirestore();
   const docRef = db.collection("attendance_records").doc(`${studentId}_${date}`);
 
@@ -59,8 +85,7 @@ export const POST = withErrorHandler(async (request) => {
     }
   });
 
-  // Fetch student profile details from Firestore
-  const userProfile = await getUserProfile(studentId);
+  // Resolve student details for MongoDB sync
   const resolvedName = userProfile?.fullName || userProfile?.name || "Unknown User";
   const resolvedEmail = userProfile?.email || "unknown@learnova.edu";
   const instituteId = userProfile?.instituteId || null;

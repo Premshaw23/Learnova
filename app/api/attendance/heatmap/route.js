@@ -19,27 +19,52 @@ export const GET = withErrorHandler(async (request) => {
     throw new ValidationError("Invalid month format. Expected YYYY-MM.");
   }
 
-  // Derive target user from token; only allow explicit userId for admin/teacher roles
+  // Derive target user from token; allow explicit userId for admin, teacher, institute, and parent roles
   let targetUserId;
   if (requestedUserId && requestedUserId !== decodedToken.uid) {
     const role = decodedToken.role;
-    if (role !== "admin" && role !== "teacher") {
+    const ALLOWED_ROLES = new Set(["admin", "teacher", "institute", "parent"]);
+    if (!ALLOWED_ROLES.has(role)) {
       throw new ForbiddenError(
         "Forbidden: Cannot query attendance for another user"
       );
     }
 
-    // Verify institute membership
+    // Verify institute/family relationship
     const requesterProfile = await getUserProfile(decodedToken.uid);
     const targetProfile = await getUserProfile(requestedUserId);
-    if (
-      !requesterProfile ||
-      !targetProfile ||
-      requesterProfile.instituteId !== targetProfile.instituteId
-    ) {
-      throw new ForbiddenError(
-        "Forbidden: Cannot query attendance for users outside your institute"
-      );
+
+    if (!requesterProfile || !targetProfile) {
+      throw new ForbiddenError("Forbidden: User profile not found");
+    }
+
+    if (role === "parent") {
+      const isChildMatch =
+        targetProfile.parentId === decodedToken.uid ||
+        targetProfile.parentId === requesterProfile?.firebaseUid ||
+        (targetProfile.parentEmail &&
+          requesterProfile?.email &&
+          targetProfile.parentEmail === requesterProfile.email);
+
+      if (!isChildMatch) {
+        throw new ForbiddenError(
+          "Forbidden: Cannot query attendance for users outside your family"
+        );
+      }
+    } else if (role !== "admin") {
+      const requesterInstituteId =
+        requesterProfile?.instituteId || (role === "institute" ? decodedToken.uid : null);
+      const targetInstituteId = targetProfile?.instituteId || null;
+
+      if (
+        !requesterInstituteId ||
+        !targetInstituteId ||
+        requesterInstituteId !== targetInstituteId
+      ) {
+        throw new ForbiddenError(
+          "Forbidden: Cannot query attendance for users outside your institute"
+        );
+      }
     }
 
     targetUserId = requestedUserId;

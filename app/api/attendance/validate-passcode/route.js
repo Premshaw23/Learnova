@@ -5,13 +5,17 @@ import { ValidationError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { passcodeSchema, withValidation } from "@/lib/validations";
-import { checkRateLimit } from "@/lib/rateLimit"; //  missing import added
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit"; //  missing import added
 
 export const POST = withErrorHandler(
   withValidation(passcodeSchema, async (request, validatedData) => {
     const decodedToken = await requireAuth(request);
 
-    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
     const rateLimitResult = await checkRateLimit( //  now defined
       `passcode_${ip}_${decodedToken?.uid}`
     );

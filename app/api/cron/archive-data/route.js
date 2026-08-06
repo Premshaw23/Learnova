@@ -41,7 +41,7 @@ export async function GET(request) {
     // 1. Archive Old Attendance Logs
     // We fetch attendance records older than threshold
     // (If the dataset is large, in a real prod app we'd paginate this or use batch operations)
-    const attendanceSnapshot = await db.collection("attendance")
+    const attendanceSnapshot = await db.collection("attendance_records")
       .where("timestamp", "<", attendanceThreshold)
       .limit(500) // limit for safety in a single function execution
       .get();
@@ -60,7 +60,7 @@ export async function GET(request) {
     // 2. Purge Inactive Biometric Data
     // We look for users whose lastLogin was before the threshold, and who still have faceDescriptors
     const usersSnapshot = await db.collection("users")
-      .where("lastLogin", "<", biometricThreshold)
+      .where("lastLogin", "<", biometricThreshold.toISOString())
       .limit(500)
       .get();
 

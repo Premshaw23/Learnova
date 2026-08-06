@@ -2,7 +2,11 @@ import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireRole } from "@/lib/rbac";
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { AppError, ValidationError } from "@/lib/errors";
-import { checkRateLimit } from "@/lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 import {
   createWebhook,
   getWebhookById,
@@ -17,7 +21,7 @@ export const dynamic = "force-dynamic";
 export const POST = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireRole(request, ["admin"]);
 
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
   const rateLimitResult = await checkRateLimit(
     `webhooks_create_${ip}_${decodedToken.uid}`
   );

@@ -1,7 +1,11 @@
 import { authenticateRequest } from "@/lib/error-handler";
 import { pollEvents } from "@/lib/ssePublisher";
 import { connectDbForSSE } from "@/lib/mongodb";
-import { checkRateLimit } from "@/lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,18 +13,49 @@ const HEARTBEAT_INTERVAL_MS = 15000;
 const POLL_INTERVAL_MS = 8000;
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
+export const SSE_CHANNELS = ["notifications", "attendance", "polls"];
+
+export function createChannelCursor(initial = {}) {
+  return {
+    notifications: 0,
+    attendance: 0,
+    polls: 0,
+    ...initial,
+  };
+}
+
+export async function collectChannelEvents({
+  channel,
+  lastSequence,
+  pollEventsFn,
+  onEvent,
+}) {
+  const docs = await pollEventsFn(channel, lastSequence[channel], 50);
+  for (const doc of docs) {
+    onEvent(channel, doc);
+    if (doc._sequence > lastSequence[channel]) {
+      lastSequence[channel] = doc._sequence;
+    }
+  }
+}
+
 export async function GET(request) {
   try {
     const decodedToken = await authenticateRequest(request);
     const userId = decodedToken.uid;
 
-    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    const rateLimitResult = await checkRateLimit(`events_stream_${ip}_${userId}`);
+    const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
+    const rateLimitResult = await checkRateLimit(
+      `events_stream_${ip}_${userId}`
+    );
     if (!rateLimitResult.allowed) {
-      return new Response(JSON.stringify({ error: "Too many connections. Please slow down." }), {
-        status: 429,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Too many connections. Please slow down." }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     let isConnected = true;
@@ -34,7 +69,11 @@ export async function GET(request) {
         const sendEvent = (event, data) => {
           if (!isConnected) return;
           try {
-            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+            controller.enqueue(
+              encoder.encode(
+                `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+              )
+            );
           } catch {
             cleanup();
           }
@@ -46,36 +85,46 @@ export async function GET(request) {
           clearInterval(heartbeatTimer);
           clearInterval(pollInterval);
           if (idleTimer) clearTimeout(idleTimer);
-          try { controller.close(); } catch {}
+          try {
+            controller.close();
+          } catch {}
         };
 
         request.signal.addEventListener("abort", () => cleanup());
 
-        let lastSequence = 0;
- 
+        const lastSequence = createChannelCursor();
+
+        const CHANNELS = SSE_CHANNELS;
+
+        const sendEventsForChannel = async (channel) => {
+          await collectChannelEvents({
+            channel,
+            lastSequence,
+            pollEventsFn: pollEvents,
+            onEvent: (channelName, doc) => {
+              if (!isConnected) return;
+              if (channelName === "notifications") {
+                if (
+                  doc.payload?.recipientId &&
+                  String(doc.payload.recipientId) === String(userId)
+                ) {
+                  sendEvent("notification", doc.payload);
+                } else if (!doc.payload?.recipientId) {
+                  sendEvent("notification", doc.payload);
+                }
+              } else {
+                sendEvent(channelName, doc.payload);
+              }
+            },
+          });
+        };
+
         const pollForEvents = async () => {
           if (!isConnected) return;
           try {
-            const notifications = await pollEvents("notifications", lastSequence);
-            for (const doc of notifications) {
-              if (!isConnected) break;
-              if (doc.payload?.recipientId && String(doc.payload.recipientId) === String(userId)) {
-                sendEvent("notification", doc.payload);
-              } else if (!doc.payload?.recipientId) {
-                sendEvent("notification", doc.payload);
-              }
-              if (doc._sequence > lastSequence) {
-                lastSequence = doc._sequence;
-              }
-            }
-
-            const attendance = await pollEvents("attendance", lastSequence);
-            for (const doc of attendance) {
-              if (!isConnected) break;
-              sendEvent("attendance", doc.payload);
-              if (doc._sequence > lastSequence) {
-                lastSequence = doc._sequence;
-              }
+            for (const channel of CHANNELS) {
+              if (!isConnected) return;
+              await sendEventsForChannel(channel);
             }
           } catch {}
         };

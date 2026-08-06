@@ -43,9 +43,13 @@ vi.mock("../../../lib/rbac", () => ({
   requireAuth: vi.fn(),
 }));
 
-vi.mock("../../../lib/rateLimit", () => ({
-  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
-}));
+vi.mock("../../../lib/rateLimit", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+  };
+});
 
 const mockCursor = {
   sort: vi.fn().mockReturnThis(),
@@ -66,6 +70,7 @@ vi.mock("../../../lib/mongodb", () => {
   };
   return {
     __esModule: true,
+    connectDb: vi.fn(() => Promise.resolve(mockDb)),
     default: Promise.resolve(mockClient),
   };
 });
@@ -240,6 +245,71 @@ describe("notifications route", () => {
 
       const response = await PATCH(createMockRequest());
       await assertApiError(response, 401, "Unauthorized");
+    });
+  });
+
+  describe("rate-limit bucket keying (issue #4376)", () => {
+    test("rotating a spoofed x-forwarded-for prefix does not reset the bucket", async () => {
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
+
+      await GET(
+        createMockRequest(
+          "http://localhost/api/notifications?userId=user-123",
+          { "x-forwarded-for": "203.0.113.11, 8.8.8.8" }
+        )
+      );
+      await GET(
+        createMockRequest(
+          "http://localhost/api/notifications?userId=user-123",
+          { "x-forwarded-for": "203.0.113.22, 8.8.8.8" }
+        )
+      );
+
+      const keys = checkRateLimit.mock.calls.map(([key]) => key);
+      expect(keys).toHaveLength(2);
+      expect(keys[0]).toBe(keys[1]);
+      expect(keys[0]).toContain("8.8.8.8");
+      expect(keys[0]).toContain("user-123");
+    });
+
+    test("private/loopback x-forwarded-for hops collapse to the fixed sentinel bucket", async () => {
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
+
+      await GET(
+        createMockRequest(
+          "http://localhost/api/notifications?userId=user-123",
+          { "x-forwarded-for": "10.1.1.1, 192.168.1.1" }
+        )
+      );
+      await GET(
+        createMockRequest(
+          "http://localhost/api/notifications?userId=user-123",
+          { "x-forwarded-for": "10.2.2.2, 192.168.2.2" }
+        )
+      );
+
+      const keys = checkRateLimit.mock.calls.map(([key]) => key);
+      expect(keys).toHaveLength(2);
+      expect(keys[0]).toBe(keys[1]);
+      expect(keys[0]).toContain("rate-limit-no-ip");
+    });
+
+    test("a missing x-forwarded-for header uses the fixed sentinel, not a raw fallback", async () => {
+      const { requireAuth } = await import("../../../lib/rbac");
+      requireAuth.mockResolvedValue({ uid: "user-123" });
+
+      await GET(
+        createMockRequest(
+          "http://localhost/api/notifications?userId=user-123",
+          { "x-forwarded-for": undefined }
+        )
+      );
+
+      const keys = checkRateLimit.mock.calls.map(([key]) => key);
+      expect(keys).toHaveLength(1);
+      expect(keys[0]).toContain("rate-limit-no-ip");
     });
   });
 });

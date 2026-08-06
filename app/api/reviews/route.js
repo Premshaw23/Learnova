@@ -5,6 +5,10 @@ import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { ValidationError, AppError } from "@/lib/errors";
 import { getRedis } from "@/lib/redis";
+import {
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 
 const RATE_LIMIT_WINDOW_MS = 3600 * 1000; // 1 hour window
@@ -20,69 +24,66 @@ async function checkReviewRateLimit(userId, ip) {
   const keyUser = `rate_limit:reviews:user:${userId}`;
   const keyIp = `rate_limit:reviews:ip:${ip}`;
 
-  const checkFallback = (id) => {
-    if (!reviewFallbackMap.has(id)) {
-      reviewFallbackMap.set(id, [now]);
-      return true;
-    }
-    const timestamps = reviewFallbackMap.get(id);
-    const active = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-    if (active.length >= MAX_REQUESTS_PER_WINDOW) {
-      reviewFallbackMap.set(id, active);
+  const checkFallback = (uid, clientIp) => {
+    const userTimestamps = reviewFallbackMap.get(uid) || [];
+    const ipTimestamps = reviewFallbackMap.get(clientIp) || [];
+    
+    const activeUser = userTimestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    const activeIp = ipTimestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+    
+    if (activeUser.length >= MAX_REQUESTS_PER_WINDOW || activeIp.length >= MAX_REQUESTS_PER_WINDOW) {
+      reviewFallbackMap.set(uid, activeUser);
+      reviewFallbackMap.set(clientIp, activeIp);
       return false;
     }
-    active.push(now);
-    reviewFallbackMap.set(id, active);
+    
+    activeUser.push(now);
+    activeIp.push(now);
+    reviewFallbackMap.set(uid, activeUser);
+    reviewFallbackMap.set(clientIp, activeIp);
     return true;
   };
 
   if (!redis) {
-    const userOk = checkFallback(userId);
-    const ipOk = checkFallback(ip);
-    return userOk && ipOk;
+    return checkFallback(userId, ip);
   }
 
   try {
     const windowStart = now - RATE_LIMIT_WINDOW_MS;
-    
-    // Check user limit
-    const pUser = redis.pipeline();
-    pUser.zremrangebyscore(keyUser, 0, windowStart);
-    pUser.zcard(keyUser);
-    const resUser = await pUser.exec();
-    const userCount = resUser[1];
-
-    // Check IP limit
-    const pIp = redis.pipeline();
-    pIp.zremrangebyscore(keyIp, 0, windowStart);
-    pIp.zcard(keyIp);
-    const resIp = await pIp.exec();
-    const ipCount = resIp[1];
-
-    if (userCount >= MAX_REQUESTS_PER_WINDOW || ipCount >= MAX_REQUESTS_PER_WINDOW) {
-      return false;
-    }
-
     const uniqueMemberId = `${now}_${Math.random().toString(36).substring(2, 8)}`;
     
-    // Increment user key
-    const pUserAdd = redis.pipeline();
-    pUserAdd.zadd(keyUser, { score: now, member: uniqueMemberId });
-    pUserAdd.pexpire(keyUser, RATE_LIMIT_WINDOW_MS);
-    await pUserAdd.exec();
-
-    // Increment IP key
-    const pIpAdd = redis.pipeline();
-    pIpAdd.zadd(keyIp, { score: now, member: uniqueMemberId });
-    pIpAdd.pexpire(keyIp, RATE_LIMIT_WINDOW_MS);
-    await pIpAdd.exec();
-
+    const pipeline = redis.pipeline();
+    
+    // Clean up and count for user
+    pipeline.zremrangebyscore(keyUser, 0, windowStart);
+    pipeline.zcard(keyUser);
+    pipeline.zadd(keyUser, { score: now, member: uniqueMemberId });
+    pipeline.pexpire(keyUser, RATE_LIMIT_WINDOW_MS);
+    
+    // Clean up and count for IP
+    pipeline.zremrangebyscore(keyIp, 0, windowStart);
+    pipeline.zcard(keyIp);
+    pipeline.zadd(keyIp, { score: now, member: uniqueMemberId });
+    pipeline.pexpire(keyIp, RATE_LIMIT_WINDOW_MS);
+    
+    const results = await pipeline.exec();
+    
+    const userCount = results[1];
+    const ipCount = results[5];
+    
+    if (userCount >= MAX_REQUESTS_PER_WINDOW || ipCount >= MAX_REQUESTS_PER_WINDOW) {
+      // Clean up both keys immediately since they were added in the pipeline
+      const rollbackPipeline = redis.pipeline();
+      rollbackPipeline.zrem(keyUser, uniqueMemberId);
+      rollbackPipeline.zrem(keyIp, uniqueMemberId);
+      await rollbackPipeline.exec();
+      return false;
+    }
+    
     return true;
   } catch (err) {
     console.warn("Redis reviews rate limiter failed, falling back:", err.message);
-    const userOk = checkFallback(userId);
-    const ipOk = checkFallback(ip);
-    return userOk && ipOk;
+    return checkFallback(userId, ip);
   }
 }
 
@@ -127,7 +128,7 @@ export const GET = withErrorHandler(async (request) => {
  */
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
 
   const allowed = await checkReviewRateLimit(decodedToken.uid, ip);
   if (!allowed) {

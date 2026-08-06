@@ -20,6 +20,11 @@ const sessionSchema = z.object({
   type: z.enum(["focus", "break"], {
     message: "type must be either 'focus' or 'break'",
   }),
+  clientRequestId: z
+    .string()
+    .min(1)
+    .max(200)
+    .optional(),
 });
 
 function parseDateParam(value, fieldName) {
@@ -88,11 +93,33 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError(firstError);
   }
 
-  const { duration, type } = validation.data;
+  const { duration, type, clientRequestId } = validation.data;
   const now = new Date().toISOString();
 
   const db = await connectDb();
   const userId = decodedToken.uid;
+
+  // Idempotency: if the client retried the same request (e.g. after a
+  // timeout where the write succeeded but the response was lost), return
+  // the original result instead of recording a duplicate session/XP grant.
+  if (clientRequestId) {
+    const existingSession = await db.collection("pomodoro_sessions").findOne({
+      firebaseUid: userId,
+      clientRequestId,
+    });
+    if (existingSession) {
+      return NextResponse.json({
+        success: true,
+        session: {
+          duration: existingSession.duration,
+          completedAt: existingSession.completedAt,
+          type: existingSession.type,
+        },
+        xpAwarded: 0,
+        reason: "already_recorded",
+      });
+    }
+  }
 
   const sessionDoc = {
     firebaseUid: userId,
@@ -100,6 +127,7 @@ export const POST = withErrorHandler(async (request) => {
     completedAt: now,
     type,
     createdAt: now,
+    ...(clientRequestId ? { clientRequestId } : {}),
   };
 
   await db.collection("pomodoro_sessions").insertOne(sessionDoc);
@@ -108,7 +136,9 @@ export const POST = withErrorHandler(async (request) => {
   if (type === "focus") {
     try {
       const { awardXp } = await import("@/lib/gamification-service");
-      const result = await awardXp(userId, "focus_session_completed", {});
+      const result = await awardXp(userId, "focus_session_completed", {
+        ...(clientRequestId ? { referenceId: clientRequestId } : {}),
+      });
       xpAwarded = result.xpAwarded || 0;
     } catch (error) {
       console.error("Failed to award XP for focus session:", error);

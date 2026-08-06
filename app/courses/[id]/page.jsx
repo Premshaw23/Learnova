@@ -261,6 +261,33 @@ export default function CourseDetailPage() {
     } catch (e) {
       console.error("Failed to load progress:", e);
     }
+
+    // Reconcile with the server-persisted record, which survives a
+    // cleared localStorage or a new device. The server is the source
+    // of truth; localStorage is only an offline/optimistic-UI cache.
+    (async () => {
+      try {
+        const res = await apiFetch(`/api/courses/${params.id}/progress`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.completedLessons && Object.keys(data.completedLessons).length) {
+          setCompletedLessons(data.completedLessons);
+          localStorage.setItem(
+            `learnova_completed_lessons_${params.id}`,
+            JSON.stringify(data.completedLessons)
+          );
+        }
+        if (data.completed && data.completionDate) {
+          setCompletionDate(data.completionDate);
+          localStorage.setItem(
+            `learnova_course_completed_date_${params.id}`,
+            data.completionDate
+          );
+        }
+      } catch (e) {
+        console.error("Failed to fetch server-side course progress:", e);
+      }
+    })();
   }, []);
 
   // Update completion percentage and record date when hitting 100%
@@ -299,6 +326,19 @@ export default function CourseDetailPage() {
       localStorage.removeItem(`learnova_course_completed_date_${params.id}`);
       setCompletionDate("");
     }
+
+    // Persist progress server-side so it survives a cleared localStorage
+    // or a new device, and so course_completed XP can actually be awarded.
+    apiFetch(`/api/courses/${params.id}/progress`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        completedLessons,
+        completionPercentage: pct,
+      }),
+    }).catch((e) => {
+      console.error("Failed to persist course progress:", e);
+    });
   }, [completedLessons, mounted, params.id]);
 
   const toggleLesson = (lessonTitle) => {

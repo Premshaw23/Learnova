@@ -15,7 +15,7 @@ const MOCK_CURRICULUMS = {
           title: "Understanding the Server/Client Boundary",
           duration: "18 mins",
           type: "video",
-          completed: true,
+          completed: false,
           order: 0,
         },
         {
@@ -23,7 +23,7 @@ const MOCK_CURRICULUMS = {
           title: "Data Fetching Patterns with Suspense",
           duration: "25 mins",
           type: "video",
-          completed: true,
+          completed: false,
           order: 1,
         },
         {
@@ -79,7 +79,7 @@ const MOCK_CURRICULUMS = {
           title: "Introduction to Vectorized Operations",
           duration: "15 mins",
           type: "video",
-          completed: true,
+          completed: false,
           order: 0,
         },
         {
@@ -201,12 +201,35 @@ export const GET = withErrorHandler(async (request, { params }) => {
     ];
   }
 
+  // Retrieve authenticated user's completed lesson IDs
+  let completedLessonIds = new Set();
+  try {
+    if (process.env.MONGODB_URI) {
+      const db = await connectDb();
+      const userProgress = await db.collection("userProgress").findOne({
+        $or: [
+          { userId: decodedToken.uid },
+          { firebaseUid: decodedToken.uid },
+        ],
+        courseId,
+      });
+      if (userProgress && Array.isArray(userProgress.completedLessons)) {
+        completedLessonIds = new Set(userProgress.completedLessons);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to fetch user progress:", err.message);
+  }
+
   const sortedCurriculum = curriculum
     .map((mod) => ({
       ...mod,
-      lessons: (mod.lessons || []).sort(
-        (a, b) => (a.order ?? 0) - (b.order ?? 0)
-      ),
+      lessons: (mod.lessons || [])
+        .map((lesson) => ({
+          ...lesson,
+          completed: completedLessonIds.has(lesson.id),
+        }))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     }))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
