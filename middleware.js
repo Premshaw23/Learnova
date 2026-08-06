@@ -464,6 +464,12 @@ function enforceApiRbac(pathname, isTokenValid, isEmailVerified, userRole) {
     return null;
   }
 
+  if (rule.service) {
+    // Service-to-service endpoints (e.g. Vercel cron jobs) authenticate
+    // inside the route handler via CRON_SECRET — edge RBAC defers to them.
+    return null;
+  }
+
   if (!isTokenValid) {
     return { error: "Unauthorized", status: 401 };
   }

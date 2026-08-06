@@ -213,6 +213,12 @@ describe("Middleware Role-Based Redirects", () => {
       role: "institute",
       defaultPath: "/institute/dashboard",
     },
+    {
+      prefix: "/parent",
+      apiPrefix: "/api/parent",
+      role: "parent",
+      defaultPath: "/parent/dashboard",
+    },
   ];
 
   it("matches dashboard routes correctly", () => {
@@ -263,5 +269,81 @@ describe("Middleware Role-Based Redirects", () => {
     expect(getRedirectTarget("institute")).toBe("/institute/dashboard");
     expect(getRedirectTarget("unknown")).toBe("/profile");
     expect(getRedirectTarget(null)).toBe("/profile");
+  });
+});
+
+describe("Middleware RBAC Enforcement (full request flow)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  });
+
+  function nextRequest(url, init = {}) {
+    const urlObj = new URL(url);
+    return Object.assign(new Request(urlObj, init), {
+      nextUrl: urlObj,
+      cookies: { get: () => undefined },
+    });
+  }
+
+  it("allows public API paths without any auth token", async () => {
+    const mod = await import("@/middleware");
+    const response = await mod.middleware(
+      nextRequest("http://localhost/api/auth/csrf")
+    );
+    // Should pass through to the route handler (no 401/403/redirect)
+    expect(response.status).not.toBe(401);
+    expect(response.status).not.toBe(403);
+  });
+
+  it("allows the public iCal feed without an auth token", async () => {
+    const mod = await import("@/middleware");
+    const response = await mod.middleware(
+      nextRequest(
+        "http://localhost/api/timetable/ical/3f2a9c1e-8b4d-4e5f-9a0c-1b2c3d4e5f6a/feed.ics"
+      )
+    );
+    expect(response.status).not.toBe(401);
+    expect(response.status).not.toBe(403);
+  });
+
+  it("allows /api/health/db without an auth token", async () => {
+    const mod = await import("@/middleware");
+    const response = await mod.middleware(
+      nextRequest("http://localhost/api/health/db")
+    );
+    expect(response.status).not.toBe(401);
+    expect(response.status).not.toBe(403);
+  });
+
+  it("defers cron paths to the route handler (CRON_SECRET auth)", async () => {
+    const mod = await import("@/middleware");
+    const response = await mod.middleware(
+      nextRequest("http://localhost/api/cron/attendance-risk", {
+        method: "POST",
+        headers: { authorization: "Bearer some-cron-secret" },
+      })
+    );
+    // Edge RBAC must not 401 — the handler's authorizeCronRequest enforces auth.
+    expect(response.status).not.toBe(401);
+    expect(response.status).not.toBe(403);
+  });
+
+  it("rejects authenticated-required API routes without a token", async () => {
+    const mod = await import("@/middleware");
+    const response = await mod.middleware(
+      nextRequest("http://localhost/api/notifications")
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it("enforces the admin role for /api/notifications/seed", async () => {
+    const mod = await import("@/middleware");
+    // No token -> 401 (not a 403 role check, but the endpoint is protected)
+    const noToken = await mod.middleware(
+      nextRequest("http://localhost/api/notifications/seed")
+    );
+    expect(noToken.status).toBe(401);
   });
 });
