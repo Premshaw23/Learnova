@@ -82,10 +82,14 @@ export const GET = async (request) => {
             ? 0
             : quizActivities.reduce((acc, curr) => acc + (curr.progress || 0), 0) / quizActivities.length;
 
-        // 3. Fetch Institute Weights
-        const settings = await db
-          .collection("settings")
-          .findOne({ userId: student.instituteId });
+        const settings = student.instituteId
+          ? await db.collection("settings").findOne({
+              $or: [
+                { instituteId: student.instituteId },
+                { userId: student.instituteId },
+              ],
+            })
+          : null;
         const weights = settings?.institute?.engagementWeights || DEFAULT_ENGAGEMENT_WEIGHTS;
 
         // 4. Compute Engagement Score

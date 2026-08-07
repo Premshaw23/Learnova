@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/rbac';
-import { db } from '@/lib/firebaseAdmin';
+import { getAdminDb } from '@/lib/firebase-admin';
 
 export async function POST(request) {
   try {
     const token = await requireAuth(request);
+    const db = getAdminDb();
     
     if (token.role !== 'student') {
       return NextResponse.json({ success: false, error: 'Only students can earn Pomodoro XP' }, { status: 403 });

@@ -61,7 +61,10 @@ describe("Course Reviews API Route Handler", () => {
       const req = new Request("http://localhost/api/reviews", {
         method: "POST",
         body: JSON.stringify({}),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-forwarded-for": "203.0.113.1",
+        },
       });
       const res = await POST(req);
       expect(res.status).toBe(400);
@@ -82,7 +85,7 @@ describe("Course Reviews API Route Handler", () => {
         }),
         headers: {
           "Content-Type": "application/json",
-          "x-forwarded-for": `192.168.1.${Math.floor(Math.random() * 1000)}`,
+          "x-forwarded-for": "203.0.113.2",
         },
       });
 
@@ -96,7 +99,6 @@ describe("Course Reviews API Route Handler", () => {
 
     it("should enforce the 2 reviews per hour rate limit", async () => {
       const uid = `user-limited-${Date.now()}`;
-      const uniqueIp = `192.168.2.${Math.floor(Math.random() * 1000)}`;
       requireAuth.mockResolvedValue({ uid, email: "student@learnova.edu" });
 
       const postReview = () =>
@@ -109,7 +111,7 @@ describe("Course Reviews API Route Handler", () => {
           }),
           headers: {
             "Content-Type": "application/json",
-            "x-forwarded-for": uniqueIp,
+            "x-forwarded-for": "203.0.113.3",
           },
         });
 
@@ -127,6 +129,34 @@ describe("Course Reviews API Route Handler", () => {
       const data3 = await res3.json();
       expect(data3.success).toBe(false);
       expect(data3.error).toContain("Too many reviews");
+    });
+
+    it("should NOT grant a fresh IP bucket when the spoofed x-forwarded-for prefix rotates", async () => {
+      const uid = `user-rotate-${Date.now()}`;
+      requireAuth.mockResolvedValue({ uid, email: "student@learnova.edu" });
+
+      const postReview = (spoofedPrefix) =>
+        new Request("http://localhost/api/reviews", {
+          method: "POST",
+          body: JSON.stringify({
+            courseId: "course-123",
+            rating: 4,
+            comment: "Rotating spoof test",
+          }),
+          headers: {
+            "Content-Type": "application/json",
+            "x-forwarded-for": `${spoofedPrefix}, 203.0.113.50`,
+          },
+        });
+
+      // Same real client IP (rightmost hop) across all three requests, only the
+      // client-controlled leftmost prefix changes. Buckets must NOT reset.
+      const res1 = await POST(postReview("203.0.113.101"));
+      expect(res1.status).toBe(201);
+      const res2 = await POST(postReview("203.0.113.202"));
+      expect(res2.status).toBe(201);
+      const res3 = await POST(postReview("198.51.100.55"));
+      expect(res3.status).toBe(429);
     });
   });
 });

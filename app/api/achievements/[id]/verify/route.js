@@ -2,7 +2,11 @@ import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireRole } from "@/lib/rbac";
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { ValidationError, AppError } from "@/lib/errors";
-import { checkRateLimit } from "@/lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 import { achievementVerifySchema } from "@/lib/validations/achievements";
 import { getAchievementById, updateAchievement } from "@/lib/models/achievementModel";
 import { assertInstituteScope } from "@/lib/services/achievementAccess";
@@ -21,7 +25,7 @@ export const PATCH = withErrorHandler(async (request, context) => {
   const params = await context.params;
   const achievementId = params?.id;
 
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
   const rateLimitResult = await checkRateLimit(
     `achievements_verify_${ip}_${decodedToken.uid}`
   );

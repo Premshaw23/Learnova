@@ -2,7 +2,11 @@ import { z } from "zod";
 import { connectDb } from "@/lib/mongodb";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { checkRateLimit } from "@/lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { ValidationError } from "@/lib/errors";
 import { enforceContentPolicy } from "@/lib/ai/contentFilter";
@@ -32,7 +36,7 @@ export const GET = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
   const userId = decodedToken.uid;
 
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
   const rateLimitResult = await checkRateLimit(
     `conversations_get_${ip}_${userId}`
   );
@@ -69,7 +73,7 @@ export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
   const userId = decodedToken.uid;
 
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
   const rateLimitResult = await checkRateLimit(
     `conversations_post_${ip}_${userId}`
   );
