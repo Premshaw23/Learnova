@@ -1,7 +1,11 @@
 import { connectDb } from "../../../lib/mongodb";
 import { parseJSON, withErrorHandler } from "../../../lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
-import { checkRateLimit } from "../../../lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "../../../lib/rateLimit";
 import { AppError } from "../../../lib/errors";
 import { fail, success } from "../../../lib/api-response";
 
@@ -31,7 +35,7 @@ export const GET = withErrorHandler(async (request) => {
     );
   }
 
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
   const rateLimitResult = await checkRateLimit(
     `notifications_get_${ip}_${userId}`
   );
@@ -73,7 +77,7 @@ export const PATCH = withErrorHandler(async (request) => {
     );
   }
 
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
   const rateLimitResult = await checkRateLimit(
     `notifications_patch_${ip}_${userId}`
   );

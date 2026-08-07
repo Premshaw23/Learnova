@@ -37,7 +37,13 @@ export async function GET(request) {
     const teacherId = decodedToken.uid;
     const mongoDb = await connectDb();
     const usersCollection = mongoDb.collection("users");
-    const teacher = await usersCollection.findOne({ uid: teacherId });
+    const teacher = await usersCollection.findOne({
+      $or: [
+        { firebaseUid: teacherId },
+        { uid: teacherId },
+        { userId: teacherId },
+      ],
+    });
 
     if (!teacher || teacher.role !== "teacher") {
       return new Response(
@@ -65,7 +71,13 @@ export async function GET(request) {
     }
 
     // Verify the target student exists and belongs to the same institute
-    const targetStudent = await usersCollection.findOne({ uid: studentId });
+    const targetStudent = await usersCollection.findOne({
+      $or: [
+        { firebaseUid: studentId },
+        { uid: studentId },
+        { userId: studentId },
+      ],
+    });
     if (!targetStudent) {
       return new Response(
         JSON.stringify({ error: "Student not found" }),

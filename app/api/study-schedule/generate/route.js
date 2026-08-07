@@ -54,7 +54,7 @@ Format:
 }
 `;
 
-  const aiResponse = await callGroq(prompt);
+  const aiResponse = await callGroq(prompt, [], decodedToken.uid);
 
   let scheduleData;
   try {
