@@ -2,6 +2,8 @@
 import StudyStreakWidget from "@/components/StudyStreakWidget";
 import AIStudyScheduleWidget from "@/components/AIStudyScheduleWidget";
 import DailyChallengeWidget from "@/components/Dashboard/DailyChallengeWidget";
+import { CalendarSyncWidget } from "./calendar/CalendarSyncWidget";
+import LeagueLeaderboard from "../src/components/Gamification/LeagueLeaderboard";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
@@ -846,6 +848,12 @@ const StudentDashboard = () => {
             </div>
             {roadmap.length > 0 && (
               <div className="space-y-2">
+                {/* Weekly Leagues Gamification Widget */}
+                <div className="md:col-span-1 lg:col-span-2">
+                  <LeagueLeaderboard />
+                </div>
+
+                <div className="md:col-span-1 lg:col-span-2">
                 {roadmap.map((item, index) => (
                   <div
                     key={index}
