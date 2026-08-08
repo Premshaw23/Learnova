@@ -27,6 +27,7 @@ import BackToTop from "@/components/ui/BackToTop";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ScrollProgress from "@/components/ui/ScrollProgress";
 import NextTopLoader from "nextjs-toploader";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
 // 🎯 FIX: Explicitly loading overlays
 
@@ -356,6 +357,7 @@ export default async function RootLayout({ children }) {
             {/* ── Screen-reader route announcer for accessibility ── */}
             <RouteAnnouncer />
             <OfflineIndicator />
+            <ServiceWorkerRegistration />
 
             {/* Single Toaster configuration */}
             <Toaster
