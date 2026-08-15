@@ -33,7 +33,16 @@ export const POST = withErrorHandler(async (req, { params }) => {
     });
   }
 
-  await db.collection("quiz_sessions").deleteOne({ _id: sessionId });
+  if (session.completed === true) {
+    return new Response(
+      JSON.stringify({ error: "Cannot abandon a submitted quiz" }),
+      { status: 409, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  await db
+    .collection("quiz_sessions")
+    .deleteOne({ _id: sessionId, completed: { $ne: true } });
 
   return new Response(
     JSON.stringify({ success: true, message: "Session abandoned" }),

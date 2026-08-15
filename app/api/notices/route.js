@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { getAdminDb, getUserProfile } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
-import { checkRateLimit } from "@/lib/rateLimit";
+import {
+  checkRateLimit,
+  extractClientIp,
+  RATE_LIMIT_IP_FALLBACK,
+} from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { connectDb } from "@/lib/mongodb";
 import { publishNoticeToRedis } from "@/app/api/notices/stream/route";
@@ -16,7 +20,7 @@ async function publishNotice(request, validData) {
   const decodedToken = await requireAuth(request);
   const profile = await getUserProfile(decodedToken.uid);
 
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const ip = extractClientIp(request) || RATE_LIMIT_IP_FALLBACK;
   const rateLimitResult = await checkRateLimit(
     `publish_notice_${ip}_${decodedToken.uid}`
   );

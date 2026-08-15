@@ -37,6 +37,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
 import { useIsMounted } from "@/hooks/useIsMounted";
+import LeagueLeaderboard from "../src/components/Gamification/LeagueLeaderboard";
+import AvatarShop from "../src/components/Gamification/AvatarShop";
 import EngagementScoreCard from "@/components/EngagementScoreCard";
 import EngagementTrendChart from "@/components/EngagementTrendChart";
 import EngagementBreakdown from "@/components/EngagementBreakdown";
@@ -1174,8 +1176,13 @@ const StudentDashboard = () => {
       <Navbar />
 
       {/* Daily Challenge Section */}
-      <div className="mb-6 max-w-7xl mx-auto w-full px-6 mt-6">
-        <DailyChallengeWidget />
+      <div className="mb-6 max-w-7xl mx-auto w-full px-6 grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+        <div className="md:col-span-2">
+          <DailyChallengeWidget />
+        </div>
+        <div className="md:col-span-1 min-h-[300px]">
+          <AvatarShop userXp={gamificationData?.totalXp || 0} />
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-6">

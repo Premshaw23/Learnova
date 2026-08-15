@@ -9,6 +9,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import CursorSwitcher from "@/components/navigation/CursorSwitcher";
 import {
   NAVIGATION_ITEMS,
   getDashboardLink,
@@ -262,6 +263,7 @@ export function Navbar() {
               </motion.button>
 
               <ThemeToggle />
+              <CursorSwitcher />
 
               <button
                 onClick={toggleDyslexiaMode}

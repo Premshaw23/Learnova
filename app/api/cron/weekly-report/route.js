@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/rbac';
-import { db } from '@/lib/firebaseAdmin';
+import { getAdminDb } from '@/lib/firebase-admin';
 
 /**
  * POST /api/cron/weekly-report
@@ -10,6 +10,7 @@ import { db } from '@/lib/firebaseAdmin';
  */
 export async function POST(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
     if (!['teacher', 'admin'].includes(token.role)) {
       return NextResponse.json({ error: 'Only teachers or admins can trigger reports.' }, { status: 403 });

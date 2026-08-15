@@ -31,6 +31,8 @@ vi.mock("@/lib/rbac", () => ({
 
 vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn(),
+  extractClientIp: vi.fn(() => "203.0.113.10"),
+  RATE_LIMIT_IP_FALLBACK: "rate-limit-no-ip",
 }));
 
 vi.mock("@/lib/images/imagesService", () => ({
@@ -50,6 +52,7 @@ describe("POST /api/upload/avatar", () => {
     vi.clearAllMocks();
     requireAuth.mockResolvedValue({ uid: "user-123" });
     checkRateLimit.mockResolvedValue({ allowed: true });
+    updateUserImageInDb.mockResolvedValue({ previousImageUrl: null });
   });
 
   it("uploads an avatar and stores the blob URL", async () => {

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Compass, Sparkles, TrendingUp, CheckCircle2, Briefcase } from "lucide-react";
 import toast from "react-hot-toast";
 import { Navbar } from "@/components/Navbar";
+import MockInterviewWidget from "@/src/components/Career/MockInterviewWidget";
 
 export default function CareerPathsPage() {
   const { user, userProfile, loading } = useAuth();
@@ -132,6 +133,8 @@ export default function CareerPathsPage() {
             )}
           </div>
         )}
+
+        <MockInterviewWidget />
       </div>
     </div>
   );
