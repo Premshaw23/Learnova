@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Sparkles, Brain, PlusCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, Save } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import Eli5Button from "@/components/Courses/Eli5Button";
 
 export default function AIFlashcardsPage() {
   const { user, loading } = useAuth();
@@ -104,8 +105,8 @@ export default function AIFlashcardsPage() {
               <Brain className="w-6 h-6 text-indigo-400" />
               AI Flashcard Generator
             </h2>
-            <p className="text-sm text-zinc-400 mb-6">
-              Paste your lecture notes, textbook summaries, or study material here. Our AI will automatically generate highly effective flashcards for active recall.
+            <p className="text-sm text-zinc-400 mb-6 leading-loose">
+              <Eli5Button>Paste your lecture notes, textbook summaries, or study material here.</Eli5Button> Our AI will automatically generate highly effective flashcards for active recall.
             </p>
             
             <textarea
