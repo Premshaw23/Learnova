@@ -27,6 +27,21 @@ export const POST = withErrorHandler(async (request, { params }) => {
     throw new AppError('This meeting slot is no longer available', 400);
   }
 
+  // Only allow attaching a student the booking parent is actually linked to.
+  // Parent-student links live in Firestore (parent_student_links, keyed
+  // `${parentId}_${studentId}`), same as the parent grades/attendance routes.
+  if (studentId) {
+    const { getAdminDb } = await import('@/lib/firebase-admin');
+    const firestore = getAdminDb();
+    const linkDoc = await firestore
+      .collection('parent_student_links')
+      .doc(`${token.uid}_${studentId}`)
+      .get();
+    if (!linkDoc.exists) {
+      throw new AppError('You are not linked to this student', 403);
+    }
+  }
+
   // Update meeting
   const result = await db.collection('meetings').updateOne(
     { _id: new ObjectId(meetingId), status: 'available' },
