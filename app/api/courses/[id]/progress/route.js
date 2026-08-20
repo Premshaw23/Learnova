@@ -52,7 +52,36 @@ export const PATCH = withErrorHandler(async (request, { params }) => {
   });
 
   const wasAlreadyCompleted = Boolean(existing?.completed);
-  const isNowCompleted = completionPercentage === 100;
+
+  // Never trust the client's completionPercentage. Recompute it from the
+  // authoritative stored curriculum (completedLessons is keyed by lesson title,
+  // same as the course page). The one-time XP is only awarded on a
+  // server-verified 100%, so a forged { completedLessons: {},
+  // completionPercentage: 100 } can no longer self-award course completion.
+  const curriculum = await db
+    .collection("course_curriculums")
+    .findOne({ courseId: { $eq: courseId } });
+  let verifiedPercentage = null;
+  if (curriculum?.modules?.length) {
+    const totalLessons = curriculum.modules.reduce(
+      (sum, mod) => sum + (mod.lessons?.length || 0),
+      0
+    );
+    const completedCount = curriculum.modules.reduce(
+      (sum, mod) =>
+        sum +
+        (mod.lessons || []).filter((les) => completedLessons[les.title]).length,
+      0
+    );
+    verifiedPercentage =
+      totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+  }
+
+  // Verified value drives completion + XP; the client value is used only for
+  // progress display when no stored curriculum exists for the course.
+  const effectivePercentage = verifiedPercentage ?? completionPercentage;
+  const isNowCompleted = effectivePercentage === 100;
+  const completionVerified = verifiedPercentage === 100;
 
   const completionDate =
     existing?.completionDate ||
@@ -71,7 +100,7 @@ export const PATCH = withErrorHandler(async (request, { params }) => {
         firebaseUid: userId,
         courseId,
         completedLessons,
-        completionPercentage,
+        completionPercentage: effectivePercentage,
         completed: isNowCompleted,
         completionDate: isNowCompleted ? completionDate : "",
         updatedAt: now,
@@ -82,7 +111,7 @@ export const PATCH = withErrorHandler(async (request, { params }) => {
   );
 
   let xpAwarded = 0;
-  if (isNowCompleted && !wasAlreadyCompleted) {
+  if (completionVerified && !wasAlreadyCompleted) {
     try {
       const result = await awardXp(userId, "course_completed", { courseId });
       xpAwarded = result.xpAwarded || 0;
@@ -94,7 +123,7 @@ export const PATCH = withErrorHandler(async (request, { params }) => {
   return NextResponse.json({
     success: true,
     completedLessons,
-    completionPercentage,
+    completionPercentage: effectivePercentage,
     completed: isNowCompleted,
     completionDate: isNowCompleted ? completionDate : "",
     xpAwarded,
