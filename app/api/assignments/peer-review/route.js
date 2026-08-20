@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/rbac';
-import { db } from '@/lib/firebaseAdmin';
+import { getAdminDb } from "@/lib/firebase-admin";
 
 export async function GET(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
     if (token.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -32,6 +33,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
     if (token.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

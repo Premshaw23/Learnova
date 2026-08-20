@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebaseAdmin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
 import { connectDb } from "@/lib/mongodb";
 import { publishEvent } from "@/lib/ssePublisher";
 
 export async function POST(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
 
     if (token.role !== "student") {

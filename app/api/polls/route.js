@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebaseAdmin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { requireAuth } from "@/lib/rbac";
 import { publishEvent } from "@/lib/ssePublisher";
 import { v4 as uuidv4 } from "uuid";
 
 export async function GET(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
 
     // Fetch all active polls
@@ -58,6 +59,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
 
     if (token.role !== "teacher" && token.role !== "admin") {

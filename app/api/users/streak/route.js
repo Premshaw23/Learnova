@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/rbac';
-import { db } from '@/lib/firebaseAdmin';
+import { getAdminDb } from "@/lib/firebase-admin";
 
 export async function POST(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
     const userRef = db.collection('users').doc(token.uid);
     

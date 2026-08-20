@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { connectDb } from '@/lib/mongodb';
 import { requireAuth } from '@/lib/rbac';
-import { db } from '@/lib/firebaseAdmin';
+import { getAdminDb } from "@/lib/firebase-admin";
 import { callGroq } from '@/lib/ai/groq';
 
 export async function GET(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
     
     if (token.role !== 'student') {

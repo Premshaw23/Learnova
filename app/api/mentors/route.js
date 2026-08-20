@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/rbac';
-import { db } from '@/lib/firebaseAdmin';
+import { getAdminDb } from "@/lib/firebase-admin";
 
 export async function GET(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
     
     if (token.role !== 'student') {

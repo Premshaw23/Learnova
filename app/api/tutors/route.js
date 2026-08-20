@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/rbac';
-import { db } from '@/lib/firebaseAdmin';
+import { getAdminDb } from "@/lib/firebase-admin";
 
 // GET /api/tutors
 // Fetch online peer tutors and active tutoring help requests
 export async function GET(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
     if (token.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -51,6 +52,7 @@ export async function GET(request) {
 // Submit a new tutor help request or accept a request
 export async function POST(request) {
   try {
+    const db = getAdminDb();
     const token = await requireAuth(request);
     if (token.role !== 'student') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
