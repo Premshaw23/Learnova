@@ -1,10 +1,10 @@
-import { requireAuth } from "@/lib/rbac";
+import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { callGroq } from "@/lib/ai/groq";
 
 export const POST = withErrorHandler(async (req) => {
-  await requireAuth(req, ["student", "teacher", "parent"]);
+  await requireRole(req, ["student", "teacher", "parent"]);
   
   const body = await req.json();
   const { text } = body;

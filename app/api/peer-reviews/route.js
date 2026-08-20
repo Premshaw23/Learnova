@@ -1,12 +1,12 @@
 import { connectDb } from "@/lib/mongodb";
-import { requireAuth } from "@/lib/rbac";
+import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { jsonSuccess, jsonError } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(async (req) => {
-  const decodedToken = await requireAuth(req, ["student"]);
+  const { payload: decodedToken } = await requireRole(req, ["student"]);
   const userId = decodedToken.uid;
   const db = await connectDb();
 
@@ -43,7 +43,7 @@ export const GET = withErrorHandler(async (req) => {
 });
 
 export const POST = withErrorHandler(async (req) => {
-  const decodedToken = await requireAuth(req, ["student"]);
+  const { payload: decodedToken } = await requireRole(req, ["student"]);
   const reviewerId = decodedToken.uid;
 
   const body = await req.json();
