@@ -5,6 +5,33 @@ import crypto from 'node:crypto';
  * Verifies HMAC signature of quiz submissions and calculates scores server-side.
  */
 
+/**
+ * Loads the authoritative answer key for a quiz from the database, keyed by
+ * question id. The correct answers must never come from the request body.
+ * DB deps are imported dynamically so importing this module (e.g. for the pure
+ * verifyQuizSubmission unit tests) doesn't pull in the Mongo driver.
+ */
+export async function loadCorrectAnswers(quizId) {
+  const { ObjectId } = await import('mongodb');
+  const { connectDb } = await import('@/lib/mongodb');
+  let objectId;
+  try {
+    objectId = new ObjectId(quizId);
+  } catch {
+    return null;
+  }
+  const db = await connectDb();
+  const quiz = await db.collection('quizzes').findOne({ _id: objectId });
+  if (!quiz || !Array.isArray(quiz.questions)) {
+    return null;
+  }
+  const correctAnswers = {};
+  for (const q of quiz.questions) {
+    correctAnswers[q._id] = q.correctAnswer;
+  }
+  return correctAnswers;
+}
+
 export function calculateHmacSignature(payload, secret) {
   return crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }
@@ -83,11 +110,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    const secret = process.env.QUIZ_HMAC_SECRET || 'learnova-quiz-secret-key';
-    const { quizId, answers, timestamp, signature, correctAnswers } = req.body || {};
+    const secret = process.env.QUIZ_HMAC_SECRET;
+    if (!secret) {
+      // Fail closed — a hardcoded fallback secret let anyone forge signatures.
+      return res
+        .status(500)
+        .json({ error: 'Quiz submission is not configured (missing QUIZ_HMAC_SECRET)' });
+    }
+
+    const { quizId, answers, timestamp, signature } = req.body || {};
 
     if (!signature) {
       return res.status(400).json({ error: 'Missing submission signature' });
+    }
+
+    // Correct answers come from the server, never from the client body.
+    const correctAnswers = await loadCorrectAnswers(quizId);
+    if (!correctAnswers) {
+      return res.status(404).json({ error: 'Quiz not found' });
     }
 
     const result = verifyQuizSubmission({
@@ -96,7 +136,7 @@ export default async function handler(req, res) {
       timestamp,
       signature,
       secret,
-      correctAnswers: correctAnswers || {},
+      correctAnswers,
     });
 
     return res.status(200).json(result);

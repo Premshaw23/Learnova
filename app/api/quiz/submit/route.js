@@ -1,16 +1,36 @@
-import { verifyQuizSubmission } from '../../../../pages/api/quiz/submit.js';
+import {
+  verifyQuizSubmission,
+  loadCorrectAnswers,
+} from '../../../../pages/api/quiz/submit.js';
 
 export async function POST(req) {
+  const json = (body, status) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
   try {
+    const secret = process.env.QUIZ_HMAC_SECRET;
+    if (!secret) {
+      // Fail closed — a hardcoded fallback secret let anyone forge signatures.
+      return json(
+        { error: 'Quiz submission is not configured (missing QUIZ_HMAC_SECRET)' },
+        500
+      );
+    }
+
     const body = await req.json();
-    const secret = process.env.QUIZ_HMAC_SECRET || 'learnova-quiz-secret-key';
-    const { quizId, answers, timestamp, signature, correctAnswers } = body || {};
+    const { quizId, answers, timestamp, signature } = body || {};
 
     if (!signature) {
-      return new Response(
-        JSON.stringify({ error: 'Missing submission signature' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return json({ error: 'Missing submission signature' }, 400);
+    }
+
+    // Correct answers come from the server, never from the client body.
+    const correctAnswers = await loadCorrectAnswers(quizId);
+    if (!correctAnswers) {
+      return json({ error: 'Quiz not found' }, 404);
     }
 
     const result = verifyQuizSubmission({
@@ -19,17 +39,11 @@ export async function POST(req) {
       timestamp,
       signature,
       secret,
-      correctAnswers: correctAnswers || {},
+      correctAnswers,
     });
 
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json(result, 200);
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message || 'Quiz submission failed' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    return json({ error: error.message || 'Quiz submission failed' }, 400);
   }
 }
